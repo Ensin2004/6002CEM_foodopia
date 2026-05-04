@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../../core/utils/role_manager.dart';
+import '../../../../core/auth/role_manager.dart';
 import '../../domain/entities/user_entity.dart';
 
+/// Defines behavior for user model.
 class UserModel extends UserEntity {
+  /// Creates a user model instance.
   UserModel({
     required super.uid,
     required super.email,
@@ -16,6 +18,7 @@ class UserModel extends UserEntity {
     super.lastLogin,
   });
 
+  /// Creates a user model instance.
   factory UserModel.fromFirebase(User user, DocumentSnapshot? userDoc) {
     final roleManager = RoleManager();
 
@@ -27,7 +30,7 @@ class UserModel extends UserEntity {
         ? userDoc.get('role') as String?
         : null;
 
-    // ✅ Safely handle createdAt - might not exist
+    // Safely handle createdAt - might not exist
     DateTime? createdAt;
     if (userDoc != null && userDoc.data() != null) {
       final createdAtTimestamp = userDoc.get('createdAt');
@@ -36,7 +39,7 @@ class UserModel extends UserEntity {
       }
     }
 
-    // ✅ Safely handle lastLogin - might not exist
+    // Safely handle lastLogin - might not exist
     DateTime? lastLogin;
     if (userDoc != null && userDoc.data() != null) {
       final lastLoginTimestamp = userDoc.get('lastLogin');
@@ -45,6 +48,7 @@ class UserModel extends UserEntity {
       }
     }
 
+    /// Handles the user model operation.
     return UserModel(
       uid: user.uid,
       email: user.email ?? '',
@@ -58,6 +62,7 @@ class UserModel extends UserEntity {
     );
   }
 
+  /// Converts this instance into to json data.
   Map<String, dynamic> toJson() {
     return {
       'name': name,

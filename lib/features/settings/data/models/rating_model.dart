@@ -1,7 +1,11 @@
+// Maps stored data for the rating model.
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/rating.dart';
 
+/// Defines behavior for rating model.
 class RatingModel extends RatingEntity {
+  /// Creates a rating model instance.
   const RatingModel({
     required super.userId,
     required super.stars,
@@ -10,8 +14,10 @@ class RatingModel extends RatingEntity {
     required super.updatedAt,
   });
 
+  /// Creates a rating model instance.
   factory RatingModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    /// Handles the rating model operation.
     return RatingModel(
       userId: doc.id,
       stars: data['stars'] as int? ?? 0,
@@ -21,6 +27,7 @@ class RatingModel extends RatingEntity {
     );
   }
 
+  /// Converts this instance into to json data.
   Map<String, dynamic> toJson() {
     return {
       'stars': stars,

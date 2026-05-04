@@ -2,20 +2,24 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/settings_item.dart';
 import '../viewmodel/settings_viewmodel.dart';
 
+/// Defines behavior for settings item widget.
 class SettingsItemWidget extends StatelessWidget {
   final SettingsItem item;
   final SettingsViewModel viewModel;
 
+  /// Creates a settings item widget instance.
   const SettingsItemWidget({
     super.key,
     required this.item,
     required this.viewModel,
   });
 
+  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
     // 🔹 Toggle item
     if (item.type == SettingsItemType.toggle) {
+      /// Handles the switch list tile operation.
       return SwitchListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16),
         visualDensity: const VisualDensity(vertical: -2),
@@ -60,7 +64,7 @@ class SettingsItemWidget extends StatelessWidget {
       )
           : null,
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: () => viewModel.onSettingsItemTapped(item.id), // ✅ Emits typed event
+      onTap: () => viewModel.onSettingsItemTapped(item.id), // Emits typed event
     );
   }
 }

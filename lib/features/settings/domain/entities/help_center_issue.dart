@@ -9,6 +9,7 @@ class HelpCenterIssue {
   final bool replied;
   final DateTime timestamp;
 
+  /// Creates a help center issue instance.
   const HelpCenterIssue({
     required this.id,
     required this.uid,
@@ -18,9 +19,12 @@ class HelpCenterIssue {
     required this.timestamp,
   });
 
+  /// Handles the is replied operation.
   bool get isReplied => replied;
+  /// Handles the is pending operation.
   bool get isPending => !replied;
 
+  /// Handles the copy with operation.
   HelpCenterIssue copyWith({
     String? id,
     String? uid,
@@ -29,6 +33,7 @@ class HelpCenterIssue {
     bool? replied,
     DateTime? timestamp,
   }) {
+    /// Handles the help center issue operation.
     return HelpCenterIssue(
       id: id ?? this.id,
       uid: uid ?? this.uid,

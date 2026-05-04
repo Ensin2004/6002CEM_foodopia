@@ -1,13 +1,17 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:photo_view/photo_view.dart';
+import '../../../../../../app/routers/app_router.dart';
+import '../../../../../../app/routers/router_args.dart';
 import '../../../../../../core/widgets/custom_app_bar.dart';
 import '../../../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../domain/entities/faq_item.dart';
 
+/// Defines behavior for faq form page.
 class FaqFormPage extends StatefulWidget {
   final FaqItem? item;
+  /// Handles the function operation.
   final Future<bool> Function({
     required String question,
     required String answer,
@@ -15,16 +19,19 @@ class FaqFormPage extends StatefulWidget {
     File? answerImageFile,
   }) onSave;
 
+  /// Creates a faq form page instance.
   const FaqFormPage({
     super.key,
     this.item,
     required this.onSave,
   });
 
+  /// Creates data for the create state operation.
   @override
   State<FaqFormPage> createState() => _FaqFormPageState();
 }
 
+/// Defines behavior for faq form page state.
 class _FaqFormPageState extends State<FaqFormPage> {
   final TextEditingController _questionController = TextEditingController();
   final TextEditingController _answerController = TextEditingController();
@@ -37,6 +44,7 @@ class _FaqFormPageState extends State<FaqFormPage> {
   bool _isSaving = false;
   final ImagePicker _picker = ImagePicker();
 
+  /// Initializes state before the first widget build.
   @override
   void initState() {
     super.initState();
@@ -48,6 +56,7 @@ class _FaqFormPageState extends State<FaqFormPage> {
     }
   }
 
+  /// Releases resources before widget removal.
   @override
   void dispose() {
     _questionController.dispose();
@@ -55,6 +64,7 @@ class _FaqFormPageState extends State<FaqFormPage> {
     super.dispose();
   }
 
+  /// Handles the pick image operation.
   Future<void> _pickImage(bool isQuestion) async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
@@ -68,6 +78,7 @@ class _FaqFormPageState extends State<FaqFormPage> {
     }
   }
 
+  /// Handles the save operation.
   Future<void> _save() async {
     setState(() => _isSaving = true);
 
@@ -87,18 +98,15 @@ class _FaqFormPageState extends State<FaqFormPage> {
     }
   }
 
+  /// Handles the show full image operation.
   void _showFullImage(BuildContext context, String imageUrl) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(),
-          body: Center(child: PhotoView(imageProvider: NetworkImage(imageUrl))),
-        ),
-      ),
+    context.push(
+      AppRouter.imagePreview,
+      extra: ImagePreviewArgs(imageUrl: imageUrl),
     );
   }
 
+  /// Handles the build image preview operation.
   Widget _buildImagePreview({
     required String? existingUrl,
     required File? newFile,
@@ -106,6 +114,7 @@ class _FaqFormPageState extends State<FaqFormPage> {
     required VoidCallback onRemove,
   }) {
     if (newFile != null) {
+      /// Handles the build image preview with remove operation.
       return _buildImagePreviewWithRemove(
         path: newFile.path,
         isNetwork: false,
@@ -113,6 +122,7 @@ class _FaqFormPageState extends State<FaqFormPage> {
       );
     }
     if (existingUrl != null) {
+      /// Handles the build image preview with remove operation.
       return _buildImagePreviewWithRemove(
         path: existingUrl,
         isNetwork: true,
@@ -122,16 +132,19 @@ class _FaqFormPageState extends State<FaqFormPage> {
     return const SizedBox.shrink();
   }
 
+  /// Handles the build image preview with remove operation.
   Widget _buildImagePreviewWithRemove({
     required String path,
     required bool isNetwork,
     required VoidCallback onRemove,
   }) {
+    /// Handles the padding operation.
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          /// Creates a gesture detector instance.
           GestureDetector(
             onTap: () => isNetwork ? _showFullImage(context, path) : null,
             child: ClipRRect(
@@ -141,6 +154,7 @@ class _FaqFormPageState extends State<FaqFormPage> {
                   : Image.file(File(path), height: 120, width: double.infinity, fit: BoxFit.contain),
             ),
           ),
+          /// Creates a positioned instance.
           Positioned(
             top: 8,
             right: 8,
@@ -158,21 +172,25 @@ class _FaqFormPageState extends State<FaqFormPage> {
     );
   }
 
+  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.item != null;
 
+    /// Handles the scaffold operation.
     return Scaffold(
       appBar: CustomAppBar(
         title: '${isEditing ? 'Edit' : 'Add'} FAQ',
         centerTitle: true,
         actions: [
           if (_isSaving)
+            /// Creates a padding instance.
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Center(child: CircularProgressIndicator()),
             ),
           if (!_isSaving)
+            /// Creates a text button instance.
             TextButton(
               onPressed: _save,
               child: const Text('SAVE', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -186,7 +204,9 @@ class _FaqFormPageState extends State<FaqFormPage> {
           children: [
             // Question Section
             const Text('Question', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            /// Creates a sized box instance.
             const SizedBox(height: 8),
+            /// Creates a text field instance.
             TextField(
               controller: _questionController,
               maxLines: 3,
@@ -207,11 +227,14 @@ class _FaqFormPageState extends State<FaqFormPage> {
                 _questionImageUrl = null;
               }),
             ),
+            /// Creates a sized box instance.
             const SizedBox(height: 24),
 
             // Answer Section
             const Text('Answer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            /// Creates a sized box instance.
             const SizedBox(height: 8),
+            /// Creates a text field instance.
             TextField(
               controller: _answerController,
               maxLines: 6,

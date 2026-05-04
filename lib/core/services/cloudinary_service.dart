@@ -17,8 +17,11 @@ class CloudinaryService {
   // Private constructor to prevent instantiation
   CloudinaryService._();
 
+  /// Handles the cloud name operation.
   static String get _cloudName => EnvConfig.cloudinaryCloudName;
+  /// Handles the user profile upload preset operation.
   static String get _userProfileUploadPreset => EnvConfig.userProfileUploadPreset;
+  /// Handles the settings upload preset operation.
   static String get _settingsUploadPreset => EnvConfig.settingsUploadPreset;
 
   /// Base URL for Cloudinary uploads
@@ -29,6 +32,7 @@ class CloudinaryService {
   /// Generic upload method
   static Future<String> _uploadImage(File imageFile, String uploadPreset) async {
     try {
+      // Runs the guarded operation that can throw.
       final uri = Uri.parse(_getUploadUrl());
       final request = http.MultipartRequest('POST', uri);
 
@@ -49,33 +53,42 @@ class CloudinaryService {
         return json['secure_url'];
       } else {
         final responseData = await response.stream.bytesToString();
+        /// Handles the exception operation.
         throw Exception('Upload failed (${response.statusCode}): $responseData');
       }
     } catch (e) {
+      /// Handles the exception operation.
       throw Exception('Cloudinary upload error: $e');
     }
   }
 
   /// Upload user profile image
   static Future<String> uploadUserProfileImage(File imageFile) async {
+    /// Handles the upload image operation.
     return await _uploadImage(imageFile, _userProfileUploadPreset);
   }
 
   /// Upload settings-related images (help center, FAQ, ratings)
   static Future<String> uploadSettingsImage(File imageFile) async {
+    /// Handles the upload image operation.
     return await _uploadImage(imageFile, _settingsUploadPreset);
   }
 
   // For backward compatibility with existing code
   static Future<String> uploadSupportImage(File imageFile) async {
+    /// Runs the upload settings image operation.
     return await uploadSettingsImage(imageFile);
   }
 
+  /// Runs the upload faq image operation.
   static Future<String> uploadFaqImage(File imageFile) async {
+    /// Runs the upload settings image operation.
     return await uploadSettingsImage(imageFile);
   }
 
+  /// Runs the upload rating image operation.
   static Future<String> uploadRatingImage(File imageFile) async {
+    /// Runs the upload settings image operation.
     return await uploadSettingsImage(imageFile);
   }
 }

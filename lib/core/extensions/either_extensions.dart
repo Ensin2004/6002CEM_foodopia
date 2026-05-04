@@ -1,141 +1,102 @@
 import 'package:dartz/dartz.dart';
 
 // ============================================================================
-// QUICK REFERENCE CARD
+// EITHER EXTENSIONS
 // ============================================================================
+// Either<L, R> represents one of two possible results:
+//   Left<L>  = failure / error
+//   Right<R> = success / data
 //
-// | WHAT YOU WANT                    | CODE                                    |
-// |-----------------------------------|-----------------------------------------|
-// | Check if error                    | if (result.isLeft()) { ... }           |
-// | Check if success                  | if (result.isRight()) { ... }          |
-// | Get error (after checking)        | final error = result.left!;            |
-// | Get success (after checking)      | final data = result.right!;            |
-// | Handle both cases                 | result.fold(                           |
-// |                                   |   (error) => handleError(error),       |
-// |                                   |   (data) => handleSuccess(data),       |
-// |                                   | );                                     |
-// | Run code only for error           | result.ifLeft((e) => print(e));        |
-// | Run code only for success         | result.ifRight((d) => print(d));       |
-// | Create an error result            | return Left(Failure('error'));         |
-// | Create a success result           | return Right(data);                    |
-// ============================================================================
-
-// ============================================================================
-// WHAT IS EITHER? (Why not just use try-catch?)
-// ============================================================================
+// Why use Either?
+// - The return type clearly shows that an operation can fail.
+// - Callers are encouraged to handle both success and failure.
+// - Viewmodels can avoid relying on thrown exceptions for expected errors.
 //
-// Either<L, R> is a container that holds either:
-//   Left<L>  → ERROR (contains failure details)
-//   Right<R> → SUCCESS (contains actual data)
+// Why use Either instead of try-catch?
+// - try-catch hides possible failures unless the caller reads the function body.
+// - Either makes failure part of the function signature.
+// - Expected errors, such as validation or not found, can be returned as values.
+// - Unexpected errors can still be caught and converted into a Failure.
 //
-// WHY USE EITHER INSTEAD OF TRY-CATCH?
-// ============================================================================
+// Common pattern:
+//   final result = await someUseCase.execute();
 //
-// PROBLEM WITH TRY-CATCH (HIDDEN ERRORS):
-// ┌─────────────────────────────────────────────────────────────────────────┐
-// │ Future<User> login(String email, String password) async {              │
-// │   try {                                                                │
-// │     return await api.login(email, password);  // May throw!           │
-// │   } catch (e) {                                                        │
-// │     throw Exception('Login failed');                                   │
-// │   }                                                                   │
-// │ }                                                                     │
-// │                                                                        │
-// │ // CALLER HAS NO IDEA this function can throw!                        │
-// │ final user = await login('a', 'b');  // ⚠️ Might crash! No warning!   │
-// └─────────────────────────────────────────────────────────────────────────┘
+//   result.fold(
+//     (failure) => handleError(failure),
+//     (data) => handleSuccess(data),
+//   );
 //
-// SOLUTION WITH EITHER (ERRORS ARE VISIBLE IN TYPE):
-// ┌─────────────────────────────────────────────────────────────────────────┐
-// │ Future<Either<Failure, User>> login(String email, String password) {  │
-// │   try {                                                                │
-// │     final user = await api.login(email, password);                    │
-// │     return Right(user);  // ✅ Success is wrapped in Right            │
-// │   } catch (e) {                                                        │
-// │     return Left(Failure(e.toString()));  // ❌ Error is wrapped in Left│
-// │   }                                                                   │
-// │ }                                                                     │
-// │                                                                        │
-// │ // CALLER MUST handle BOTH cases! The type system ENFORCES it!        │
-// │ final result = await login('a', 'b');                                 │
-// │ if (result.isLeft()) {                                                │
-// │   // Handle error                                                     │
-// │ } else {                                                              │
-// │   // Handle success                                                   │
-// │ }                                                                     │
-// └─────────────────────────────────────────────────────────────────────────┘
+// These extension methods make simple checks shorter when a viewmodel needs to
+// inspect only one side of the result.
 //
-// KEY BENEFITS:
-// 1. TYPE SAFETY - Function signature TELLS YOU it can fail
-// 2. NO SURPRISES - No unexpected crashes from uncaught exceptions
-// 3. FORCED HANDLING - You MUST check for errors before using data
-// 4. SELF-DOCUMENTING - Anyone can see this function might fail
+// Quick summary:
+// | Need                         | Use                                 |
+// |------------------------------|--------------------------------------|
+// | Check if error               | result.isLeft()                      |
+// | Check if success             | result.isRight()                     |
+// | Get error after checking     | result.left                          |
+// | Get data after checking      | result.right                         |
+// | Handle both outcomes         | result.fold(onFailure, onSuccess)    |
+// | Run code only for error      | result.ifLeft((failure) { ... })     |
+// | Run code only for success    | result.ifRight((data) { ... })       |
 // ============================================================================
 
 extension EitherExtension<L, R> on Either<L, R> {
   // ==========================================================================
-  // CHECK WHAT TYPE IT IS
+  // TYPE CHECKS
   // ==========================================================================
 
-  /// Check if this is an ERROR (Left)
+  /// Returns true when this Either contains an error/left value.
   bool isLeft() => this is Left<L, R>;
 
-  /// Check if this is a SUCCESS (Right)
+  /// Returns true when this Either contains a success/right value.
   bool isRight() => this is Right<L, R>;
 
   // ==========================================================================
-  // GET THE VALUE (returns null if wrong type)
+  // SAFE VALUE ACCESS
   // ==========================================================================
 
-  /// Get error value (returns null if this is Right)
+  /// Returns the left value, or null when this Either is a Right.
   L? get left {
     return fold((left) => left, (_) => null);
   }
 
-  /// Get success value (returns null if this is Left)
+  /// Returns the right value, or null when this Either is a Left.
   R? get right {
     return fold((_) => null, (right) => right);
   }
 
   // ==========================================================================
-  // RUN CODE ONLY FOR SPECIFIC TYPE
+  // CONDITIONAL CALLBACKS
   // ==========================================================================
 
-  /// Run code only if this is an ERROR
-  void ifLeft(void Function(L) action) {
-    fold((left) => action(left), (_) => null);
+  /// Runs [action] only when this Either is a Left.
+  void ifLeft(void Function(L left) action) {
+    /// Creates a fold instance.
+    fold(action, (_) => null);
   }
 
-  /// Run code only if this is a SUCCESS
-  void ifRight(void Function(R) action) {
-    fold((_) => null, (right) => action(right));
+  /// Runs [action] only when this Either is a Right.
+  void ifRight(void Function(R right) action) {
+    /// Creates a fold instance.
+    fold((_) => null, action);
   }
 
   // ==========================================================================
-  // GET VALUE OR CRASH (use only when 100% sure!)
+  // STRICT VALUE ACCESS
   // ==========================================================================
 
+  /// Returns the left value or throws if this Either is a Right.
+  ///
+  /// Use only after confirming the result is a Left.
   L getLeftOrThrow() {
-    return fold((left) => left, (_) => throw Exception('Not a Left'));
+    return fold((left) => left, (_) => throw StateError('Either is not Left'));
   }
 
+  /// Returns the right value or throws if this Either is a Left.
+  ///
+  /// Use only after confirming the result is a Right.
   R getRightOrThrow() {
-    return fold((_) => throw Exception('Not a Right'), (right) => right);
+    return fold((_) => throw StateError('Either is not Right'), (right) => right);
   }
 }
-
-// ============================================================================
-// COMMON USAGE PATTERN
-// ============================================================================
-//
-// final result = await someUseCase.execute();
-//
-// if (result.isLeft()) {
-//   final error = result.left!;  // Use ! because we know it's Left
-//   _errorMessage = error.message;
-// } else {
-//   final data = result.right!;  // Use ! because we know it's Right
-//   _profile = data;
-// }
-// notifyListeners();
-// ============================================================================

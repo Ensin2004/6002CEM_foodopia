@@ -2,11 +2,14 @@ import 'package:dartz/dartz.dart';
 import '../repositories/auth_repository.dart';
 import '../entities/user_entity.dart';
 
+/// Runs the signup use case operation.
 class SignupUseCase {
   final AuthRepository repository;
 
+  /// Runs the signup use case operation.
   SignupUseCase(this.repository);
 
+  /// Validates input and delegates the signup request to the repository.
   Future<Either<AuthFailure, UserEntity>> execute({
     required String email,
     required String password,
@@ -14,7 +17,7 @@ class SignupUseCase {
     required String gender,
     required String countryId,
   }) async {
-    // Validation
+    // Checks required fields before repository access.
     if (email.isEmpty) {
       return Left(AuthFailure(message: 'Email cannot be empty'));
     }
@@ -31,7 +34,7 @@ class SignupUseCase {
       return Left(AuthFailure(message: 'Country cannot be empty'));
     }
 
-    // Password strength validation
+    // Checks password strength rules before submission.
     if (password.length < 12) {
       return Left(AuthFailure(message: 'Password must be at least 12 characters'));
     }

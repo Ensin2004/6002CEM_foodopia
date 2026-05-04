@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../app/dependency_injection/injection_container.dart';
+import '../../../../app/navigation/navigation_events.dart';
+import '../../../../app/routers/app_router.dart';
+import '../../../../app/routers/router_args.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../manage/presentation/view/manage_page.dart';
 import '../viewmodel/main_viewmodel.dart';
@@ -12,22 +16,23 @@ import '../../../explore/presentation/view/explore_page.dart';
 import '../../../meal_plan/presentation/view/meal_plan_page.dart';
 import '../../../library/presentation/view/library_page.dart';
 import '../../../statistics/presentation/view/statistics_page.dart';
-import '../../../settings/presentation/view/settings_page.dart';
-import '../../../notifications/presentation/view/notifications_page.dart';
-import '../../../recipe/presentation/view/add_recipe_page.dart';
 
+/// Defines behavior for main page.
 class MainPage extends StatelessWidget {
   final UserEntity user;
   final String role;
 
+  /// Creates a main page instance.
   const MainPage({
     super.key,
     required this.user,
     required this.role,
   });
 
+  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    /// Runs the change notifier provider operation.
     return ChangeNotifierProvider(
       create: (_) => MainViewModel(
         user: user,
@@ -38,21 +43,32 @@ class MainPage extends StatelessWidget {
   }
 }
 
+/// Defines behavior for main page view.
 class _MainPageView extends StatelessWidget {
+  /// Handles the main page view operation.
   const _MainPageView();
 
+  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<MainViewModel>();
     final isAdmin = viewModel.isAdmin;
+    final navigationEvent = viewModel.navigationEvent;
 
+    if (navigationEvent != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleNavigation(context, navigationEvent, viewModel);
+      });
+    }
+
+    /// Handles the scaffold operation.
     return Scaffold(
       appBar: MainAppBar(
         isAdmin: isAdmin,
         profileImageUrl: viewModel.profileImageUrl,
-        onSettingsTap: () => _navigateToSettings(context, viewModel),
-        onFavoritesTap: isAdmin ? null : () => _navigateToFavorites(context),
-        onNotificationsTap: isAdmin ? null : () => _navigateToNotifications(context),
+        onSettingsTap: viewModel.goToSettings,
+        onFavoritesTap: isAdmin ? null : viewModel.goToFavorites,
+        onNotificationsTap: isAdmin ? null : viewModel.goToNotifications,
       ),
       body: _buildBody(viewModel),
       bottomNavigationBar: _buildBottomNavigationBar(context, viewModel),
@@ -61,6 +77,7 @@ class _MainPageView extends StatelessWidget {
     );
   }
 
+  /// Handles the build body operation.
   Widget _buildBody(MainViewModel viewModel) {
     final isAdmin = viewModel.isAdmin;
     final currentIndex = viewModel.selectedIndex;
@@ -85,9 +102,11 @@ class _MainPageView extends StatelessWidget {
     }
   }
 
+  /// Handles the build bottom navigation bar operation.
   Widget _buildBottomNavigationBar(BuildContext context, MainViewModel viewModel) {
     final isAdmin = viewModel.isAdmin;
 
+    /// Handles the material operation.
     return Material(
       elevation: 30,
       shadowColor: Colors.black.withOpacity(0.8),
@@ -100,59 +119,76 @@ class _MainPageView extends StatelessWidget {
         type: BottomNavigationBarType.fixed,
         items: isAdmin
             ? const [
+          /// Creates a bottom navigation bar item instance.
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          /// Creates a bottom navigation bar item instance.
           BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings), label: 'Manage'),
+          /// Creates a bottom navigation bar item instance.
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Statistics'),
         ]
             : const [
+          /// Creates a bottom navigation bar item instance.
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          /// Creates a bottom navigation bar item instance.
           BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
+          /// Creates a bottom navigation bar item instance.
           BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Add'),
+          /// Creates a bottom navigation bar item instance.
           BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Meal Plan'),
+          /// Creates a bottom navigation bar item instance.
           BottomNavigationBarItem(icon: Icon(Icons.library_books), label: 'Library'),
         ],
       ),
     );
   }
 
+  /// Handles the build floating action button operation.
   Widget _buildFloatingActionButton(BuildContext context) {
+    /// Handles the floating action button operation.
     return FloatingActionButton(
-      onPressed: () => _navigateToAddRecipe(context),
+      onPressed: context.read<MainViewModel>().goToAddRecipe,
       child: const Icon(Icons.add),
       tooltip: 'Add Recipe',
     );
   }
 
   // Navigation methods
-  void _navigateToSettings(BuildContext context, MainViewModel viewModel) {
-    // ✅ Pass the user from MainViewModel to SettingsPage
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SettingsPage(user: viewModel.user),
-      ),
+  void _handleNavigation(
+    BuildContext context,
+    MainNavigationEvent event,
+    MainViewModel viewModel,
+  ) {
+    switch (event) {
+      case MainNavigationEvent.goToSettings:
+    // Pass the user from MainViewModel to SettingsPage
+    context.push(
+      AppRouter.settings,
+      extra: SettingsArgs(user: viewModel.user),
     ).then((_) {
       viewModel.refreshProfile();
     });
-  }
-
-  void _navigateToFavorites(BuildContext context) {
+        break;
+      case MainNavigationEvent.goToFavorites:
     ScaffoldMessenger.of(context).showSnackBar(
+      /// Creates a snack bar instance.
       const SnackBar(content: Text('Favorites - Coming Soon')),
     );
-  }
-
-  void _navigateToNotifications(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const NotificationsPage()),
-    );
-  }
-
-  void _navigateToAddRecipe(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AddRecipePage()),
-    );
+        break;
+      case MainNavigationEvent.goToNotifications:
+        context.push(
+          AppRouter.notifications,
+          extra: const AuthenticatedRouteArgs(),
+        );
+        break;
+      case MainNavigationEvent.goToAddRecipe:
+        context.push(
+          AppRouter.addRecipe,
+          extra: const AuthenticatedRouteArgs(),
+        );
+        break;
+      case MainNavigationEvent.goToProfile:
+      case MainNavigationEvent.goToStatistics:
+        break;
+    }
   }
 }

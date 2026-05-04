@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
 import '../../../domain/entities/about_content.dart';
-import '../../../domain/usecases/get_about_content_usecase.dart';
+import '../../../domain/usecases/about/get_about_content_usecase.dart';
 
+/// Defines behavior for about viewer view model.
 class AboutViewerViewModel extends ChangeNotifier {
   final GetAboutContentUseCase _getAboutContentUseCase;
   final String _documentId;
@@ -14,6 +15,7 @@ class AboutViewerViewModel extends ChangeNotifier {
   String? _errorMessage;
   AboutContent? _content;
 
+  /// Creates a about viewer view model instance.
   AboutViewerViewModel({
     required String documentId,
     required String title,
@@ -21,13 +23,17 @@ class AboutViewerViewModel extends ChangeNotifier {
   })  : _documentId = documentId,
         _title = title,
         _getAboutContentUseCase = getAboutContentUseCase {
+    /// Loads data for the load content operation.
     loadContent();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the content operation.
   AboutContent? get content => _content;
+  /// Handles the title operation.
   String get title => _title;
 
   // Getter to check if content is empty
@@ -41,7 +47,7 @@ class AboutViewerViewModel extends ChangeNotifier {
     final result = await _getAboutContentUseCase.execute(_documentId);
 
     if (result.isLeft()) {
-      // ✅ Use left! instead of left (non-nullable)
+      // Uses left! instead of left (non-nullable)
       final failure = result.left!;
 
       // If document not found, that's okay - just show empty content
@@ -66,6 +72,7 @@ class AboutViewerViewModel extends ChangeNotifier {
     }
   }
 
+  /// Handles the get error message operation.
   String _getErrorMessage(Failure failure) {
     if (failure is NotFoundFailure) {
       return 'Content not found';

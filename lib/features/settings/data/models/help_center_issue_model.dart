@@ -1,8 +1,12 @@
+// Maps stored data for the help center issue model.
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/entities/help_center_issue.dart';
 
+/// Defines behavior for help center issue model.
 class HelpCenterIssueModel extends HelpCenterIssue {
+  /// Creates a help center issue model instance.
   const HelpCenterIssueModel({
     required super.id,
     required super.uid,
@@ -12,8 +16,10 @@ class HelpCenterIssueModel extends HelpCenterIssue {
     required super.timestamp,
   });
 
+  /// Creates a help center issue model instance.
   factory HelpCenterIssueModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    /// Handles the help center issue model operation.
     return HelpCenterIssueModel(
       id: doc.id,
       uid: data['uid'] as String? ?? '',
@@ -24,6 +30,7 @@ class HelpCenterIssueModel extends HelpCenterIssue {
     );
   }
 
+  /// Converts this instance into to json data.
   Map<String, dynamic> toJson() {
     return {
       'uid': uid,

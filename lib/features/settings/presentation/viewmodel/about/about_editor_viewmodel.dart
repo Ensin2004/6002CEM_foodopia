@@ -1,18 +1,16 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
 import '../../../domain/entities/about_content.dart';
-import '../../../domain/usecases/get_about_content_usecase.dart';
-import '../../../domain/usecases/save_about_content_usecase.dart';
+import '../../../domain/usecases/about/get_about_content_usecase.dart';
+import '../../../domain/usecases/about/save_about_content_usecase.dart';
 
+/// Defines behavior for about editor view model.
 class AboutEditorViewModel extends ChangeNotifier {
   final GetAboutContentUseCase _getAboutContentUseCase;
   final SaveAboutContentUseCase _saveAboutContentUseCase;
   final String _documentId;
   final String _title;
-
-  // ✅ Add TextEditingController
-  final TextEditingController contentController = TextEditingController();
 
   // State
   bool _isLoading = true;
@@ -21,6 +19,7 @@ class AboutEditorViewModel extends ChangeNotifier {
   String _content = '';
   bool _hasChanges = false;
 
+  /// Creates a about editor view model instance.
   AboutEditorViewModel({
     required String documentId,
     required String title,
@@ -30,16 +29,23 @@ class AboutEditorViewModel extends ChangeNotifier {
         _title = title,
         _getAboutContentUseCase = getAboutContentUseCase,
         _saveAboutContentUseCase = saveAboutContentUseCase {
+    /// Loads data for the load content operation.
     loadContent();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the is saving operation.
   bool get isSaving => _isSaving;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the content operation.
   String get content => _content;
+  /// Handles the title operation.
   String get title => _title;
+  /// Handles the has changes operation.
   bool get hasChanges => _hasChanges;
+  /// Handles the is save disabled operation.
   bool get isSaveDisabled => _isSaving || _content.trim().isEmpty;
 
   // Load content
@@ -57,8 +63,6 @@ class AboutEditorViewModel extends ChangeNotifier {
     } else {
       final aboutContent = result.right;
       _content = aboutContent?.content ?? '';
-      // ✅ Update controller text
-      contentController.text = _content;
       _isLoading = false;
       notifyListeners();
     }
@@ -100,6 +104,7 @@ class AboutEditorViewModel extends ChangeNotifier {
     return true;
   }
 
+  /// Handles the get error message operation.
   String _getErrorMessage(Failure failure) {
     if (failure is NotFoundFailure) {
       return 'Document not found';
@@ -113,14 +118,9 @@ class AboutEditorViewModel extends ChangeNotifier {
     return failure.message;
   }
 
+  /// Handles the clear error operation.
   void clearError() {
     _errorMessage = null;
     notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    contentController.dispose();
-    super.dispose();
   }
 }

@@ -1,5 +1,7 @@
-import '../../../../core/utils/role_manager.dart';
 
+import '../../../../core/auth/role_manager.dart';
+
+/// Defines behavior for user entity.
 class UserEntity {
   final String uid;
   final String email;
@@ -11,6 +13,7 @@ class UserEntity {
   final DateTime? createdAt;
   final DateTime? lastLogin;
 
+  /// Creates a user entity instance.
   UserEntity({
     required this.uid,
     required this.email,
@@ -25,6 +28,7 @@ class UserEntity {
 
   // Helper getters
   bool get isAdmin => role == AppRole.admin;
+  /// Handles the is user operation.
   bool get isUser => role == AppRole.user;
 
   // Convert to JSON for Firebase
@@ -44,6 +48,7 @@ class UserEntity {
 
   // Create from JSON from Firebase
   factory UserEntity.fromJson(Map<String, dynamic> json) {
+    /// Handles the user entity operation.
     return UserEntity(
       uid: json['uid'] as String,
       email: json['email'] as String,

@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import '../../../../app/navigation/navigation_events.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../domain/repositories/main_repository.dart';
 
+/// Defines behavior for main view model.
 class MainViewModel extends ChangeNotifier {
   final UserEntity user;
   final MainRepository _repository;
@@ -10,7 +12,9 @@ class MainViewModel extends ChangeNotifier {
   String? _profileImageUrl;
   bool _isLoading = false;
   String? _errorMessage;
+  MainNavigationEvent? _navigationEvent;
 
+  /// Creates a main view model instance.
   MainViewModel({
     required this.user,
     required MainRepository repository,
@@ -21,15 +25,51 @@ class MainViewModel extends ChangeNotifier {
 
   // Getters
   int get selectedIndex => _selectedIndex;
+  /// Handles the profile image url operation.
   String? get profileImageUrl => _profileImageUrl;
+  /// Handles the is loading operation.
   bool get isLoading => _isLoading;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the is admin operation.
   bool get isAdmin => user.isAdmin;
+  /// Handles the is user operation.
   bool get isUser => user.isUser;
+
+  /// Handles the navigation event operation.
+  MainNavigationEvent? get navigationEvent {
+    final event = _navigationEvent;
+    _navigationEvent = null;
+    return event;
+  }
 
   // Navigation
   void onTabTapped(int index) {
     _selectedIndex = index;
+    notifyListeners();
+  }
+
+  /// Handles the go to settings operation.
+  void goToSettings() {
+    _navigationEvent = MainNavigationEvent.goToSettings;
+    notifyListeners();
+  }
+
+  /// Handles the go to favorites operation.
+  void goToFavorites() {
+    _navigationEvent = MainNavigationEvent.goToFavorites;
+    notifyListeners();
+  }
+
+  /// Handles the go to notifications operation.
+  void goToNotifications() {
+    _navigationEvent = MainNavigationEvent.goToNotifications;
+    notifyListeners();
+  }
+
+  /// Handles the go to add recipe operation.
+  void goToAddRecipe() {
+    _navigationEvent = MainNavigationEvent.goToAddRecipe;
     notifyListeners();
   }
 
@@ -56,6 +96,7 @@ class MainViewModel extends ChangeNotifier {
 
   // Refresh profile (called after returning from settings)
   Future<void> refreshProfile() async {
+    /// Handles the load user profile operation.
     await _loadUserProfile();
   }
 
@@ -64,6 +105,7 @@ class MainViewModel extends ChangeNotifier {
     await _repository.updateLastLogin(user.uid);
   }
 
+  /// Releases resources before widget removal.
   @override
   void dispose() {
     super.dispose();

@@ -1,11 +1,11 @@
-// ============================================================================
+// Configures the injection container application module.
 // DEPENDENCY INJECTION CONTAINER
 // ============================================================================
 // This file manages all dependencies for the app using GetIt.
 //
 // WHAT IS DEPENDENCY INJECTION?
-// - A central "warehouse" that stores all the tools (classes) your app needs
-// - Any part of your app can request a tool from this warehouse
+// - A central "warehouse" that stores all the tools (classes) the app needs
+// - Any part of the app can request a tool from this warehouse
 // - Makes testing easier and code more maintainable
 //
 // HOW TO USE:
@@ -29,7 +29,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 // DATA LAYER IMPORTS
 // ============================================================================
 // Core
-import '../../core/network/network_info.dart';
+import '../../core/services/network_info.dart';
 
 // Auth Feature - Data Layer
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
@@ -81,33 +81,35 @@ import '../../features/settings/domain/repositories/settings_repository.dart';
 
 // Profile Feature - Domain Layer
 import '../../features/settings/domain/repositories/profile_repository.dart';
-import '../../features/settings/domain/usecases/add_faq_item_usecase.dart';
-import '../../features/settings/domain/usecases/delete_faq_item_usecase.dart';
-import '../../features/settings/domain/usecases/delete_rating_usecase.dart';
-import '../../features/settings/domain/usecases/get_admin_faq_items_usecase.dart';
-import '../../features/settings/domain/usecases/get_admin_issues_usecase.dart';
-import '../../features/settings/domain/usecases/get_all_ratings_usecase.dart';
-import '../../features/settings/domain/usecases/get_user_email_usecase.dart';
-import '../../features/settings/domain/usecases/get_user_faq_items_usecase.dart';
-import '../../features/settings/domain/usecases/get_user_issues_usecase.dart';
-import '../../features/settings/domain/usecases/get_user_profile_usecase.dart';
-import '../../features/settings/domain/usecases/get_user_rating_usecase.dart';
-import '../../features/settings/domain/usecases/save_rating_usecase.dart';
-import '../../features/settings/domain/usecases/submit_issue_usecase.dart';
-import '../../features/settings/domain/usecases/update_faq_item_usecase.dart';
-import '../../features/settings/domain/usecases/update_issue_status_usecase.dart';
-import '../../features/settings/domain/usecases/update_user_name_usecase.dart';
-import '../../features/settings/domain/usecases/update_user_gender_usecase.dart';
-import '../../features/settings/domain/usecases/update_profile_image_usecase.dart';
+import '../../features/settings/domain/usecases/about/save_about_content_usecase.dart';
+import '../../features/settings/domain/usecases/account/get_user_email_usecase.dart';
+import '../../features/settings/domain/usecases/account/get_user_profile_usecase.dart';
+import '../../features/settings/domain/usecases/support/faq/add_faq_item_usecase.dart';
+import '../../features/settings/domain/usecases/support/faq/delete_faq_item_usecase.dart';
+import '../../features/settings/domain/usecases/support/faq/update_faq_item_usecase.dart';
+import '../../features/settings/domain/usecases/support/help_center/get_admin_issues_usecase.dart';
+import '../../features/settings/domain/usecases/support/help_center/get_user_issues_usecase.dart';
+import '../../features/settings/domain/usecases/support/help_center/submit_issue_usecase.dart';
+import '../../features/settings/domain/usecases/support/help_center/update_issue_status_usecase.dart';
+import '../../features/settings/domain/usecases/support/help_center/upload_issue_image_usecase.dart';
+import '../../features/settings/domain/usecases/support/rating/delete_rating_usecase.dart';
+import '../../features/settings/domain/usecases/support/faq/get_admin_faq_items_usecase.dart';
+import '../../features/settings/domain/usecases/support/rating/get_all_ratings_usecase.dart';
+import '../../features/settings/domain/usecases/support/faq/get_user_faq_items_usecase.dart';
+import '../../features/settings/domain/usecases/support/rating/get_user_rating_usecase.dart';
+import '../../features/settings/domain/usecases/support/rating/save_rating_usecase.dart';
+import '../../features/settings/domain/usecases/support/faq/upload_faq_image_usecase.dart';
+import '../../features/settings/domain/usecases/account/update_user_name_usecase.dart';
+import '../../features/settings/domain/usecases/account/update_user_gender_usecase.dart';
+import '../../features/settings/domain/usecases/account/update_profile_image_usecase.dart';
 
 // Password Feature - Domain Layer
 import '../../features/settings/domain/repositories/password_repository.dart';
-import '../../features/settings/domain/usecases/change_password_usecase.dart';
+import '../../features/settings/domain/usecases/account/change_password_usecase.dart';
 
 // About Feature - Domain Layer
 import '../../features/settings/domain/repositories/about_repository.dart';
-import '../../features/settings/domain/usecases/get_about_content_usecase.dart';
-import '../../features/settings/domain/usecases/save_about_content_usecase.dart';
+import '../../features/settings/domain/usecases/about/get_about_content_usecase.dart';
 
 // ============================================================================
 // PRESENTATION LAYER IMPORTS
@@ -121,9 +123,7 @@ import '../../features/onboarding/presentation/viewmodel/onboarding_viewmodel.da
 
 // Main Feature - Presentation Layer
 import '../../features/main/presentation/viewmodel/main_viewmodel.dart';
-import '../../features/settings/domain/usecases/upload_faq_image_usecase.dart';
-import '../../features/settings/domain/usecases/upload_issue_image_usecase.dart';
-import '../../features/settings/domain/usecases/upload_rating_image_usecase.dart';
+import '../../features/settings/domain/usecases/support/rating/upload_rating_image_usecase.dart';
 
 // ============================================================================
 // GET IT INSTANCE
@@ -491,8 +491,8 @@ void _initAboutFeature() {
 
   // --------------------------------------------------------------------------
   // NOTE: AboutViewerViewModel and AboutEditorViewModel are NOT registered here because:
-  // - They require documentId and title parameters that change per page
-  // - They are created directly in the AboutViewerPage and AboutEditorPage
+  // - Requires documentId and title parameters that change per page
+  // - Created directly in the AboutViewerPage and AboutEditorPage
   // - This follows the rule: Don't register dependencies that have runtime parameters
   // --------------------------------------------------------------------------
 }
@@ -533,6 +533,7 @@ void _initHelpCenterFeature() {
   sl.registerLazySingleton(() => GetUserEmailUseCase(sl()));
 }
 
+/// Handles the init rating feature operation.
 void _initRatingFeature() {
   // Data Source
   sl.registerLazySingleton(() => RatingRemoteDataSource(
@@ -553,6 +554,7 @@ void _initRatingFeature() {
   sl.registerLazySingleton(() => UploadRatingImageUseCase(sl()));
 }
 
+/// Handles the init faq feature operation.
 void _initFaqFeature() {
   // Data Source
   sl.registerLazySingleton(() => FaqRemoteDataSource(
@@ -627,7 +629,7 @@ void _initSimpleFeature() {
 // HELPER FUNCTIONS FOR TEAM MEMBERS
 // ============================================================================
 
-/// Use this in your screens to get ViewModels:
+/// Use this in the screens to get ViewModels:
 /// Example: final viewModel = sl<LoginViewModel>();
 ///
 /// TYPES OF REGISTRATION TO USE:

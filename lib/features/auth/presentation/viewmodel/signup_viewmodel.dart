@@ -1,25 +1,25 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:email_validator/email_validator.dart';
 
+import '../../../../core/services/shared_prefs_manager.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/get_countries_usecase.dart';
 import '../../domain/usecases/signup_usecase.dart';
 
+/// Runs the signup view model operation.
 class SignupViewModel extends ChangeNotifier {
   final SignupUseCase _signupUseCase;
   final GetCountriesUseCase _getCountriesUseCase;
   final AuthRepository _authRepository;
 
-  // Form controllers
-  final nameController = TextEditingController();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
-
   // Form state
   bool _isLoading = false;
   String? _errorMessage;
+  String _name = '';
+  String _email = '';
+  String _password = '';
+  String _confirmPassword = '';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _acceptedTerms = false;
@@ -40,6 +40,7 @@ class SignupViewModel extends ChangeNotifier {
   bool _countryTouched = false;
   bool _termsTouched = false;
 
+  /// Runs the signup view model operation.
   SignupViewModel({
     required SignupUseCase signupUseCase,
     required GetCountriesUseCase getCountriesUseCase,
@@ -50,31 +51,48 @@ class SignupViewModel extends ChangeNotifier {
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the obscure password operation.
   bool get obscurePassword => _obscurePassword;
+  /// Handles the obscure confirm password operation.
   bool get obscureConfirmPassword => _obscureConfirmPassword;
+  /// Handles the password operation.
+  String get password => _password;
+  /// Handles the accepted terms operation.
   bool get acceptedTerms => _acceptedTerms;
+  /// Handles the selected gender operation.
   String get selectedGender => _selectedGender;
+  /// Handles the selected country id operation.
   String? get selectedCountryId => _selectedCountryId;
+  /// Handles the selected country name operation.
   String? get selectedCountryName => _selectedCountryName;
+  /// Handles the selected currency operation.
   String? get selectedCurrency => _selectedCurrency;
+  /// Handles the countries operation.
   List<Map<String, dynamic>> get countries => _countries;
 
   // Validation getters
   bool get nameTouched => _nameTouched;
+  /// Handles the email touched operation.
   bool get emailTouched => _emailTouched;
+  /// Handles the password touched operation.
   bool get passwordTouched => _passwordTouched;
+  /// Handles the confirm touched operation.
   bool get confirmTouched => _confirmTouched;
+  /// Handles the gender touched operation.
   bool get genderTouched => _genderTouched;
+  /// Handles the country touched operation.
   bool get countryTouched => _countryTouched;
+  /// Handles the terms touched operation.
   bool get termsTouched => _termsTouched;
 
   // Form validation
   bool get isFormValid {
-    return emailController.text.trim().isNotEmpty &&
-        nameController.text.trim().isNotEmpty &&
-        passwordController.text.trim().isNotEmpty &&
-        confirmPasswordController.text.trim().isNotEmpty &&
+    return _email.trim().isNotEmpty &&
+        _name.trim().isNotEmpty &&
+        _password.trim().isNotEmpty &&
+        _confirmPassword.trim().isNotEmpty &&
         _selectedGender.isNotEmpty &&
         _selectedCountryId != null &&
         _acceptedTerms &&
@@ -82,8 +100,9 @@ class SignupViewModel extends ChangeNotifier {
         _doPasswordsMatch;
   }
 
+  /// Handles the is password valid operation.
   bool get _isPasswordValid {
-    final password = passwordController.text.trim();
+    final password = _password.trim();
     if (password.length < 12) return false;
     if (!RegExp(r'[A-Z]').hasMatch(password)) return false;
     if (!RegExp(r'[a-z]').hasMatch(password)) return false;
@@ -92,13 +111,14 @@ class SignupViewModel extends ChangeNotifier {
     return true;
   }
 
+  /// Handles the do passwords match operation.
   bool get _doPasswordsMatch {
-    return passwordController.text.trim() == confirmPasswordController.text.trim();
+    return _password.trim() == _confirmPassword.trim();
   }
 
   // Password rules
   List<String> getPasswordRules() {
-    final password = passwordController.text.trim();
+    final password = _password.trim();
     final rules = <String>[];
 
     if (password.isEmpty) {
@@ -141,7 +161,7 @@ class SignupViewModel extends ChangeNotifier {
   // Error messages
   String? getPasswordError() {
     if (!_passwordTouched) return null;
-    if (passwordController.text.trim().isEmpty) {
+    if (_password.trim().isEmpty) {
       return 'Please enter your password';
     }
     if (!_isPasswordValid) {
@@ -150,9 +170,10 @@ class SignupViewModel extends ChangeNotifier {
     return null;
   }
 
+  /// Loads data for the get confirm password error operation.
   String? getConfirmPasswordError() {
     if (!_confirmTouched) return null;
-    if (confirmPasswordController.text.trim().isEmpty) {
+    if (_confirmPassword.trim().isEmpty) {
       return 'Please confirm your password';
     }
     if (!_doPasswordsMatch) {
@@ -161,9 +182,10 @@ class SignupViewModel extends ChangeNotifier {
     return null;
   }
 
+  /// Loads data for the get email error operation.
   String? getEmailError() {
     if (!_emailTouched) return null;
-    final email = emailController.text.trim();
+    final email = _email.trim();
     if (email.isEmpty) {
       return 'Please enter your email';
     }
@@ -173,9 +195,10 @@ class SignupViewModel extends ChangeNotifier {
     return null;
   }
 
+  /// Loads data for the get name error operation.
   String? getNameError() {
     if (!_nameTouched) return null;
-    if (nameController.text.trim().isEmpty) {
+    if (_name.trim().isEmpty) {
       return 'Please enter your full name';
     }
     return null;
@@ -187,23 +210,51 @@ class SignupViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Runs the update name operation.
+  void updateName(String value) {
+    _name = value;
+    notifyListeners();
+  }
+
+  /// Runs the update email operation.
+  void updateEmail(String value) {
+    _email = value;
+    notifyListeners();
+  }
+
+  /// Runs the update password operation.
+  void updatePassword(String value) {
+    _password = value;
+    notifyListeners();
+  }
+
+  /// Runs the update confirm password operation.
+  void updateConfirmPassword(String value) {
+    _confirmPassword = value;
+    notifyListeners();
+  }
+
+  /// Toggles confirm password text visibility.
   void toggleConfirmPasswordVisibility() {
     _obscureConfirmPassword = !_obscureConfirmPassword;
     notifyListeners();
   }
 
+  /// Toggles terms acceptance state.
   void toggleTermsAccepted(bool? value) {
     _acceptedTerms = value ?? false;
     _termsTouched = true;
     notifyListeners();
   }
 
+  /// Handles the select gender operation.
   void selectGender(String gender) {
     _selectedGender = gender;
     _genderTouched = true;
     notifyListeners();
   }
 
+  /// Handles the select country operation.
   void selectCountry(String id, String name, String currency) {
     _selectedCountryId = id;
     _selectedCountryName = name;
@@ -218,36 +269,43 @@ class SignupViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Handles the mark email touched operation.
   void markEmailTouched() {
     _emailTouched = true;
     notifyListeners();
   }
 
+  /// Handles the mark password touched operation.
   void markPasswordTouched() {
     _passwordTouched = true;
     notifyListeners();
   }
 
+  /// Handles the mark confirm touched operation.
   void markConfirmTouched() {
     _confirmTouched = true;
     notifyListeners();
   }
 
+  /// Handles the mark gender touched operation.
   void markGenderTouched() {
     _genderTouched = true;
     notifyListeners();
   }
 
+  /// Handles the mark country touched operation.
   void markCountryTouched() {
     _countryTouched = true;
     notifyListeners();
   }
 
+  /// Handles the mark terms touched operation.
   void markTermsTouched() {
     _termsTouched = true;
     notifyListeners();
   }
 
+  /// Handles the clear error operation.
   void clearError() {
     _errorMessage = null;
     notifyListeners();
@@ -261,12 +319,12 @@ class SignupViewModel extends ChangeNotifier {
           (failure) {
         // If Firestore fails, use mock data
         print('⚠️ Failed to load countries: ${failure.message}');
-        _loadMockCountries();  // ✅ Load mock data
+        _loadMockCountries();  // Loads mock data
         notifyListeners();
       },
           (countries) {
         if (countries.isEmpty) {
-          _loadMockCountries();  // ✅ Load mock data if empty
+          _loadMockCountries();  // Loads mock data if empty
         } else {
           _countries = countries;
         }
@@ -275,7 +333,7 @@ class SignupViewModel extends ChangeNotifier {
     );
   }
 
-// ✅ Add this method to provide mock country data
+// Adds this method to provide mock country data
   void _loadMockCountries() {
     _countries = [
       {'id': '1', 'country': 'United States', 'currency': 'USD'},
@@ -335,14 +393,15 @@ class SignupViewModel extends ChangeNotifier {
       countryId: countryId,
     );
 
-    return result.fold(
-          (failure) {
+    return await result.fold<Future<UserEntity?>>(
+          (failure) async {
         _isLoading = false;
         _errorMessage = failure.message;
         notifyListeners();
         return null;
       },
-          (user) {
+          (user) async {
+        await SharedPrefsManager.setOnboardingCompleted(true);
         _isLoading = false;
         notifyListeners();
         return user;
@@ -375,12 +434,4 @@ class SignupViewModel extends ChangeNotifier {
     );
   }
 
-  @override
-  void dispose() {
-    nameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    confirmPasswordController.dispose();
-    super.dispose();
-  }
 }

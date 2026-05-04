@@ -1,3 +1,5 @@
+// Implements repository operations for help center.
+
 import 'dart:io';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
@@ -6,14 +8,18 @@ import '../../domain/repositories/help_center_repository.dart';
 import '../datasources/help_center_remote_datasource.dart';
 import '../models/help_center_issue_model.dart';
 
+/// Defines behavior for help center repository impl.
 class HelpCenterRepositoryImpl implements HelpCenterRepository {
   final HelpCenterRemoteDataSource remoteDataSource;
 
+  /// Creates a help center repository impl instance.
   HelpCenterRepositoryImpl({required this.remoteDataSource});
 
+  /// Loads data for the get user issues operation.
   @override
   Future<Either<Failure, List<HelpCenterIssue>>> getUserIssues(String uid) async {
     try {
+      // Runs the guarded operation that can throw.
       final snapshot = await remoteDataSource.getUserIssues(uid);
       final issues = snapshot.docs
           .map((doc) => HelpCenterIssueModel.fromFirestore(doc))
@@ -24,9 +30,11 @@ class HelpCenterRepositoryImpl implements HelpCenterRepository {
     }
   }
 
+  /// Loads data for the get all issues operation.
   @override
   Future<Either<Failure, List<HelpCenterIssue>>> getAllIssues() async {
     try {
+      // Runs the guarded operation that can throw.
       final snapshot = await remoteDataSource.getAllIssues();
       final issues = snapshot.docs
           .map((doc) => HelpCenterIssueModel.fromFirestore(doc))
@@ -37,6 +45,7 @@ class HelpCenterRepositoryImpl implements HelpCenterRepository {
     }
   }
 
+  /// Runs the submit issue operation.
   @override
   Future<Either<Failure, void>> submitIssue({
     required String uid,
@@ -44,6 +53,7 @@ class HelpCenterRepositoryImpl implements HelpCenterRepository {
     File? imageFile,
   }) async {
     try {
+      // Runs the guarded operation that can throw.
       String? imageUrl;
       if (imageFile != null) {
         imageUrl = await remoteDataSource.uploadIssueImage(imageFile);
@@ -65,9 +75,11 @@ class HelpCenterRepositoryImpl implements HelpCenterRepository {
     }
   }
 
+  /// Handles the mark issue as replied operation.
   @override
   Future<Either<Failure, void>> markIssueAsReplied(String issueId) async {
     try {
+      // Runs the guarded operation that can throw.
       await remoteDataSource.updateIssueStatus(issueId, true);
       return const Right(null);
     } catch (e) {
@@ -75,9 +87,11 @@ class HelpCenterRepositoryImpl implements HelpCenterRepository {
     }
   }
 
+  /// Runs the upload issue image operation.
   @override
   Future<Either<Failure, String>> uploadIssueImage(File imageFile) async {
     try {
+      // Runs the guarded operation that can throw.
       final imageUrl = await remoteDataSource.uploadIssueImage(imageFile);
       return Right(imageUrl);
     } catch (e) {
@@ -85,9 +99,11 @@ class HelpCenterRepositoryImpl implements HelpCenterRepository {
     }
   }
 
+  /// Loads data for the get user email operation.
   @override
   Future<Either<Failure, String>> getUserEmail(String uid) async {
     try {
+      // Runs the guarded operation that can throw.
       final userDoc = await remoteDataSource.getUserData(uid);
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>?;

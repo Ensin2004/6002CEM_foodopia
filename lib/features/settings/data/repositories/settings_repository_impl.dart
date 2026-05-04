@@ -2,20 +2,25 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/error/failures.dart';
-import '../../../../core/utils/shared_prefs_manager.dart';
+import '../../../../core/services/shared_prefs_manager.dart';
 import '../../domain/entities/settings_item.dart';
 import '../../domain/entities/settings_section.dart';
 import '../../domain/repositories/settings_repository.dart';
 
+/// Defines behavior for settings repository impl.
 class SettingsRepositoryImpl implements SettingsRepository {
 
+  /// Loads data for the get user settings operation.
   @override
   Future<Either<Failure, List<SettingsSection>>> getUserSettings() async {
+    /// Handles the get settings operation.
     return _getSettings(isAdmin: false);
   }
 
+  /// Loads data for the get admin settings operation.
   @override
   Future<Either<Failure, List<SettingsSection>>> getAdminSettings() async {
+    /// Handles the get settings operation.
     return _getSettings(isAdmin: true);
   }
 
@@ -24,15 +29,18 @@ class SettingsRepositoryImpl implements SettingsRepository {
     required bool isAdmin,
   }) async {
     try {
+      // Runs the guarded operation that can throw.
       final sections = <SettingsSection>[];
 
       // ============================================================
       // 1. ACCOUNT SECTION (Same for both User and Admin)
       // ============================================================
       sections.add(
+        /// Creates a settings section instance.
         const SettingsSection(
           title: 'Account',
           items: [
+            /// Creates a settings item instance.
             SettingsItem(
               id: 'edit_profile',
               title: 'Edit Profile',
@@ -40,6 +48,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
               type: SettingsItemType.navigation,
               routeName: '/settings/edit-profile',
             ),
+            /// Creates a settings item instance.
             SettingsItem(
               id: 'change_password',
               title: 'Change Password',
@@ -56,9 +65,11 @@ class SettingsRepositoryImpl implements SettingsRepository {
       // ============================================================
       if (!isAdmin) {
         sections.add(
+          /// Creates a settings section instance.
           const SettingsSection(
             title: 'Preferences',
             items: [
+              /// Creates a settings item instance.
               SettingsItem(
                 id: 'dietary_restrictions',
                 title: 'Dietary Restrictions',
@@ -66,6 +77,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
                 type: SettingsItemType.navigation,
                 routeName: '/settings/dietary-restrictions',
               ),
+              /// Creates a settings item instance.
               SettingsItem(
                 id: 'meal_preferences',
                 title: 'Meal Preferences',
@@ -83,9 +95,11 @@ class SettingsRepositoryImpl implements SettingsRepository {
       // ============================================================
       if (!isAdmin) {
         sections.add(
+          /// Creates a settings section instance.
           SettingsSection(
             title: 'Notifications',
             items: [
+              /// Creates a settings item instance.
               SettingsItem(
                 id: 'notifications',
                 title: 'Enable Notifications',
@@ -102,9 +116,11 @@ class SettingsRepositoryImpl implements SettingsRepository {
       // ============================================================
       if (isAdmin) {
         sections.add(
+          /// Creates a settings section instance.
           const SettingsSection(
             title: 'Admin',
             items: [
+              /// Creates a settings item instance.
               SettingsItem(
                 id: 'user_management',
                 title: 'User Management',
@@ -112,6 +128,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
                 type: SettingsItemType.navigation,
                 routeName: '/settings/user-management',
               ),
+              /// Creates a settings item instance.
               SettingsItem(
                 id: 'content_moderation',
                 title: 'Content Moderation',
@@ -119,6 +136,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
                 type: SettingsItemType.navigation,
                 routeName: '/settings/content-moderation',
               ),
+              /// Creates a settings item instance.
               SettingsItem(
                 id: 'system_settings',
                 title: 'System Settings',
@@ -135,6 +153,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
       // 5. SUPPORT SECTION (Cannot be const because title depends on isAdmin)
       // ============================================================
       final supportItems = [
+        /// Creates a settings item instance.
         const SettingsItem(
           id: 'faq',
           title: 'Frequently Asked Questions (FAQ)',
@@ -142,13 +161,15 @@ class SettingsRepositoryImpl implements SettingsRepository {
           type: SettingsItemType.navigation,
           routeName: '/settings/faq',
         ),
-        SettingsItem(  // ✅ Remove const because title uses ternary
+        /// Creates a settings item instance.
+        SettingsItem(  // Remove const because title uses ternary
           id: 'rate_us',
           title: isAdmin ? 'Rating & Feedback' : 'Rate Us & Feedback',
           icon: Icons.star,
           type: SettingsItemType.navigation,
           routeName: '/settings/rate-us',
         ),
+        /// Creates a settings item instance.
         const SettingsItem(
           id: 'help_center',
           title: 'Help Center',
@@ -159,6 +180,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
       ];
 
       sections.add(
+        /// Creates a settings section instance.
         SettingsSection(
           title: 'Support',
           items: supportItems,
@@ -169,9 +191,11 @@ class SettingsRepositoryImpl implements SettingsRepository {
       // 6. ABOUT SECTION (Same for both)
       // ============================================================
       sections.add(
+        /// Creates a settings section instance.
         const SettingsSection(
           title: 'About',
           items: [
+            /// Creates a settings item instance.
             SettingsItem(
               id: 'about_us',
               title: 'About Us',
@@ -179,6 +203,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
               type: SettingsItemType.navigation,
               routeName: '/settings/about',
             ),
+            /// Creates a settings item instance.
             SettingsItem(
               id: 'terms',
               title: 'Terms & Conditions',
@@ -186,6 +211,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
               type: SettingsItemType.navigation,
               routeName: '/settings/terms',
             ),
+            /// Creates a settings item instance.
             SettingsItem(
               id: 'privacy',
               title: 'Privacy Policy',
@@ -203,6 +229,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
     }
   }
 
+  /// Loads data for the get notification enabled operation.
   @override
   Future<Either<Failure, bool>> getNotificationEnabled() async {
     try {
@@ -212,9 +239,11 @@ class SettingsRepositoryImpl implements SettingsRepository {
     }
   }
 
+  /// Handles the set notification enabled operation.
   @override
   Future<Either<Failure, void>> setNotificationEnabled(bool enabled) async {
     try {
+      // Runs the guarded operation that can throw.
       await SharedPrefsManager.setNotificationEnabled(enabled);
       return const Right(null);
     } catch (e) {

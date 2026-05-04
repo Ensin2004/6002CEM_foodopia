@@ -1,4 +1,4 @@
-// ============================================================================
+// Defines the env config module.
 // ENVIRONMENT CONFIGURATION
 // ============================================================================
 // Centralized configuration for the app
@@ -11,7 +11,7 @@ class EnvConfig {
   static const String userProfileUploadPreset = 'foodopia_profile';
   static const String settingsUploadPreset = 'foodopia_settings';
 
-// Firebase Configuration (already in your google-services.json)
+// Firebase Configuration (already in the google-services.json)
 // No need to duplicate here
 
 // API Endpoints

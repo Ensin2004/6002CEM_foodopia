@@ -7,6 +7,7 @@ class FaqItem {
   final String? answerImageUrl;
   final DateTime createdAt;
 
+  /// Creates a faq item instance.
   const FaqItem({
     required this.id,
     required this.question,
@@ -16,6 +17,8 @@ class FaqItem {
     required this.createdAt,
   });
 
+  /// Handles the has question image operation.
   bool get hasQuestionImage => questionImageUrl != null && questionImageUrl!.isNotEmpty;
+  /// Handles the has answer image operation.
   bool get hasAnswerImage => answerImageUrl != null && answerImageUrl!.isNotEmpty;
 }

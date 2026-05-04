@@ -1,23 +1,29 @@
+// Implements repository operations for auth.
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dartz/dartz.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
-import '../../../../core/utils/role_manager.dart';
+import '../../../../core/auth/role_manager.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/entities/user_entity.dart';
 import '../datasources/auth_remote_datasource.dart';
 import '../models/user_model.dart';
 
+/// Defines behavior for auth repository impl.
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
 
+  /// Creates a auth repository impl instance.
   AuthRepositoryImpl({required this.remoteDataSource});
 
+  /// Runs the login operation.
   @override
   Future<Either<AuthFailure, UserEntity>> login({
     required String email,
     required String password,
   }) async {
     try {
+      // Runs the guarded operation that can throw.
       final credential = await remoteDataSource.login(
         email: email,
         password: password,
@@ -56,6 +62,7 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  /// Runs the signup operation.
   @override
   Future<Either<AuthFailure, UserEntity>> signup({
     required String email,
@@ -65,6 +72,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String countryId,
   }) async {
     try {
+      // Runs the guarded operation that can throw.
       final credential = await remoteDataSource.signup(
         email: email,
         password: password,
@@ -117,9 +125,11 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  /// Runs the send email verification operation.
   @override
   Future<Either<AuthFailure, void>> sendEmailVerification() async {
     try {
+      // Runs the guarded operation that can throw.
       await remoteDataSource.sendEmailVerification();
       return const Right(null);
     } catch (e) {
@@ -127,9 +137,11 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  /// Handles the check email verified operation.
   @override
   Future<Either<AuthFailure, bool>> checkEmailVerified() async {
     try {
+      // Runs the guarded operation that can throw.
       await remoteDataSource.reloadUser();
       final user = remoteDataSource.getCurrentUser();
       return Right(user?.emailVerified ?? false);
@@ -138,9 +150,11 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  /// Handles the resend verification email operation.
   @override
   Future<Either<AuthFailure, void>> resendVerificationEmail() async {
     try {
+      // Runs the guarded operation that can throw.
       await remoteDataSource.sendEmailVerification();
       return const Right(null);
     } catch (e) {
@@ -148,9 +162,11 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  /// Handles the logout operation.
   @override
   Future<Either<AuthFailure, void>> logout() async {
     try {
+      // Runs the guarded operation that can throw.
       await remoteDataSource.logout();
       return const Right(null);
     } catch (e) {
@@ -158,9 +174,11 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  /// Loads data for the get countries operation.
   @override
   Future<Either<AuthFailure, List<Map<String, dynamic>>>> getCountries() async {
     try {
+      // Runs the guarded operation that can throw.
       final snapshot = await remoteDataSource.getCountries();
       final countries = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;

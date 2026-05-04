@@ -1,13 +1,18 @@
+// Executes the login use case.
+
 import 'package:dartz/dartz.dart';
 
 import '../repositories/auth_repository.dart';
 import '../entities/user_entity.dart';
 
+/// Runs the login use case operation.
 class LoginUseCase {
   final AuthRepository repository;
 
+  /// Runs the login use case operation.
   LoginUseCase(this.repository);
 
+  /// Validates input and delegates the login request to the repository.
   Future<Either<AuthFailure, UserEntity>> execute({
     required String email,
     required String password,

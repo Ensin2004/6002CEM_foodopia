@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/gestures.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../app/dependency_injection/injection_container.dart';
-import '../../../../core/utils/role_manager.dart';
+import '../../../../app/routers/app_router.dart';
+import '../../../../app/routers/router_args.dart';
+import '../../../../core/auth/role_manager.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
-import '../../../main/presentation/view/main_page.dart';
 import '../viewmodel/signup_viewmodel.dart';
 import '../widgets/country_picker_dialog.dart';
 import '../widgets/curved_header.dart';
-import 'login_screen.dart';
 import '../widgets/email_verification_dialog.dart';
 
+/// Runs the signup screen operation.
 class SignupScreen extends StatelessWidget {
+  /// Runs the signup screen operation.
   const SignupScreen({super.key});
 
+  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    /// Runs the change notifier provider operation.
     return ChangeNotifierProvider(
       create: (_) => sl<SignupViewModel>(),
       child: const _SignupView(),
@@ -24,14 +29,24 @@ class SignupScreen extends StatelessWidget {
   }
 }
 
+/// Defines behavior for signup view.
 class _SignupView extends StatefulWidget {
+  /// Handles the signup view operation.
   const _SignupView();
 
+  /// Creates data for the create state operation.
   @override
   State<_SignupView> createState() => _SignupViewState();
 }
 
+/// Defines behavior for signup view state.
 class _SignupViewState extends State<_SignupView> {
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  /// Initializes state before the first widget build.
   @override
   void initState() {
     super.initState();
@@ -41,65 +56,89 @@ class _SignupViewState extends State<_SignupView> {
     });
   }
 
+  /// Releases resources before widget removal.
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<SignupViewModel>();
 
+    /// Handles the scaffold operation.
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             children: [
+              /// Creates a curved header instance.
               CurvedHeader(
-                onLeadingPressed: () => Navigator.pop(context),
-                leadingText: "Back",
-                onTrailingPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  );
+                onLeadingPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go(AppRouter.login);
+                  }
                 },
+                leadingText: "Back",
+                onTrailingPressed: () => context.go(AppRouter.login),
                 trailingText: "Login",
               ),
+              /// Creates a padding instance.
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
                     _buildTitle(context),
+                    /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Email Field
                     _buildEmailField(viewModel),
+                    /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Name Field
                     _buildNameField(viewModel),
+                    /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Gender Field
                     _buildGenderField(viewModel),
+                    /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Country Field
                     _buildCountryField(viewModel),
+                    /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Password Field
                     _buildPasswordField(viewModel),
+                    /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Confirm Password Field
                     _buildConfirmPasswordField(viewModel),
+                    /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Terms and Conditions
                     _buildTermsField(viewModel),
+                    /// Creates a sized box instance.
                     const SizedBox(height: 24),
 
                     // Error Message
                     if (viewModel.errorMessage != null)
                       _buildErrorMessage(viewModel.errorMessage!),
 
+                    /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Sign Up Button
@@ -109,6 +148,7 @@ class _SignupViewState extends State<_SignupView> {
                       isLoading: viewModel.isLoading,
                     ),
 
+                    /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Login Link
@@ -123,7 +163,9 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Handles the build title operation.
   Widget _buildTitle(BuildContext context) {
+    /// Handles the text operation.
     return Text(
       "Create Account",
       style: TextStyle(
@@ -134,14 +176,19 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Handles the build email field operation.
   Widget _buildEmailField(SignupViewModel viewModel) {
+    /// Handles the column operation.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        /// Creates a text instance.
         const Text("Email"),
+        /// Creates a sized box instance.
         const SizedBox(height: 8),
+        /// Creates a text field instance.
         TextField(
-          controller: viewModel.emailController,
+          controller: _emailController,
           keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.email),
@@ -151,16 +198,21 @@ class _SignupViewState extends State<_SignupView> {
             ),
             suffixIcon: IconButton(
               icon: const Icon(Icons.clear),
-              onPressed: () => viewModel.emailController.clear(),
+              onPressed: () {
+                _emailController.clear();
+                viewModel.updateEmail('');
+              },
             ),
           ),
-          onChanged: (_) {
+          onChanged: (value) {
+            viewModel.updateEmail(value);
             viewModel.clearError();
             viewModel.markEmailTouched();
           },
           onTap: () => viewModel.markEmailTouched(),
         ),
         if (viewModel.getEmailError() != null)
+          /// Creates a padding instance.
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
@@ -172,14 +224,19 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Handles the build name field operation.
   Widget _buildNameField(SignupViewModel viewModel) {
+    /// Handles the column operation.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        /// Creates a text instance.
         const Text("Full Name"),
+        /// Creates a sized box instance.
         const SizedBox(height: 8),
+        /// Creates a text field instance.
         TextField(
-          controller: viewModel.nameController,
+          controller: _nameController,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.person),
             hintText: "e.g. John Doe",
@@ -188,16 +245,21 @@ class _SignupViewState extends State<_SignupView> {
             ),
             suffixIcon: IconButton(
               icon: const Icon(Icons.clear),
-              onPressed: () => viewModel.nameController.clear(),
+              onPressed: () {
+                _nameController.clear();
+                viewModel.updateName('');
+              },
             ),
           ),
-          onChanged: (_) {
+          onChanged: (value) {
+            viewModel.updateName(value);
             viewModel.clearError();
             viewModel.markNameTouched();
           },
           onTap: () => viewModel.markNameTouched(),
         ),
         if (viewModel.getNameError() != null)
+          /// Creates a padding instance.
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
@@ -209,14 +271,20 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Handles the build gender field operation.
   Widget _buildGenderField(SignupViewModel viewModel) {
+    /// Handles the column operation.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        /// Creates a text instance.
         const Text("Gender"),
+        /// Creates a sized box instance.
         const SizedBox(height: 8),
+        /// Creates a row instance.
         Row(
           children: [
+            /// Creates a expanded instance.
             Expanded(
               child: _buildGenderButton(
                 label: "Male",
@@ -225,7 +293,9 @@ class _SignupViewState extends State<_SignupView> {
                 onTap: () => viewModel.selectGender("male"),
               ),
             ),
+            /// Creates a sized box instance.
             const SizedBox(width: 8),
+            /// Creates a expanded instance.
             Expanded(
               child: _buildGenderButton(
                 label: "Female",
@@ -237,6 +307,7 @@ class _SignupViewState extends State<_SignupView> {
           ],
         ),
         if (viewModel.genderTouched && viewModel.selectedGender.isEmpty)
+          /// Creates a padding instance.
           const Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text(
@@ -248,12 +319,14 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Handles the build gender button operation.
   Widget _buildGenderButton({
     required String label,
     required String value,
     required bool selected,
     required VoidCallback onTap,
   }) {
+    /// Handles the gesture detector operation.
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -282,22 +355,28 @@ class _SignupViewState extends State<_SignupView> {
   }
 
 
+  /// Handles the build country field operation.
   Widget _buildCountryField(SignupViewModel viewModel) {
+    /// Handles the column operation.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        /// Creates a text instance.
         const Text("Country"),
+        /// Creates a sized box instance.
         const SizedBox(height: 8),
-        // ✅ Check if countries list is empty (loading state)
+        // Check if countries list is empty (loading state)
         if (viewModel.countries.isEmpty)
+          /// Creates a linear progress indicator instance.
           const LinearProgressIndicator()
         else
+          /// Creates a gesture detector instance.
           GestureDetector(
             onTap: () async {
               final picked = await showDialog<Map<String, dynamic>>(
                 context: context,
                 builder: (_) => CountryPickerDialog(
-                  items: viewModel.countries,  // ✅ Now non-nullable
+                  items: viewModel.countries,  // Non-nullable field
                   selectedId: viewModel.selectedCountryId,
                 ),
               );
@@ -328,6 +407,7 @@ class _SignupViewState extends State<_SignupView> {
             ),
           ),
         if (viewModel.countryTouched && viewModel.selectedCountryId == null)
+          /// Creates a padding instance.
           const Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text(
@@ -339,14 +419,19 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Handles the build password field operation.
   Widget _buildPasswordField(SignupViewModel viewModel) {
+    /// Handles the column operation.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        /// Creates a text instance.
         const Text("Password"),
+        /// Creates a sized box instance.
         const SizedBox(height: 8),
+        /// Creates a text field instance.
         TextField(
-          controller: viewModel.passwordController,
+          controller: _passwordController,
           obscureText: viewModel.obscurePassword,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.lock),
@@ -361,19 +446,22 @@ class _SignupViewState extends State<_SignupView> {
               onPressed: viewModel.togglePasswordVisibility,
             ),
           ),
-          onChanged: (_) {
+          onChanged: (value) {
+            viewModel.updatePassword(value);
             viewModel.clearError();
             viewModel.markPasswordTouched();
           },
           onTap: () => viewModel.markPasswordTouched(),
         ),
         // Password strength indicator
-        if (viewModel.passwordController.text.isNotEmpty)
+        if (viewModel.password.isNotEmpty)
+          /// Creates a padding instance.
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: viewModel.getPasswordRules().map((rule) {
+                /// Handles the padding operation.
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 2),
                   child: Text(
@@ -385,6 +473,7 @@ class _SignupViewState extends State<_SignupView> {
             ),
           ),
         if (viewModel.getPasswordError() != null)
+          /// Creates a padding instance.
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
@@ -396,14 +485,19 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Handles the build confirm password field operation.
   Widget _buildConfirmPasswordField(SignupViewModel viewModel) {
+    /// Handles the column operation.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        /// Creates a text instance.
         const Text("Confirm Password"),
+        /// Creates a sized box instance.
         const SizedBox(height: 8),
+        /// Creates a text field instance.
         TextField(
-          controller: viewModel.confirmPasswordController,
+          controller: _confirmPasswordController,
           obscureText: viewModel.obscureConfirmPassword,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.lock_outline),
@@ -418,13 +512,15 @@ class _SignupViewState extends State<_SignupView> {
               onPressed: viewModel.toggleConfirmPasswordVisibility,
             ),
           ),
-          onChanged: (_) {
+          onChanged: (value) {
+            viewModel.updateConfirmPassword(value);
             viewModel.clearError();
             viewModel.markConfirmTouched();
           },
           onTap: () => viewModel.markConfirmTouched(),
         ),
         if (viewModel.getConfirmPasswordError() != null)
+          /// Creates a padding instance.
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
@@ -436,23 +532,30 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Handles the build terms field operation.
   Widget _buildTermsField(SignupViewModel viewModel) {
+    /// Handles the column operation.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        /// Creates a row instance.
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /// Creates a checkbox instance.
             Checkbox(
               value: viewModel.acceptedTerms,
               onChanged: viewModel.toggleTermsAccepted,
             ),
+            /// Creates a expanded instance.
             Expanded(
               child: RichText(
                 text: TextSpan(
                   style: Theme.of(context).textTheme.bodyMedium,
                   children: [
+                    /// Creates a text span instance.
                     const TextSpan(text: "I accept the "),
+                    /// Creates a text span instance.
                     TextSpan(
                       text: "Terms and Conditions",
                       style: TextStyle(
@@ -462,7 +565,9 @@ class _SignupViewState extends State<_SignupView> {
                       recognizer: TapGestureRecognizer()
                         ..onTap = () => _showTermsAndConditions(context),
                     ),
+                    /// Creates a text span instance.
                     const TextSpan(text: " and "),
+                    /// Creates a text span instance.
                     TextSpan(
                       text: "Privacy Policy",
                       style: TextStyle(
@@ -472,6 +577,7 @@ class _SignupViewState extends State<_SignupView> {
                       recognizer: TapGestureRecognizer()
                         ..onTap = () => _showPrivacyPolicy(context),
                     ),
+                    /// Creates a text span instance.
                     const TextSpan(text: "."),
                   ],
                 ),
@@ -480,6 +586,7 @@ class _SignupViewState extends State<_SignupView> {
           ],
         ),
         if (viewModel.termsTouched && !viewModel.acceptedTerms)
+          /// Creates a padding instance.
           const Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text(
@@ -491,7 +598,9 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Handles the build error message operation.
   Widget _buildErrorMessage(String message) {
+    /// Handles the container operation.
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -501,8 +610,11 @@ class _SignupViewState extends State<_SignupView> {
       ),
       child: Row(
         children: [
+          /// Creates a icon instance.
           Icon(Icons.error_outline, color: Colors.red.shade700),
+          /// Creates a sized box instance.
           const SizedBox(width: 8),
+          /// Creates a expanded instance.
           Expanded(
             child: Text(
               message,
@@ -514,17 +626,18 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Handles the build login link operation.
   Widget _buildLoginLink(BuildContext context) {
+    /// Handles the row operation.
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        /// Creates a text instance.
         const Text("Already have an account?"),
+        /// Creates a text button instance.
         TextButton(
           onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
-            );
+            context.go(AppRouter.login);
           },
           child: Text(
             "Login",
@@ -535,27 +648,33 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Handles the show terms and conditions operation.
   void _showTermsAndConditions(BuildContext context) {
     // Navigate to terms and conditions page
-    // You can implement this based on your existing AboutViewerPage
+    // Implement based on the existing AboutViewerPage.
     ScaffoldMessenger.of(context).showSnackBar(
+      /// Creates a snack bar instance.
       const SnackBar(content: Text('Terms and Conditions feature coming soon')),
     );
   }
 
+  /// Handles the show privacy policy operation.
   void _showPrivacyPolicy(BuildContext context) {
     // Navigate to privacy policy page
     ScaffoldMessenger.of(context).showSnackBar(
+      /// Creates a snack bar instance.
       const SnackBar(content: Text('Privacy Policy feature coming soon')),
     );
   }
 
+  /// Handles the handle signup operation.
   Future<void> _handleSignup(BuildContext context, SignupViewModel viewModel) async {
     // Check if country is selected first
     final countryId = viewModel.selectedCountryId;
 
     if (countryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
+        /// Creates a snack bar instance.
         const SnackBar(
           content: Text('Please select a country'),
           backgroundColor: Colors.red,
@@ -573,9 +692,9 @@ class _SignupViewState extends State<_SignupView> {
     );
 
     // Get data from controllers
-    final email = viewModel.emailController.text.trim();
-    final password = viewModel.passwordController.text.trim();
-    final name = viewModel.nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final name = _nameController.text.trim();
     final gender = viewModel.selectedGender;
 
     // Call ViewModel with data
@@ -606,26 +725,23 @@ class _SignupViewState extends State<_SignupView> {
       if (verified == true && context.mounted) {
         _navigateToHome(context, user);
       } else if (verified == false && context.mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
+        context.go(AppRouter.login);
       }
     }
   }
 
+  /// Handles the navigate to home operation.
   void _navigateToHome(BuildContext context, dynamic user) {
     final roleManager = RoleManager();
 
     // Use the roleToString method
     final roleString = roleManager.roleToString(user.role);
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => MainPage(
-          user: user,
-          role: roleString,
-        ),
+    context.go(
+      AppRouter.home,
+      extra: HomeArgs(
+        user: user,
+        role: roleString,
       ),
     );
   }

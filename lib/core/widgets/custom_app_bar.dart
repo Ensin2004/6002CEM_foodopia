@@ -18,6 +18,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? backgroundColor;
   final Color? foregroundColor;
 
+  /// Creates a custom app bar instance.
   const CustomAppBar({
     super.key,
     required this.title,
@@ -31,21 +32,24 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.foregroundColor,
   });
 
+  /// Handles the preferred size operation.
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
+  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
     // Default to white background, black text
     final bgColor = backgroundColor ?? Colors.white;
     final fgColor = foregroundColor ?? Colors.black;
 
+    /// Handles the app bar operation.
     return AppBar(
       backgroundColor: bgColor,
       foregroundColor: fgColor,
-      elevation: 4,  // ✅ Add shadow like sample
-      shadowColor: Colors.grey.withOpacity(0.4),  // ✅ Shadow color
-      surfaceTintColor: Colors.transparent,  // ✅ Remove surface tint
+      elevation: 4,  // Adds shadow like sample
+      shadowColor: Colors.grey.withOpacity(0.4),  // Sets shadow color
+      surfaceTintColor: Colors.transparent,  // Removes surface tint
       shape: const Border(
         bottom: BorderSide(
           color: Colors.grey,
@@ -66,7 +70,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
+  /// Handles the build back button operation.
   Widget _buildBackButton(BuildContext context, Color color) {
+    /// Handles the icon button operation.
     return IconButton(
       icon: Icon(Icons.arrow_back, color: color),
       onPressed: () {
@@ -79,6 +85,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
+  /// Handles the show confirmation dialog operation.
   void _showConfirmationDialog(BuildContext context) {
     showDialog<bool>(
       context: context,
@@ -91,10 +98,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         actions: [
+          /// Creates a text button instance.
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Discard'),
           ),
+          /// Creates a text button instance.
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Save'),

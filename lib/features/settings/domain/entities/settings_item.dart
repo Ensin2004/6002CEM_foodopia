@@ -10,6 +10,7 @@ class SettingsItem {
   final SettingsItemType type;
   final String? routeName;
 
+  /// Creates a settings item instance.
   const SettingsItem({
     required this.id,
     required this.title,

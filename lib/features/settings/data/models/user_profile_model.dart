@@ -1,7 +1,11 @@
+// Maps stored data for the user profile model.
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/user_profile.dart';
 
+/// Defines behavior for user profile model.
 class UserProfileModel extends UserProfile {
+  /// Creates a user profile model instance.
   UserProfileModel({
     required super.uid,
     required super.email,
@@ -11,8 +15,10 @@ class UserProfileModel extends UserProfile {
     super.updatedAt,
   });
 
+  /// Creates a user profile model instance.
   factory UserProfileModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    /// Handles the user profile model operation.
     return UserProfileModel(
       uid: doc.id,
       email: data['email'] ?? '',
@@ -25,6 +31,7 @@ class UserProfileModel extends UserProfile {
     );
   }
 
+  /// Converts this instance into to json data.
   Map<String, dynamic> toJson() {
     return {
       'name': name,

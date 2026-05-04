@@ -1,14 +1,15 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
 import '../../../domain/entities/faq_item.dart';
-import '../../../domain/usecases/add_faq_item_usecase.dart';
-import '../../../domain/usecases/delete_faq_item_usecase.dart';
-import '../../../domain/usecases/get_admin_faq_items_usecase.dart';
-import '../../../domain/usecases/update_faq_item_usecase.dart';
-import '../../../domain/usecases/upload_faq_image_usecase.dart';
+import '../../../domain/usecases/support/faq/add_faq_item_usecase.dart';
+import '../../../domain/usecases/support/faq/delete_faq_item_usecase.dart';
+import '../../../domain/usecases/support/faq/get_admin_faq_items_usecase.dart';
+import '../../../domain/usecases/support/faq/update_faq_item_usecase.dart';
+import '../../../domain/usecases/support/faq/upload_faq_image_usecase.dart';
 
+/// Defines behavior for admin faq view model.
 class AdminFaqViewModel extends ChangeNotifier {
   final GetAdminFaqItemsUseCase _getAdminFaqItemsUseCase;
   final AddFaqItemUseCase _addFaqItemUseCase;
@@ -25,6 +26,7 @@ class AdminFaqViewModel extends ChangeNotifier {
   String _sortOption = 'newest';
   String _searchTerm = '';
 
+  /// Creates a admin faq view model instance.
   AdminFaqViewModel({
     required GetAdminFaqItemsUseCase getAdminFaqItemsUseCase,
     required AddFaqItemUseCase addFaqItemUseCase,
@@ -36,15 +38,21 @@ class AdminFaqViewModel extends ChangeNotifier {
         _updateFaqItemUseCase = updateFaqItemUseCase,
         _deleteFaqItemUseCase = deleteFaqItemUseCase,
         _uploadFaqImageUseCase = uploadFaqImageUseCase {
+    /// Loads data for the load items operation.
     loadItems();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the is saving operation.
   bool get isSaving => _isSaving;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the filtered items operation.
   List<FaqItem> get filteredItems => _filteredItems;
+  /// Handles the sort option operation.
   String get sortOption => _sortOption;
+  /// Handles the search term operation.
   String get searchTerm => _searchTerm;
 
   // Load items
@@ -91,6 +99,7 @@ class AdminFaqViewModel extends ChangeNotifier {
       return false;
     }
 
+    /// Loads data for the load items operation.
     await loadItems();
     _isSaving = false;
     notifyListeners();
@@ -127,6 +136,7 @@ class AdminFaqViewModel extends ChangeNotifier {
       return false;
     }
 
+    /// Loads data for the load items operation.
     await loadItems();
     _isSaving = false;
     notifyListeners();
@@ -147,6 +157,7 @@ class AdminFaqViewModel extends ChangeNotifier {
       return false;
     }
 
+    /// Loads data for the load items operation.
     await loadItems();
     _isSaving = false;
     notifyListeners();
@@ -204,6 +215,7 @@ class AdminFaqViewModel extends ChangeNotifier {
     _applyFiltersAndSort();
   }
 
+  /// Handles the get error message operation.
   String _getErrorMessage(Failure failure) {
     if (failure is ValidationFailure) {
       return failure.message;

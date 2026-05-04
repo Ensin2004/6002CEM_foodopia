@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
 import '../../../domain/entities/help_center_issue.dart';
-import '../../../domain/usecases/get_admin_issues_usecase.dart';
-import '../../../domain/usecases/get_user_email_usecase.dart';
-import '../../../domain/usecases/update_issue_status_usecase.dart';
+import '../../../domain/usecases/account/get_user_email_usecase.dart';
+import '../../../domain/usecases/support/help_center/get_admin_issues_usecase.dart';
+import '../../../domain/usecases/support/help_center/update_issue_status_usecase.dart';
 
+/// Defines behavior for admin help center view model.
 class AdminHelpCenterViewModel extends ChangeNotifier {
   final GetAdminIssuesUseCase _getAdminIssuesUseCase;
   final UpdateIssueStatusUseCase _updateIssueStatusUseCase;
@@ -19,6 +20,7 @@ class AdminHelpCenterViewModel extends ChangeNotifier {
   bool _sortDescending = true;
   final Map<String, String> _userEmails = {};
 
+  /// Creates a admin help center view model instance.
   AdminHelpCenterViewModel({
     required GetAdminIssuesUseCase getAdminIssuesUseCase,
     required UpdateIssueStatusUseCase updateIssueStatusUseCase,
@@ -26,14 +28,19 @@ class AdminHelpCenterViewModel extends ChangeNotifier {
   })  : _getAdminIssuesUseCase = getAdminIssuesUseCase,
         _updateIssueStatusUseCase = updateIssueStatusUseCase,
         _getUserEmailUseCase = getUserEmailUseCase {
+    /// Loads data for the load issues operation.
     loadIssues();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the issues operation.
   List<HelpCenterIssue> get issues => _filteredAndSortedIssues;
+  /// Handles the status filter operation.
   String get statusFilter => _statusFilter;
+  /// Handles the sort descending operation.
   bool get sortDescending => _sortDescending;
 
   // Filtered and sorted issues
@@ -69,6 +76,7 @@ class AdminHelpCenterViewModel extends ChangeNotifier {
       _issues = [];
     } else {
       _issues = result.right!;
+      /// Handles the load user emails operation.
       await _loadUserEmails();
       _errorMessage = null;
     }
@@ -101,6 +109,7 @@ class AdminHelpCenterViewModel extends ChangeNotifier {
     if (result.isLeft()) {
       _errorMessage = _getErrorMessage(result.left!);
     } else {
+      /// Loads data for the load issues operation.
       await loadIssues(); // Reload to update status
     }
   }
@@ -117,6 +126,7 @@ class AdminHelpCenterViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Handles the get error message operation.
   String _getErrorMessage(Failure failure) {
     if (failure is ValidationFailure) {
       return failure.message;
@@ -127,6 +137,7 @@ class AdminHelpCenterViewModel extends ChangeNotifier {
     return failure.message;
   }
 
+  /// Handles the clear error operation.
   void clearError() {
     _errorMessage = null;
     notifyListeners();

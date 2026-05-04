@@ -7,6 +7,7 @@ class UserProfile {
   final String? profileImageUrl;
   final DateTime? updatedAt;
 
+  /// Creates a user profile instance.
   UserProfile({
     required this.uid,
     required this.email,
@@ -25,6 +26,7 @@ class UserProfile {
     String? profileImageUrl,
     DateTime? updatedAt,
   }) {
+    /// Handles the user profile operation.
     return UserProfile(
       uid: uid ?? this.uid,
       email: email ?? this.email,

@@ -1,14 +1,14 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
 import '../../../domain/entities/user_profile.dart';
-import '../../../domain/usecases/get_user_profile_usecase.dart';
-import '../../../domain/usecases/update_profile_image_usecase.dart';
-import '../../../domain/usecases/update_user_gender_usecase.dart';
-import '../../../domain/usecases/update_user_name_usecase.dart';
+import '../../../domain/usecases/account/get_user_profile_usecase.dart';
+import '../../../domain/usecases/account/update_profile_image_usecase.dart';
+import '../../../domain/usecases/account/update_user_gender_usecase.dart';
+import '../../../domain/usecases/account/update_user_name_usecase.dart';
 
+/// Defines behavior for edit profile view model.
 class EditProfileViewModel extends ChangeNotifier {
   final GetUserProfileUseCase _getUserProfileUseCase;
   final UpdateUserNameUseCase _updateUserNameUseCase;
@@ -21,10 +21,8 @@ class EditProfileViewModel extends ChangeNotifier {
   bool _isSaving = false;
   String? _errorMessage;
   UserProfile? _profile;
-  File? _selectedImage;
-  String? _tempName;
-  String? _tempGender;
 
+  /// Creates a edit profile view model instance.
   EditProfileViewModel({
     required String uid,
     required GetUserProfileUseCase getUserProfileUseCase,
@@ -36,18 +34,24 @@ class EditProfileViewModel extends ChangeNotifier {
         _updateUserNameUseCase = updateUserNameUseCase,
         _updateUserGenderUseCase = updateUserGenderUseCase,
         _updateProfileImageUseCase = updateProfileImageUseCase {
+    /// Loads data for the load user profile operation.
     loadUserProfile();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the is saving operation.
   bool get isSaving => _isSaving;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the profile operation.
   UserProfile? get profile => _profile;
-  File? get selectedImage => _selectedImage;
+  /// Handles the display name operation.
   String get displayName => _profile?.name ?? '';
+  /// Handles the display gender operation.
   String get displayGender => _profile?.gender ?? '';
-  bool get hasUnsavedChanges => false; // No unsaved changes since we save immediately
+  /// Handles the has unsaved changes operation.
+  bool get hasUnsavedChanges => false; // No unsaved changes because profile data saves immediately
 
   // Load user profile
   Future<void> loadUserProfile() async {
@@ -63,17 +67,6 @@ class EditProfileViewModel extends ChangeNotifier {
     } else {
       _profile = result.right;
       _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Pick image from gallery (just selects, doesn't save)
-  Future<void> pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      _selectedImage = File(pickedFile.path);
       notifyListeners();
     }
   }
@@ -127,15 +120,13 @@ class EditProfileViewModel extends ChangeNotifier {
   }
 
   // Save image only (called immediately after picking)
-  Future<bool> saveImageOnly() async {
-    if (_selectedImage == null) return false;
-
+  Future<bool> saveImageOnly(File imageFile) async {
     _isSaving = true;
     notifyListeners();
 
     final imageResult = await _updateProfileImageUseCase.execute(
       uid: _uid,
-      imageFile: _selectedImage!,
+      imageFile: imageFile,
     );
 
     if (imageResult.isLeft()) {
@@ -145,9 +136,8 @@ class EditProfileViewModel extends ChangeNotifier {
       return false;
     }
 
-    // Update local profile with new image URL (will be reloaded, but we can clear selected)
+    // Reload to get the new image URL.
     await loadUserProfile(); // Reload to get the new image URL
-    _selectedImage = null;
     _isSaving = false;
     notifyListeners();
     return true;

@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
 import '../../../domain/entities/faq_item.dart';
-import '../../../domain/usecases/get_user_faq_items_usecase.dart';
+import '../../../domain/usecases/support/faq/get_user_faq_items_usecase.dart';
 
+/// Defines behavior for user faq view model.
 class UserFaqViewModel extends ChangeNotifier {
   final GetUserFaqItemsUseCase _getUserFaqItemsUseCase;
 
@@ -12,15 +13,19 @@ class UserFaqViewModel extends ChangeNotifier {
   String? _errorMessage;
   List<FaqItem> _items = [];
 
+  /// Creates a user faq view model instance.
   UserFaqViewModel({
     required GetUserFaqItemsUseCase getUserFaqItemsUseCase,
   }) : _getUserFaqItemsUseCase = getUserFaqItemsUseCase {
+    /// Loads data for the load items operation.
     loadItems();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the items operation.
   List<FaqItem> get items => _items;
 
   // Load items
@@ -42,6 +47,7 @@ class UserFaqViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Handles the get error message operation.
   String _getErrorMessage(Failure failure) {
     if (failure is NetworkFailure) {
       return 'Network error. Please check your connection.';

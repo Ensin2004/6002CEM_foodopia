@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'curved_background_painter.dart';
 
+/// Defines behavior for curved header.
 class CurvedHeader extends StatelessWidget {
   final Widget? leadingButton;
   final Widget? trailingButton;
@@ -13,6 +14,7 @@ class CurvedHeader extends StatelessWidget {
   final Color? curveColor;
   final Color? backgroundColor;
 
+  /// Creates a curved header instance.
   const CurvedHeader({
     super.key,
     this.leadingButton,
@@ -27,12 +29,14 @@ class CurvedHeader extends StatelessWidget {
     this.backgroundColor,
   });
 
+  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final curveColor = this.curveColor ?? theme.colorScheme.primary;
     final backgroundColor = this.backgroundColor ?? theme.colorScheme.surface;
 
+    /// Handles the stack operation.
     return Stack(
       children: [
         // Curved background
@@ -68,6 +72,7 @@ class CurvedHeader extends StatelessWidget {
                 width: logoSize,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
+                  /// Handles the container operation.
                   return Container(
                     height: logoSize,
                     width: logoSize,
@@ -101,6 +106,7 @@ class CurvedHeader extends StatelessWidget {
                 if (leadingButton != null)
                   leadingButton!
                 else if (onLeadingPressed != null && leadingText != null)
+                  /// Creates a text button instance.
                   TextButton(
                     onPressed: onLeadingPressed,
                     child: Text(
@@ -112,12 +118,14 @@ class CurvedHeader extends StatelessWidget {
                     ),
                   )
                 else
+                  /// Creates a sized box instance.
                   const SizedBox(width: 48),
 
                 // Trailing widget
                 if (trailingButton != null)
                   trailingButton!
                 else if (onTrailingPressed != null && trailingText != null)
+                  /// Creates a text button instance.
                   TextButton(
                     onPressed: onTrailingPressed,
                     child: Text(
@@ -129,6 +137,7 @@ class CurvedHeader extends StatelessWidget {
                     ),
                   )
                 else
+                  /// Creates a sized box instance.
                   const SizedBox(width: 48),
               ],
             ),

@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
 import '../../../domain/entities/rating.dart';
 import '../../../domain/entities/user_profile.dart';
-import '../../../domain/usecases/get_all_ratings_usecase.dart';
-import '../../../domain/usecases/get_user_profile_usecase.dart';
+import '../../../domain/usecases/account/get_user_profile_usecase.dart';
+import '../../../domain/usecases/support/rating/get_all_ratings_usecase.dart';
 
+/// Defines behavior for admin rate us view model.
 class AdminRateUsViewModel extends ChangeNotifier {
   final GetAllRatingsUseCase _getAllRatingsUseCase;
   final GetUserProfileUseCase _getUserProfileUseCase;
@@ -15,26 +16,32 @@ class AdminRateUsViewModel extends ChangeNotifier {
   String? _errorMessage;
   List<RatingEntity> _ratings = [];
   List<RatingEntity> _filteredRatings = [];
-  final Map<String, UserProfile> _userProfiles = {};  // ✅ Use UserProfile directly
+  final Map<String, UserProfile> _userProfiles = {};  // Uses UserProfile directly
 
   // Filter and sort state
   int _starFilter = 0;
   String _sortOption = 'newest';
   String _searchTerm = '';
 
+  /// Creates a admin rate us view model instance.
   AdminRateUsViewModel({
     required GetAllRatingsUseCase getAllRatingsUseCase,
     required GetUserProfileUseCase getUserProfileUseCase,
   })  : _getAllRatingsUseCase = getAllRatingsUseCase,
         _getUserProfileUseCase = getUserProfileUseCase {
+    /// Loads data for the load ratings operation.
     loadRatings();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the filtered ratings operation.
   List<RatingEntity> get filteredRatings => _filteredRatings;
+  /// Handles the sort option operation.
   String get sortOption => _sortOption;
+  /// Handles the star filter operation.
   int get starFilter => _starFilter;
 
   // Rating statistics
@@ -75,6 +82,7 @@ class AdminRateUsViewModel extends ChangeNotifier {
       _ratings = [];
     } else {
       _ratings = result.right!;
+      /// Handles the load user profiles operation.
       await _loadUserProfiles();
     }
 
@@ -92,7 +100,7 @@ class AdminRateUsViewModel extends ChangeNotifier {
         if (result.isRight()) {
           final profile = result.right;
           if (profile != null) {
-            _userProfiles[userId] = profile;  // ✅ Store UserProfile directly
+            _userProfiles[userId] = profile;  // Store UserProfile directly
           }
         }
       }
@@ -160,6 +168,7 @@ class AdminRateUsViewModel extends ChangeNotifier {
     _applyFiltersAndSort();
   }
 
+  /// Handles the get error message operation.
   String _getErrorMessage(Failure failure) {
     if (failure is NetworkFailure) {
       return 'Network error. Please check your connection.';

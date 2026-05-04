@@ -5,6 +5,7 @@ class SettingsSection {
   final String title;
   final List<SettingsItem> items;
 
+  /// Creates a settings section instance.
   const SettingsSection({
     required this.title,
     required this.items,

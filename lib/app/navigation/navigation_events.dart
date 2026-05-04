@@ -1,4 +1,4 @@
-// ============================================================================
+// Configures the navigation events application module.
 // NAVIGATION EVENTS
 // ============================================================================
 // Type-safe navigation events for all features
@@ -25,6 +25,8 @@ enum MainNavigationEvent {
   goToProfile,
   goToNotifications,
   goToStatistics,
+  goToFavorites,
+  goToAddRecipe,
 }
 
 /// Settings navigation events

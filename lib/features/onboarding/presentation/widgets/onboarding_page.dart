@@ -3,24 +3,30 @@ import 'package:foodopia/core/theme/theme_extension.dart';
 
 import '../../domain/entities/onboarding_item.dart';
 
+/// Defines behavior for onboarding page.
 class OnboardingPage extends StatelessWidget {
   final OnboardingItem item;
   final double pageOffset;
 
+  /// Creates a onboarding page instance.
   const OnboardingPage({
     super.key,
     required this.item,
     required this.pageOffset,
   });
 
+  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    /// Handles the padding operation.
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
+          /// Creates a spacer instance.
           const Spacer(flex: 2),
 
+          /// Creates a stack instance.
           Stack(
             alignment: Alignment.center,
             children: [
@@ -49,6 +55,7 @@ class OnboardingPage extends StatelessWidget {
             ],
           ),
 
+          /// Creates a spacer instance.
           const Spacer(),
 
           // --- ANIMATED CONTENT GROUP ---
@@ -69,6 +76,7 @@ class OnboardingPage extends StatelessWidget {
                   ),
                 ),
 
+                /// Creates a sized box instance.
                 const SizedBox(height: 12),
 
                 // --- DESCRIPTION ---
@@ -85,6 +93,7 @@ class OnboardingPage extends StatelessWidget {
             ),
           ),
 
+          /// Creates a spacer instance.
           const Spacer(flex: 3),
         ],
       ),

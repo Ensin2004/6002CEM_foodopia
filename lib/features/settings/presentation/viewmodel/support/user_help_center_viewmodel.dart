@@ -1,12 +1,13 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
 import '../../../domain/entities/help_center_issue.dart';
-import '../../../domain/usecases/get_user_issues_usecase.dart';
-import '../../../domain/usecases/submit_issue_usecase.dart';
+import '../../../domain/usecases/support/help_center/get_user_issues_usecase.dart';
+import '../../../domain/usecases/support/help_center/submit_issue_usecase.dart';
 
+/// Defines behavior for user help center view model.
 class UserHelpCenterViewModel extends ChangeNotifier {
   final GetUserIssuesUseCase _getUserIssuesUseCase;
   final SubmitIssueUseCase _submitIssueUseCase;
@@ -20,6 +21,7 @@ class UserHelpCenterViewModel extends ChangeNotifier {
   String _filterStatus = 'All';
   bool _sortLatestFirst = true;
 
+  /// Creates a user help center view model instance.
   UserHelpCenterViewModel({
     required String uid,
     required GetUserIssuesUseCase getUserIssuesUseCase,
@@ -27,15 +29,21 @@ class UserHelpCenterViewModel extends ChangeNotifier {
   })  : _uid = uid,
         _getUserIssuesUseCase = getUserIssuesUseCase,
         _submitIssueUseCase = submitIssueUseCase {
+    /// Loads data for the load issues operation.
     loadIssues();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the is submitting operation.
   bool get isSubmitting => _isSubmitting;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the issues operation.
   List<HelpCenterIssue> get issues => _filteredAndSortedIssues;
+  /// Handles the filter status operation.
   String get filterStatus => _filterStatus;
+  /// Handles the sort latest first operation.
   bool get sortLatestFirst => _sortLatestFirst;
 
   // Filtered and sorted issues
@@ -97,6 +105,7 @@ class UserHelpCenterViewModel extends ChangeNotifier {
     }
 
     _isSubmitting = false;
+    /// Loads data for the load issues operation.
     await loadIssues(); // Reload to show new issue
     return true;
   }
@@ -113,6 +122,7 @@ class UserHelpCenterViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Handles the get error message operation.
   String _getErrorMessage(Failure failure) {
     if (failure is ValidationFailure) {
       return failure.message;
@@ -123,6 +133,7 @@ class UserHelpCenterViewModel extends ChangeNotifier {
     return failure.message;
   }
 
+  /// Handles the clear error operation.
   void clearError() {
     _errorMessage = null;
     notifyListeners();

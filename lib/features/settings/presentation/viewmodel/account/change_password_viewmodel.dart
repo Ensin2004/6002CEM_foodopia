@@ -1,15 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
-import '../../../domain/usecases/change_password_usecase.dart';
+import '../../../domain/usecases/account/change_password_usecase.dart';
 
+/// Runs the change password view model operation.
 class ChangePasswordViewModel extends ChangeNotifier {
   final ChangePasswordUseCase _changePasswordUseCase;
-
-  // Form controllers
-  final currentPasswordController = TextEditingController();
-  final newPasswordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
 
   // Form state
   bool _isLoading = false;
@@ -18,15 +14,20 @@ class ChangePasswordViewModel extends ChangeNotifier {
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
 
+  /// Runs the change password view model operation.
   ChangePasswordViewModel({
     required ChangePasswordUseCase changePasswordUseCase,
   }) : _changePasswordUseCase = changePasswordUseCase;
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Displays the show current password flow.
   bool get showCurrentPassword => _showCurrentPassword;
+  /// Displays the show new password flow.
   bool get showNewPassword => _showNewPassword;
+  /// Displays the show confirm password flow.
   bool get showConfirmPassword => _showConfirmPassword;
 
   // Toggle password visibility
@@ -35,11 +36,13 @@ class ChangePasswordViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Toggles new password text visibility.
   void toggleNewPasswordVisibility() {
     _showNewPassword = !_showNewPassword;
     notifyListeners();
   }
 
+  /// Toggles confirm password text visibility.
   void toggleConfirmPasswordVisibility() {
     _showConfirmPassword = !_showConfirmPassword;
     notifyListeners();
@@ -59,6 +62,7 @@ class ChangePasswordViewModel extends ChangeNotifier {
     return null;
   }
 
+  /// Handles the validate new password operation.
   String? validateNewPassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a new password';
@@ -69,8 +73,9 @@ class ChangePasswordViewModel extends ChangeNotifier {
     return null;
   }
 
-  String? validateConfirmPassword(String? value) {
-    if (value != newPasswordController.text) {
+  /// Handles the validate confirm password operation.
+  String? validateConfirmPassword(String? value, String newPassword) {
+    if (value != newPassword) {
       return 'Passwords do not match';
     }
     return null;
@@ -115,6 +120,7 @@ class ChangePasswordViewModel extends ChangeNotifier {
     return rules;
   }
 
+  /// Handles the is strong password operation.
   bool _isStrongPassword(String password) {
     return password.length >= 12 &&
         password.contains(RegExp(r'[A-Z]')) &&
@@ -124,13 +130,16 @@ class ChangePasswordViewModel extends ChangeNotifier {
   }
 
   // Change password
-  Future<bool> changePassword() async {
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
     _isLoading = true;
     notifyListeners();
 
     final result = await _changePasswordUseCase.execute(
-      currentPassword: currentPasswordController.text.trim(),
-      newPassword: newPasswordController.text.trim(),
+      currentPassword: currentPassword.trim(),
+      newPassword: newPassword.trim(),
     );
 
     if (result.isLeft()) {
@@ -140,16 +149,12 @@ class ChangePasswordViewModel extends ChangeNotifier {
       return false;
     }
 
-    // Clear form on success
-    currentPasswordController.clear();
-    newPasswordController.clear();
-    confirmPasswordController.clear();
-
     _isLoading = false;
     notifyListeners();
     return true;
   }
 
+  /// Handles the get error message operation.
   String _getErrorMessage(Failure failure) {
     if (failure is ValidationFailure) {
       return failure.message;
@@ -161,13 +166,5 @@ class ChangePasswordViewModel extends ChangeNotifier {
       return 'Network error. Please check your connection.';
     }
     return failure.message;
-  }
-
-  @override
-  void dispose() {
-    currentPasswordController.dispose();
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
-    super.dispose();
   }
 }

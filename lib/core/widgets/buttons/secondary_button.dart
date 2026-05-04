@@ -9,6 +9,7 @@ class SecondaryButton extends StatelessWidget {
   final double verticalPadding;
   final BorderRadiusGeometry borderRadius;
 
+  /// Creates a secondary button instance.
   const SecondaryButton({
     Key? key,
     required this.onPressed,
@@ -18,11 +19,13 @@ class SecondaryButton extends StatelessWidget {
     this.borderRadius = const BorderRadius.all(Radius.circular(8)),
   }) : super(key: key);
 
+  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textTheme = context.text;
 
+    /// Handles the sized box operation.
     return SizedBox(
       width: width ?? double.infinity,
       child: OutlinedButton(

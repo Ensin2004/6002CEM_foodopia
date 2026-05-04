@@ -1,8 +1,12 @@
+// Maps stored data for the faq item model.
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/entities/faq_item.dart';
 
+/// Defines behavior for faq item model.
 class FaqItemModel extends FaqItem {
+  /// Creates a faq item model instance.
   const FaqItemModel({
     required super.id,
     required super.question,
@@ -12,8 +16,10 @@ class FaqItemModel extends FaqItem {
     required super.createdAt,
   });
 
+  /// Creates a faq item model instance.
   factory FaqItemModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    /// Handles the faq item model operation.
     return FaqItemModel(
       id: doc.id,
       question: data['question'] as String? ?? '',
@@ -24,6 +30,7 @@ class FaqItemModel extends FaqItem {
     );
   }
 
+  /// Converts this instance into to json data.
   Map<String, dynamic> toJson() {
     return {
       'question': question,
@@ -34,6 +41,7 @@ class FaqItemModel extends FaqItem {
     };
   }
 
+  /// Converts this instance into to update json data.
   Map<String, dynamic> toUpdateJson() {
     final data = <String, dynamic>{
       'question': question,

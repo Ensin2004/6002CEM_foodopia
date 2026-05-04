@@ -1,18 +1,17 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
 import '../../../domain/entities/rating.dart';
-import '../../../domain/usecases/delete_rating_usecase.dart';
-import '../../../domain/usecases/get_user_rating_usecase.dart';
-import '../../../domain/usecases/save_rating_usecase.dart';
-import '../../../domain/usecases/upload_rating_image_usecase.dart';
+import '../../../domain/usecases/support/rating/delete_rating_usecase.dart';
+import '../../../domain/usecases/support/rating/get_user_rating_usecase.dart';
+import '../../../domain/usecases/support/rating/save_rating_usecase.dart';
 
+/// Defines behavior for rate us view model.
 class RateUsViewModel extends ChangeNotifier {
   final GetUserRatingUseCase _getUserRatingUseCase;
   final SaveRatingUseCase _saveRatingUseCase;
   final DeleteRatingUseCase _deleteRatingUseCase;
-  final UploadRatingImageUseCase _uploadRatingImageUseCase;
   final String _userId;
 
   // State
@@ -23,34 +22,41 @@ class RateUsViewModel extends ChangeNotifier {
   int _selectedStars = 0;
   String _comment = '';
   String? _imageUrl;
-  File? _selectedImageFile;
   bool _isEditing = false;
 
+  /// Creates a rate us view model instance.
   RateUsViewModel({
     required String userId,
     required GetUserRatingUseCase getUserRatingUseCase,
     required SaveRatingUseCase saveRatingUseCase,
     required DeleteRatingUseCase deleteRatingUseCase,
-    required UploadRatingImageUseCase uploadRatingImageUseCase,
   })  : _userId = userId,
         _getUserRatingUseCase = getUserRatingUseCase,
         _saveRatingUseCase = saveRatingUseCase,
-        _deleteRatingUseCase = deleteRatingUseCase,
-        _uploadRatingImageUseCase = uploadRatingImageUseCase {
+        _deleteRatingUseCase = deleteRatingUseCase {
+    /// Loads data for the load rating operation.
     loadRating();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the is saving operation.
   bool get isSaving => _isSaving;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the rating operation.
   RatingEntity? get rating => _rating;
+  /// Handles the selected stars operation.
   int get selectedStars => _selectedStars;
+  /// Handles the comment operation.
   String get comment => _comment;
+  /// Handles the image url operation.
   String? get imageUrl => _imageUrl;
-  File? get selectedImageFile => _selectedImageFile;
+  /// Handles the has submitted rating operation.
   bool get hasSubmittedRating => _rating != null;
+  /// Handles the is editing operation.
   bool get isEditing => _isEditing;
+  /// Handles the is submit disabled operation.
   bool get isSubmitDisabled => _selectedStars == 0 || _isSaving;
 
   // Load existing rating
@@ -93,18 +99,6 @@ class RateUsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Pick image
-  void pickImage(File imageFile) {
-    _selectedImageFile = imageFile;
-    notifyListeners();
-  }
-
-  // Remove selected image
-  void removeSelectedImage() {
-    _selectedImageFile = null;
-    notifyListeners();
-  }
-
   // Remove stored image
   void removeStoredImage() {
     _imageUrl = null;
@@ -122,12 +116,11 @@ class RateUsViewModel extends ChangeNotifier {
     _isEditing = false;
     _selectedStars = _rating?.stars ?? 0;
     _comment = _rating?.comment ?? '';
-    _selectedImageFile = null;
     notifyListeners();
   }
 
   // Save rating
-  Future<bool> saveRating() async {
+  Future<bool> saveRating({File? imageFile}) async {
     if (_selectedStars == 0) {
       _errorMessage = 'Please select at least 1 star';
       notifyListeners();
@@ -141,7 +134,7 @@ class RateUsViewModel extends ChangeNotifier {
       userId: _userId,
       stars: _selectedStars,
       comment: _comment,
-      imageFile: _selectedImageFile,
+      imageFile: imageFile,
       existingImageUrl: _imageUrl,
     );
 
@@ -152,8 +145,8 @@ class RateUsViewModel extends ChangeNotifier {
       return false;
     }
 
+    /// Loads data for the load rating operation.
     await loadRating();
-    _selectedImageFile = null;
     _isEditing = false;
     _isSaving = false;
     notifyListeners();
@@ -178,13 +171,13 @@ class RateUsViewModel extends ChangeNotifier {
     _selectedStars = 0;
     _comment = '';
     _imageUrl = null;
-    _selectedImageFile = null;
     _isEditing = false;
     _isSaving = false;
     notifyListeners();
     return true;
   }
 
+  /// Handles the get error message operation.
   String _getErrorMessage(Failure failure) {
     if (failure is ValidationFailure) {
       return failure.message;
@@ -195,6 +188,7 @@ class RateUsViewModel extends ChangeNotifier {
     return failure.message;
   }
 
+  /// Handles the clear error operation.
   void clearError() {
     _errorMessage = null;
     notifyListeners();

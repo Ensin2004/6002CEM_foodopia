@@ -1,31 +1,40 @@
+// Defines the country picker dialog widget.
+
 import 'package:flutter/material.dart';
 
+/// Defines behavior for country picker dialog.
 class CountryPickerDialog extends StatefulWidget {
-  final List<Map<String, dynamic>> items;  // ✅ Changed to required (not nullable)
+  final List<Map<String, dynamic>> items;  // Changed to required (not nullable)
   final String? selectedId;
 
+  /// Creates a country picker dialog instance.
   const CountryPickerDialog({
     super.key,
-    required this.items,  // ✅ Now required
+    required this.items,  // Required field
     this.selectedId,
   });
 
+  /// Creates data for the create state operation.
   @override
   State<CountryPickerDialog> createState() => _CountryPickerDialogState();
 }
 
+/// Defines behavior for country picker dialog state.
 class _CountryPickerDialogState extends State<CountryPickerDialog> {
   late List<Map<String, dynamic>> filtered;
   final TextEditingController _searchController = TextEditingController();
 
+  /// Initializes state before the first widget build.
   @override
   void initState() {
     super.initState();
-    filtered = widget.items;  // ✅ Direct assignment, no fallback
+    filtered = widget.items;  // Direct assignment, no fallback
   }
 
+  /// Handles the filter countries operation.
   void _filterCountries(String query) {
     setState(() {
+      // Updates state values displayed by the current screen.
       filtered = widget.items.where((item) {
         final country = (item['country'] as String).toLowerCase();
         final currency = (item['currency'] as String).toLowerCase();
@@ -35,14 +44,17 @@ class _CountryPickerDialogState extends State<CountryPickerDialog> {
     });
   }
 
+  /// Releases resources before widget removal.
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
+  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    /// Handles the dialog operation.
     return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -52,6 +64,7 @@ class _CountryPickerDialogState extends State<CountryPickerDialog> {
         height: 500,
         child: Column(
           children: [
+            /// Creates a text field instance.
             TextField(
               controller: _searchController,
               onChanged: _filterCountries,
@@ -63,7 +76,9 @@ class _CountryPickerDialogState extends State<CountryPickerDialog> {
                 ),
               ),
             ),
+            /// Creates a sized box instance.
             const SizedBox(height: 8),
+            /// Creates a expanded instance.
             Expanded(
               child: ListView.builder(
                 itemCount: filtered.length,
@@ -71,6 +86,7 @@ class _CountryPickerDialogState extends State<CountryPickerDialog> {
                   final item = filtered[index];
                   final isSelected = item['id'] == widget.selectedId;
 
+                  /// Handles the list tile operation.
                   return ListTile(
                     title: Text(
                       "${item['country']} (${item['currency']})",

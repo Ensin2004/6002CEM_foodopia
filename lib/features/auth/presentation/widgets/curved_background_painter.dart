@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 
+/// Defines behavior for curved background painter.
 class CurvedBackgroundPainter extends CustomPainter {
   final Color backgroundColor;
   final Color curveColor;
 
+  /// Creates a curved background painter instance.
   const CurvedBackgroundPainter({
     required this.backgroundColor,
     required this.curveColor,
   });
 
+  /// Handles the paint operation.
   @override
   void paint(Canvas canvas, Size size) {
     // Paint for the solid background
@@ -37,6 +40,7 @@ class CurvedBackgroundPainter extends CustomPainter {
     canvas.drawPath(path, curvePaint);
   }
 
+  /// Handles the should repaint operation.
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

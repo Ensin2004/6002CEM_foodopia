@@ -5,14 +5,18 @@ import '../../domain/repositories/about_repository.dart';
 import '../datasources/about_remote_datasource.dart';
 import '../models/about_content_model.dart';
 
+/// Defines behavior for about repository impl.
 class AboutRepositoryImpl implements AboutRepository {
   final AboutRemoteDataSource remoteDataSource;
 
+  /// Creates a about repository impl instance.
   AboutRepositoryImpl({required this.remoteDataSource});
 
+  /// Loads data for the get about content operation.
   @override
   Future<Either<Failure, AboutContent>> getAboutContent(String documentId) async {
     try {
+      // Runs the guarded operation that can throw.
       final doc = await remoteDataSource.getAboutContent(documentId);
 
       if (!doc.exists) {
@@ -32,6 +36,7 @@ class AboutRepositoryImpl implements AboutRepository {
     }
   }
 
+  /// Handles the get title from id operation.
   String _getTitleFromId(String id) {
     switch (id) {
       case 'about_us':
@@ -45,9 +50,11 @@ class AboutRepositoryImpl implements AboutRepository {
     }
   }
 
+  /// Runs the save about content operation.
   @override
   Future<Either<Failure, void>> saveAboutContent(String documentId, String content) async {
     try {
+      // Runs the guarded operation that can throw.
       await remoteDataSource.saveAboutContent(documentId, content);
       return const Right(null);
     } catch (e) {

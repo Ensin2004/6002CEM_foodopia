@@ -6,6 +6,7 @@ class RatingEntity {
   final String? imageUrl;
   final DateTime updatedAt;
 
+  /// Creates a rating entity instance.
   const RatingEntity({
     required this.userId,
     required this.stars,
@@ -14,6 +15,8 @@ class RatingEntity {
     required this.updatedAt,
   });
 
+  /// Handles the has image operation.
   bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
+  /// Handles the has comment operation.
   bool get hasComment => comment.trim().isNotEmpty;
 }

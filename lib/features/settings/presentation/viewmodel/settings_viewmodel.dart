@@ -1,14 +1,14 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../app/navigation/navigation_events.dart';
-import '../../../../core/error/failures.dart';
+import '../../../../core/services/shared_prefs_manager.dart';
 import '../../../auth/domain/entities/user_entity.dart';
-import '../../../onboarding/presentation/viewmodel/onboarding_viewmodel.dart';
 import '../../domain/entities/settings_item.dart';
 import '../../domain/entities/settings_section.dart';
 import '../../domain/repositories/settings_repository.dart';
 
+/// Defines behavior for settings view model.
 class SettingsViewModel extends ChangeNotifier {
   final UserEntity user;
   final SettingsRepository _repository;
@@ -22,42 +22,53 @@ class SettingsViewModel extends ChangeNotifier {
   String _email = '';
   String? _profileImageUrl;
 
-  // ✅ Navigation event (one-time use, cleared after reading)
+  // Navigation event (one-time use, cleared after reading)
   SettingsNavigationEvent? _navigationEvent;
   AppNavigationEvent? _appEvent;
 
+  /// Creates a settings view model instance.
   SettingsViewModel({
     required this.user,
     required SettingsRepository repository,
   }) : _repository = repository {
+    /// Loads data for the load settings operation.
     loadSettings();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+  /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+  /// Handles the sections operation.
   List<SettingsSection> get sections => _sections;
+  /// Handles the notifications enabled operation.
   bool get notificationsEnabled => _notificationsEnabled;
+  /// Handles the full name operation.
   String get fullName => _fullName;
+  /// Handles the email operation.
   String get email => _email;
+  /// Handles the profile image url operation.
   String? get profileImageUrl => _profileImageUrl;
+  /// Handles the is admin operation.
   bool get isAdmin => user.isAdmin;
+  /// Handles the is user operation.
   bool get isUser => user.isUser;
 
-  // ✅ One-time navigation event (clears after reading)
+  // One-time navigation event (clears after reading)
   SettingsNavigationEvent? get navigationEvent {
     final event = _navigationEvent;
     _navigationEvent = null; // Clear after reading to prevent multiple navigations
     return event;
   }
 
+  /// Handles the app event operation.
   AppNavigationEvent? get appEvent {
     final event = _appEvent;
     _appEvent = null;
     return event;
   }
 
-  // ✅ Handle settings item tap - emits typed event
+  // Handle settings item tap - emits typed event
   void onSettingsItemTapped(String itemId) {
     switch (itemId) {
       case 'edit_profile':
@@ -95,6 +106,7 @@ class SettingsViewModel extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
+    /// Handles the load user profile operation.
     await _loadUserProfile();
 
     final result = user.isAdmin
@@ -115,6 +127,7 @@ class SettingsViewModel extends ChangeNotifier {
     );
 
     if (!user.isAdmin) {
+      /// Handles the load notification settings operation.
       await _loadNotificationSettings();
     }
   }
@@ -122,6 +135,7 @@ class SettingsViewModel extends ChangeNotifier {
   // Load user profile from Firestore
   Future<void> _loadUserProfile() async {
     try {
+      // Runs the guarded operation that can throw.
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         final userDoc = await FirebaseFirestore.instance
@@ -167,16 +181,15 @@ class SettingsViewModel extends ChangeNotifier {
 
   // Refresh profile
   Future<void> refreshProfile() async {
+    /// Handles the load user profile operation.
     await _loadUserProfile();
     notifyListeners();
   }
 
-  // ✅ Logout - emits logout event
+  // Logout - emits logout event
   Future<void> logout() async {
-    // Reset onboarding flag
-    final onboardingViewModel = OnboardingViewModel();
-    await onboardingViewModel.resetOnboarding();
     await FirebaseAuth.instance.signOut();
+    await SharedPrefsManager.resetOnboarding();
 
     _appEvent = AppNavigationEvent.logout;
     notifyListeners();
