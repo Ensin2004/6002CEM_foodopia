@@ -18,6 +18,7 @@ class SettingsViewModel extends ChangeNotifier {
   String? _errorMessage;
   List<SettingsSection> _sections = [];
   bool _notificationsEnabled = false;
+  final Map<String, bool> _notificationSettings = {};
   String _fullName = '';
   String _email = '';
   String? _profileImageUrl;
@@ -37,27 +38,40 @@ class SettingsViewModel extends ChangeNotifier {
 
   // Getters
   bool get isLoading => _isLoading;
+
   /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+
   /// Handles the sections operation.
   List<SettingsSection> get sections => _sections;
+
   /// Handles the notifications enabled operation.
   bool get notificationsEnabled => _notificationsEnabled;
+
+  /// Handles one notification setting lookup.
+  bool isNotificationEnabled(String id) =>
+      _notificationSettings[id] ?? _notificationsEnabled;
+
   /// Handles the full name operation.
   String get fullName => _fullName;
+
   /// Handles the email operation.
   String get email => _email;
+
   /// Handles the profile image url operation.
   String? get profileImageUrl => _profileImageUrl;
+
   /// Handles the is admin operation.
   bool get isAdmin => user.isAdmin;
+
   /// Handles the is user operation.
   bool get isUser => user.isUser;
 
   // One-time navigation event (clears after reading)
   SettingsNavigationEvent? get navigationEvent {
     final event = _navigationEvent;
-    _navigationEvent = null; // Clear after reading to prevent multiple navigations
+    _navigationEvent =
+        null; // Clear after reading to prevent multiple navigations
     return event;
   }
 
@@ -95,6 +109,21 @@ class SettingsViewModel extends ChangeNotifier {
       case 'help_center':
         _navigationEvent = SettingsNavigationEvent.goToHelpCenter;
         break;
+      case 'age_groups':
+        _navigationEvent = SettingsNavigationEvent.goToAgeGroups;
+        break;
+      case 'meal_preferences':
+        _navigationEvent = SettingsNavigationEvent.goToMealPreferences;
+        break;
+      case 'allergies':
+        _navigationEvent = SettingsNavigationEvent.goToAllergies;
+        break;
+      case 'dislikes':
+        _navigationEvent = SettingsNavigationEvent.goToDislikes;
+        break;
+      case 'target_calories':
+        _navigationEvent = SettingsNavigationEvent.goToTargetCalories;
+        break;
       default:
         break;
     }
@@ -114,12 +143,12 @@ class SettingsViewModel extends ChangeNotifier {
         : await _repository.getUserSettings();
 
     result.fold(
-          (failure) {
+      (failure) {
         _errorMessage = failure.message;
         _isLoading = false;
         notifyListeners();
       },
-          (sections) {
+      (sections) {
         _sections = sections;
         _isLoading = false;
         notifyListeners();
@@ -158,25 +187,43 @@ class SettingsViewModel extends ChangeNotifier {
   // Load notification settings
   Future<void> _loadNotificationSettings() async {
     final result = await _repository.getNotificationEnabled();
-    result.fold(
-          (failure) => null,
-          (enabled) {
-        _notificationsEnabled = enabled;
-        notifyListeners();
-      },
-    );
+    result.fold((failure) => null, (enabled) {
+      _notificationsEnabled = enabled;
+      notifyListeners();
+    });
+
+    for (final section in _sections) {
+      for (final item in section.items) {
+        if (item.type != SettingsItemType.toggle) continue;
+
+        final itemResult = await _repository.getNotificationTypeEnabled(
+          item.id,
+        );
+        itemResult.fold((failure) => null, (enabled) {
+          _notificationSettings[item.id] = enabled;
+        });
+      }
+    }
+
+    notifyListeners();
   }
 
   // Toggle notifications
   Future<void> toggleNotifications(bool value) async {
     final result = await _repository.setNotificationEnabled(value);
-    result.fold(
-          (failure) => null,
-          (_) {
-        _notificationsEnabled = value;
-        notifyListeners();
-      },
-    );
+    result.fold((failure) => null, (_) {
+      _notificationsEnabled = value;
+      notifyListeners();
+    });
+  }
+
+  /// Toggle one notification preference.
+  Future<void> toggleNotification(String id, bool value) async {
+    final result = await _repository.setNotificationTypeEnabled(id, value);
+    result.fold((failure) => null, (_) {
+      _notificationSettings[id] = value;
+      notifyListeners();
+    });
   }
 
   // Refresh profile

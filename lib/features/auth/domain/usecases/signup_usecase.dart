@@ -15,7 +15,8 @@ class SignupUseCase {
     required String password,
     required String name,
     required String gender,
-    required String countryId,
+    required String ageGroupId,
+    required String ageGroupName,
   }) async {
     // Checks required fields before repository access.
     if (email.isEmpty) {
@@ -30,8 +31,11 @@ class SignupUseCase {
     if (gender.isEmpty) {
       return Left(AuthFailure(message: 'Gender cannot be empty'));
     }
-    if (countryId.isEmpty) {
-      return Left(AuthFailure(message: 'Country cannot be empty'));
+    if (ageGroupId.isEmpty) {
+      return Left(AuthFailure(message: 'Age group cannot be empty'));
+    }
+    if (ageGroupName.isEmpty) {
+      return Left(AuthFailure(message: 'Age group cannot be empty'));
     }
 
     // Checks password strength rules before submission.
@@ -56,7 +60,8 @@ class SignupUseCase {
       password: password,
       name: name,
       gender: gender,
-      countryId: countryId,
+      ageGroupId: ageGroupId,
+      ageGroupName: ageGroupName,
     );
   }
 }

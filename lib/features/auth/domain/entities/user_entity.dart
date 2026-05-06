@@ -7,7 +7,8 @@ class UserEntity {
   final String email;
   final String? name;
   final String? gender;
-  final String? countryId;
+  final String? ageGroupId;
+  final String? ageGroupName;
   final AppRole role;
   final bool isEmailVerified;
   final DateTime? createdAt;
@@ -19,7 +20,8 @@ class UserEntity {
     required this.email,
     this.name,
     this.gender,
-    this.countryId,
+    this.ageGroupId,
+    this.ageGroupName,
     this.role = AppRole.user,  // Default to user
     required this.isEmailVerified,
     this.createdAt,
@@ -38,7 +40,8 @@ class UserEntity {
       'email': email,
       'name': name,
       'gender': gender,
-      'countryId': countryId,
+      'ageGroupId': ageGroupId,
+      'ageGroupName': ageGroupName,
       'role': role.name,  // Store as string in Firebase
       'isEmailVerified': isEmailVerified,
       'createdAt': createdAt,
@@ -54,7 +57,8 @@ class UserEntity {
       email: json['email'] as String,
       name: json['name'] as String?,
       gender: json['gender'] as String?,
-      countryId: json['countryId'] as String?,
+      ageGroupId: json['ageGroupId'] as String?,
+      ageGroupName: json['ageGroupName'] as String?,
       role: RoleManager().fromString(json['role'] as String?),
       isEmailVerified: json['isEmailVerified'] as bool,
       createdAt: json['createdAt']?.toDate(),

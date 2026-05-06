@@ -11,7 +11,8 @@ class UserModel extends UserEntity {
     required super.email,
     super.name,
     super.gender,
-    super.countryId,
+    super.ageGroupId,
+    super.ageGroupName,
     super.role,
     required super.isEmailVerified,
     super.createdAt,
@@ -22,18 +23,17 @@ class UserModel extends UserEntity {
   factory UserModel.fromFirebase(User user, DocumentSnapshot? userDoc) {
     final roleManager = RoleManager();
 
-    // Safely get values with null handling
-    final name = userDoc != null ? userDoc.get('name') : null;
-    final gender = userDoc != null ? userDoc.get('gender') : null;
-    final countryId = userDoc != null ? userDoc.get('countryCurrencyId') : null;
-    final role = userDoc != null
-        ? userDoc.get('role') as String?
-        : null;
+    final data = userDoc?.data() as Map<String, dynamic>?;
+    final name = data?['name'] as String?;
+    final gender = data?['gender'] as String?;
+    final ageGroupId = data?['ageGroupId'] as String?;
+    final ageGroupName = data?['ageGroupName'] as String?;
+    final role = data?['role'] as String?;
 
     // Safely handle createdAt - might not exist
     DateTime? createdAt;
-    if (userDoc != null && userDoc.data() != null) {
-      final createdAtTimestamp = userDoc.get('createdAt');
+    if (data != null) {
+      final createdAtTimestamp = data['createdAt'];
       if (createdAtTimestamp != null && createdAtTimestamp is Timestamp) {
         createdAt = createdAtTimestamp.toDate();
       }
@@ -41,8 +41,8 @@ class UserModel extends UserEntity {
 
     // Safely handle lastLogin - might not exist
     DateTime? lastLogin;
-    if (userDoc != null && userDoc.data() != null) {
-      final lastLoginTimestamp = userDoc.get('lastLogin');
+    if (data != null) {
+      final lastLoginTimestamp = data['lastLogin'];
       if (lastLoginTimestamp != null && lastLoginTimestamp is Timestamp) {
         lastLogin = lastLoginTimestamp.toDate();
       }
@@ -54,7 +54,8 @@ class UserModel extends UserEntity {
       email: user.email ?? '',
       name: name,
       gender: gender,
-      countryId: countryId,
+      ageGroupId: ageGroupId,
+      ageGroupName: ageGroupName,
       role: roleManager.fromString(role ?? roleManager.getDefaultRole()),
       isEmailVerified: user.emailVerified,
       createdAt: createdAt,
@@ -68,7 +69,8 @@ class UserModel extends UserEntity {
       'name': name,
       'email': email,
       'gender': gender,
-      'countryCurrencyId': countryId,
+      'ageGroupId': ageGroupId,
+      'ageGroupName': ageGroupName,
       'role': role.name,
       'lastLogin': lastLogin,
     };

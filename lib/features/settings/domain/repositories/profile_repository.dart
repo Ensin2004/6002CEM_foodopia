@@ -12,6 +12,12 @@ abstract class ProfileRepository {
   Future<Either<Failure, void>> updateUserName(String uid, String name);
   /// Runs the update user gender operation.
   Future<Either<Failure, void>> updateUserGender(String uid, String gender);
+  /// Runs the update user age group operation.
+  Future<Either<Failure, void>> updateUserAgeGroup(
+    String uid,
+    String ageGroupId,
+    String ageGroupName,
+  );
   /// Runs the update profile image operation.
   Future<Either<Failure, void>> updateProfileImage(String uid, String imageUrl);
 }

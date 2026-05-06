@@ -13,9 +13,9 @@ class AuthRemoteDataSource {
     firebase_auth.FirebaseAuth? auth,
     FirebaseFirestore? firestore,
     FirebaseMessaging? fcm,
-  })  : _auth = auth ?? firebase_auth.FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _fcm = fcm ?? FirebaseMessaging.instance;
+  }) : _auth = auth ?? firebase_auth.FirebaseAuth.instance,
+       _firestore = firestore ?? FirebaseFirestore.instance,
+       _fcm = fcm ?? FirebaseMessaging.instance;
 
   // Keeps preferred 'login' naming
   Future<firebase_auth.UserCredential> login({
@@ -79,13 +79,13 @@ class AuthRemoteDataSource {
     return await _firestore.collection('users').doc(uid).get();
   }
 
-  /// Loads data for the get countries operation.
-  Future<QuerySnapshot> getCountries() async {
+  /// Loads configured age groups.
+  Future<QuerySnapshot> getAgeGroups() async {
     return await _firestore
-        .collection('support')
-        .doc('tropical_countries')
-        .collection('tropical_country_items')
-        .orderBy('country')
+        .collection('app_config')
+        .doc('age_groups')
+        .collection('items')
+        .orderBy('sortOrder')
         .get();
   }
 

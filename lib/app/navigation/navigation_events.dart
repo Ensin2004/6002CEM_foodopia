@@ -6,18 +6,10 @@
 // ============================================================================
 
 /// Authentication navigation events
-enum AuthNavigationEvent {
-  goToHome,
-  goToSignup,
-  goToLogin,
-  goToForgotPassword,
-}
+enum AuthNavigationEvent { goToHome, goToSignup, goToLogin, goToForgotPassword }
 
 /// Onboarding navigation events
-enum OnboardingNavigationEvent {
-  goToLogin,
-  goToSignup,
-}
+enum OnboardingNavigationEvent { goToLogin, goToSignup }
 
 /// Main/Home navigation events
 enum MainNavigationEvent {
@@ -39,6 +31,11 @@ enum SettingsNavigationEvent {
   goToFaq,
   goToRateUs,
   goToHelpCenter,
+  goToAgeGroups,
+  goToMealPreferences,
+  goToAllergies,
+  goToDislikes,
+  goToTargetCalories,
 }
 
 /// Common app navigation events
@@ -47,5 +44,5 @@ enum AppNavigationEvent {
   goToHome,
   goToLogin,
   goToOnboarding,
-  back,  // Generic back navigation
+  back, // Generic back navigation
 }

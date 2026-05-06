@@ -24,6 +24,8 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     /// Handles the app bar operation.
     return AppBar(
       backgroundColor: Theme.of(context).colorScheme.primary,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
       toolbarHeight: 56,
       automaticallyImplyLeading: false,
       titleSpacing: 0,
@@ -44,21 +46,23 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
           onTap: onSettingsTap,
           child: CircleAvatar(
             radius: 18,
-            backgroundColor: Theme.of(context).colorScheme.background,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             backgroundImage: profileImageUrl != null
                 ? NetworkImage(profileImageUrl!)
                 : null,
             child: profileImageUrl == null
                 ? Icon(
-              Icons.person,
-              color: Theme.of(context).colorScheme.primary,
-              size: 18,
-            )
+                    Icons.person,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 18,
+                  )
                 : null,
           ),
         ),
+
         /// Creates a sized box instance.
         const SizedBox(width: 12),
+
         /// Creates a text instance.
         Text(
           'Foodopia',
@@ -87,6 +91,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
         onPressed: onFavoritesTap,
         tooltip: 'Favorites',
       ),
+
       /// Creates a icon button instance.
       IconButton(
         icon: const Icon(Icons.notifications),

@@ -9,7 +9,7 @@ import '../../../../core/auth/role_manager.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../viewmodel/signup_viewmodel.dart';
-import '../widgets/country_picker_dialog.dart';
+import '../widgets/age_group_picker_dialog.dart';
 import '../widgets/curved_header.dart';
 import '../widgets/email_verification_dialog.dart';
 
@@ -50,9 +50,9 @@ class _SignupViewState extends State<_SignupView> {
   @override
   void initState() {
     super.initState();
-    // Load countries when screen initializes
+    // Load age groups when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<SignupViewModel>().loadCountries();
+      context.read<SignupViewModel>().loadAgeGroups();
     });
   }
 
@@ -90,47 +90,56 @@ class _SignupViewState extends State<_SignupView> {
                 onTrailingPressed: () => context.go(AppRouter.login),
                 trailingText: "Login",
               ),
+
               /// Creates a padding instance.
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
                     _buildTitle(context),
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Email Field
                     _buildEmailField(viewModel),
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Name Field
                     _buildNameField(viewModel),
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Gender Field
                     _buildGenderField(viewModel),
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
-                    // Country Field
-                    _buildCountryField(viewModel),
+                    // Age Group Field
+                    _buildAgeGroupField(viewModel),
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Password Field
                     _buildPasswordField(viewModel),
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Confirm Password Field
                     _buildConfirmPasswordField(viewModel),
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
                     // Terms and Conditions
                     _buildTermsField(viewModel),
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 24),
 
@@ -144,7 +153,9 @@ class _SignupViewState extends State<_SignupView> {
                     // Sign Up Button
                     PrimaryButton(
                       text: 'Sign Up',
-                      onPressed: viewModel.isLoading ? null : () => _handleSignup(context, viewModel),
+                      onPressed: viewModel.isLoading
+                          ? null
+                          : () => _handleSignup(context, viewModel),
                       isLoading: viewModel.isLoading,
                     ),
 
@@ -184,8 +195,10 @@ class _SignupViewState extends State<_SignupView> {
       children: [
         /// Creates a text instance.
         const Text("Email"),
+
         /// Creates a sized box instance.
         const SizedBox(height: 8),
+
         /// Creates a text field instance.
         TextField(
           controller: _emailController,
@@ -193,9 +206,7 @@ class _SignupViewState extends State<_SignupView> {
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.email),
             hintText: "e.g. john@example.com",
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             suffixIcon: IconButton(
               icon: const Icon(Icons.clear),
               onPressed: () {
@@ -232,17 +243,17 @@ class _SignupViewState extends State<_SignupView> {
       children: [
         /// Creates a text instance.
         const Text("Full Name"),
+
         /// Creates a sized box instance.
         const SizedBox(height: 8),
+
         /// Creates a text field instance.
         TextField(
           controller: _nameController,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.person),
             hintText: "e.g. John Doe",
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             suffixIcon: IconButton(
               icon: const Icon(Icons.clear),
               onPressed: () {
@@ -279,8 +290,10 @@ class _SignupViewState extends State<_SignupView> {
       children: [
         /// Creates a text instance.
         const Text("Gender"),
+
         /// Creates a sized box instance.
         const SizedBox(height: 8),
+
         /// Creates a row instance.
         Row(
           children: [
@@ -293,8 +306,10 @@ class _SignupViewState extends State<_SignupView> {
                 onTap: () => viewModel.selectGender("male"),
               ),
             ),
+
             /// Creates a sized box instance.
             const SizedBox(width: 8),
+
             /// Creates a expanded instance.
             Expanded(
               child: _buildGenderButton(
@@ -332,7 +347,9 @@ class _SignupViewState extends State<_SignupView> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+          color: selected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
           border: Border.all(
             color: selected
                 ? Theme.of(context).colorScheme.primary
@@ -354,19 +371,17 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
-
-  /// Handles the build country field operation.
-  Widget _buildCountryField(SignupViewModel viewModel) {
+  Widget _buildAgeGroupField(SignupViewModel viewModel) {
     /// Handles the column operation.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         /// Creates a text instance.
-        const Text("Country"),
+        const Text("Age Group"),
+
         /// Creates a sized box instance.
         const SizedBox(height: 8),
-        // Check if countries list is empty (loading state)
-        if (viewModel.countries.isEmpty)
+        if (viewModel.ageGroups.isEmpty)
           /// Creates a linear progress indicator instance.
           const LinearProgressIndicator()
         else
@@ -375,17 +390,13 @@ class _SignupViewState extends State<_SignupView> {
             onTap: () async {
               final picked = await showDialog<Map<String, dynamic>>(
                 context: context,
-                builder: (_) => CountryPickerDialog(
-                  items: viewModel.countries,  // Non-nullable field
-                  selectedId: viewModel.selectedCountryId,
+                builder: (_) => AgeGroupPickerDialog(
+                  items: viewModel.ageGroups,
+                  selectedId: viewModel.selectedAgeGroupId,
                 ),
               );
               if (picked != null) {
-                viewModel.selectCountry(
-                  picked['id'],
-                  picked['country'],
-                  picked['currency'],
-                );
+                viewModel.selectAgeGroup(picked['id'], picked['name']);
               }
             },
             child: InputDecorator(
@@ -395,23 +406,21 @@ class _SignupViewState extends State<_SignupView> {
                 ),
               ),
               child: Text(
-                viewModel.selectedCountryName != null
-                    ? "${viewModel.selectedCountryName} (${viewModel.selectedCurrency})"
-                    : "Select your country",
+                viewModel.selectedAgeGroupName ?? "Select your age group",
                 style: TextStyle(
-                  color: viewModel.selectedCountryName != null
+                  color: viewModel.selectedAgeGroupName != null
                       ? Theme.of(context).colorScheme.onSecondary
                       : Colors.grey,
                 ),
               ),
             ),
           ),
-        if (viewModel.countryTouched && viewModel.selectedCountryId == null)
+        if (viewModel.ageGroupTouched && viewModel.selectedAgeGroupId == null)
           /// Creates a padding instance.
           const Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text(
-              'Please select your country',
+              'Please select your age group',
               style: TextStyle(color: Colors.red, fontSize: 12),
             ),
           ),
@@ -427,8 +436,10 @@ class _SignupViewState extends State<_SignupView> {
       children: [
         /// Creates a text instance.
         const Text("Password"),
+
         /// Creates a sized box instance.
         const SizedBox(height: 8),
+
         /// Creates a text field instance.
         TextField(
           controller: _passwordController,
@@ -436,12 +447,12 @@ class _SignupViewState extends State<_SignupView> {
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.lock),
             hintText: "Create a strong password",
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             suffixIcon: IconButton(
               icon: Icon(
-                viewModel.obscurePassword ? Icons.visibility_off : Icons.visibility,
+                viewModel.obscurePassword
+                    ? Icons.visibility_off
+                    : Icons.visibility,
               ),
               onPressed: viewModel.togglePasswordVisibility,
             ),
@@ -464,10 +475,7 @@ class _SignupViewState extends State<_SignupView> {
                 /// Handles the padding operation.
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 2),
-                  child: Text(
-                    rule,
-                    style: const TextStyle(fontSize: 12),
-                  ),
+                  child: Text(rule, style: const TextStyle(fontSize: 12)),
                 );
               }).toList(),
             ),
@@ -493,8 +501,10 @@ class _SignupViewState extends State<_SignupView> {
       children: [
         /// Creates a text instance.
         const Text("Confirm Password"),
+
         /// Creates a sized box instance.
         const SizedBox(height: 8),
+
         /// Creates a text field instance.
         TextField(
           controller: _confirmPasswordController,
@@ -502,12 +512,12 @@ class _SignupViewState extends State<_SignupView> {
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.lock_outline),
             hintText: "Confirm your password",
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             suffixIcon: IconButton(
               icon: Icon(
-                viewModel.obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                viewModel.obscureConfirmPassword
+                    ? Icons.visibility_off
+                    : Icons.visibility,
               ),
               onPressed: viewModel.toggleConfirmPasswordVisibility,
             ),
@@ -547,6 +557,7 @@ class _SignupViewState extends State<_SignupView> {
               value: viewModel.acceptedTerms,
               onChanged: viewModel.toggleTermsAccepted,
             ),
+
             /// Creates a expanded instance.
             Expanded(
               child: RichText(
@@ -555,6 +566,7 @@ class _SignupViewState extends State<_SignupView> {
                   children: [
                     /// Creates a text span instance.
                     const TextSpan(text: "I accept the "),
+
                     /// Creates a text span instance.
                     TextSpan(
                       text: "Terms and Conditions",
@@ -565,8 +577,10 @@ class _SignupViewState extends State<_SignupView> {
                       recognizer: TapGestureRecognizer()
                         ..onTap = () => _showTermsAndConditions(context),
                     ),
+
                     /// Creates a text span instance.
                     const TextSpan(text: " and "),
+
                     /// Creates a text span instance.
                     TextSpan(
                       text: "Privacy Policy",
@@ -577,6 +591,7 @@ class _SignupViewState extends State<_SignupView> {
                       recognizer: TapGestureRecognizer()
                         ..onTap = () => _showPrivacyPolicy(context),
                     ),
+
                     /// Creates a text span instance.
                     const TextSpan(text: "."),
                   ],
@@ -612,14 +627,13 @@ class _SignupViewState extends State<_SignupView> {
         children: [
           /// Creates a icon instance.
           Icon(Icons.error_outline, color: Colors.red.shade700),
+
           /// Creates a sized box instance.
           const SizedBox(width: 8),
+
           /// Creates a expanded instance.
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: Colors.red.shade700),
-            ),
+            child: Text(message, style: TextStyle(color: Colors.red.shade700)),
           ),
         ],
       ),
@@ -634,6 +648,7 @@ class _SignupViewState extends State<_SignupView> {
       children: [
         /// Creates a text instance.
         const Text("Already have an account?"),
+
         /// Creates a text button instance.
         TextButton(
           onPressed: () {
@@ -668,15 +683,17 @@ class _SignupViewState extends State<_SignupView> {
   }
 
   /// Handles the handle signup operation.
-  Future<void> _handleSignup(BuildContext context, SignupViewModel viewModel) async {
-    // Check if country is selected first
-    final countryId = viewModel.selectedCountryId;
+  Future<void> _handleSignup(
+    BuildContext context,
+    SignupViewModel viewModel,
+  ) async {
+    final ageGroupId = viewModel.selectedAgeGroupId;
 
-    if (countryId == null) {
+    if (ageGroupId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         /// Creates a snack bar instance.
         const SnackBar(
-          content: Text('Please select a country'),
+          content: Text('Please select an age group'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 2),
         ),
@@ -696,6 +713,7 @@ class _SignupViewState extends State<_SignupView> {
     final password = _passwordController.text.trim();
     final name = _nameController.text.trim();
     final gender = viewModel.selectedGender;
+    final ageGroupName = viewModel.selectedAgeGroupName ?? '';
 
     // Call ViewModel with data
     final user = await viewModel.signup(
@@ -703,7 +721,8 @@ class _SignupViewState extends State<_SignupView> {
       password: password,
       name: name,
       gender: gender,
-      countryId: countryId,
+      ageGroupId: ageGroupId,
+      ageGroupName: ageGroupName,
     );
 
     // Close loading dialog
@@ -738,11 +757,8 @@ class _SignupViewState extends State<_SignupView> {
     final roleString = roleManager.roleToString(user.role);
 
     context.go(
-      AppRouter.home,
-      extra: HomeArgs(
-        user: user,
-        role: roleString,
-      ),
+      AppRouter.setupDiet,
+      extra: UserSetupArgs(uid: user.uid, user: user, role: roleString),
     );
   }
 }

@@ -22,8 +22,8 @@ import 'package:get_it/get_it.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:http/http.dart' as http;
 
 // ============================================================================
 // DATA LAYER IMPORTS
@@ -32,8 +32,14 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../core/services/network_info.dart';
 
 // Auth Feature - Data Layer
+import '../../features/admin_home/data/datasources/admin_home_mock_datasource.dart';
+import '../../features/admin_home/data/repositories/admin_home_repository_impl.dart';
+import '../../features/admin_manage/data/datasources/admin_manage_remote_datasource.dart';
+import '../../features/admin_manage/data/repositories/admin_manage_repository_impl.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/user_setup/data/datasources/user_setup_remote_datasource.dart';
+import '../../features/user_setup/data/repositories/user_setup_repository_impl.dart';
 
 // Main Feature - Data Layer
 import '../../features/main/data/datasources/main_remote_datasource.dart';
@@ -64,11 +70,24 @@ import '../../features/settings/data/repositories/about_repository_impl.dart';
 // DOMAIN LAYER IMPORTS
 // ============================================================================
 // Auth Feature - Domain Layer
+import '../../features/admin_home/domain/repositories/admin_home_repository.dart';
+import '../../features/admin_home/domain/usecases/get_admin_home_dashboard_usecase.dart';
+import '../../features/admin_manage/domain/repositories/admin_manage_repository.dart';
+import '../../features/admin_manage/domain/usecases/delete_admin_manage_item_usecase.dart';
+import '../../features/admin_manage/domain/usecases/get_admin_manage_items_usecase.dart';
+import '../../features/admin_manage/domain/usecases/save_admin_manage_item_usecase.dart';
+import '../../features/admin_manage/domain/usecases/seed_admin_manage_defaults_usecase.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/signup_usecase.dart';
-import '../../features/auth/domain/usecases/get_countries_usecase.dart';
+import '../../features/auth/domain/usecases/get_age_groups_usecase.dart';
 import '../../features/auth/domain/usecases/verify_email_usecase.dart';
+import '../../features/user_setup/domain/repositories/user_setup_repository.dart';
+import '../../features/user_setup/domain/usecases/get_user_setup_options_usecase.dart';
+import '../../features/user_setup/domain/usecases/get_user_setup_preferences_usecase.dart';
+import '../../features/user_setup/domain/usecases/get_user_setup_status_usecase.dart';
+import '../../features/user_setup/domain/usecases/save_user_setup_preferences_usecase.dart';
+import '../../features/user_setup/domain/usecases/search_user_setup_foods_usecase.dart';
 
 // Main Feature - Domain Layer
 import '../../features/main/domain/repositories/main_repository.dart';
@@ -99,6 +118,7 @@ import '../../features/settings/domain/usecases/support/faq/get_user_faq_items_u
 import '../../features/settings/domain/usecases/support/rating/get_user_rating_usecase.dart';
 import '../../features/settings/domain/usecases/support/rating/save_rating_usecase.dart';
 import '../../features/settings/domain/usecases/support/faq/upload_faq_image_usecase.dart';
+import '../../features/settings/domain/usecases/account/update_user_age_group_usecase.dart';
 import '../../features/settings/domain/usecases/account/update_user_name_usecase.dart';
 import '../../features/settings/domain/usecases/account/update_user_gender_usecase.dart';
 import '../../features/settings/domain/usecases/account/update_profile_image_usecase.dart';
@@ -115,6 +135,7 @@ import '../../features/settings/domain/usecases/about/get_about_content_usecase.
 // PRESENTATION LAYER IMPORTS
 // ============================================================================
 // Auth Feature - Presentation Layer
+import '../../features/admin_manage/presentation/viewmodel/admin_manage_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/login_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/signup_viewmodel.dart';
 
@@ -144,20 +165,71 @@ Future<void> initDependencies() async {
   _initCore();
 
   // 3. Initialize feature-specific dependencies
-  _initAuthFeature();        // Authentication feature
-  _initOnboardingFeature();  // Onboarding feature
-  _initMainFeature();        // Main feature
-  _initSettingsFeature();    // Settings feature
-  _initProfileFeature();     // Profile/Edit Profile feature
-  _initPasswordFeature();    // Password/Change Password feature
-  _initAboutFeature();       // About feature (About Us, Terms, Privacy)
+  _initAuthFeature(); // Authentication feature
+  _initOnboardingFeature(); // Onboarding feature
+  _initMainFeature(); // Main feature
+  _initSettingsFeature(); // Settings feature
+  _initProfileFeature(); // Profile/Edit Profile feature
+  _initPasswordFeature(); // Password/Change Password feature
+  _initAboutFeature(); // About feature (About Us, Terms, Privacy)
   _initHelpCenterFeature();
   _initRatingFeature();
   _initFaqFeature();
+  _initAdminManageFeature();
+  _initAdminHomeFeature();
+  _initUserSetupFeature();
 
   // Add new features here as the app grows
   // _initRecipeFeature();
   // _initMealPlanFeature();
+}
+
+void _initUserSetupFeature() {
+  sl.registerLazySingleton(
+    () => UserSetupRemoteDataSource(firestore: sl(), client: sl()),
+  );
+
+  sl.registerLazySingleton<UserSetupRepository>(
+    () => UserSetupRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetUserSetupOptionsUseCase(sl()));
+  sl.registerLazySingleton(() => SearchUserSetupFoodsUseCase(sl()));
+  sl.registerLazySingleton(() => GetUserSetupPreferencesUseCase(sl()));
+  sl.registerLazySingleton(() => SaveUserSetupPreferencesUseCase(sl()));
+  sl.registerLazySingleton(() => GetUserSetupStatusUseCase(sl()));
+}
+
+void _initAdminHomeFeature() {
+  sl.registerLazySingleton(() => AdminHomeMockDataSource());
+
+  sl.registerLazySingleton<AdminHomeRepository>(
+    () => AdminHomeRepositoryImpl(mockDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetAdminHomeDashboardUseCase(sl()));
+}
+
+void _initAdminManageFeature() {
+  sl.registerLazySingleton(() => AdminManageRemoteDataSource(firestore: sl()));
+
+  sl.registerLazySingleton<AdminManageRepository>(
+    () => AdminManageRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetAdminManageItemsUseCase(sl()));
+  sl.registerLazySingleton(() => SaveAdminManageItemUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteAdminManageItemUseCase(sl()));
+  sl.registerLazySingleton(() => SeedAdminManageDefaultsUseCase(sl()));
+
+  sl.registerFactory(
+    () => AdminManageViewModel(
+      getItemsUseCase: sl(),
+      saveItemUseCase: sl(),
+      deleteItemUseCase: sl(),
+      seedDefaultsUseCase: sl(),
+    ),
+  );
 }
 
 // ============================================================================
@@ -170,9 +242,12 @@ Future<void> _initExternal() async {
   // FIREBASE SERVICES
   // --------------------------------------------------------------------------
   // Used for: Authentication, Database, Push Notifications
-  sl.registerLazySingleton(() => FirebaseAuth.instance);        // User auth
-  sl.registerLazySingleton(() => FirebaseFirestore.instance);  // Cloud database
-  sl.registerLazySingleton(() => FirebaseMessaging.instance);   // Push notifications
+  sl.registerLazySingleton(() => FirebaseAuth.instance); // User auth
+  sl.registerLazySingleton(() => FirebaseFirestore.instance); // Cloud database
+  sl.registerLazySingleton(
+    () => FirebaseMessaging.instance,
+  ); // Push notifications
+  sl.registerLazySingleton(() => http.Client());
 
   // --------------------------------------------------------------------------
   // CONNECTIVITY
@@ -191,9 +266,9 @@ void _initCore() {
   // --------------------------------------------------------------------------
   // Used for: Checking if device has internet connection
   // Dependencies: Connectivity
-  sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(
-    connectivity: sl(),
-  ));
+  sl.registerLazySingleton<NetworkInfo>(
+    () => NetworkInfoImpl(connectivity: sl()),
+  );
 }
 
 // ============================================================================
@@ -212,11 +287,9 @@ void _initAuthFeature() {
   // --------------------------------------------------------------------------
   // Responsible for: Making actual API calls to Firebase
   // Depends on: Firebase services
-  sl.registerLazySingleton(() => AuthRemoteDataSource(
-    auth: sl(),
-    firestore: sl(),
-    fcm: sl(),
-  ));
+  sl.registerLazySingleton(
+    () => AuthRemoteDataSource(auth: sl(), firestore: sl(), fcm: sl()),
+  );
 
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
@@ -224,9 +297,9 @@ void _initAuthFeature() {
   // Responsible for: Converting data between domain and data sources
   // Implements: AuthRepository interface
   // Depends on: AuthRemoteDataSource
-  sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(
-    remoteDataSource: sl(),
-  ));
+  sl.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(remoteDataSource: sl()),
+  );
 
   // --------------------------------------------------------------------------
   // 3. USE CASES (Business Logic Layer)
@@ -241,8 +314,8 @@ void _initAuthFeature() {
   // Signup - Handles user registration logic
   sl.registerLazySingleton(() => SignupUseCase(sl()));
 
-  // Get Countries - Fetches list of countries from Firestore
-  sl.registerLazySingleton(() => GetCountriesUseCase(sl()));
+  // Get Age Groups - Fetches configurable age groups from Firestore
+  sl.registerLazySingleton(() => GetAgeGroupsUseCase(sl()));
 
   // Verify Email - Checks if user's email is verified
   sl.registerLazySingleton(() => VerifyEmailUseCase(sl()));
@@ -256,17 +329,18 @@ void _initAuthFeature() {
   // Depends on: Use Cases and Repositories
 
   // Login ViewModel - Manages login screen state
-  sl.registerFactory(() => LoginViewModel(
-    loginUseCase: sl(),
-    authRepository: sl(),
-  ));
+  sl.registerFactory(
+    () => LoginViewModel(loginUseCase: sl(), authRepository: sl()),
+  );
 
   // Signup ViewModel - Manages signup screen state
-  sl.registerFactory(() => SignupViewModel(
-    signupUseCase: sl(),
-    getCountriesUseCase: sl(),
-    authRepository: sl(),
-  ));
+  sl.registerFactory(
+    () => SignupViewModel(
+      signupUseCase: sl(),
+      getAgeGroupsUseCase: sl(),
+      authRepository: sl(),
+    ),
+  );
 }
 
 // ============================================================================
@@ -301,18 +375,16 @@ void _initMainFeature() {
   // 1. DATA SOURCES (External Communication Layer)
   // --------------------------------------------------------------------------
   // Responsible for: Making Firestore calls for user profile data
-  sl.registerLazySingleton(() => MainRemoteDataSource(
-    firestore: sl(),
-  ));
+  sl.registerLazySingleton(() => MainRemoteDataSource(firestore: sl()));
 
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
   // --------------------------------------------------------------------------
   // Responsible for: Converting data between domain and data sources
   // Implements: MainRepository interface
-  sl.registerLazySingleton<MainRepository>(() => MainRepositoryImpl(
-    remoteDataSource: sl(),
-  ));
+  sl.registerLazySingleton<MainRepository>(
+    () => MainRepositoryImpl(remoteDataSource: sl()),
+  );
 
   // --------------------------------------------------------------------------
   // 3. VIEWMODELS (UI State Management Layer)
@@ -320,10 +392,12 @@ void _initMainFeature() {
   // Main ViewModel - Manages main page state (tab index, profile image, etc.)
   // Uses registerFactory because each main page needs its own instance
   // Note: user parameter will be passed from the screen, not from DI
-  sl.registerFactory(() => MainViewModel(
-    user: sl(),      // This will be overridden when creating
-    repository: sl(),
-  ));
+  sl.registerFactory(
+    () => MainViewModel(
+      user: sl(), // This will be overridden when creating
+      repository: sl(),
+    ),
+  );
 }
 
 // ============================================================================
@@ -362,19 +436,18 @@ void _initProfileFeature() {
   // --------------------------------------------------------------------------
   // Responsible for: Making Firestore and Firebase Auth calls for profile data
   // Also handles Cloudinary image upload
-  sl.registerLazySingleton(() => ProfileRemoteDataSource(
-    firestore: sl(),
-    auth: sl(),
-  ));
+  sl.registerLazySingleton(
+    () => ProfileRemoteDataSource(firestore: sl(), auth: sl()),
+  );
 
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
   // --------------------------------------------------------------------------
   // Responsible for: Converting data between domain and data sources
   // Implements: ProfileRepository interface
-  sl.registerLazySingleton<ProfileRepository>(() => ProfileRepositoryImpl(
-    remoteDataSource: sl(),
-  ));
+  sl.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(remoteDataSource: sl()),
+  );
 
   // --------------------------------------------------------------------------
   // 3. USE CASES (Business Logic Layer)
@@ -391,6 +464,9 @@ void _initProfileFeature() {
 
   // Update User Gender - Updates user's gender
   sl.registerLazySingleton(() => UpdateUserGenderUseCase(sl()));
+
+  // Update User Age Group - Updates user's selected age group
+  sl.registerLazySingleton(() => UpdateUserAgeGroupUseCase(sl()));
 
   // Update Profile Image - Uploads and updates profile picture
   sl.registerLazySingleton(() => UpdateProfileImageUseCase(sl()));
@@ -418,18 +494,16 @@ void _initPasswordFeature() {
   // --------------------------------------------------------------------------
   // Responsible for: Making Firebase Auth calls for password changes
   // Handles re-authentication and password update
-  sl.registerLazySingleton(() => PasswordRemoteDataSource(
-    auth: sl(),
-  ));
+  sl.registerLazySingleton(() => PasswordRemoteDataSource(auth: sl()));
 
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
   // --------------------------------------------------------------------------
   // Responsible for: Converting data between domain and data sources
   // Implements: PasswordRepository interface
-  sl.registerLazySingleton<PasswordRepository>(() => PasswordRepositoryImpl(
-    remoteDataSource: sl(),
-  ));
+  sl.registerLazySingleton<PasswordRepository>(
+    () => PasswordRepositoryImpl(remoteDataSource: sl()),
+  );
 
   // --------------------------------------------------------------------------
   // 3. USE CASES (Business Logic Layer)
@@ -463,18 +537,16 @@ void _initAboutFeature() {
   // 1. DATA SOURCES (External Communication Layer)
   // --------------------------------------------------------------------------
   // Responsible for: Making Firestore calls for about content
-  sl.registerLazySingleton(() => AboutRemoteDataSource(
-    firestore: sl(),
-  ));
+  sl.registerLazySingleton(() => AboutRemoteDataSource(firestore: sl()));
 
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
   // --------------------------------------------------------------------------
   // Responsible for: Converting data between domain and data sources
   // Implements: AboutRepository interface
-  sl.registerLazySingleton<AboutRepository>(() => AboutRepositoryImpl(
-    remoteDataSource: sl(),
-  ));
+  sl.registerLazySingleton<AboutRepository>(
+    () => AboutRepositoryImpl(remoteDataSource: sl()),
+  );
 
   // --------------------------------------------------------------------------
   // 3. USE CASES (Business Logic Layer)
@@ -487,7 +559,9 @@ void _initAboutFeature() {
   sl.registerLazySingleton(() => GetAboutContentUseCase(sl()));
 
   // Save About Content - Saves/Updates about content in Firestore (creates if not exists)
-  sl.registerLazySingleton(() => SaveAboutContentUseCase(sl()));  // Changed from Update to Save
+  sl.registerLazySingleton(
+    () => SaveAboutContentUseCase(sl()),
+  ); // Changed from Update to Save
 
   // --------------------------------------------------------------------------
   // NOTE: AboutViewerViewModel and AboutEditorViewModel are NOT registered here because:
@@ -510,17 +584,16 @@ void _initHelpCenterFeature() {
   // --------------------------------------------------------------------------
   // 1. DATA SOURCES (External Communication Layer)
   // --------------------------------------------------------------------------
-  sl.registerLazySingleton(() => HelpCenterRemoteDataSource(
-    firestore: sl(),
-    auth: sl(),
-  ));
+  sl.registerLazySingleton(
+    () => HelpCenterRemoteDataSource(firestore: sl(), auth: sl()),
+  );
 
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
   // --------------------------------------------------------------------------
-  sl.registerLazySingleton<HelpCenterRepository>(() => HelpCenterRepositoryImpl(
-    remoteDataSource: sl(),
-  ));
+  sl.registerLazySingleton<HelpCenterRepository>(
+    () => HelpCenterRepositoryImpl(remoteDataSource: sl()),
+  );
 
   // --------------------------------------------------------------------------
   // 3. USE CASES (Business Logic Layer)
@@ -536,15 +609,14 @@ void _initHelpCenterFeature() {
 /// Handles the init rating feature operation.
 void _initRatingFeature() {
   // Data Source
-  sl.registerLazySingleton(() => RatingRemoteDataSource(
-    firestore: sl(),
-    auth: sl(),
-  ));
+  sl.registerLazySingleton(
+    () => RatingRemoteDataSource(firestore: sl(), auth: sl()),
+  );
 
   // Repository
-  sl.registerLazySingleton<RatingRepository>(() => RatingRepositoryImpl(
-    remoteDataSource: sl(),
-  ));
+  sl.registerLazySingleton<RatingRepository>(
+    () => RatingRepositoryImpl(remoteDataSource: sl()),
+  );
 
   // Use Cases
   sl.registerLazySingleton(() => GetUserRatingUseCase(sl()));
@@ -557,14 +629,12 @@ void _initRatingFeature() {
 /// Handles the init faq feature operation.
 void _initFaqFeature() {
   // Data Source
-  sl.registerLazySingleton(() => FaqRemoteDataSource(
-    firestore: sl(),
-  ));
+  sl.registerLazySingleton(() => FaqRemoteDataSource(firestore: sl()));
 
   // Repository
-  sl.registerLazySingleton<FaqRepository>(() => FaqRepositoryImpl(
-    remoteDataSource: sl(),
-  ));
+  sl.registerLazySingleton<FaqRepository>(
+    () => FaqRepositoryImpl(remoteDataSource: sl()),
+  );
 
   // Use Cases
   sl.registerLazySingleton(() => GetUserFaqItemsUseCase(sl()));
@@ -574,8 +644,6 @@ void _initFaqFeature() {
   sl.registerLazySingleton(() => DeleteFaqItemUseCase(sl()));
   sl.registerLazySingleton(() => UploadFaqImageUseCase(sl()));
 }
-
-
 
 // ============================================================================
 // FUTURE FEATURES - TEMPLATES

@@ -14,6 +14,10 @@ class SharedPrefsManager {
   // Keys
   static const String _keyOnboardingDone = 'onboarding_done';
   static const String _keyNotificationsEnabled = 'notifications_enabled';
+  static const String _keyNewFollowerNotification = 'notification_new_follower';
+  static const String _keyNewRatingNotification = 'notification_new_rating';
+  static const String _keyPlanReminderNotification =
+      'notification_plan_reminder';
 
   /// Initialize the manager (call once in main.dart)
   static Future<void> init() async {
@@ -23,7 +27,10 @@ class SharedPrefsManager {
   /// Get the instance (ensure init() is called first)
   static SharedPreferences get instance {
     /// Creates a assert instance.
-    assert(_prefs != null, 'SharedPrefsManager not initialized. Call init() first.');
+    assert(
+      _prefs != null,
+      'SharedPrefsManager not initialized. Call init() first.',
+    );
     return _prefs!;
   }
 
@@ -59,6 +66,32 @@ class SharedPrefsManager {
   /// Set notification enabled status
   static Future<void> setNotificationEnabled(bool enabled) async {
     await _prefs?.setBool(_keyNotificationsEnabled, enabled);
+  }
+
+  /// Get one notification setting by menu id.
+  static bool isNotificationTypeEnabled(String id) {
+    return _prefs?.getBool(_notificationKeyFor(id)) ?? isNotificationEnabled();
+  }
+
+  /// Set one notification setting by menu id.
+  static Future<void> setNotificationTypeEnabled(
+    String id,
+    bool enabled,
+  ) async {
+    await _prefs?.setBool(_notificationKeyFor(id), enabled);
+  }
+
+  static String _notificationKeyFor(String id) {
+    switch (id) {
+      case 'new_follower_notification':
+        return _keyNewFollowerNotification;
+      case 'new_rating_notification':
+        return _keyNewRatingNotification;
+      case 'plan_reminder_notification':
+        return _keyPlanReminderNotification;
+      default:
+        return 'notification_$id';
+    }
   }
 
   // ============================================================

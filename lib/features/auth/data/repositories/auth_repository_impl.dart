@@ -69,7 +69,8 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
     required String name,
     required String gender,
-    required String countryId,
+    required String ageGroupId,
+    required String ageGroupName,
   }) async {
     try {
       // Runs the guarded operation that can throw.
@@ -91,7 +92,8 @@ class AuthRepositoryImpl implements AuthRepository {
           'name': name,
           'email': email,
           'gender': gender,
-          'countryCurrencyId': countryId,
+          'ageGroupId': ageGroupId,
+          'ageGroupName': ageGroupName,
           'createdAt': FieldValue.serverTimestamp(),
           'fcmTokens': fcmToken != null ? [fcmToken] : [],
           'role': RoleManager().getDefaultRole(),
@@ -174,23 +176,26 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  /// Loads data for the get countries operation.
+  /// Loads configured age groups.
   @override
-  Future<Either<AuthFailure, List<Map<String, dynamic>>>> getCountries() async {
+  Future<Either<AuthFailure, List<Map<String, dynamic>>>> getAgeGroups() async {
     try {
-      // Runs the guarded operation that can throw.
-      final snapshot = await remoteDataSource.getCountries();
-      final countries = snapshot.docs.map((doc) {
+      final snapshot = await remoteDataSource.getAgeGroups();
+      final ageGroups = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        final country = data['country']?.toString() ?? '';
-        final currency = data['currency']?.toString() ?? '';
+        final name = data['name']?.toString() ?? '';
+        final description = data['description']?.toString() ?? '';
+        final sortOrder = data['sortOrder'] is int ? data['sortOrder'] as int : 0;
+        final isActive = data['isActive'] is bool ? data['isActive'] as bool : true;
         return {
           'id': doc.id,
-          'country': country,
-          'currency': currency
+          'name': name,
+          'description': description,
+          'sortOrder': sortOrder,
+          'isActive': isActive,
         };
-      }).toList();
-      return Right(countries);
+      }).where((item) => item['isActive'] == true).toList();
+      return Right(ageGroups);
     } catch (e) {
       return Left(AuthFailure(message: e.toString()));
     }

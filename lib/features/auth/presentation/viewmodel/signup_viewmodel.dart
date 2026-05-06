@@ -4,13 +4,13 @@ import 'package:email_validator/email_validator.dart';
 import '../../../../core/services/shared_prefs_manager.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
-import '../../domain/usecases/get_countries_usecase.dart';
+import '../../domain/usecases/get_age_groups_usecase.dart';
 import '../../domain/usecases/signup_usecase.dart';
 
 /// Runs the signup view model operation.
 class SignupViewModel extends ChangeNotifier {
   final SignupUseCase _signupUseCase;
-  final GetCountriesUseCase _getCountriesUseCase;
+  final GetAgeGroupsUseCase _getAgeGroupsUseCase;
   final AuthRepository _authRepository;
 
   // Form state
@@ -24,12 +24,10 @@ class SignupViewModel extends ChangeNotifier {
   bool _obscureConfirmPassword = true;
   bool _acceptedTerms = false;
   String _selectedGender = '';
-  String? _selectedCountryId;
-  String? _selectedCountryName;
-  String? _selectedCurrency;
+  String? _selectedAgeGroupId;
+  String? _selectedAgeGroupName;
 
-  // Countries list
-  List<Map<String, dynamic>> _countries = [];
+  List<Map<String, dynamic>> _ageGroups = [];
 
   // Validation flags
   bool _nameTouched = false;
@@ -37,16 +35,16 @@ class SignupViewModel extends ChangeNotifier {
   bool _passwordTouched = false;
   bool _confirmTouched = false;
   bool _genderTouched = false;
-  bool _countryTouched = false;
+  bool _ageGroupTouched = false;
   bool _termsTouched = false;
 
   /// Runs the signup view model operation.
   SignupViewModel({
     required SignupUseCase signupUseCase,
-    required GetCountriesUseCase getCountriesUseCase,
+    required GetAgeGroupsUseCase getAgeGroupsUseCase,
     required AuthRepository authRepository,
   })  : _signupUseCase = signupUseCase,
-        _getCountriesUseCase = getCountriesUseCase,
+        _getAgeGroupsUseCase = getAgeGroupsUseCase,
         _authRepository = authRepository;
 
   // Getters
@@ -63,14 +61,9 @@ class SignupViewModel extends ChangeNotifier {
   bool get acceptedTerms => _acceptedTerms;
   /// Handles the selected gender operation.
   String get selectedGender => _selectedGender;
-  /// Handles the selected country id operation.
-  String? get selectedCountryId => _selectedCountryId;
-  /// Handles the selected country name operation.
-  String? get selectedCountryName => _selectedCountryName;
-  /// Handles the selected currency operation.
-  String? get selectedCurrency => _selectedCurrency;
-  /// Handles the countries operation.
-  List<Map<String, dynamic>> get countries => _countries;
+  String? get selectedAgeGroupId => _selectedAgeGroupId;
+  String? get selectedAgeGroupName => _selectedAgeGroupName;
+  List<Map<String, dynamic>> get ageGroups => _ageGroups;
 
   // Validation getters
   bool get nameTouched => _nameTouched;
@@ -82,8 +75,7 @@ class SignupViewModel extends ChangeNotifier {
   bool get confirmTouched => _confirmTouched;
   /// Handles the gender touched operation.
   bool get genderTouched => _genderTouched;
-  /// Handles the country touched operation.
-  bool get countryTouched => _countryTouched;
+  bool get ageGroupTouched => _ageGroupTouched;
   /// Handles the terms touched operation.
   bool get termsTouched => _termsTouched;
 
@@ -94,7 +86,7 @@ class SignupViewModel extends ChangeNotifier {
         _password.trim().isNotEmpty &&
         _confirmPassword.trim().isNotEmpty &&
         _selectedGender.isNotEmpty &&
-        _selectedCountryId != null &&
+        _selectedAgeGroupId != null &&
         _acceptedTerms &&
         _isPasswordValid &&
         _doPasswordsMatch;
@@ -254,12 +246,10 @@ class SignupViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Handles the select country operation.
-  void selectCountry(String id, String name, String currency) {
-    _selectedCountryId = id;
-    _selectedCountryName = name;
-    _selectedCurrency = currency;
-    _countryTouched = true;
+  void selectAgeGroup(String id, String name) {
+    _selectedAgeGroupId = id;
+    _selectedAgeGroupName = name;
+    _ageGroupTouched = true;
     notifyListeners();
   }
 
@@ -293,9 +283,8 @@ class SignupViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Handles the mark country touched operation.
-  void markCountryTouched() {
-    _countryTouched = true;
+  void markAgeGroupTouched() {
+    _ageGroupTouched = true;
     notifyListeners();
   }
 
@@ -311,48 +300,35 @@ class SignupViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Load countries from Firestore
-  Future<void> loadCountries() async {
-    final result = await _getCountriesUseCase.execute();
+  Future<void> loadAgeGroups() async {
+    final result = await _getAgeGroupsUseCase.execute();
 
     result.fold(
           (failure) {
-        // If Firestore fails, use mock data
-        print('⚠️ Failed to load countries: ${failure.message}');
-        _loadMockCountries();  // Loads mock data
+        debugPrint('Failed to load age groups: ${failure.message}');
+        _loadDefaultAgeGroups();
         notifyListeners();
       },
-          (countries) {
-        if (countries.isEmpty) {
-          _loadMockCountries();  // Loads mock data if empty
+          (ageGroups) {
+        if (ageGroups.isEmpty) {
+          _loadDefaultAgeGroups();
         } else {
-          _countries = countries;
+          _ageGroups = ageGroups;
         }
         notifyListeners();
       },
     );
   }
 
-// Adds this method to provide mock country data
-  void _loadMockCountries() {
-    _countries = [
-      {'id': '1', 'country': 'United States', 'currency': 'USD'},
-      {'id': '2', 'country': 'United Kingdom', 'currency': 'GBP'},
-      {'id': '3', 'country': 'Canada', 'currency': 'CAD'},
-      {'id': '4', 'country': 'Australia', 'currency': 'AUD'},
-      {'id': '5', 'country': 'Germany', 'currency': 'EUR'},
-      {'id': '6', 'country': 'France', 'currency': 'EUR'},
-      {'id': '7', 'country': 'Japan', 'currency': 'JPY'},
-      {'id': '8', 'country': 'Singapore', 'currency': 'SGD'},
-      {'id': '9', 'country': 'Malaysia', 'currency': 'MYR'},
-      {'id': '10', 'country': 'Thailand', 'currency': 'THB'},
-      {'id': '11', 'country': 'Vietnam', 'currency': 'VND'},
-      {'id': '12', 'country': 'Indonesia', 'currency': 'IDR'},
-      {'id': '13', 'country': 'Philippines', 'currency': 'PHP'},
-      {'id': '14', 'country': 'India', 'currency': 'INR'},
-      {'id': '15', 'country': 'Brazil', 'currency': 'BRL'},
+  void _loadDefaultAgeGroups() {
+    _ageGroups = [
+      {'id': 'children', 'name': 'Children', 'description': 'Under 13', 'sortOrder': 1, 'isActive': true},
+      {'id': 'teens', 'name': 'Teens', 'description': '13-17', 'sortOrder': 2, 'isActive': true},
+      {'id': 'young_adults', 'name': 'Young Adults', 'description': '18-25', 'sortOrder': 3, 'isActive': true},
+      {'id': 'adults', 'name': 'Adults', 'description': '26-59', 'sortOrder': 4, 'isActive': true},
+      {'id': 'seniors', 'name': 'Seniors', 'description': '60+', 'sortOrder': 5, 'isActive': true},
     ];
-    print('📱 Loaded ${_countries.length} mock countries');
+    debugPrint('Loaded ${_ageGroups.length} default age groups');
   }
 
 
@@ -362,7 +338,8 @@ class SignupViewModel extends ChangeNotifier {
     required String password,
     required String name,
     required String gender,
-    required String countryId,
+    required String ageGroupId,
+    required String ageGroupName,
   }) async {
     // Mark all fields as touched
     _nameTouched = true;
@@ -370,7 +347,7 @@ class SignupViewModel extends ChangeNotifier {
     _passwordTouched = true;
     _confirmTouched = true;
     _genderTouched = true;
-    _countryTouched = true;
+    _ageGroupTouched = true;
     _termsTouched = true;
     notifyListeners();
 
@@ -390,7 +367,8 @@ class SignupViewModel extends ChangeNotifier {
       password: password,
       name: name,
       gender: gender,
-      countryId: countryId,
+      ageGroupId: ageGroupId,
+      ageGroupName: ageGroupName,
     );
 
     return await result.fold<Future<UserEntity?>>(

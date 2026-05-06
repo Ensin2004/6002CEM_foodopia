@@ -11,6 +11,8 @@ class UserProfileModel extends UserProfile {
     required super.email,
     required super.name,
     required super.gender,
+    required super.ageGroupId,
+    required super.ageGroupName,
     super.profileImageUrl,
     super.updatedAt,
   });
@@ -24,6 +26,8 @@ class UserProfileModel extends UserProfile {
       email: data['email'] ?? '',
       name: data['name'] ?? '',
       gender: data['gender'] ?? '',
+      ageGroupId: data['ageGroupId'] ?? '',
+      ageGroupName: data['ageGroupName'] ?? '',
       profileImageUrl: data['profileImage'],
       updatedAt: data['updatedAt'] != null
           ? (data['updatedAt'] as Timestamp).toDate()
@@ -36,6 +40,8 @@ class UserProfileModel extends UserProfile {
     return {
       'name': name,
       'gender': gender,
+      'ageGroupId': ageGroupId,
+      'ageGroupName': ageGroupName,
       if (profileImageUrl != null) 'profileImage': profileImageUrl,
       'updatedAt': FieldValue.serverTimestamp(),
     };

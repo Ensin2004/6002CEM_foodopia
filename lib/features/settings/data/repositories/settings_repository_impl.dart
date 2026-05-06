@@ -1,6 +1,5 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/services/shared_prefs_manager.dart';
 import '../../domain/entities/settings_item.dart';
@@ -9,7 +8,6 @@ import '../../domain/repositories/settings_repository.dart';
 
 /// Defines behavior for settings repository impl.
 class SettingsRepositoryImpl implements SettingsRepository {
-
   /// Loads data for the get user settings operation.
   @override
   Future<Either<Failure, List<SettingsSection>>> getUserSettings() async {
@@ -48,6 +46,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
               type: SettingsItemType.navigation,
               routeName: '/settings/edit-profile',
             ),
+
             /// Creates a settings item instance.
             SettingsItem(
               id: 'change_password',
@@ -71,19 +70,39 @@ class SettingsRepositoryImpl implements SettingsRepository {
             items: [
               /// Creates a settings item instance.
               SettingsItem(
-                id: 'dietary_restrictions',
-                title: 'Dietary Restrictions',
-                icon: Icons.restaurant,
-                type: SettingsItemType.navigation,
-                routeName: '/settings/dietary-restrictions',
-              ),
-              /// Creates a settings item instance.
-              SettingsItem(
                 id: 'meal_preferences',
-                title: 'Meal Preferences',
-                icon: Icons.favorite,
+                title: 'Meal Preference',
+                icon: Icons.restaurant_menu,
                 type: SettingsItemType.navigation,
                 routeName: '/settings/meal-preferences',
+              ),
+
+              /// Creates a settings item instance.
+              SettingsItem(
+                id: 'allergies',
+                title: 'Allergies',
+                icon: Icons.health_and_safety,
+                type: SettingsItemType.navigation,
+                routeName: '/settings/allergies',
+              ),
+
+              /// Creates a settings item instance.
+              SettingsItem(
+                id: 'dislikes',
+                title: 'Dislikes',
+                icon: Icons.thumb_down,
+                type: SettingsItemType.navigation,
+                routeName: '/settings/dislikes',
+              ),
+
+              /// Creates a settings item instance.
+              SettingsItem(
+                id: 'target_calories',
+                title: 'Target Calories',
+                icon: Icons.local_fire_department,
+                subtitle: 'Manage your daily calorie target history',
+                type: SettingsItemType.navigation,
+                routeName: '/settings/target-calories',
               ),
             ],
           ),
@@ -96,14 +115,51 @@ class SettingsRepositoryImpl implements SettingsRepository {
       if (!isAdmin) {
         sections.add(
           /// Creates a settings section instance.
-          SettingsSection(
+          const SettingsSection(
             title: 'Notifications',
             items: [
               /// Creates a settings item instance.
               SettingsItem(
-                id: 'notifications',
-                title: 'Enable Notifications',
+                id: 'social_notifications_header',
+                title: 'Social Notifications',
                 icon: Icons.notifications,
+                type: SettingsItemType.info,
+              ),
+
+              /// Creates a settings item instance.
+              SettingsItem(
+                id: 'new_follower_notification',
+                title: 'New Follower Notification',
+                icon: Icons.person_add,
+                subtitle: 'Get a notification for new follower',
+                type: SettingsItemType.toggle,
+              ),
+
+              /// Creates a settings item instance.
+              SettingsItem(
+                id: 'new_rating_notification',
+                title: 'New Rating Notification',
+                icon: Icons.star_rate,
+                subtitle:
+                    'Receive a notification when your recipe is being rated by user',
+                type: SettingsItemType.toggle,
+              ),
+
+              /// Creates a settings item instance.
+              SettingsItem(
+                id: 'meal_planning_notifications_header',
+                title: 'Meal Planning Notifications',
+                icon: Icons.notifications,
+                type: SettingsItemType.info,
+              ),
+
+              /// Creates a settings item instance.
+              SettingsItem(
+                id: 'plan_reminder_notification',
+                title: 'Plan Reminder',
+                icon: Icons.event_note,
+                subtitle:
+                    'Get a reminder when you forget to plan your meal on that day',
                 type: SettingsItemType.toggle,
               ),
             ],
@@ -112,37 +168,22 @@ class SettingsRepositoryImpl implements SettingsRepository {
       }
 
       // ============================================================
-      // 4. ADMIN SECTION (Admin only)
+      // 4. ADMIN SECTION
       // ============================================================
       if (isAdmin) {
         sections.add(
           /// Creates a settings section instance.
           const SettingsSection(
-            title: 'Admin',
+            title: 'User Profile Options',
             items: [
               /// Creates a settings item instance.
               SettingsItem(
-                id: 'user_management',
-                title: 'User Management',
-                icon: Icons.people,
+                id: 'age_groups',
+                title: 'Age Groups',
+                icon: Icons.cake,
+                subtitle: 'Manage age groups used during sign up and profiles',
                 type: SettingsItemType.navigation,
-                routeName: '/settings/user-management',
-              ),
-              /// Creates a settings item instance.
-              SettingsItem(
-                id: 'content_moderation',
-                title: 'Content Moderation',
-                icon: Icons.flag,
-                type: SettingsItemType.navigation,
-                routeName: '/settings/content-moderation',
-              ),
-              /// Creates a settings item instance.
-              SettingsItem(
-                id: 'system_settings',
-                title: 'System Settings',
-                icon: Icons.settings,
-                type: SettingsItemType.navigation,
-                routeName: '/settings/system-settings',
+                routeName: '/settings/age-groups',
               ),
             ],
           ),
@@ -161,14 +202,17 @@ class SettingsRepositoryImpl implements SettingsRepository {
           type: SettingsItemType.navigation,
           routeName: '/settings/faq',
         ),
+
         /// Creates a settings item instance.
-        SettingsItem(  // Remove const because title uses ternary
+        SettingsItem(
+          // Remove const because title uses ternary
           id: 'rate_us',
           title: isAdmin ? 'Rating & Feedback' : 'Rate Us & Feedback',
           icon: Icons.star,
           type: SettingsItemType.navigation,
           routeName: '/settings/rate-us',
         ),
+
         /// Creates a settings item instance.
         const SettingsItem(
           id: 'help_center',
@@ -181,10 +225,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
 
       sections.add(
         /// Creates a settings section instance.
-        SettingsSection(
-          title: 'Support',
-          items: supportItems,
-        ),
+        SettingsSection(title: 'Support', items: supportItems),
       );
 
       // ============================================================
@@ -203,6 +244,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
               type: SettingsItemType.navigation,
               routeName: '/settings/about',
             ),
+
             /// Creates a settings item instance.
             SettingsItem(
               id: 'terms',
@@ -211,6 +253,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
               type: SettingsItemType.navigation,
               routeName: '/settings/terms',
             ),
+
             /// Creates a settings item instance.
             SettingsItem(
               id: 'privacy',
@@ -245,6 +288,30 @@ class SettingsRepositoryImpl implements SettingsRepository {
     try {
       // Runs the guarded operation that can throw.
       await SharedPrefsManager.setNotificationEnabled(enabled);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  /// Loads one notification preference by menu id.
+  @override
+  Future<Either<Failure, bool>> getNotificationTypeEnabled(String id) async {
+    try {
+      return Right(SharedPrefsManager.isNotificationTypeEnabled(id));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  /// Updates one notification preference by menu id.
+  @override
+  Future<Either<Failure, void>> setNotificationTypeEnabled(
+    String id,
+    bool enabled,
+  ) async {
+    try {
+      await SharedPrefsManager.setNotificationTypeEnabled(id, enabled);
       return const Right(null);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));

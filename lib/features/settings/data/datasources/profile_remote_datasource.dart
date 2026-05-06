@@ -33,6 +33,18 @@ class ProfileRemoteDataSource {
     await _firestore.collection('users').doc(uid).update({'gender': gender});
   }
 
+  /// Runs the update user age group operation.
+  Future<void> updateUserAgeGroup(
+    String uid,
+    String ageGroupId,
+    String ageGroupName,
+  ) async {
+    await _firestore.collection('users').doc(uid).update({
+      'ageGroupId': ageGroupId,
+      'ageGroupName': ageGroupName,
+    });
+  }
+
   /// Runs the upload profile image operation.
   Future<String> uploadProfileImage(File imageFile) async {
     return await CloudinaryService.uploadUserProfileImage(imageFile);

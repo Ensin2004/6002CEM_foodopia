@@ -4,6 +4,8 @@ class UserProfile {
   final String email;
   final String name;
   final String gender;
+  final String ageGroupId;
+  final String ageGroupName;
   final String? profileImageUrl;
   final DateTime? updatedAt;
 
@@ -13,6 +15,8 @@ class UserProfile {
     required this.email,
     required this.name,
     required this.gender,
+    required this.ageGroupId,
+    required this.ageGroupName,
     this.profileImageUrl,
     this.updatedAt,
   });
@@ -23,6 +27,8 @@ class UserProfile {
     String? email,
     String? name,
     String? gender,
+    String? ageGroupId,
+    String? ageGroupName,
     String? profileImageUrl,
     DateTime? updatedAt,
   }) {
@@ -32,6 +38,8 @@ class UserProfile {
       email: email ?? this.email,
       name: name ?? this.name,
       gender: gender ?? this.gender,
+      ageGroupId: ageGroupId ?? this.ageGroupId,
+      ageGroupName: ageGroupName ?? this.ageGroupName,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       updatedAt: updatedAt ?? this.updatedAt,
     );

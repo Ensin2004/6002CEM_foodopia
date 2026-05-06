@@ -6,8 +6,11 @@ import 'package:provider/provider.dart';
 import '../../../../../../app/dependency_injection/injection_container.dart';
 import '../../../../../../core/widgets/custom_app_bar.dart';
 import '../../../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../../auth/domain/usecases/get_age_groups_usecase.dart';
+import '../../../../../auth/presentation/widgets/age_group_picker_dialog.dart';
 import '../../../../domain/usecases/account/get_user_profile_usecase.dart';
 import '../../../../domain/usecases/account/update_user_name_usecase.dart';
+import '../../../../domain/usecases/account/update_user_age_group_usecase.dart';
 import '../../../../domain/usecases/account/update_user_gender_usecase.dart';
 import '../../../../domain/usecases/account/update_profile_image_usecase.dart';
 import '../../../viewmodel/account/edit_profile_viewmodel.dart';
@@ -29,6 +32,8 @@ class EditProfilePage extends StatelessWidget {
         getUserProfileUseCase: sl<GetUserProfileUseCase>(),
         updateUserNameUseCase: sl<UpdateUserNameUseCase>(),
         updateUserGenderUseCase: sl<UpdateUserGenderUseCase>(),
+        updateUserAgeGroupUseCase: sl<UpdateUserAgeGroupUseCase>(),
+        getAgeGroupsUseCase: sl<GetAgeGroupsUseCase>(),
         updateProfileImageUseCase: sl<UpdateProfileImageUseCase>(),
       ),
       child: const _EditProfilePageView(),
@@ -150,6 +155,8 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
         /// Creates a sized box instance.
         const SizedBox(height: 16),
         _buildGenderField(context, viewModel),
+        const SizedBox(height: 16),
+        _buildAgeGroupField(context, viewModel),
       ],
     );
   }
@@ -192,6 +199,48 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
                 ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAgeGroupField(BuildContext context, EditProfileViewModel viewModel) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Age Group',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onBackground,
+          ),
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => _showAgeGroupDialog(context, viewModel),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.cake, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    viewModel.displayAgeGroup.isNotEmpty
+                        ? viewModel.displayAgeGroup
+                        : 'Not specified',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+                Icon(Icons.edit, color: Theme.of(context).colorScheme.primary),
+              ],
+            ),
           ),
         ),
       ],
@@ -300,13 +349,14 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
 
   // Edit Name Dialog with immediate save
   void _showEditNameDialog(BuildContext context, EditProfileViewModel viewModel) {
+    final pageContext = context;
     final controller = TextEditingController(text: viewModel.displayName);
 
     /// Displays the show dialog flow.
     showDialog(
-      context: context,
+      context: pageContext,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Edit Name'),
         content: TextField(
           controller: controller,
@@ -320,7 +370,7 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
         actions: [
           /// Creates a text button instance.
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           /// Creates a text button instance.
@@ -329,24 +379,27 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
               final newName = controller.text.trim();
               if (newName.isNotEmpty && newName != viewModel.displayName) {
                 // Show loading indicator
-                Navigator.pop(context); // Close dialog first
+                Navigator.pop(dialogContext); // Close dialog first
+
+                if (!pageContext.mounted) return;
 
                 // Show saving indicator
-                _showSavingDialog(context);
+                _showSavingDialog(pageContext);
 
                 // Save the change
                 final success = await viewModel.saveNameOnly(newName);
 
                 // Close loading dialog
-                Navigator.pop(context);
+                if (!pageContext.mounted) return;
+                Navigator.of(pageContext, rootNavigator: true).pop();
 
-                if (success && context.mounted) {
-                  _showSuccessMessage(context, 'Name updated successfully');
-                } else if (context.mounted && viewModel.errorMessage != null) {
-                  _showErrorMessage(context, viewModel.errorMessage!);
+                if (success && pageContext.mounted) {
+                  _showSuccessMessage(pageContext, 'Name updated successfully');
+                } else if (pageContext.mounted && viewModel.errorMessage != null) {
+                  _showErrorMessage(pageContext, viewModel.errorMessage!);
                 }
               } else {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
               }
             },
             child: const Text('Save'),
@@ -358,14 +411,15 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
 
   // Edit Gender Dialog with immediate save
   void _showGenderDialog(BuildContext context, EditProfileViewModel viewModel) {
+    final pageContext = context;
     String selectedGender = viewModel.displayGender;
 
     /// Displays the show dialog flow.
     showDialog(
-      context: context,
+      context: pageContext,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+        builder: (dialogContext, setState) => AlertDialog(
           title: const Text('Edit Gender'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -411,7 +465,7 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
           actions: [
             /// Creates a text button instance.
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             /// Creates a text button instance.
@@ -419,24 +473,27 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
               onPressed: () async {
                 if (selectedGender != viewModel.displayGender) {
                   // Close dialog first
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
+
+                  if (!pageContext.mounted) return;
 
                   // Show saving indicator
-                  _showSavingDialog(context);
+                  _showSavingDialog(pageContext);
 
                   // Save the change
                   final success = await viewModel.saveGenderOnly(selectedGender);
 
                   // Close loading dialog
-                  Navigator.pop(context);
+                  if (!pageContext.mounted) return;
+                  Navigator.of(pageContext, rootNavigator: true).pop();
 
-                  if (success && context.mounted) {
-                    _showSuccessMessage(context, 'Gender updated successfully');
-                  } else if (context.mounted && viewModel.errorMessage != null) {
-                    _showErrorMessage(context, viewModel.errorMessage!);
+                  if (success && pageContext.mounted) {
+                    _showSuccessMessage(pageContext, 'Gender updated successfully');
+                  } else if (pageContext.mounted && viewModel.errorMessage != null) {
+                    _showErrorMessage(pageContext, viewModel.errorMessage!);
                   }
                 } else {
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 }
               },
               child: const Text('Save'),
@@ -445,6 +502,42 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
         ),
       ),
     );
+  }
+
+  Future<void> _showAgeGroupDialog(
+    BuildContext context,
+    EditProfileViewModel viewModel,
+  ) async {
+    final picked = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => AgeGroupPickerDialog(
+        items: viewModel.ageGroups,
+        selectedId: viewModel.selectedAgeGroupId,
+      ),
+    );
+
+    if (picked == null) return;
+
+    final ageGroupId = picked['id'] as String? ?? '';
+    final ageGroupName = picked['name'] as String? ?? '';
+    if (ageGroupId.isEmpty ||
+        ageGroupName.isEmpty ||
+        ageGroupId == viewModel.selectedAgeGroupId) {
+      return;
+    }
+
+    if (!context.mounted) return;
+    _showSavingDialog(context);
+    final success = await viewModel.saveAgeGroupOnly(ageGroupId, ageGroupName);
+
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    if (success && context.mounted) {
+      _showSuccessMessage(context, 'Age group updated successfully');
+    } else if (context.mounted && viewModel.errorMessage != null) {
+      _showErrorMessage(context, viewModel.errorMessage!);
+    }
   }
 
   // Pick and upload profile image
@@ -462,7 +555,7 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
 
       // Close loading dialog
       if (!context.mounted) return;
-      Navigator.pop(context);
+      Navigator.of(context, rootNavigator: true).pop();
 
       if (mounted) setState(() => _selectedImage = null);
 

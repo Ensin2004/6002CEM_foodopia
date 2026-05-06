@@ -29,9 +29,20 @@ class CloudinaryService {
     return 'https://api.cloudinary.com/v1_1/$_cloudName/image/upload';
   }
 
+  static void _validateConfig(String uploadPreset) {
+    if (_cloudName.isEmpty || uploadPreset.isEmpty) {
+      throw Exception(
+        'Cloudinary configuration is missing. Run Flutter with '
+        '--dart-define-from-file=.env',
+      );
+    }
+  }
+
   /// Generic upload method
   static Future<String> _uploadImage(File imageFile, String uploadPreset) async {
     try {
+      _validateConfig(uploadPreset);
+
       // Runs the guarded operation that can throw.
       final uri = Uri.parse(_getUploadUrl());
       final request = http.MultipartRequest('POST', uri);

@@ -21,7 +21,8 @@ abstract class AuthRepository {
     required String password,
     required String name,
     required String gender,
-    required String countryId,
+    required String ageGroupId,
+    required String ageGroupName,
   });
 
   /// Runs the send email verification operation.
@@ -33,8 +34,8 @@ abstract class AuthRepository {
   /// Handles the resend verification email operation.
   Future<Either<AuthFailure, void>> resendVerificationEmail();
 
-  /// Loads data for the get countries operation.
-  Future<Either<AuthFailure, List<Map<String, dynamic>>>> getCountries();
+  /// Loads configured age groups.
+  Future<Either<AuthFailure, List<Map<String, dynamic>>>> getAgeGroups();
 
   /// Handles the logout operation.
   Future<Either<AuthFailure, void>> logout();

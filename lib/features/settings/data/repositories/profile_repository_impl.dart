@@ -55,6 +55,21 @@ class ProfileRepositoryImpl implements ProfileRepository {
     }
   }
 
+  /// Runs the update user age group operation.
+  @override
+  Future<Either<Failure, void>> updateUserAgeGroup(
+    String uid,
+    String ageGroupId,
+    String ageGroupName,
+  ) async {
+    try {
+      await remoteDataSource.updateUserAgeGroup(uid, ageGroupId, ageGroupName);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
   /// Runs the update profile image operation.
   @override
   Future<Either<Failure, void>> updateProfileImage(String uid, String imagePath) async {

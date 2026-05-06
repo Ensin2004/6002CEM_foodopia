@@ -11,17 +11,33 @@ class AppTheme {
       primary: AppColors.primary,
       secondary: AppColors.secondary,
       surface: Colors.white,
-      background: AppColors.background,
+      surfaceContainerHighest: Color(0xFFF4F5F4),
       error: AppColors.error,
 
       onPrimary: Colors.white,
       onSecondary: Colors.black,
       onSurface: AppColors.textPrimary,
-      onBackground: AppColors.textPrimary,
       onError: Colors.white,
     ),
 
-    scaffoldBackgroundColor: AppColors.background,
+    scaffoldBackgroundColor: Colors.white,
+
+    appBarTheme: AppBarTheme(
+      backgroundColor: Colors.white,
+      foregroundColor: Colors.black,
+      surfaceTintColor: Colors.transparent,
+      elevation: 4,
+      shadowColor: Colors.grey.withValues(alpha: 0.35),
+      centerTitle: true,
+      shape: const Border(
+        bottom: BorderSide(color: AppColors.border, width: 0.5),
+      ),
+      titleTextStyle: const TextStyle(
+        color: Colors.black,
+        fontWeight: FontWeight.w500,
+        fontSize: 20,
+      ),
+    ),
 
     // 📝 TEXT SYSTEM (industry standard)
     textTheme: const TextTheme(
@@ -35,13 +51,21 @@ class AppTheme {
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      bodyMedium: TextStyle(
-        fontSize: 14,
-        color: AppColors.textSecondary,
+      titleMedium: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textPrimary,
       ),
-      labelLarge: TextStyle(
+      bodyLarge: TextStyle(fontSize: 16, color: AppColors.textPrimary),
+      bodyMedium: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+      bodySmall: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+    ),
+
+    inputDecorationTheme: InputDecorationTheme(
+      hintStyle: TextStyle(
+        color: AppColors.textSecondary.withValues(alpha: 0.55),
         fontSize: 14,
-        fontWeight: FontWeight.bold,
       ),
     ),
 

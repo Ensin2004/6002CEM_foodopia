@@ -25,10 +25,8 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     /// Runs the change notifier provider operation.
     return ChangeNotifierProvider(
-      create: (_) => SettingsViewModel(
-        user: user,
-        repository: sl<SettingsRepository>(),
-      ),
+      create: (_) =>
+          SettingsViewModel(user: user, repository: sl<SettingsRepository>()),
       child: const _SettingsPageView(),
     );
   }
@@ -63,31 +61,33 @@ class _SettingsPageView extends StatelessWidget {
 
     /// Handles the scaffold operation.
     return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Settings',
-        centerTitle: true,
-      ),
+      appBar: CustomAppBar(title: 'Settings', centerTitle: true),
       body: viewModel.isLoading
           ? const LoadingDialog()
           : SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProfileSection(context, viewModel),
-            ..._buildSettingsSections(context, viewModel),
-            /// Creates a sized box instance.
-            const SizedBox(height: 32),
-            _buildLogoutButton(context, viewModel),
-            /// Creates a sized box instance.
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildProfileSection(context, viewModel),
+                  ..._buildSettingsSections(context, viewModel),
+
+                  /// Creates a sized box instance.
+                  const SizedBox(height: 32),
+                  _buildLogoutButton(context, viewModel),
+
+                  /// Creates a sized box instance.
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
     );
   }
 
   /// Handles the build profile section operation.
-  Widget _buildProfileSection(BuildContext context, SettingsViewModel viewModel) {
+  Widget _buildProfileSection(
+    BuildContext context,
+    SettingsViewModel viewModel,
+  ) {
     /// Handles the container operation.
     return Container(
       padding: const EdgeInsets.all(16),
@@ -103,20 +103,22 @@ class _SettingsPageView extends StatelessWidget {
           /// Creates a circle avatar instance.
           CircleAvatar(
             radius: 40,
-            backgroundColor: Theme.of(context).colorScheme.background,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             backgroundImage: viewModel.profileImageUrl != null
                 ? NetworkImage(viewModel.profileImageUrl!)
                 : null,
             child: viewModel.profileImageUrl == null
                 ? Icon(
-              Icons.person,
-              size: 40,
-              color: Theme.of(context).colorScheme.primary,
-            )
+                    Icons.person,
+                    size: 40,
+                    color: Theme.of(context).colorScheme.primary,
+                  )
                 : null,
           ),
+
           /// Creates a sized box instance.
           const SizedBox(width: 16),
+
           /// Creates a expanded instance.
           Expanded(
             child: Column(
@@ -132,15 +134,14 @@ class _SettingsPageView extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+
                 /// Creates a sized box instance.
                 const SizedBox(height: 4),
+
                 /// Creates a text instance.
                 Text(
                   viewModel.email,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -153,7 +154,10 @@ class _SettingsPageView extends StatelessWidget {
   }
 
   /// Handles the build settings sections operation.
-  List<Widget> _buildSettingsSections(BuildContext context, SettingsViewModel viewModel) {
+  List<Widget> _buildSettingsSections(
+    BuildContext context,
+    SettingsViewModel viewModel,
+  ) {
     final sections = <Widget>[];
     final sectionCount = viewModel.sections.length;
 
@@ -176,17 +180,19 @@ class _SettingsPageView extends StatelessWidget {
 
   // Type-safe navigation handler
   void _handleSettingsNavigation(
-      BuildContext context,
-      SettingsNavigationEvent event,
-      SettingsViewModel viewModel,
-      bool isAdmin,
-      ) {
+    BuildContext context,
+    SettingsNavigationEvent event,
+    SettingsViewModel viewModel,
+    bool isAdmin,
+  ) {
     switch (event) {
       case SettingsNavigationEvent.goToEditProfile:
-        context.push(
-          AppRouter.editProfile,
-          extra: EditProfileArgs(uid: viewModel.user.uid),
-        ).then((_) => viewModel.refreshProfile());
+        context
+            .push(
+              AppRouter.editProfile,
+              extra: EditProfileArgs(uid: viewModel.user.uid),
+            )
+            .then((_) => viewModel.refreshProfile());
         break;
 
       case SettingsNavigationEvent.goToChangePassword:
@@ -238,7 +244,54 @@ class _SettingsPageView extends StatelessWidget {
         break;
 
       case SettingsNavigationEvent.goToHelpCenter:
-        context.push(AppRouter.helpCenter, extra: HelpCenterArgs(isAdmin: isAdmin));
+        context.push(
+          AppRouter.helpCenter,
+          extra: HelpCenterArgs(isAdmin: isAdmin),
+        );
+        break;
+
+      case SettingsNavigationEvent.goToAgeGroups:
+        context.push(AppRouter.ageGroups);
+        break;
+      case SettingsNavigationEvent.goToMealPreferences:
+        context.push(
+          AppRouter.settingsMealPreferences,
+          extra: UserSetupArgs(
+            uid: viewModel.user.uid,
+            user: viewModel.user,
+            isSettingsMode: true,
+          ),
+        );
+        break;
+      case SettingsNavigationEvent.goToAllergies:
+        context.push(
+          AppRouter.settingsAllergies,
+          extra: UserSetupArgs(
+            uid: viewModel.user.uid,
+            user: viewModel.user,
+            isSettingsMode: true,
+          ),
+        );
+        break;
+      case SettingsNavigationEvent.goToDislikes:
+        context.push(
+          AppRouter.settingsDislikes,
+          extra: UserSetupArgs(
+            uid: viewModel.user.uid,
+            user: viewModel.user,
+            isSettingsMode: true,
+          ),
+        );
+        break;
+      case SettingsNavigationEvent.goToTargetCalories:
+        context.push(
+          AppRouter.settingsTargetCalories,
+          extra: UserSetupArgs(
+            uid: viewModel.user.uid,
+            user: viewModel.user,
+            isSettingsMode: true,
+          ),
+        );
         break;
     }
   }
@@ -273,6 +326,7 @@ class _SettingsPageView extends StatelessWidget {
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
+
           /// Creates a text button instance.
           TextButton(
             onPressed: () async {

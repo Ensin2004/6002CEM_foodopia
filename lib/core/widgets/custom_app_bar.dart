@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 // ============================================================================
 // CUSTOM APP BAR
 // ============================================================================
@@ -47,22 +49,19 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       backgroundColor: bgColor,
       foregroundColor: fgColor,
-      elevation: 4,  // Adds shadow like sample
-      shadowColor: Colors.grey.withOpacity(0.4),  // Sets shadow color
-      surfaceTintColor: Colors.transparent,  // Removes surface tint
+      elevation: 4,
+      shadowColor: Colors.grey.withValues(alpha: 0.35),
+      surfaceTintColor: Colors.transparent,
       shape: const Border(
-        bottom: BorderSide(
-          color: Colors.grey,
-          width: 0.5,
-        ),
+        bottom: BorderSide(color: AppColors.border, width: 0.5),
       ),
       centerTitle: centerTitle,
       leading: leading ?? _buildBackButton(context, fgColor),
       title: Text(
         title,
         style: TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 18,
+          fontWeight: FontWeight.w500,
+          fontSize: 20,
           color: fgColor,
         ),
       ),
@@ -94,15 +93,14 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         content: const Text(
           'You have unsaved changes. Do you want to save them before leaving?',
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         actions: [
           /// Creates a text button instance.
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Discard'),
           ),
+
           /// Creates a text button instance.
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -111,6 +109,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
     ).then((shouldSave) {
+      if (!context.mounted) return;
+
       if (shouldSave == true && onSaveChanges != null) {
         onSaveChanges!();
         Future.delayed(const Duration(milliseconds: 100), () {

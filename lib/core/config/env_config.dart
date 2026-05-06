@@ -7,9 +7,15 @@
 
 class EnvConfig {
   // Cloudinary Configuration
-  static const String cloudinaryCloudName = 'djyfiqzzu';
-  static const String userProfileUploadPreset = 'foodopia_profile';
-  static const String settingsUploadPreset = 'foodopia_settings';
+  static const String cloudinaryCloudName = String.fromEnvironment(
+    'CLOUDINARY_CLOUD_NAME',
+  );
+  static const String userProfileUploadPreset = String.fromEnvironment(
+    'CLOUDINARY_USER_PROFILE_UPLOAD_PRESET',
+  );
+  static const String settingsUploadPreset = String.fromEnvironment(
+    'CLOUDINARY_SETTINGS_UPLOAD_PRESET',
+  );
 
 // Firebase Configuration (already in the google-services.json)
 // No need to duplicate here

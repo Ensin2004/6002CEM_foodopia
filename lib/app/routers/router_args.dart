@@ -4,12 +4,13 @@ import '../../features/auth/domain/entities/user_entity.dart';
 import '../../features/settings/domain/entities/faq_item.dart';
 import '../../features/settings/domain/entities/help_center_issue.dart';
 
-typedef FaqSaveCallback = Future<bool> Function({
-  required String question,
-  required String answer,
-  File? questionImageFile,
-  File? answerImageFile,
-});
+typedef FaqSaveCallback =
+    Future<bool> Function({
+      required String question,
+      required String answer,
+      File? questionImageFile,
+      File? answerImageFile,
+    });
 
 /// Marker for routes that do not need payload but are reached after auth.
 class AuthenticatedRouteArgs {
@@ -23,10 +24,7 @@ class HomeArgs {
   final String role;
 
   /// Creates a home args instance.
-  const HomeArgs({
-    required this.user,
-    required this.role,
-  });
+  const HomeArgs({required this.user, required this.role});
 }
 
 /// Typed arguments for edit profile route
@@ -59,6 +57,21 @@ class SettingsArgs {
   const SettingsArgs({required this.user});
 }
 
+/// Typed arguments for the user setup flow after signup.
+class UserSetupArgs {
+  final String uid;
+  final UserEntity? user;
+  final String? role;
+  final bool isSettingsMode;
+
+  const UserSetupArgs({
+    required this.uid,
+    this.user,
+    this.role,
+    this.isSettingsMode = false,
+  });
+}
+
 /// Typed arguments for FAQ list route
 class FaqArgs {
   final bool isAdmin;
@@ -80,6 +93,7 @@ class IssueDetailArgs {
   final HelpCenterIssue issue;
   final String? userEmail;
   final bool isAdmin;
+
   /// Handles the function operation.
   final void Function()? onStatusChanged;
 
@@ -98,10 +112,7 @@ class FaqFormArgs {
   final FaqSaveCallback onSave;
 
   /// Creates a faq form args instance.
-  const FaqFormArgs({
-    this.item,
-    required this.onSave,
-  });
+  const FaqFormArgs({this.item, required this.onSave});
 }
 
 /// Typed arguments for image preview route
