@@ -53,6 +53,22 @@ class AdminManageRepositoryImpl implements AdminManageRepository {
   }
 
   @override
+  Future<Either<Failure, void>> reorderItems({
+    required String categoryId,
+    required List<AdminManageItem> items,
+  }) async {
+    try {
+      await remoteDataSource.reorderItems(
+        categoryId: categoryId,
+        items: items.map(AdminManageItemModel.fromEntity).toList(),
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> seedDefaults({
     required String categoryId,
     required List<String> values,

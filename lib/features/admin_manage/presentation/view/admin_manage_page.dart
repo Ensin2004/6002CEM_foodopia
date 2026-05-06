@@ -232,21 +232,51 @@ class _AdminManageListPage extends StatelessWidget {
         tooltip: 'Add New List',
         onPressed: () => _openForm(context, category),
       ),
-      body: RefreshIndicator(
-        onRefresh: viewModel.loadAll,
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: [
-            _ListTip(category: category),
-            if (items.isEmpty)
-              _EmptyList(category: category, viewModel: viewModel)
-            else
-              for (final item in items)
-                _ManageItemTile(category: category, item: item),
-            const SizedBox(height: 90),
-          ],
-        ),
-      ),
+      body: items.isEmpty
+          ? RefreshIndicator(
+              onRefresh: viewModel.loadAll,
+              child: ListView(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                children: [
+                  _ListTip(category: category),
+                  _EmptyList(category: category),
+                  const SizedBox(height: 90),
+                ],
+              ),
+            )
+          : ReorderableListView.builder(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              itemCount: items.length + 2,
+              onReorder: (oldIndex, newIndex) {
+                if (oldIndex == 0 || oldIndex > items.length) return;
+                viewModel.reorderItems(
+                  categoryId: category.id,
+                  oldIndex: oldIndex - 1,
+                  newIndex: newIndex - 1,
+                );
+              },
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return _ListTip(
+                    key: const ValueKey('admin_manage_tip'),
+                    category: category,
+                  );
+                }
+                if (index == items.length + 1) {
+                  return const SizedBox(
+                    key: ValueKey('admin_manage_bottom_space'),
+                    height: 90,
+                  );
+                }
+
+                final item = items[index - 1];
+                return _ManageItemTile(
+                  key: ValueKey(item.id),
+                  category: category,
+                  item: item,
+                );
+              },
+            ),
     );
   }
 
@@ -266,7 +296,7 @@ class _AdminManageListPage extends StatelessWidget {
 class _ListTip extends StatelessWidget {
   final AdminManageCategory category;
 
-  const _ListTip({required this.category});
+  const _ListTip({super.key, required this.category});
 
   @override
   Widget build(BuildContext context) {
@@ -285,7 +315,11 @@ class _ManageItemTile extends StatelessWidget {
   final AdminManageCategory category;
   final AdminManageItem item;
 
-  const _ManageItemTile({required this.category, required this.item});
+  const _ManageItemTile({
+    super.key,
+    required this.category,
+    required this.item,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -319,6 +353,8 @@ class _ManageItemTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const Icon(Icons.drag_handle, color: Colors.grey),
+            const SizedBox(width: 8),
             Switch(
               value: item.isActive,
               activeThumbColor: _green,
@@ -365,23 +401,21 @@ class _ManageItemTile extends StatelessWidget {
 
 class _EmptyList extends StatelessWidget {
   final AdminManageCategory category;
-  final AdminManageViewModel viewModel;
 
-  const _EmptyList({required this.category, required this.viewModel});
+  const _EmptyList({required this.category});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 80),
+      padding: const EdgeInsets.only(top: 64),
       child: Center(
-        child: PrimaryButton(
-          onPressed: viewModel.isSaving
-              ? null
-              : () => viewModel.seedDefaults(category),
-          text: 'Add defaults',
-          icon: const Icon(Icons.auto_fix_high),
-          width: 180,
-          verticalPadding: 12,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/images/empty_page.png', width: 150),
+            const SizedBox(height: AppSpacing.md),
+            Text(category.emptyMessage, style: context.text.bodyMedium),
+          ],
         ),
       ),
     );

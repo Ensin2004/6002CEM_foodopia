@@ -1,35 +1,51 @@
-import 'dart:convert';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http;
 
+import '../../../../core/services/food_search_service.dart';
 import '../models/user_setup_preferences_model.dart';
 import '../../domain/entities/user_setup_option.dart';
 
 class UserSetupRemoteDataSource {
   final FirebaseFirestore firestore;
-  final http.Client client;
+  final FoodSearchService foodSearchService;
 
-  UserSetupRemoteDataSource({required this.firestore, required this.client});
+  UserSetupRemoteDataSource({
+    required this.firestore,
+    required this.foodSearchService,
+  });
 
   Future<List<UserSetupOption>> getAdminOptions(String categoryId) async {
     final snapshot = await firestore
         .collection('app_config')
         .doc(categoryId)
         .collection('items')
-        .where('isActive', isEqualTo: true)
-        .orderBy('sortOrder')
         .get();
 
-    return snapshot.docs
+    final docs = snapshot.docs.toList()
+      ..sort((first, second) {
+        final firstOrder = first.data()['sortOrder'];
+        final secondOrder = second.data()['sortOrder'];
+        final left = firstOrder is int ? firstOrder : 0;
+        final right = secondOrder is int ? secondOrder : 0;
+        return left.compareTo(right);
+      });
+
+    return docs
         .map((doc) {
           final data = doc.data();
+          final isActive = data['isActive'] is bool
+              ? data['isActive'] as bool
+              : true;
+          if (!isActive) return null;
+
           return UserSetupOption(
             id: doc.id,
             name: data['name']?.toString() ?? '',
           );
         })
-        .where((item) => item.name.trim().isNotEmpty)
+        .whereType<UserSetupOption>()
+        .where((item) {
+          return item.name.trim().isNotEmpty;
+        })
         .toList();
   }
 
@@ -37,34 +53,8 @@ class UserSetupRemoteDataSource {
     final trimmed = query.trim();
     if (trimmed.length < 2) return [];
 
-    final uri = Uri.https('world.openfoodfacts.org', '/cgi/search.pl', {
-      'search_terms': trimmed,
-      'search_simple': '1',
-      'action': 'process',
-      'json': '1',
-      'page_size': '12',
-      'fields': 'product_name,generic_name,categories_tags',
-    });
-
-    final response = await client.get(uri);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Food search failed');
-    }
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final products = data['products'] is List ? data['products'] as List : [];
-    final names = <String>{};
-
-    for (final product in products) {
-      if (product is! Map<String, dynamic>) continue;
-      final productName = product['product_name']?.toString().trim() ?? '';
-      final genericName = product['generic_name']?.toString().trim() ?? '';
-      final name = productName.isNotEmpty ? productName : genericName;
-      if (name.isNotEmpty) names.add(name);
-    }
-
-    return names
-        .take(8)
+    final terms = await foodSearchService.searchFoodTerms(trimmed);
+    return terms
         .map(
           (name) => UserSetupOption(
             id: name.toLowerCase().replaceAll(' ', '_'),

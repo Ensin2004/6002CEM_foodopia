@@ -6,16 +6,15 @@ import '../../../../app/navigation/navigation_events.dart';
 import '../../../../app/routers/app_router.dart';
 import '../../../../app/routers/router_args.dart';
 import '../../../../core/widgets/buttons/app_floating_action_button.dart';
-import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../admin_home/presentation/view/admin_home_page.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../admin_manage/presentation/view/admin_manage_page.dart';
+import '../../../user_home/presentation/view/home_page.dart';
 import '../../../user_setup/domain/usecases/get_user_setup_status_usecase.dart';
 import '../viewmodel/main_viewmodel.dart';
 import '../widgets/main_app_bar.dart';
 
 // Import pages (to be implemented in their own features)
-import '../../../home/presentation/view/home_page.dart';
 import '../../../explore/presentation/view/explore_page.dart';
 import '../../../meal_plan/presentation/view/meal_plan_page.dart';
 import '../../../library/presentation/view/library_page.dart';
@@ -50,8 +49,6 @@ class _MainPageView extends StatefulWidget {
 }
 
 class _MainPageViewState extends State<_MainPageView> {
-  bool _checkingSetup = true;
-
   @override
   void initState() {
     super.initState();
@@ -63,7 +60,6 @@ class _MainPageViewState extends State<_MainPageView> {
   Future<void> _checkUserSetup() async {
     final viewModel = context.read<MainViewModel>();
     if (viewModel.isAdmin) {
-      if (mounted) setState(() => _checkingSetup = false);
       return;
     }
 
@@ -80,8 +76,6 @@ class _MainPageViewState extends State<_MainPageView> {
       );
       return;
     }
-
-    setState(() => _checkingSetup = false);
   }
 
   /// Builds the widget tree for this component.
@@ -96,8 +90,6 @@ class _MainPageViewState extends State<_MainPageView> {
         _handleNavigation(context, navigationEvent, viewModel);
       });
     }
-
-    if (_checkingSetup) return const LoadingDialog();
 
     /// Handles the scaffold operation.
     return Scaffold(
@@ -126,15 +118,15 @@ class _MainPageViewState extends State<_MainPageView> {
       // User pages
       switch (currentIndex) {
         case 0:
-          return const HomePage();
+          return HomePage(userName: viewModel.user.name ?? 'Foodie');
         case 1:
           return const ExplorePage();
-        case 2:
-          return const MealPlanPage();
         case 3:
+          return const MealPlanPage();
+        case 4:
           return const LibraryPage();
         default:
-          return const HomePage();
+          return HomePage(userName: viewModel.user.name ?? 'Foodie');
       }
     } else {
       // Admin pages
@@ -146,7 +138,7 @@ class _MainPageViewState extends State<_MainPageView> {
         case 2:
           return const StatisticsPage(isAdmin: true);
         default:
-          return const HomePage();
+          return HomePage(userName: viewModel.user.name ?? 'Foodie');
       }
     }
   }

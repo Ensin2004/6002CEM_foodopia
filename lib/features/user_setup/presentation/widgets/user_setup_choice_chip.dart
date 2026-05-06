@@ -35,7 +35,7 @@ class UserSetupChoiceChip extends StatelessWidget {
           label,
           style: context.text.labelLarge?.copyWith(
             color: AppColors.textPrimary,
-            fontSize: 12,
+            fontSize: 14,
           ),
         ),
       ),

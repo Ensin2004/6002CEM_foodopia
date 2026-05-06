@@ -11,6 +11,10 @@ import '../../features/onboarding/presentation/view/onboarding_screen.dart';
 import '../../features/main/presentation/view/main_page.dart';
 import '../../features/notifications/presentation/view/notifications_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_page.dart';
+import '../../features/explore/presentation/view/explore_page.dart';
+import '../../features/library/presentation/view/library_page.dart';
+import '../../features/meal_plan/presentation/view/meal_plan_page.dart';
+import '../../features/statistics/presentation/view/statistics_page.dart';
 import '../../features/settings/presentation/view/settings_page.dart';
 import '../../features/settings/presentation/view/subfeatures/about/about_editor_page.dart';
 import '../../features/settings/presentation/view/subfeatures/about/about_viewer_page.dart';
@@ -33,7 +37,7 @@ class AppRouter {
   static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String signup = '/signup';
-  static const String home = '/home';
+  static const String home = '/user_home';
   static const String settings = '/settings';
   static const String editProfile = '/settings/edit-profile';
   static const String changePassword = '/settings/change-password';
@@ -44,6 +48,10 @@ class AppRouter {
   static const String helpCenter = '/help-center';
   static const String notifications = '/notifications';
   static const String addRecipe = '/recipes/add';
+  static const String explore = '/explore';
+  static const String mealPlan = '/meal-plan';
+  static const String library = '/library';
+  static const String statistics = '/statistics';
   static const String issueDetail = '/help-center/issue';
   static const String faqForm = '/faq/form';
   static const String imagePreview = '/image-preview';
@@ -236,7 +244,7 @@ class AppRouter {
 
       /// Creates a go route instance.
       GoRoute(
-        name: 'home',
+        name: 'user_home',
         path: home,
         builder: (context, state) {
           final args = state.extra as HomeArgs?;
@@ -353,6 +361,37 @@ class AppRouter {
         name: 'addRecipe',
         path: addRecipe,
         builder: (context, state) => const AddRecipePage(),
+      ),
+
+      GoRoute(
+        name: 'explore',
+        path: explore,
+        builder: (context, state) => const ExplorePage(),
+      ),
+
+      GoRoute(
+        name: 'mealPlan',
+        path: mealPlan,
+        builder: (context, state) {
+          final extra = state.extra;
+          final args = extra is MealPlanArgs ? extra : null;
+          return MealPlanPage(initialTabIndex: args?.initialTabIndex ?? 0);
+        },
+      ),
+
+      GoRoute(
+        name: 'library',
+        path: library,
+        builder: (context, state) => const LibraryPage(),
+      ),
+
+      GoRoute(
+        name: 'statistics',
+        path: statistics,
+        builder: (context, state) {
+          final args = state.extra as StatisticsArgs?;
+          return StatisticsPage(isAdmin: args?.isAdmin ?? false);
+        },
       ),
 
       /// Creates a go route instance.

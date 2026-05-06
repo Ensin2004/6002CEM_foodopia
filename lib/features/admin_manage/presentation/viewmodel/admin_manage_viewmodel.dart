@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/admin_manage_item.dart';
 import '../../domain/usecases/delete_admin_manage_item_usecase.dart';
 import '../../domain/usecases/get_admin_manage_items_usecase.dart';
+import '../../domain/usecases/reorder_admin_manage_items_usecase.dart';
 import '../../domain/usecases/save_admin_manage_item_usecase.dart';
 import '../../domain/usecases/seed_admin_manage_defaults_usecase.dart';
 
@@ -34,6 +35,7 @@ class AdminManageViewModel extends ChangeNotifier {
   final GetAdminManageItemsUseCase _getItemsUseCase;
   final SaveAdminManageItemUseCase _saveItemUseCase;
   final DeleteAdminManageItemUseCase _deleteItemUseCase;
+  final ReorderAdminManageItemsUseCase _reorderItemsUseCase;
   final SeedAdminManageDefaultsUseCase _seedDefaultsUseCase;
 
   bool _isLoading = true;
@@ -45,10 +47,12 @@ class AdminManageViewModel extends ChangeNotifier {
     required GetAdminManageItemsUseCase getItemsUseCase,
     required SaveAdminManageItemUseCase saveItemUseCase,
     required DeleteAdminManageItemUseCase deleteItemUseCase,
+    required ReorderAdminManageItemsUseCase reorderItemsUseCase,
     required SeedAdminManageDefaultsUseCase seedDefaultsUseCase,
   }) : _getItemsUseCase = getItemsUseCase,
        _saveItemUseCase = saveItemUseCase,
        _deleteItemUseCase = deleteItemUseCase,
+       _reorderItemsUseCase = reorderItemsUseCase,
        _seedDefaultsUseCase = seedDefaultsUseCase {
     loadAll();
   }
@@ -235,6 +239,39 @@ class AdminManageViewModel extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  Future<bool> reorderItems({
+    required String categoryId,
+    required int oldIndex,
+    required int newIndex,
+  }) async {
+    final items = List<AdminManageItem>.from(itemsFor(categoryId));
+    if (newIndex > oldIndex) newIndex -= 1;
+    if (oldIndex < 0 || oldIndex >= items.length) return false;
+    if (newIndex < 0 || newIndex >= items.length) return false;
+
+    final movedItem = items.removeAt(oldIndex);
+    items.insert(newIndex, movedItem);
+    _itemsByCategory[categoryId] = [
+      for (var i = 0; i < items.length; i++)
+        items[i].copyWith(sortOrder: i + 1),
+    ];
+    notifyListeners();
+
+    final result = await _reorderItemsUseCase.execute(
+      categoryId: categoryId,
+      items: _itemsByCategory[categoryId]!,
+    );
+
+    final success = result.fold((failure) {
+      _errorMessage = failure.message;
+      return false;
+    }, (_) => true);
+
+    if (!success) await _reloadCategory(categoryId);
+    notifyListeners();
+    return success;
   }
 
   Future<void> seedDefaults(AdminManageCategory category) async {

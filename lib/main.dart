@@ -40,6 +40,9 @@ Future<void> main() async {
   // Initialize dependencies
   await initDependencies();
 
+  // Seed admin-managed setup values if they are missing.
+  await seedAdminManageDefaultsOnLaunch();
+
   // Initialize SharedPreferences Manager
   await SharedPrefsManager.init();
 
@@ -81,9 +84,11 @@ Future<void> main() async {
   print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   /// Creates a run app instance.
-  runApp(App(
-    seenOnboarding: seenOnboarding,
-    isLoggedIn: isLoggedIn,
-    userEntity: userEntity,
-  ));
+  runApp(
+    App(
+      seenOnboarding: seenOnboarding,
+      isLoggedIn: isLoggedIn,
+      userEntity: userEntity,
+    ),
+  );
 }

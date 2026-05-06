@@ -30,6 +30,8 @@ import 'package:http/http.dart' as http;
 // ============================================================================
 // Core
 import '../../core/services/network_info.dart';
+import '../../core/services/food_search_service.dart';
+import '../../core/services/open_meteo_weather_service.dart';
 
 // Auth Feature - Data Layer
 import '../../features/admin_home/data/datasources/admin_home_mock_datasource.dart';
@@ -38,6 +40,18 @@ import '../../features/admin_manage/data/datasources/admin_manage_remote_datasou
 import '../../features/admin_manage/data/repositories/admin_manage_repository_impl.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
+import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
+import '../../features/meal_plan/data/repositories/meal_plan_repository_impl.dart';
+import '../../features/meal_plan/domain/repositories/meal_plan_repository.dart';
+import '../../features/meal_plan/domain/usecases/get_meal_plan_dashboard_usecase.dart';
+import '../../features/meal_plan/domain/usecases/get_meal_plan_weather_usecase.dart';
+import '../../features/user_home/data/datasources/user_home_mock_datasource.dart';
+import '../../features/user_home/data/datasources/user_home_weather_datasource.dart';
+import '../../features/user_home/data/repositories/user_home_repository_impl.dart';
+import '../../features/user_home/domain/repositories/user_home_repository.dart';
+import '../../features/user_home/domain/usecases/get_user_home_dashboard_usecase.dart';
+import '../../features/user_home/domain/usecases/get_user_home_weather_usecase.dart';
 import '../../features/user_setup/data/datasources/user_setup_remote_datasource.dart';
 import '../../features/user_setup/data/repositories/user_setup_repository_impl.dart';
 
@@ -73,8 +87,10 @@ import '../../features/settings/data/repositories/about_repository_impl.dart';
 import '../../features/admin_home/domain/repositories/admin_home_repository.dart';
 import '../../features/admin_home/domain/usecases/get_admin_home_dashboard_usecase.dart';
 import '../../features/admin_manage/domain/repositories/admin_manage_repository.dart';
+import '../../features/admin_manage/domain/entities/admin_manage_seed_defaults.dart';
 import '../../features/admin_manage/domain/usecases/delete_admin_manage_item_usecase.dart';
 import '../../features/admin_manage/domain/usecases/get_admin_manage_items_usecase.dart';
+import '../../features/admin_manage/domain/usecases/reorder_admin_manage_items_usecase.dart';
 import '../../features/admin_manage/domain/usecases/save_admin_manage_item_usecase.dart';
 import '../../features/admin_manage/domain/usecases/seed_admin_manage_defaults_usecase.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
@@ -152,6 +168,18 @@ import '../../features/settings/domain/usecases/support/rating/upload_rating_ima
 // sl = Service Locator - The main warehouse for all dependencies
 final sl = GetIt.instance;
 
+Future<void> seedAdminManageDefaultsOnLaunch() async {
+  final seedDefaultsUseCase = sl<SeedAdminManageDefaultsUseCase>();
+
+  for (final entry in AdminManageSeedDefaults.valuesByCategory.entries) {
+    final result = await seedDefaultsUseCase.execute(
+      categoryId: entry.key,
+      values: entry.value,
+    );
+    result.fold((failure) => null, (_) => null);
+  }
+}
+
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
@@ -177,6 +205,8 @@ Future<void> initDependencies() async {
   _initFaqFeature();
   _initAdminManageFeature();
   _initAdminHomeFeature();
+  _initUserHomeFeature();
+  _initMealPlanFeature();
   _initUserSetupFeature();
 
   // Add new features here as the app grows
@@ -184,9 +214,23 @@ Future<void> initDependencies() async {
   // _initMealPlanFeature();
 }
 
+void _initMealPlanFeature() {
+  sl.registerLazySingleton(() => MealPlanMockDataSource());
+  sl.registerLazySingleton(
+    () => MealPlanWeatherDataSource(weatherService: sl()),
+  );
+
+  sl.registerLazySingleton<MealPlanRepository>(
+    () => MealPlanRepositoryImpl(mockDataSource: sl(), weatherDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetMealPlanDashboardUseCase(sl()));
+  sl.registerLazySingleton(() => GetMealPlanWeatherUseCase(sl()));
+}
+
 void _initUserSetupFeature() {
   sl.registerLazySingleton(
-    () => UserSetupRemoteDataSource(firestore: sl(), client: sl()),
+    () => UserSetupRemoteDataSource(firestore: sl(), foodSearchService: sl()),
   );
 
   sl.registerLazySingleton<UserSetupRepository>(
@@ -198,6 +242,20 @@ void _initUserSetupFeature() {
   sl.registerLazySingleton(() => GetUserSetupPreferencesUseCase(sl()));
   sl.registerLazySingleton(() => SaveUserSetupPreferencesUseCase(sl()));
   sl.registerLazySingleton(() => GetUserSetupStatusUseCase(sl()));
+}
+
+void _initUserHomeFeature() {
+  sl.registerLazySingleton(() => UserHomeMockDataSource());
+  sl.registerLazySingleton(
+    () => UserHomeWeatherDataSource(weatherService: sl()),
+  );
+
+  sl.registerLazySingleton<UserHomeRepository>(
+    () => UserHomeRepositoryImpl(mockDataSource: sl(), weatherDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetUserHomeDashboardUseCase(sl()));
+  sl.registerLazySingleton(() => GetUserHomeWeatherUseCase(sl()));
 }
 
 void _initAdminHomeFeature() {
@@ -220,6 +278,7 @@ void _initAdminManageFeature() {
   sl.registerLazySingleton(() => GetAdminManageItemsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAdminManageItemUseCase(sl()));
   sl.registerLazySingleton(() => DeleteAdminManageItemUseCase(sl()));
+  sl.registerLazySingleton(() => ReorderAdminManageItemsUseCase(sl()));
   sl.registerLazySingleton(() => SeedAdminManageDefaultsUseCase(sl()));
 
   sl.registerFactory(
@@ -227,6 +286,7 @@ void _initAdminManageFeature() {
       getItemsUseCase: sl(),
       saveItemUseCase: sl(),
       deleteItemUseCase: sl(),
+      reorderItemsUseCase: sl(),
       seedDefaultsUseCase: sl(),
     ),
   );
@@ -248,6 +308,8 @@ Future<void> _initExternal() async {
     () => FirebaseMessaging.instance,
   ); // Push notifications
   sl.registerLazySingleton(() => http.Client());
+  sl.registerLazySingleton(() => FoodSearchService(client: sl()));
+  sl.registerLazySingleton(() => OpenMeteoWeatherService(client: sl()));
 
   // --------------------------------------------------------------------------
   // CONNECTIVITY

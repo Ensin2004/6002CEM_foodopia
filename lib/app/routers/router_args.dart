@@ -18,12 +18,26 @@ class AuthenticatedRouteArgs {
   const AuthenticatedRouteArgs();
 }
 
-/// Typed arguments for home route
+/// Typed arguments for the meal plan route.
+class MealPlanArgs {
+  final int initialTabIndex;
+
+  const MealPlanArgs({this.initialTabIndex = 0});
+}
+
+/// Typed arguments for statistics route.
+class StatisticsArgs {
+  final bool isAdmin;
+
+  const StatisticsArgs({required this.isAdmin});
+}
+
+/// Typed arguments for user_home route
 class HomeArgs {
   final UserEntity user;
   final String role;
 
-  /// Creates a home args instance.
+  /// Creates a user_home args instance.
   const HomeArgs({required this.user, required this.role});
 }
 

@@ -13,26 +13,30 @@ class MainViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   MainNavigationEvent? _navigationEvent;
+  bool _isDisposed = false;
 
   /// Creates a main view model instance.
-  MainViewModel({
-    required this.user,
-    required MainRepository repository,
-  }) : _repository = repository {
+  MainViewModel({required this.user, required MainRepository repository})
+    : _repository = repository {
     _loadUserProfile();
     _updateLastLogin();
   }
 
   // Getters
   int get selectedIndex => _selectedIndex;
+
   /// Handles the profile image url operation.
   String? get profileImageUrl => _profileImageUrl;
+
   /// Handles the is loading operation.
   bool get isLoading => _isLoading;
+
   /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+
   /// Handles the is admin operation.
   bool get isAdmin => user.isAdmin;
+
   /// Handles the is user operation.
   bool get isUser => user.isUser;
 
@@ -45,51 +49,58 @@ class MainViewModel extends ChangeNotifier {
 
   // Navigation
   void onTabTapped(int index) {
+    if (!isAdmin && index == 2) {
+      _navigationEvent = MainNavigationEvent.goToAddRecipe;
+      _notifyIfActive();
+      return;
+    }
+
     _selectedIndex = index;
-    notifyListeners();
+    _notifyIfActive();
   }
 
   /// Handles the go to settings operation.
   void goToSettings() {
     _navigationEvent = MainNavigationEvent.goToSettings;
-    notifyListeners();
+    _notifyIfActive();
   }
 
   /// Handles the go to favorites operation.
   void goToFavorites() {
     _navigationEvent = MainNavigationEvent.goToFavorites;
-    notifyListeners();
+    _notifyIfActive();
   }
 
   /// Handles the go to notifications operation.
   void goToNotifications() {
     _navigationEvent = MainNavigationEvent.goToNotifications;
-    notifyListeners();
+    _notifyIfActive();
   }
 
   /// Handles the go to add recipe operation.
   void goToAddRecipe() {
     _navigationEvent = MainNavigationEvent.goToAddRecipe;
-    notifyListeners();
+    _notifyIfActive();
   }
 
   // Load profile image
   Future<void> _loadUserProfile() async {
     _isLoading = true;
-    notifyListeners();
+    _notifyIfActive();
 
     final result = await _repository.getUserProfileImage(user.uid);
+    if (_isDisposed) return;
 
     result.fold(
-          (failure) {
+      (failure) {
         _errorMessage = failure.message;
         _isLoading = false;
-        notifyListeners();
+        _notifyIfActive();
       },
-          (imageUrl) {
+      (imageUrl) {
         _profileImageUrl = imageUrl;
         _isLoading = false;
-        notifyListeners();
+        _notifyIfActive();
       },
     );
   }
@@ -105,9 +116,14 @@ class MainViewModel extends ChangeNotifier {
     await _repository.updateLastLogin(user.uid);
   }
 
+  void _notifyIfActive() {
+    if (!_isDisposed) notifyListeners();
+  }
+
   /// Releases resources before widget removal.
   @override
   void dispose() {
+    _isDisposed = true;
     super.dispose();
   }
 }

@@ -5,13 +5,41 @@ import 'package:flutter/material.dart';
 /// Loads data for the loading dialog operation.
 class LoadingDialog extends StatelessWidget {
   final String? message;
+  final bool inline;
 
   /// Loads data for the loading dialog operation.
-  const LoadingDialog({super.key, this.message});
+  const LoadingDialog({super.key, this.message, this.inline = false});
 
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    if (inline) {
+      return Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                message ?? 'Please wait...',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     /// Handles the dialog operation.
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -28,8 +56,10 @@ class LoadingDialog extends StatelessWidget {
             children: [
               /// Creates a circular progress indicator instance.
               const CircularProgressIndicator(),
+
               /// Creates a sized box instance.
               const SizedBox(height: 16),
+
               /// Creates a text instance.
               Text(
                 message ?? 'Please wait...',

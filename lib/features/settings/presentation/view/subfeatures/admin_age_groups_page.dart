@@ -36,25 +36,55 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
       ),
       body: viewModel.isLoading
           ? const LoadingDialog()
-          : RefreshIndicator(
+          : viewModel.ageGroups.isEmpty
+          ? RefreshIndicator(
               onRefresh: viewModel.loadAgeGroups,
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
                   if (viewModel.errorMessage != null)
                     _buildErrorMessage(viewModel.errorMessage!),
-                  if (viewModel.ageGroups.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 80),
-                      child: Center(child: Text('No age groups yet')),
-                    )
-                  else
-                    ...viewModel.ageGroups.map(
-                      (item) => _buildAgeGroupItem(context, viewModel, item),
-                    ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 80),
+                    child: Center(child: Text('No age groups yet')),
+                  ),
                   const SizedBox(height: 80),
                 ],
               ),
+            )
+          : ReorderableListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount:
+                  viewModel.ageGroups.length +
+                  (viewModel.errorMessage != null ? 2 : 1),
+              onReorder: (oldIndex, newIndex) {
+                final offset = viewModel.errorMessage != null ? 1 : 0;
+                if (oldIndex < offset) return;
+                viewModel.reorderAgeGroups(
+                  oldIndex: oldIndex - offset,
+                  newIndex: newIndex - offset,
+                );
+              },
+              itemBuilder: (context, index) {
+                if (viewModel.errorMessage != null && index == 0) {
+                  return Container(
+                    key: const ValueKey('age_group_error'),
+                    child: _buildErrorMessage(viewModel.errorMessage!),
+                  );
+                }
+
+                final offset = viewModel.errorMessage != null ? 1 : 0;
+                final itemIndex = index - offset;
+                if (itemIndex == viewModel.ageGroups.length) {
+                  return const SizedBox(
+                    key: ValueKey('age_group_bottom_space'),
+                    height: 80,
+                  );
+                }
+
+                final item = viewModel.ageGroups[itemIndex];
+                return _buildAgeGroupItem(context, viewModel, item);
+              },
             ),
     );
   }
@@ -68,6 +98,7 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
     final description = item['description'] as String? ?? '';
 
     return Card(
+      key: ValueKey(item['id']),
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: ListTile(
@@ -89,17 +120,23 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
             isActive ? 'Active' : 'Inactive',
           ].join(' - '),
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'edit') {
-              _showAgeGroupDialog(context, viewModel, item: item);
-            } else if (value == 'delete') {
-              _confirmDelete(context, viewModel, item);
-            }
-          },
-          itemBuilder: (context) => const [
-            PopupMenuItem(value: 'edit', child: Text('Edit')),
-            PopupMenuItem(value: 'delete', child: Text('Delete')),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.drag_handle, color: Colors.grey),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'edit') {
+                  _showAgeGroupDialog(context, viewModel, item: item);
+                } else if (value == 'delete') {
+                  _confirmDelete(context, viewModel, item);
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'edit', child: Text('Edit')),
+                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
+            ),
           ],
         ),
       ),
@@ -130,9 +167,6 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
     final descriptionController = TextEditingController(
       text: item?['description'] as String? ?? '',
     );
-    final sortOrderController = TextEditingController(
-      text: (item?['sortOrder'] ?? viewModel.ageGroups.length + 1).toString(),
-    );
     var isActive = item?['isActive'] as bool? ?? true;
 
     showDialog(
@@ -162,15 +196,6 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
                   ),
                   maxLength: 100,
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: sortOrderController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Sort order',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Active'),
@@ -189,14 +214,13 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
               width: 110,
               child: PrimaryButton(
                 onPressed: () async {
-                  final sortOrder =
-                      int.tryParse(sortOrderController.text.trim()) ??
-                      viewModel.ageGroups.length + 1;
                   final success = await viewModel.saveAgeGroup(
                     id: item?['id'] as String?,
                     name: nameController.text,
                     description: descriptionController.text,
-                    sortOrder: sortOrder,
+                    sortOrder:
+                        item?['sortOrder'] as int? ??
+                        viewModel.ageGroups.length + 1,
                     isActive: isActive,
                   );
                   if (success && dialogContext.mounted) {

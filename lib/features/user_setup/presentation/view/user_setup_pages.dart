@@ -165,11 +165,6 @@ class _AllergiesViewState extends State<_AllergiesView> {
 
     if (viewModel.isLoading) return const LoadingDialog();
 
-    final options = _mergedOptions(
-      viewModel.allergyOptions,
-      viewModel.searchResults,
-    );
-
     return UserSetupScaffold(
       step: 2,
       title: 'Any allergies?',
@@ -196,9 +191,13 @@ class _AllergiesViewState extends State<_AllergiesView> {
           ),
           const SizedBox(height: AppSpacing.md),
           Expanded(
-            child: _OptionList(
-              options: options,
-              emptyText: 'No allergies found',
+            child: _SearchableOptionSections(
+              defaultOptions: viewModel.allergyOptions,
+              searchOptions: viewModel.searchResults,
+              isSearching: viewModel.isSearching,
+              searchQuery: _searchController.text,
+              emptyDefaultText: 'No allergy defaults yet',
+              emptySearchText: 'No allergy results found',
               selectedValues: viewModel.preferences.allergies.toSet(),
               onSelected: viewModel.toggleAllergy,
             ),
@@ -234,11 +233,6 @@ class _DislikesViewState extends State<_DislikesView> {
 
     if (viewModel.isLoading) return const LoadingDialog();
 
-    final options = _mergedOptions(
-      viewModel.dislikeOptions,
-      viewModel.searchResults,
-    );
-
     return UserSetupScaffold(
       step: 3,
       title: 'How about dislikes?',
@@ -265,9 +259,13 @@ class _DislikesViewState extends State<_DislikesView> {
           ),
           const SizedBox(height: AppSpacing.md),
           Expanded(
-            child: _OptionList(
-              options: options,
-              emptyText: 'No dislikes found',
+            child: _SearchableOptionSections(
+              defaultOptions: viewModel.dislikeOptions,
+              searchOptions: viewModel.searchResults,
+              isSearching: viewModel.isSearching,
+              searchQuery: _searchController.text,
+              emptyDefaultText: 'No dislike defaults yet',
+              emptySearchText: 'No dislike results found',
               selectedValues: viewModel.preferences.dislikes.toSet(),
               onSelected: viewModel.toggleDislike,
             ),
@@ -513,6 +511,130 @@ class _SetupSwitchTile extends StatelessWidget {
   }
 }
 
+class _SearchableOptionSections extends StatelessWidget {
+  final List<UserSetupOption> defaultOptions;
+  final List<UserSetupOption> searchOptions;
+  final bool isSearching;
+  final String searchQuery;
+  final String emptyDefaultText;
+  final String emptySearchText;
+  final Set<String> selectedValues;
+  final ValueChanged<String> onSelected;
+
+  const _SearchableOptionSections({
+    required this.defaultOptions,
+    required this.searchOptions,
+    required this.isSearching,
+    required this.searchQuery,
+    required this.emptyDefaultText,
+    required this.emptySearchText,
+    required this.selectedValues,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: [
+        _OptionSection(
+          title: 'Default options',
+          options: defaultOptions,
+          emptyText: emptyDefaultText,
+          selectedValues: selectedValues,
+          onSelected: onSelected,
+        ),
+        if (searchQuery.trim().length >= 2) ...[
+          const SizedBox(height: AppSpacing.lg),
+          Text('Search results', style: context.text.titleMedium),
+          const SizedBox(height: AppSpacing.sm),
+          if (isSearching)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            _OptionWrap(
+              options: searchOptions,
+              emptyText: emptySearchText,
+              selectedValues: selectedValues,
+              onSelected: onSelected,
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _OptionSection extends StatelessWidget {
+  final String title;
+  final List<UserSetupOption> options;
+  final String emptyText;
+  final Set<String> selectedValues;
+  final ValueChanged<String> onSelected;
+
+  const _OptionSection({
+    required this.title,
+    required this.options,
+    required this.emptyText,
+    required this.selectedValues,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: context.text.titleMedium),
+        const SizedBox(height: AppSpacing.sm),
+        _OptionWrap(
+          options: options,
+          emptyText: emptyText,
+          selectedValues: selectedValues,
+          onSelected: onSelected,
+        ),
+      ],
+    );
+  }
+}
+
+class _OptionWrap extends StatelessWidget {
+  final List<UserSetupOption> options;
+  final String emptyText;
+  final Set<String> selectedValues;
+  final ValueChanged<String> onSelected;
+
+  const _OptionWrap({
+    required this.options,
+    required this.emptyText,
+    required this.selectedValues,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (options.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Text(emptyText, style: context.text.bodyMedium),
+      );
+    }
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        for (final option in options)
+          UserSetupChoiceChip(
+            label: option.name,
+            selected: selectedValues.contains(option.name),
+            onTap: () => onSelected(option.name),
+          ),
+      ],
+    );
+  }
+}
+
 class _OptionList extends StatelessWidget {
   final List<UserSetupOption> options;
   final String emptyText;
@@ -558,34 +680,13 @@ class _OptionList extends StatelessWidget {
       );
     }
 
-    return SingleChildScrollView(
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          for (final option in options)
-            UserSetupChoiceChip(
-              label: option.name,
-              selected: selectedValues.contains(option.name),
-              onTap: () => onSelected(option.name),
-            ),
-        ],
-      ),
+    return _OptionWrap(
+      options: options,
+      emptyText: emptyText,
+      selectedValues: selectedValues,
+      onSelected: onSelected,
     );
   }
-}
-
-List<UserSetupOption> _mergedOptions(
-  List<UserSetupOption> defaults,
-  List<UserSetupOption> searchResults,
-) {
-  final seen = <String>{};
-  final merged = <UserSetupOption>[];
-  for (final option in [...defaults, ...searchResults]) {
-    final key = option.name.toLowerCase();
-    if (seen.add(key)) merged.add(option);
-  }
-  return merged;
 }
 
 void _handleNavigation(

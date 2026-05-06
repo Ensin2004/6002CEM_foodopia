@@ -34,26 +34,56 @@ class AdminManageRemoteDataSource {
     await _collection(categoryId).doc(id).delete();
   }
 
-  Future<void> seedDefaults({
+  Future<void> reorderItems({
     required String categoryId,
-    required List<String> values,
+    required List<AdminManageItemModel> items,
   }) async {
     final batch = firestore.batch();
 
-    for (var i = 0; i < values.length; i++) {
-      final ref = _collection(categoryId).doc();
-      batch.set(ref, {
-        'name': values[i],
-        'description': '',
-        'iconKey': '',
+    for (var i = 0; i < items.length; i++) {
+      batch.update(_collection(categoryId).doc(items[i].id), {
         'sortOrder': i + 1,
-        'isActive': true,
-        'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     }
 
     await batch.commit();
+  }
+
+  Future<void> seedDefaults({
+    required String categoryId,
+    required List<String> values,
+  }) async {
+    final existingSnapshot = await _collection(categoryId).get();
+    final existingNames = existingSnapshot.docs
+        .map((doc) => doc.data()['name']?.toString().trim().toLowerCase())
+        .whereType<String>()
+        .toSet();
+
+    final batch = firestore.batch();
+    var nextSortOrder = existingSnapshot.docs.length + 1;
+    var hasWrites = false;
+
+    for (final value in values) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized.isEmpty || existingNames.contains(normalized)) continue;
+
+      final ref = _collection(categoryId).doc();
+      batch.set(ref, {
+        'name': value,
+        'description': '',
+        'iconKey': '',
+        'sortOrder': nextSortOrder,
+        'isActive': true,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      existingNames.add(normalized);
+      nextSortOrder++;
+      hasWrites = true;
+    }
+
+    if (hasWrites) await batch.commit();
   }
 
   CollectionReference<Map<String, dynamic>> _collection(String categoryId) {

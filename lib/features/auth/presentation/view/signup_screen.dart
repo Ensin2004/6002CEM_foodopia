@@ -749,7 +749,7 @@ class _SignupViewState extends State<_SignupView> {
     }
   }
 
-  /// Handles the navigate to home operation.
+  /// Handles the navigate to user_home operation.
   void _navigateToHome(BuildContext context, dynamic user) {
     final roleManager = RoleManager();
 

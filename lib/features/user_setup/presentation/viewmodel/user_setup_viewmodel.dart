@@ -31,6 +31,7 @@ class UserSetupViewModel extends ChangeNotifier {
 
   bool _isLoading = false;
   bool _isSaving = false;
+  bool _isSearching = false;
   String? _errorMessage;
   List<UserSetupOption> _dietOptions = const [];
   List<UserSetupOption> _allergyOptions = const [];
@@ -38,6 +39,7 @@ class UserSetupViewModel extends ChangeNotifier {
   List<UserSetupOption> _searchResults = const [];
   UserSetupPreferences _preferences = const UserSetupPreferences();
   final Map<String, bool> _notificationSettings = {};
+  String _activeSearchQuery = '';
   UserSetupNavigationEvent? _navigationEvent;
 
   UserSetupViewModel({
@@ -53,6 +55,7 @@ class UserSetupViewModel extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
+  bool get isSearching => _isSearching;
   String? get errorMessage => _errorMessage;
   List<UserSetupOption> get dietOptions => _dietOptions;
   List<UserSetupOption> get allergyOptions => _allergyOptions;
@@ -90,19 +93,31 @@ class UserSetupViewModel extends ChangeNotifier {
   Future<void> search(String query) async {
     final trimmed = query.trim();
     if (trimmed.length < 2) {
+      _activeSearchQuery = '';
       _searchResults = const [];
+      _isSearching = false;
       notifyListeners();
       return;
     }
 
+    _activeSearchQuery = trimmed;
+    _isSearching = true;
+    _errorMessage = null;
+    notifyListeners();
+
     final result = await _searchFoodsUseCase.execute(trimmed);
+    if (_activeSearchQuery != trimmed) return;
+
     result.ifLeft((failure) => _errorMessage = failure.message);
     result.ifRight((items) => _searchResults = items);
+    _isSearching = false;
     notifyListeners();
   }
 
   void clearSearch() {
+    _activeSearchQuery = '';
     _searchResults = const [];
+    _isSearching = false;
     notifyListeners();
   }
 

@@ -98,6 +98,40 @@ class AdminAgeGroupsViewModel extends ChangeNotifier {
     }
   }
 
+  Future<bool> reorderAgeGroups({
+    required int oldIndex,
+    required int newIndex,
+  }) async {
+    final items = List<Map<String, dynamic>>.from(_ageGroups);
+    if (newIndex > oldIndex) newIndex -= 1;
+    if (oldIndex < 0 || oldIndex >= items.length) return false;
+    if (newIndex < 0 || newIndex >= items.length) return false;
+
+    final movedItem = items.removeAt(oldIndex);
+    items.insert(newIndex, movedItem);
+    _ageGroups = [
+      for (var i = 0; i < items.length; i++) {...items[i], 'sortOrder': i + 1},
+    ];
+    notifyListeners();
+
+    try {
+      final batch = _firestore.batch();
+      for (var i = 0; i < _ageGroups.length; i++) {
+        batch.update(_collection.doc(_ageGroups[i]['id'] as String), {
+          'sortOrder': i + 1,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      await loadAgeGroups();
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> deleteAgeGroup(String id) async {
     _isSaving = true;
     _errorMessage = null;

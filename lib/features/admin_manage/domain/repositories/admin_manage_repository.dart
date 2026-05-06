@@ -17,6 +17,11 @@ abstract class AdminManageRepository {
     required String id,
   });
 
+  Future<Either<Failure, void>> reorderItems({
+    required String categoryId,
+    required List<AdminManageItem> items,
+  });
+
   Future<Either<Failure, void>> seedDefaults({
     required String categoryId,
     required List<String> values,
