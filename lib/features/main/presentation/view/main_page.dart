@@ -122,7 +122,7 @@ class _MainPageViewState extends State<_MainPageView> {
         case 1:
           return const ExplorePage();
         case 3:
-          return const MealPlanPage();
+          return MealPlanPage(userId: viewModel.user.uid);
         case 4:
           return const LibraryPage();
         default:

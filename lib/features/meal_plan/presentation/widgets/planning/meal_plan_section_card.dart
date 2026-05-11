@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/theme_extension.dart';
-import '../../domain/entities/meal_plan_dashboard.dart';
+import '../../../../../app/routers/app_router.dart';
+import '../../../../../app/routers/router_args.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_spacing.dart';
+import '../../../../../core/theme/theme_extension.dart';
+import '../../../domain/entities/meal_plan_dashboard.dart';
+import '../../viewmodel/meal_plan_viewmodel.dart';
 
 class MealPlanSectionCard extends StatelessWidget {
   final MealPlanSection section;
@@ -63,7 +68,16 @@ class MealPlanSectionCard extends StatelessWidget {
             width: double.infinity,
             height: 34,
             child: OutlinedButton(
-              onPressed: () {},
+              onPressed: () {
+                final userId = context.read<MealPlanViewModel>().userId;
+                context.push(
+                  AppRouter.addMealPlan,
+                  extra: AddMealPlanArgs(
+                    userId: userId,
+                    mealType: section.mealType,
+                  ),
+                );
+              },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: AppColors.border),
                 shape: RoundedRectangleBorder(

@@ -41,10 +41,15 @@ import '../../features/admin_manage/data/repositories/admin_manage_repository_im
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
+import '../../features/meal_plan/data/datasources/meal_plan_preferences_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
 import '../../features/meal_plan/data/repositories/meal_plan_repository_impl.dart';
 import '../../features/meal_plan/domain/repositories/meal_plan_repository.dart';
+import '../../features/meal_plan/domain/usecases/get_add_grocery_list_plan_usecase.dart';
+import '../../features/meal_plan/domain/usecases/get_add_meal_ai_plan_usecase.dart';
+import '../../features/meal_plan/domain/usecases/get_manage_grocery_list_detail_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_dashboard_usecase.dart';
+import '../../features/meal_plan/domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_weather_usecase.dart';
 import '../../features/user_home/data/datasources/user_home_mock_datasource.dart';
 import '../../features/user_home/data/datasources/user_home_weather_datasource.dart';
@@ -217,15 +222,26 @@ Future<void> initDependencies() async {
 void _initMealPlanFeature() {
   sl.registerLazySingleton(() => MealPlanMockDataSource());
   sl.registerLazySingleton(
+    () => MealPlanPreferencesDataSource(firestore: sl()),
+  );
+  sl.registerLazySingleton(
     () => MealPlanWeatherDataSource(weatherService: sl()),
   );
 
   sl.registerLazySingleton<MealPlanRepository>(
-    () => MealPlanRepositoryImpl(mockDataSource: sl(), weatherDataSource: sl()),
+    () => MealPlanRepositoryImpl(
+      mockDataSource: sl(),
+      weatherDataSource: sl(),
+      preferencesDataSource: sl(),
+    ),
   );
 
   sl.registerLazySingleton(() => GetMealPlanDashboardUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlanWeatherUseCase(sl()));
+  sl.registerLazySingleton(() => GetMealPlanPreferencesUseCase(sl()));
+  sl.registerLazySingleton(() => GetAddGroceryListPlanUseCase(sl()));
+  sl.registerLazySingleton(() => GetAddMealAiPlanUseCase(sl()));
+  sl.registerLazySingleton(() => GetManageGroceryListDetailUseCase(sl()));
 }
 
 void _initUserSetupFeature() {

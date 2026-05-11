@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/theme_extension.dart';
-import '../../domain/entities/meal_plan_dashboard.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_spacing.dart';
+import '../../../../../core/theme/theme_extension.dart';
+import '../../../domain/entities/meal_plan_dashboard.dart';
 
 class MealPlanCalendar extends StatelessWidget {
   final DateTime selectedDate;

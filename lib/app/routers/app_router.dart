@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:photo_view/photo_view.dart';
+import '../../core/widgets/custom_app_bar.dart';
 import '../../features/auth/domain/entities/user_entity.dart';
 import '../../features/auth/presentation/view/login_screen.dart';
 import '../../features/auth/presentation/view/signup_screen.dart';
@@ -13,7 +14,11 @@ import '../../features/notifications/presentation/view/notifications_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_page.dart';
 import '../../features/explore/presentation/view/explore_page.dart';
 import '../../features/library/presentation/view/library_page.dart';
+import '../../features/meal_plan/presentation/view/add_grocery_list_page.dart';
+import '../../features/meal_plan/presentation/view/manage_grocery_list_page.dart';
 import '../../features/meal_plan/presentation/view/meal_plan_page.dart';
+import '../../features/meal_plan/presentation/view/planning/add_meal_plan_page.dart';
+import '../../features/meal_plan/presentation/view/planning/generate_ai_meal_page.dart';
 import '../../features/statistics/presentation/view/statistics_page.dart';
 import '../../features/settings/presentation/view/settings_page.dart';
 import '../../features/settings/presentation/view/subfeatures/about/about_editor_page.dart';
@@ -50,6 +55,11 @@ class AppRouter {
   static const String addRecipe = '/recipes/add';
   static const String explore = '/explore';
   static const String mealPlan = '/meal-plan';
+  static const String addMealPlan = '/meal-plan/planning/add-meal';
+  static const String generateAiMeal =
+      '/meal-plan/planning/add-meal/generate-ai';
+  static const String addGroceryList = '/meal-plan/grocery-list/add';
+  static const String manageGroceryList = '/meal-plan/grocery-list/manage';
   static const String library = '/library';
   static const String statistics = '/statistics';
   static const String issueDetail = '/help-center/issue';
@@ -375,7 +385,54 @@ class AppRouter {
         builder: (context, state) {
           final extra = state.extra;
           final args = extra is MealPlanArgs ? extra : null;
-          return MealPlanPage(initialTabIndex: args?.initialTabIndex ?? 0);
+          return MealPlanPage(
+            initialTabIndex: args?.initialTabIndex ?? 0,
+            userId:
+                args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+          );
+        },
+      ),
+
+      GoRoute(
+        name: 'addMealPlan',
+        path: addMealPlan,
+        builder: (context, state) {
+          final args = state.extra as AddMealPlanArgs?;
+          return AddMealPlanPage(
+            mealType: args?.mealType ?? 'Breakfast',
+            userId:
+                args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+          );
+        },
+      ),
+
+      GoRoute(
+        name: 'generateAiMeal',
+        path: generateAiMeal,
+        builder: (context, state) {
+          final args = state.extra as GenerateAiMealArgs?;
+          return GenerateAiMealPage(
+            mealType: args?.mealType ?? 'Breakfast',
+            userId:
+                args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+          );
+        },
+      ),
+
+      GoRoute(
+        name: 'addGroceryList',
+        path: addGroceryList,
+        builder: (context, state) => const AddGroceryListPage(),
+      ),
+
+      GoRoute(
+        name: 'manageGroceryList',
+        path: manageGroceryList,
+        builder: (context, state) {
+          final args = state.extra as ManageGroceryListArgs?;
+          return ManageGroceryListPage(
+            listId: args?.listId ?? 'weekly_groceries',
+          );
         },
       ),
 
@@ -432,7 +489,13 @@ class AppRouter {
 
           /// Handles the scaffold operation.
           return Scaffold(
-            appBar: AppBar(),
+            appBar: CustomAppBar(
+              title: '',
+              leading: IconButton(
+                onPressed: () => context.pop(),
+                icon: const Icon(Icons.chevron_left),
+              ),
+            ),
             body: Center(
               child: PhotoView(
                 imageProvider: args.imageUrl.startsWith('http')

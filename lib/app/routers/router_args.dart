@@ -21,8 +21,39 @@ class AuthenticatedRouteArgs {
 /// Typed arguments for the meal plan route.
 class MealPlanArgs {
   final int initialTabIndex;
+  final String? userId;
 
-  const MealPlanArgs({this.initialTabIndex = 0});
+  const MealPlanArgs({this.initialTabIndex = 0, this.userId});
+}
+
+/// Typed arguments for add grocery list route.
+class AddGroceryListArgs {
+  final String? userId;
+
+  const AddGroceryListArgs({this.userId});
+}
+
+/// Typed arguments for add meal planning route.
+class AddMealPlanArgs {
+  final String? userId;
+  final String mealType;
+
+  const AddMealPlanArgs({this.userId, required this.mealType});
+}
+
+/// Typed arguments for generate AI meal route.
+class GenerateAiMealArgs {
+  final String? userId;
+  final String mealType;
+
+  const GenerateAiMealArgs({this.userId, required this.mealType});
+}
+
+/// Typed arguments for manage grocery list route.
+class ManageGroceryListArgs {
+  final String listId;
+
+  const ManageGroceryListArgs({required this.listId});
 }
 
 /// Typed arguments for statistics route.

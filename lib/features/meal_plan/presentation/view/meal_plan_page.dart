@@ -8,23 +8,27 @@ import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/usecases/get_meal_plan_dashboard_usecase.dart';
+import '../../domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../domain/usecases/get_meal_plan_weather_usecase.dart';
 import '../viewmodel/meal_plan_viewmodel.dart';
-import '../widgets/grocery_list_tab_view.dart';
-import '../widgets/inspiration_tab_view.dart';
-import '../widgets/planning_tab_view.dart';
+import '../widgets/grocery_list/grocery_list_tab_main_view.dart';
+import '../widgets/inspiration/inspiration_tab_main_view.dart';
+import '../widgets/planning/planning_tab_main_view.dart';
 
 class MealPlanPage extends StatelessWidget {
   final int initialTabIndex;
+  final String userId;
 
-  const MealPlanPage({super.key, this.initialTabIndex = 0});
+  const MealPlanPage({super.key, this.initialTabIndex = 0, this.userId = ''});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => MealPlanViewModel(
+        userId: userId,
         getDashboardUseCase: sl<GetMealPlanDashboardUseCase>(),
         getWeatherUseCase: sl<GetMealPlanWeatherUseCase>(),
+        getPreferencesUseCase: sl<GetMealPlanPreferencesUseCase>(),
       ),
       child: _MealPlanView(initialTabIndex: initialTabIndex),
     );
@@ -86,9 +90,9 @@ class _MealPlanViewState extends State<_MealPlanView>
           child: TabBarView(
             controller: _tabController,
             children: [
-              PlanningTabView(dashboard: dashboard),
-              InspirationTabView(items: dashboard.inspirations),
-              GroceryListTabView(groups: dashboard.groceryGroups),
+              PlanningTabMainView(dashboard: dashboard),
+              InspirationTabMainView(dashboard: dashboard),
+              GroceryListTabMainView(lists: dashboard.groceryLists),
             ],
           ),
         ),

@@ -1,0 +1,419 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../../../../../app/routers/app_router.dart';
+import '../../../../../app/routers/router_args.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_spacing.dart';
+import '../../../../../core/theme/theme_extension.dart';
+import '../../../../../core/widgets/tabs/app_pill_segmented_control.dart';
+import '../../../domain/entities/meal_plan_dashboard.dart';
+import '../../viewmodel/meal_plan_viewmodel.dart';
+
+class GroceryListTabMainView extends StatelessWidget {
+  final List<GroceryListSummary> lists;
+
+  const GroceryListTabMainView({super.key, required this.lists});
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<MealPlanViewModel>();
+    final groceryLists = viewModel.filteredGroceryLists;
+
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: viewModel.loadDashboard,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              104,
+            ),
+            children: [
+              AppPillSegmentedControl(
+                labels: const ['Active', 'Past'],
+                selectedIndex:
+                    viewModel.selectedGroceryListTab ==
+                        GroceryListTabFilter.active
+                    ? 0
+                    : 1,
+                onChanged: (index) =>
+                    context.read<MealPlanViewModel>().selectGroceryListTab(
+                      index == 0
+                          ? GroceryListTabFilter.active
+                          : GroceryListTabFilter.past,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const _GrocerySearchRow(),
+              const SizedBox(height: AppSpacing.md),
+              const _GroceryTipBox(),
+              const SizedBox(height: AppSpacing.md),
+              if (groceryLists.isEmpty)
+                const _EmptyGroceryLists()
+              else
+                ...groceryLists.map(
+                  (list) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: _GroceryListCard(list: list),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const Positioned(
+          right: AppSpacing.md,
+          bottom: AppSpacing.lg,
+          child: _AddGroceryListButton(),
+        ),
+      ],
+    );
+  }
+}
+
+class _GrocerySearchRow extends StatelessWidget {
+  const _GrocerySearchRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.tune, color: AppColors.textPrimary, size: 22),
+        const SizedBox(width: AppSpacing.sm),
+        const Icon(Icons.filter_alt, color: AppColors.textPrimary, size: 22),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Container(
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F8F8),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.search,
+                  color: AppColors.textSecondary.withValues(alpha: 0.35),
+                  size: 22,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    'Search name, brand, category, ...',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary.withValues(alpha: 0.35),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GroceryTipBox extends StatelessWidget {
+  const _GroceryTipBox();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FAF2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.lightbulb_outline,
+            color: AppColors.primary,
+            size: 22,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tip',
+                  style: context.text.bodySmall?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Create lists for different occasions and manage your shopping easily.',
+                  style: context.text.bodySmall?.copyWith(fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroceryListCard extends StatelessWidget {
+  final GroceryListSummary list;
+
+  const _GroceryListCard({required this.list});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () => context.push(
+            AppRouter.manageGroceryList,
+            extra: ManageGroceryListArgs(listId: list.id),
+          ),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: AppSpacing.cardPadding,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE0F7E4),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month,
+                    color: AppColors.primary,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              list.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.text.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          if (list.isDefault) const _DefaultBadge(),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${list.itemCount} items',
+                        style: context.text.bodyMedium,
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Expanded(
+                            child: Text(
+                              _formatDateRange(list.startDate, list.endDate),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.text.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Spacer(),
+                          ...list.categories
+                              .take(3)
+                              .map(
+                                (category) => Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: _CategoryIcon(category: category),
+                                ),
+                              ),
+                          if (list.extraCategoryCount > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: _ExtraBadge(
+                                count: list.extraCategoryCount,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                const Icon(Icons.more_vert, color: AppColors.textPrimary),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDateRange(DateTime start, DateTime end) {
+    final startText = DateFormat('d MMM').format(start);
+    final endText = DateFormat('d MMM yyyy').format(end);
+    return '$startText - $endText';
+  }
+}
+
+class _DefaultBadge extends StatelessWidget {
+  const _DefaultBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(left: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3C4),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        'Default',
+        style: context.text.bodySmall?.copyWith(
+          color: AppColors.secondary,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryIcon extends StatelessWidget {
+  final String category;
+
+  const _CategoryIcon({required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(_iconForCategory(category), size: 16, color: AppColors.primary);
+  }
+
+  IconData _iconForCategory(String category) {
+    final normalized = category.toLowerCase();
+    if (normalized.contains('meat')) return Icons.set_meal_outlined;
+    if (normalized.contains('dairy')) return Icons.local_drink_outlined;
+    if (normalized.contains('drink')) return Icons.local_bar_outlined;
+    if (normalized.contains('snack')) return Icons.cookie_outlined;
+    if (normalized.contains('bakery')) return Icons.bakery_dining_outlined;
+    return Icons.eco_outlined;
+  }
+}
+
+class _ExtraBadge extends StatelessWidget {
+  final int count;
+
+  const _ExtraBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: const BoxDecoration(
+        color: Color(0xFFE8F8EB),
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        '+$count',
+        style: context.text.bodySmall?.copyWith(
+          color: AppColors.primary,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _AddGroceryListButton extends StatelessWidget {
+  const _AddGroceryListButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 54,
+      child: ElevatedButton.icon(
+        onPressed: () => context.push(AppRouter.addGroceryList),
+        icon: const Icon(Icons.calendar_month, size: 20),
+        label: Text(
+          'Add Grocery List',
+          style: context.text.labelLarge?.copyWith(color: Colors.white),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.secondary,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shadowColor: AppColors.secondary.withValues(alpha: 0.32),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyGroceryLists extends StatelessWidget {
+  const _EmptyGroceryLists();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+      child: Column(
+        children: [
+          Image.asset('assets/images/empty_page.png', height: 140),
+          const SizedBox(height: AppSpacing.md),
+          Text('No grocery lists here yet', style: context.text.bodyMedium),
+        ],
+      ),
+    );
+  }
+}

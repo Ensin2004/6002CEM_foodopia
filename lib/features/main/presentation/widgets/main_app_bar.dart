@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/widgets/custom_app_bar.dart';
+
 /// Defines behavior for main app bar.
 class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool isAdmin;
@@ -21,15 +23,17 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
-    /// Handles the app bar operation.
-    return AppBar(
+    return CustomAppBar(
+      title: 'Foodopia',
+      titleWidget: _buildTitle(context),
       backgroundColor: Theme.of(context).colorScheme.primary,
-      surfaceTintColor: Colors.transparent,
       elevation: 0,
       toolbarHeight: 56,
-      automaticallyImplyLeading: false,
+      leading: const SizedBox.shrink(),
+      leadingWidth: 0,
       titleSpacing: 0,
-      title: _buildTitle(context),
+      centerTitle: false,
+      foregroundColor: Theme.of(context).colorScheme.onPrimary,
       actions: _buildActions(context),
     );
   }

@@ -8,6 +8,8 @@ class MealPlanDashboardModel extends MealPlanDashboard {
     required super.monthDays,
     required super.sections,
     required super.inspirations,
+    required super.quickInspirations,
+    required super.groceryLists,
     required super.groceryGroups,
   });
 
@@ -81,6 +83,91 @@ class MealPlanDashboardModel extends MealPlanDashboard {
           imagePath: 'assets/images/meal2.png',
         ),
       ],
+      quickInspirations: const [
+        MealPlanQuickInspiration(
+          title: 'What can I cook with what I have?',
+          subtitle: 'Use ingredients you already have.',
+          imagePath: 'assets/images/meal3.png',
+        ),
+        MealPlanQuickInspiration(
+          title: 'Surprise me!',
+          subtitle: 'Get AI-picked recipes for you.',
+          imagePath: 'assets/images/meal2.png',
+        ),
+        MealPlanQuickInspiration(
+          title: 'Healthy Ideas',
+          subtitle: 'Nutritious and balanced meals.',
+          imagePath: 'assets/images/meal1.png',
+        ),
+        MealPlanQuickInspiration(
+          title: 'Quick & Easy',
+          subtitle: 'Recipes you can make in no time.',
+          imagePath: 'assets/images/meal3.png',
+        ),
+      ],
+      groceryLists: [
+        GroceryListSummary(
+          id: 'weekly_groceries',
+          title: 'Weekly Groceries',
+          itemCount: 18,
+          startDate: DateTime(selectedDate.year, selectedDate.month, 1),
+          endDate: DateTime(selectedDate.year, selectedDate.month, 7),
+          status: GroceryListStatus.active,
+          isDefault: true,
+          categories: const ['Produce', 'Meat', 'Dairy'],
+          extraCategoryCount: 3,
+        ),
+        GroceryListSummary(
+          id: 'healthy_meal_prep',
+          title: 'Healthy Meal Prep',
+          itemCount: 12,
+          startDate: DateTime(selectedDate.year, selectedDate.month, 8),
+          endDate: DateTime(selectedDate.year, selectedDate.month, 14),
+          status: GroceryListStatus.active,
+          categories: const ['Produce', 'Pantry', 'Dairy'],
+          extraCategoryCount: 3,
+        ),
+        GroceryListSummary(
+          id: 'weekend_essentials',
+          title: 'Weekend Essentials',
+          itemCount: 9,
+          startDate: DateTime(selectedDate.year, selectedDate.month, 15),
+          endDate: DateTime(selectedDate.year, selectedDate.month, 17),
+          status: GroceryListStatus.active,
+          categories: const ['Produce', 'Snacks', 'Drinks'],
+          extraCategoryCount: 3,
+        ),
+        GroceryListSummary(
+          id: 'bbq_party',
+          title: 'BBQ Party',
+          itemCount: 24,
+          startDate: DateTime(selectedDate.year, selectedDate.month, 20),
+          endDate: DateTime(selectedDate.year, selectedDate.month, 20),
+          status: GroceryListStatus.active,
+          categories: const ['Meat', 'Produce', 'Drinks'],
+          extraCategoryCount: 3,
+        ),
+        GroceryListSummary(
+          id: 'april_family_meals',
+          title: 'April Family Meals',
+          itemCount: 16,
+          startDate: DateTime(selectedDate.year, selectedDate.month - 1, 8),
+          endDate: DateTime(selectedDate.year, selectedDate.month - 1, 14),
+          status: GroceryListStatus.past,
+          categories: const ['Produce', 'Pantry', 'Dairy'],
+          extraCategoryCount: 2,
+        ),
+        GroceryListSummary(
+          id: 'quick_breakfast_run',
+          title: 'Quick Breakfast Run',
+          itemCount: 7,
+          startDate: DateTime(selectedDate.year, selectedDate.month - 1, 22),
+          endDate: DateTime(selectedDate.year, selectedDate.month - 1, 22),
+          status: GroceryListStatus.past,
+          categories: const ['Bakery', 'Fruit', 'Dairy'],
+          extraCategoryCount: 1,
+        ),
+      ],
       groceryGroups: const [
         GroceryListGroup(
           title: 'Produce',
@@ -121,4 +208,36 @@ class MealPlanWeatherModel extends MealPlanWeather {
     required super.condition,
     required super.summary,
   });
+}
+
+class MealPlanPreferenceSummaryModel extends MealPlanPreferenceSummary {
+  const MealPlanPreferenceSummaryModel({
+    required super.diet,
+    required super.allergies,
+    required super.dislikes,
+  });
+
+  factory MealPlanPreferenceSummaryModel.empty() {
+    return const MealPlanPreferenceSummaryModel(
+      diet: 'Not set',
+      allergies: [],
+      dislikes: [],
+    );
+  }
+
+  factory MealPlanPreferenceSummaryModel.fromJson(Map<String, dynamic> json) {
+    return MealPlanPreferenceSummaryModel(
+      diet: json['diet']?.toString() ?? 'Not set',
+      allergies: _stringList(json['allergies']),
+      dislikes: _stringList(json['dislikes']),
+    );
+  }
+
+  static List<String> _stringList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .map((item) => item.toString())
+        .where((item) => item.trim().isNotEmpty)
+        .toList();
+  }
 }

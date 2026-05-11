@@ -2,22 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/theme_extension.dart';
-import '../../../../core/widgets/box/app_info_box.dart';
-import '../../../../core/widgets/buttons/app_filter_chip.dart';
-import '../../../../core/widgets/dialogs/loading_dialog.dart';
-import '../../domain/entities/meal_plan_dashboard.dart';
-import '../viewmodel/meal_plan_viewmodel.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_spacing.dart';
+import '../../../../../core/theme/theme_extension.dart';
+import '../../../../../core/widgets/box/app_info_box.dart';
+import '../../../../../core/widgets/buttons/app_filter_chip.dart';
+import '../../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../domain/entities/meal_plan_dashboard.dart';
+import '../../viewmodel/meal_plan_viewmodel.dart';
 import 'meal_plan_calendar.dart';
 import 'meal_plan_section_card.dart';
 import 'meal_plan_summary_strip.dart';
 
-class PlanningTabView extends StatelessWidget {
+class PlanningTabMainView extends StatelessWidget {
   final MealPlanDashboard dashboard;
 
-  const PlanningTabView({super.key, required this.dashboard});
+  const PlanningTabMainView({super.key, required this.dashboard});
 
   @override
   Widget build(BuildContext context) {

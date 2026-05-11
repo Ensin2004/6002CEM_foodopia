@@ -13,12 +13,17 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final bool centerTitle;
   final Widget? leading;
+  final Widget? titleWidget;
   final List<Widget>? actions;
   final bool showConfirmationOnBack;
   final bool hasUnsavedChanges;
   final VoidCallback? onSaveChanges;
   final Color? backgroundColor;
   final Color? foregroundColor;
+  final double elevation;
+  final double toolbarHeight;
+  final double? leadingWidth;
+  final double? titleSpacing;
 
   /// Creates a custom app bar instance.
   const CustomAppBar({
@@ -26,17 +31,22 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.title,
     this.centerTitle = true,
     this.leading,
+    this.titleWidget,
     this.actions,
     this.showConfirmationOnBack = false,
     this.hasUnsavedChanges = false,
     this.onSaveChanges,
     this.backgroundColor,
     this.foregroundColor,
+    this.elevation = 4,
+    this.toolbarHeight = kToolbarHeight,
+    this.leadingWidth,
+    this.titleSpacing,
   });
 
   /// Handles the preferred size operation.
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => Size.fromHeight(toolbarHeight);
 
   /// Builds the widget tree for this component.
   @override
@@ -49,22 +59,27 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       backgroundColor: bgColor,
       foregroundColor: fgColor,
-      elevation: 4,
+      elevation: elevation,
       shadowColor: Colors.grey.withValues(alpha: 0.35),
       surfaceTintColor: Colors.transparent,
+      toolbarHeight: toolbarHeight,
       shape: const Border(
         bottom: BorderSide(color: AppColors.border, width: 0.5),
       ),
       centerTitle: centerTitle,
       leading: leading ?? _buildBackButton(context, fgColor),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 20,
-          color: fgColor,
-        ),
-      ),
+      leadingWidth: leadingWidth,
+      titleSpacing: titleSpacing,
+      title:
+          titleWidget ??
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 20,
+              color: fgColor,
+            ),
+          ),
       actions: actions,
     );
   }

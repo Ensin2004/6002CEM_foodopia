@@ -5,6 +5,8 @@ class MealPlanDashboard {
   final List<MealPlanDay> monthDays;
   final List<MealPlanSection> sections;
   final List<MealPlanInspiration> inspirations;
+  final List<MealPlanQuickInspiration> quickInspirations;
+  final List<GroceryListSummary> groceryLists;
   final List<GroceryListGroup> groceryGroups;
 
   const MealPlanDashboard({
@@ -14,6 +16,8 @@ class MealPlanDashboard {
     required this.monthDays,
     required this.sections,
     required this.inspirations,
+    required this.quickInspirations,
+    required this.groceryLists,
     required this.groceryGroups,
   });
 
@@ -25,6 +29,8 @@ class MealPlanDashboard {
       monthDays: monthDays,
       sections: sections,
       inspirations: inspirations,
+      quickInspirations: quickInspirations,
+      groceryLists: groceryLists,
       groceryGroups: groceryGroups,
     );
   }
@@ -99,9 +105,68 @@ class MealPlanInspiration {
   });
 }
 
+class MealPlanQuickInspiration {
+  final String title;
+  final String subtitle;
+  final String imagePath;
+
+  const MealPlanQuickInspiration({
+    required this.title,
+    required this.subtitle,
+    required this.imagePath,
+  });
+}
+
+class MealPlanPreferenceSummary {
+  final String diet;
+  final List<String> allergies;
+  final List<String> dislikes;
+
+  const MealPlanPreferenceSummary({
+    required this.diet,
+    required this.allergies,
+    required this.dislikes,
+  });
+
+  String get shortLabel {
+    final labels = <String>[];
+    if (diet.trim().isNotEmpty) labels.add(diet);
+    labels.addAll(allergies.take(2));
+    labels.addAll(dislikes.take(1));
+    if (labels.isEmpty) return 'Not set';
+    return labels.join(', ');
+  }
+}
+
 class GroceryListGroup {
   final String title;
   final List<String> items;
 
   const GroceryListGroup({required this.title, required this.items});
+}
+
+enum GroceryListStatus { active, past }
+
+class GroceryListSummary {
+  final String id;
+  final String title;
+  final int itemCount;
+  final DateTime startDate;
+  final DateTime endDate;
+  final GroceryListStatus status;
+  final bool isDefault;
+  final List<String> categories;
+  final int extraCategoryCount;
+
+  const GroceryListSummary({
+    required this.id,
+    required this.title,
+    required this.itemCount,
+    required this.startDate,
+    required this.endDate,
+    required this.status,
+    this.isDefault = false,
+    this.categories = const [],
+    this.extraCategoryCount = 0,
+  });
 }
