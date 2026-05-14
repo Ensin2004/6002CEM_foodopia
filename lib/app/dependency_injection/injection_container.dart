@@ -234,10 +234,12 @@ void _initStatisticsFeature() {
   sl.registerLazySingleton(() => StatisticsMockDataSource());
 
   sl.registerLazySingleton<StatisticsRepository>(
-    () => StatisticsRepositoryImpl(mockDataSource: sl()),
+        () => StatisticsRepositoryImpl(mockDataSource: sl()),
   );
 
   sl.registerLazySingleton(() => GetStatisticsDashboardUseCase(sl()));
+}
+
 void _initExploreFeature() {
   sl.registerLazySingleton(() => ExploreMockDataSource());
 
