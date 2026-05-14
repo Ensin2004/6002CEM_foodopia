@@ -136,7 +136,7 @@ class _MainPageViewState extends State<_MainPageView> {
         case 1:
           return const AdminManagePage();
         case 2:
-          return const StatisticsPage(isAdmin: true);
+          return const StatisticsPage(isAdmin: true, showAppBar: false);
         default:
           return HomePage(userName: viewModel.user.name ?? 'Foodie');
       }

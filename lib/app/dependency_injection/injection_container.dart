@@ -51,6 +51,10 @@ import '../../features/meal_plan/domain/usecases/get_manage_grocery_list_detail_
 import '../../features/meal_plan/domain/usecases/get_meal_plan_dashboard_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_weather_usecase.dart';
+import '../../features/statistics/data/datasources/statistics_mock_datasource.dart';
+import '../../features/statistics/data/repositories/statistics_repository_impl.dart';
+import '../../features/statistics/domain/repositories/statistics_repository.dart';
+import '../../features/statistics/domain/usecases/get_statistics_dashboard_usecase.dart';
 import '../../features/user_home/data/datasources/user_home_mock_datasource.dart';
 import '../../features/user_home/data/datasources/user_home_weather_datasource.dart';
 import '../../features/user_home/data/repositories/user_home_repository_impl.dart';
@@ -213,10 +217,21 @@ Future<void> initDependencies() async {
   _initUserHomeFeature();
   _initMealPlanFeature();
   _initUserSetupFeature();
+  _initStatisticsFeature();
 
   // Add new features here as the app grows
   // _initRecipeFeature();
   // _initMealPlanFeature();
+}
+
+void _initStatisticsFeature() {
+  sl.registerLazySingleton(() => StatisticsMockDataSource());
+
+  sl.registerLazySingleton<StatisticsRepository>(
+    () => StatisticsRepositoryImpl(mockDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetStatisticsDashboardUseCase(sl()));
 }
 
 void _initMealPlanFeature() {

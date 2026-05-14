@@ -1,1 +1,657 @@
-// Builds the user statistics screen.
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/theme_extension.dart';
+import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
+import '../../domain/entities/statistics_dashboard.dart';
+import '../viewmodel/statistics_viewmodel.dart';
+
+class UserStatisticsView extends StatefulWidget {
+  final bool isAdmin;
+
+  const UserStatisticsView({super.key, required this.isAdmin});
+
+  @override
+  State<UserStatisticsView> createState() => _UserStatisticsViewState();
+}
+
+class _UserStatisticsViewState extends State<UserStatisticsView> {
+  late final PageController _heroController;
+
+  @override
+  void initState() {
+    super.initState();
+    _heroController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _heroController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<StatisticsViewModel>();
+
+    if (viewModel.isLoading && viewModel.dashboard == null) {
+      return const LoadingDialog(inline: true, message: 'Loading statistic...');
+    }
+
+    final dashboard = viewModel.dashboard;
+    if (dashboard == null) {
+      return _StatisticsError(
+        message: viewModel.errorMessage ?? 'Unable to load statistics',
+        onRetry: viewModel.loadStatistics,
+      );
+    }
+
+    return SafeArea(
+      top: false,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.xl,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _StatisticsHeroPager(
+                    controller: _heroController,
+                    slides: dashboard.heroSlides,
+                    selectedIndex: viewModel.selectedHeroIndex,
+                    onPageChanged: viewModel.selectHero,
+                  ),
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: AppPillSegmentedControl(
+                      labels: const ['Self', 'Community'],
+                      selectedIndex: viewModel.selectedAudienceIndex,
+                      onChanged: viewModel.selectAudience,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _StatisticsMenu(items: dashboard.menuItems),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _StatisticsHeroPager extends StatelessWidget {
+  final PageController controller;
+  final List<StatisticsHeroSlide> slides;
+  final int selectedIndex;
+  final ValueChanged<int> onPageChanged;
+
+  const _StatisticsHeroPager({
+    required this.controller,
+    required this.slides,
+    required this.selectedIndex,
+    required this.onPageChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final textScale = MediaQuery.textScalerOf(
+      context,
+    ).scale(1).clamp(1.0, 1.25);
+    final cardHeight = (width < 360 ? 168.0 : 176.0) * textScale;
+
+    return Column(
+      children: [
+        SizedBox(
+          height: cardHeight,
+          child: PageView.builder(
+            controller: controller,
+            itemCount: slides.length,
+            onPageChanged: onPageChanged,
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 1),
+                child: _StatisticsHeroCard(slide: slides[index]),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _PageDots(count: slides.length, selectedIndex: selectedIndex),
+      ],
+    );
+  }
+}
+
+class _StatisticsHeroCard extends StatelessWidget {
+  final StatisticsHeroSlide slide;
+
+  const _StatisticsHeroCard({required this.slide});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.045),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            slide.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.bodySmall?.copyWith(
+              color: Colors.black,
+              fontWeight: FontWeight.w800,
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(child: _buildContent(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    switch (slide.type) {
+      case StatisticsHeroSlideType.overview:
+        return _OverviewSlide(slide: slide);
+      case StatisticsHeroSlideType.appUsage:
+        return _AppUsageSlide(slide: slide);
+      case StatisticsHeroSlideType.achievement:
+        return _AchievementSlide(slide: slide);
+    }
+  }
+}
+
+class _OverviewSlide extends StatelessWidget {
+  final StatisticsHeroSlide slide;
+
+  const _OverviewSlide({required this.slide});
+
+  @override
+  Widget build(BuildContext context) {
+    final topMetrics = slide.metrics.take(2).toList();
+    final streakMetrics = slide.metrics.skip(2).take(2).toList();
+
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: topMetrics
+                .map(
+                  (metric) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                      ),
+                      child: _MetricTile(metric: metric, largeValue: true),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'Streak',
+          style: context.text.bodySmall?.copyWith(
+            color: Colors.black,
+            fontWeight: FontWeight.w800,
+            fontSize: 9,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Expanded(
+          child: Row(
+            children: streakMetrics
+                .map(
+                  (metric) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                      ),
+                      child: _MetricTile(metric: metric),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AppUsageSlide extends StatelessWidget {
+  final StatisticsHeroSlide slide;
+
+  const _AppUsageSlide({required this.slide});
+
+  @override
+  Widget build(BuildContext context) {
+    final days = slide.metrics.first;
+    final planned = slide.metrics[1];
+    final unplanned = slide.metrics[2];
+    final progress = slide.progress;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          '${days.value} Days',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: context.text.titleMedium?.copyWith(
+            color: Colors.black,
+            fontWeight: FontWeight.w800,
+            fontSize: 17,
+          ),
+        ),
+        const SizedBox(height: 10),
+        _UsageRow(metric: planned),
+        const SizedBox(height: 6),
+        _UsageRow(metric: unplanned),
+        const Spacer(),
+        if (progress != null) _ProgressSplit(progress: progress),
+      ],
+    );
+  }
+}
+
+class _AchievementSlide extends StatelessWidget {
+  final StatisticsHeroSlide slide;
+
+  const _AchievementSlide({required this.slide});
+
+  @override
+  Widget build(BuildContext context) {
+    final smallMetrics = slide.metrics
+        .where((metric) => !metric.isWide)
+        .toList();
+    final wideMetric = slide.metrics.where((metric) => metric.isWide).first;
+
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: smallMetrics
+                .map(
+                  (metric) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                      ),
+                      child: _MetricTile(metric: metric),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SizedBox(
+          height: 48,
+          child: _MetricTile(metric: wideMetric, horizontalValue: true),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  final StatisticsMetric metric;
+  final bool largeValue;
+  final bool horizontalValue;
+
+  const _MetricTile({
+    required this.metric,
+    this.largeValue = false,
+    this.horizontalValue = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final toneColor = _toneColor(metric.tone);
+
+    return Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEFEFE),
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: horizontalValue
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _MetricValue(metric: metric, color: toneColor),
+                  const SizedBox(width: AppSpacing.sm),
+                  _MetricLabel(metric: metric, color: AppColors.primary),
+                ],
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _MetricValue(
+                    metric: metric,
+                    color: largeValue ? toneColor : AppColors.textSecondary,
+                    fontSize: largeValue ? 24 : 14,
+                  ),
+                  const SizedBox(height: 2),
+                  _MetricLabel(metric: metric, color: toneColor),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _MetricValue extends StatelessWidget {
+  final StatisticsMetric metric;
+  final Color color;
+  final double fontSize;
+
+  const _MetricValue({
+    required this.metric,
+    required this.color,
+    this.fontSize = 14,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        text: metric.value,
+        children: [
+          if (metric.suffix != null)
+            TextSpan(
+              text: ' ${metric.suffix}',
+              style: const TextStyle(fontSize: 10),
+            ),
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: context.text.titleMedium?.copyWith(
+        color: color,
+        fontWeight: FontWeight.w700,
+        fontSize: fontSize,
+        height: 1,
+      ),
+    );
+  }
+}
+
+class _MetricLabel extends StatelessWidget {
+  final StatisticsMetric metric;
+  final Color color;
+
+  const _MetricLabel({required this.metric, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      metric.label,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      style: context.text.bodySmall?.copyWith(
+        color: color,
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
+        height: 1.12,
+      ),
+    );
+  }
+}
+
+class _UsageRow extends StatelessWidget {
+  final StatisticsMetric metric;
+
+  const _UsageRow({required this.metric});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _toneColor(metric.tone);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            metric.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.bodySmall?.copyWith(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          metric.value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: context.text.titleMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProgressSplit extends StatelessWidget {
+  final StatisticsProgress progress;
+
+  const _ProgressSplit({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${(progress.positivePercent * 100).round()}%',
+                textAlign: TextAlign.center,
+                style: context.text.bodySmall?.copyWith(
+                  color: AppColors.primary,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                '${(progress.negativePercent * 100).round()}%',
+                textAlign: TextAlign.center,
+                style: context.text.bodySmall?.copyWith(
+                  color: AppColors.error,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(100),
+          child: Row(
+            children: [
+              Expanded(
+                flex: (progress.positivePercent * 100).round(),
+                child: Container(height: 5, color: AppColors.primary),
+              ),
+              Expanded(
+                flex: (progress.negativePercent * 100).round(),
+                child: Container(height: 5, color: AppColors.error),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PageDots extends StatelessWidget {
+  final int count;
+  final int selectedIndex;
+
+  const _PageDots({required this.count, required this.selectedIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(count, (index) {
+        final isSelected = selectedIndex == index;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: isSelected ? 7 : 5,
+          height: isSelected ? 7 : 5,
+          margin: const EdgeInsets.symmetric(horizontal: 5),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            shape: BoxShape.circle,
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _StatisticsMenu extends StatelessWidget {
+  final List<StatisticsMenuItem> items;
+
+  const _StatisticsMenu({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: items
+          .map(
+            (item) => InkWell(
+              onTap: () {},
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 9),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.bodyMedium?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 23,
+                      color: AppColors.textPrimary.withValues(alpha: 0.82),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _StatisticsError extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
+
+  const _StatisticsError({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: AppSpacing.cardPadding,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/images/empty_page.png', height: 140),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.text.bodyMedium,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextButton(
+              onPressed: onRetry,
+              child: Text(
+                'Try Again',
+                style: context.text.labelLarge?.copyWith(
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Color _toneColor(StatisticsMetricTone tone) {
+  switch (tone) {
+    case StatisticsMetricTone.positive:
+      return AppColors.primary;
+    case StatisticsMetricTone.negative:
+      return AppColors.error;
+    case StatisticsMetricTone.neutral:
+      return AppColors.textSecondary;
+  }
+}
