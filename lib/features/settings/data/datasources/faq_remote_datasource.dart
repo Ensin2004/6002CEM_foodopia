@@ -10,55 +10,34 @@ class FaqRemoteDataSource {
 
   /// Creates a faq remote data source instance.
   FaqRemoteDataSource({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  CollectionReference<Map<String, dynamic>> get _collection =>
+      _firestore.collection('support_center').doc('faq').collection('items');
 
   /// Loads data for the get user faq items operation.
   Future<QuerySnapshot> getUserFaqItems() async {
-    return await _firestore
-        .collection('support')
-        .doc('faq')
-        .collection('faq_items')
-        .orderBy('createdAt', descending: true)
-        .get();
+    return await _collection.orderBy('createdAt', descending: true).get();
   }
 
   /// Loads data for the get admin faq items operation.
   Future<QuerySnapshot> getAdminFaqItems() async {
-    return await _firestore
-        .collection('support')
-        .doc('faq')
-        .collection('faq_items')
-        .orderBy('createdAt', descending: true)
-        .get();
+    return await _collection.orderBy('createdAt', descending: true).get();
   }
 
   /// Handles the add faq item operation.
   Future<void> addFaqItem(Map<String, dynamic> data) async {
-    await _firestore
-        .collection('support')
-        .doc('faq')
-        .collection('faq_items')
-        .add(data);
+    await _collection.add(data);
   }
 
   /// Runs the update faq item operation.
   Future<void> updateFaqItem(String id, Map<String, dynamic> data) async {
-    await _firestore
-        .collection('support')
-        .doc('faq')
-        .collection('faq_items')
-        .doc(id)
-        .update(data);
+    await _collection.doc(id).update(data);
   }
 
   /// Runs the delete faq item operation.
   Future<void> deleteFaqItem(String id) async {
-    await _firestore
-        .collection('support')
-        .doc('faq')
-        .collection('faq_items')
-        .doc(id)
-        .delete();
+    await _collection.doc(id).delete();
   }
 
   /// Runs the upload faq image operation.

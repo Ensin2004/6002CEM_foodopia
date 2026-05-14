@@ -6,18 +6,35 @@ class AboutRemoteDataSource {
 
   /// Creates a about remote data source instance.
   AboutRemoteDataSource({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Loads data for the get about content operation.
   Future<DocumentSnapshot> getAboutContent(String documentId) async {
-    return await _firestore.collection('support').doc(documentId).get();
+    return await _firestore.collection('support_center').doc(documentId).get();
   }
 
   // Changed from update to set (creates if not exists, updates if exists)
   Future<void> saveAboutContent(String documentId, String content) async {
-    await _firestore.collection('support').doc(documentId).set({
-      'content': content,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true)); // merge: true allows updates without overwriting
+    await _firestore.collection('support_center').doc(documentId).set(
+      {
+        'title': _getTitleFromId(documentId),
+        'content': content,
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    ); // merge: true allows updates without overwriting
+  }
+
+  String _getTitleFromId(String id) {
+    switch (id) {
+      case 'about_us':
+        return 'About Us';
+      case 'terms_and_conditions':
+        return 'Terms & Conditions';
+      case 'privacy_policy':
+        return 'Privacy Policy';
+      default:
+        return id;
+    }
   }
 }

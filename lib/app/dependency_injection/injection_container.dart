@@ -662,9 +662,7 @@ void _initHelpCenterFeature() {
   // --------------------------------------------------------------------------
   // 1. DATA SOURCES (External Communication Layer)
   // --------------------------------------------------------------------------
-  sl.registerLazySingleton(
-    () => HelpCenterRemoteDataSource(firestore: sl(), auth: sl()),
-  );
+  sl.registerLazySingleton(() => HelpCenterRemoteDataSource(firestore: sl()));
 
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
@@ -687,9 +685,7 @@ void _initHelpCenterFeature() {
 /// Handles the init rating feature operation.
 void _initRatingFeature() {
   // Data Source
-  sl.registerLazySingleton(
-    () => RatingRemoteDataSource(firestore: sl(), auth: sl()),
-  );
+  sl.registerLazySingleton(() => RatingRemoteDataSource(firestore: sl()));
 
   // Repository
   sl.registerLazySingleton<RatingRepository>(

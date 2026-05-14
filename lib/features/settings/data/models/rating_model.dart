@@ -17,6 +17,7 @@ class RatingModel extends RatingEntity {
   /// Creates a rating model instance.
   factory RatingModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
     /// Handles the rating model operation.
     return RatingModel(
       userId: doc.id,
@@ -30,9 +31,12 @@ class RatingModel extends RatingEntity {
   /// Converts this instance into to json data.
   Map<String, dynamic> toJson() {
     return {
+      'uid': userId,
       'stars': stars,
       'comment': comment,
       if (imageUrl != null) 'imageUrl': imageUrl,
+      'status': 'new',
+      'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
