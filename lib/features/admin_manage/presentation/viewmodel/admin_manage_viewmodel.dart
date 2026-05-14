@@ -82,6 +82,27 @@ class AdminManageViewModel extends ChangeNotifier {
       icon: Icons.kitchen,
       seedValues: ['Dairy', 'Meat', 'Vegetables', 'Seafood'],
     ),
+    AdminManageCategory(
+      id: 'recipe_categories',
+      title: 'Recipe Categories',
+      itemLabel: 'Recipe Category',
+      description:
+          'Manage cuisine and recipe styles such as Italian, Chinese, Japanese and more.',
+      tip:
+          'Manage recipe categories used when recipes are created, filtered and explored.',
+      emptyMessage: 'No recipe categories yet',
+      icon: Icons.public,
+      seedValues: [
+        'Italian',
+        'Chinese',
+        'Malay',
+        'Indian',
+        'Japanese',
+        'Korean',
+        'Thai',
+        'Western',
+      ],
+    ),
   ];
 
   static const preferenceCategories = [

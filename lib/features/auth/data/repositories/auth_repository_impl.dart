@@ -85,10 +85,17 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final fcmToken = await remoteDataSource.getFCMToken();
+      final nameParts = name.trim().split(RegExp(r'\s+'));
+      final firstName = nameParts.isNotEmpty ? nameParts.first : name.trim();
+      final lastName = nameParts.length > 1
+          ? nameParts.sublist(1).join(' ')
+          : '';
 
       await remoteDataSource.saveUserToFirestore(
         uid: user.uid,
         userData: {
+          'firstName': firstName,
+          'lastName': lastName,
           'name': name,
           'email': email,
           'gender': gender,
@@ -105,7 +112,6 @@ class AuthRepositoryImpl implements AuthRepository {
       final userEntity = UserModel.fromFirebase(user, null);
 
       return Right(userEntity);
-
     } on firebase_auth.FirebaseAuthException catch (e) {
       String message;
       switch (e.code) {
@@ -181,20 +187,27 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<AuthFailure, List<Map<String, dynamic>>>> getAgeGroups() async {
     try {
       final snapshot = await remoteDataSource.getAgeGroups();
-      final ageGroups = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        final name = data['name']?.toString() ?? '';
-        final description = data['description']?.toString() ?? '';
-        final sortOrder = data['sortOrder'] is int ? data['sortOrder'] as int : 0;
-        final isActive = data['isActive'] is bool ? data['isActive'] as bool : true;
-        return {
-          'id': doc.id,
-          'name': name,
-          'description': description,
-          'sortOrder': sortOrder,
-          'isActive': isActive,
-        };
-      }).where((item) => item['isActive'] == true).toList();
+      final ageGroups = snapshot.docs
+          .map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final name = data['name']?.toString() ?? '';
+            final description = data['description']?.toString() ?? '';
+            final sortOrder = data['sortOrder'] is int
+                ? data['sortOrder'] as int
+                : 0;
+            final isActive = data['isActive'] is bool
+                ? data['isActive'] as bool
+                : true;
+            return {
+              'id': doc.id,
+              'name': name,
+              'description': description,
+              'sortOrder': sortOrder,
+              'isActive': isActive,
+            };
+          })
+          .where((item) => item['isActive'] == true)
+          .toList();
       return Right(ageGroups);
     } catch (e) {
       return Left(AuthFailure(message: e.toString()));

@@ -11,11 +11,9 @@ class ProfileRemoteDataSource {
   final FirebaseAuth _auth;
 
   /// Creates a profile remote data source instance.
-  ProfileRemoteDataSource({
-    FirebaseFirestore? firestore,
-    FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  ProfileRemoteDataSource({FirebaseFirestore? firestore, FirebaseAuth? auth})
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _auth = auth ?? FirebaseAuth.instance;
 
   /// Loads data for the get user profile operation.
   Future<DocumentSnapshot> getUserProfile(String uid) async {
@@ -24,13 +22,25 @@ class ProfileRemoteDataSource {
 
   /// Runs the update user name operation.
   Future<void> updateUserName(String uid, String name) async {
-    await _firestore.collection('users').doc(uid).update({'name': name});
+    final nameParts = name.trim().split(RegExp(r'\s+'));
+    final firstName = nameParts.isNotEmpty ? nameParts.first : name.trim();
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+    await _firestore.collection('users').doc(uid).update({
+      'firstName': firstName,
+      'lastName': lastName,
+      'name': name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
     await _auth.currentUser?.updateDisplayName(name);
   }
 
   /// Runs the update user gender operation.
   Future<void> updateUserGender(String uid, String gender) async {
-    await _firestore.collection('users').doc(uid).update({'gender': gender});
+    await _firestore.collection('users').doc(uid).update({
+      'gender': gender,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   /// Runs the update user age group operation.
@@ -42,6 +52,7 @@ class ProfileRemoteDataSource {
     await _firestore.collection('users').doc(uid).update({
       'ageGroupId': ageGroupId,
       'ageGroupName': ageGroupName,
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -52,7 +63,10 @@ class ProfileRemoteDataSource {
 
   /// Runs the update profile image operation.
   Future<void> updateProfileImage(String uid, String imageUrl) async {
-    await _firestore.collection('users').doc(uid).update({'profileImage': imageUrl});
+    await _firestore.collection('users').doc(uid).update({
+      'profileImage': imageUrl,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
     await _auth.currentUser?.updatePhotoURL(imageUrl);
   }
 }

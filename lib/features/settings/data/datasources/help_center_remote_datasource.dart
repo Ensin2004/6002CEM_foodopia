@@ -2,47 +2,45 @@
 
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/services/cloudinary_service.dart';
 
 /// Defines behavior for help center remote data source.
 class HelpCenterRemoteDataSource {
   final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
 
   /// Creates a help center remote data source instance.
-  HelpCenterRemoteDataSource({
-    FirebaseFirestore? firestore,
-    FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  HelpCenterRemoteDataSource({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  CollectionReference<Map<String, dynamic>> get _collection => _firestore
+      .collection('support_center')
+      .doc('help_tickets')
+      .collection('items');
 
   /// Loads data for the get user issues operation.
   Future<QuerySnapshot> getUserIssues(String uid) async {
-    return await _firestore
-        .collection('help_center')
+    return await _collection
         .where('uid', isEqualTo: uid)
-        .orderBy('timestamp', descending: true)
+        .orderBy('createdAt', descending: true)
         .get();
   }
 
   /// Loads data for the get all issues operation.
   Future<QuerySnapshot> getAllIssues() async {
-    return await _firestore
-        .collection('help_center')
-        .orderBy('timestamp', descending: true)
-        .get();
+    return await _collection.orderBy('createdAt', descending: true).get();
   }
 
   /// Handles the add issue operation.
   Future<void> addIssue(Map<String, dynamic> issueData) async {
-    await _firestore.collection('help_center').add(issueData);
+    await _collection.add(issueData);
   }
 
   /// Runs the update issue status operation.
   Future<void> updateIssueStatus(String issueId, bool replied) async {
-    await _firestore.collection('help_center').doc(issueId).update({
-      'replied': replied,
+    await _collection.doc(issueId).update({
+      'status': replied ? 'replied' : 'open',
+      'repliedAt': replied ? FieldValue.serverTimestamp() : null,
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 

@@ -126,7 +126,7 @@ class _HeroStatsSection extends StatelessWidget {
     return Stack(
       children: [
         Image.asset(
-          'assets/images/user_home.png',
+          'assets/images/home.png',
           height: 220,
           width: double.infinity,
           fit: BoxFit.cover,
