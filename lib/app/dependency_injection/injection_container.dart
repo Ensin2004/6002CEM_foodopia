@@ -40,6 +40,11 @@ import '../../features/admin_manage/data/datasources/admin_manage_remote_datasou
 import '../../features/admin_manage/data/repositories/admin_manage_repository_impl.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/explore/data/datasources/explore_mock_datasource.dart';
+import '../../features/explore/data/repositories/explore_repository_impl.dart';
+import '../../features/explore/domain/repositories/explore_repository.dart';
+import '../../features/explore/domain/usecases/get_explore_recipe_detail_usecase.dart';
+import '../../features/explore/domain/usecases/get_explore_recipes_usecase.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_preferences_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
@@ -213,10 +218,22 @@ Future<void> initDependencies() async {
   _initUserHomeFeature();
   _initMealPlanFeature();
   _initUserSetupFeature();
+  _initExploreFeature();
 
   // Add new features here as the app grows
   // _initRecipeFeature();
   // _initMealPlanFeature();
+}
+
+void _initExploreFeature() {
+  sl.registerLazySingleton(() => ExploreMockDataSource());
+
+  sl.registerLazySingleton<ExploreRepository>(
+    () => ExploreRepositoryImpl(mockDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetExploreRecipesUseCase(sl()));
+  sl.registerLazySingleton(() => GetExploreRecipeDetailUseCase(sl()));
 }
 
 void _initMealPlanFeature() {

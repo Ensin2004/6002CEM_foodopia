@@ -18,6 +18,13 @@ class AuthenticatedRouteArgs {
   const AuthenticatedRouteArgs();
 }
 
+/// Typed arguments for explore recipe detail route.
+class ExploreRecipeDetailArgs {
+  final String recipeId;
+
+  const ExploreRecipeDetailArgs({required this.recipeId});
+}
+
 /// Typed arguments for the meal plan route.
 class MealPlanArgs {
   final int initialTabIndex;
