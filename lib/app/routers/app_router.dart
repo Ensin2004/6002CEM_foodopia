@@ -11,7 +11,8 @@ import '../../features/auth/presentation/view/signup_screen.dart';
 import '../../features/onboarding/presentation/view/onboarding_screen.dart';
 import '../../features/main/presentation/view/main_page.dart';
 import '../../features/notifications/presentation/view/notifications_page.dart';
-import '../../features/recipe/presentation/view/add_recipe_page.dart';
+import '../../features/recipe/presentation/view/add_recipe_basic_info_page.dart';
+import '../../features/recipe/presentation/view/add_recipe_method_page.dart';
 import '../../features/explore/presentation/view/explore_page.dart';
 import '../../features/library/presentation/view/library_page.dart';
 import '../../features/meal_plan/presentation/view/add_grocery_list_page.dart';
@@ -53,6 +54,7 @@ class AppRouter {
   static const String helpCenter = '/help-center';
   static const String notifications = '/notifications';
   static const String addRecipe = '/recipes/add';
+  static const String addRecipeBasicInfo = '/recipes/add/basic-info';
   static const String explore = '/explore';
   static const String mealPlan = '/meal-plan';
   static const String addMealPlan = '/meal-plan/planning/add-meal';
@@ -371,6 +373,16 @@ class AppRouter {
         name: 'addRecipe',
         path: addRecipe,
         builder: (context, state) => const AddRecipePage(),
+      ),
+
+      // TODO - Cojean - Confirm with Ensin
+      GoRoute(
+        name: 'addRecipeBasicInfo',
+        path: addRecipeBasicInfo,
+        builder: (context, state) {
+          final args = state.extra as AddRecipeBasicInfoArgs?;
+          return AddRecipeBasicInfoPage(key: ValueKey(args?.draftId));
+        },
       ),
 
       GoRoute(

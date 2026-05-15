@@ -16,6 +16,10 @@ class EnvConfig {
   static const String settingsUploadPreset = String.fromEnvironment(
     'CLOUDINARY_SETTINGS_UPLOAD_PRESET',
   );
+
+  static const String recipeUploadPreset = String.fromEnvironment(
+    'CLOUDINARY_RECIPE_UPLOAD_PRESET',
+  );
   static const String usdaApiKey = String.fromEnvironment('USDA_API_KEY');
 
   // Firebase Configuration (already in the google-services.json)

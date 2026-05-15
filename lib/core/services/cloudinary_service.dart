@@ -23,6 +23,8 @@ class CloudinaryService {
   static String get _userProfileUploadPreset => EnvConfig.userProfileUploadPreset;
   /// Handles the settings upload preset operation.
   static String get _settingsUploadPreset => EnvConfig.settingsUploadPreset;
+  /// Handles the recipe upload preset operation.
+  static String get _recipeUploadPreset => EnvConfig.recipeUploadPreset;
 
   /// Base URL for Cloudinary uploads
   static String _getUploadUrl() {
@@ -83,6 +85,12 @@ class CloudinaryService {
   static Future<String> uploadSettingsImage(File imageFile) async {
     /// Handles the upload image operation.
     return await _uploadImage(imageFile, _settingsUploadPreset);
+  }
+
+  /// Upload recipe-related images (recipe image, video, ingredients, instructions)
+  static Future<String> uploadRecipeImage(File imageFile) async {
+    /// Handles the upload image operation.
+    return await _uploadImage(imageFile, _recipeUploadPreset);
   }
 
   // For backward compatibility with existing code
