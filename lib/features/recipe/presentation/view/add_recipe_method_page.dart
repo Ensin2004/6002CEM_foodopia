@@ -26,7 +26,9 @@ class _AddRecipeChooseMethodView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final horizontalPadding = MediaQuery.sizeOf(context).width >= 600 ? 48.0 : AppSpacing.lg;
+    final horizontalPadding = MediaQuery.sizeOf(context).width >= 600
+        ? 48.0
+        : AppSpacing.lg;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -57,7 +59,8 @@ class _AddRecipeChooseMethodView extends StatelessWidget {
                     MethodCard(
                       icon: Icons.movie_creation_rounded,
                       title: "Upload Video",
-                      subtitle: "Upload a video and let AI generate the recipe.",
+                      subtitle:
+                          "Upload a video and let AI generate the recipe.",
                       onTap: () {
                         context.read<AddRecipeMethodViewModel>().selectMethod(
                           AddRecipeMethod.uploadVideo,

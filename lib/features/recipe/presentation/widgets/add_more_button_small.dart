@@ -6,10 +6,7 @@ import '../../../../core/theme/app_spacing.dart';
 class AddMoreButtonSmall extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const AddMoreButtonSmall({
-    super.key,
-    required this.onPressed
-  });
+  const AddMoreButtonSmall({super.key, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {

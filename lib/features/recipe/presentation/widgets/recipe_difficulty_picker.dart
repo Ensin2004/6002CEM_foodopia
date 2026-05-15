@@ -9,10 +9,7 @@ import '../viewmodel/add_recipe_basic_info_viewmodel.dart';
 class RecipeDifficultyPicker extends StatelessWidget {
   final List<String> levels;
 
-  const RecipeDifficultyPicker({
-    super.key,
-    required this.levels
-  });
+  const RecipeDifficultyPicker({super.key, required this.levels});
 
   @override
   Widget build(BuildContext context) {
@@ -31,14 +28,18 @@ class RecipeDifficultyPicker extends StatelessWidget {
           final selected = levelValue <= viewModel.difficultyLevel;
           return Expanded(
             child: InkWell(
-              onTap: () => context.read<AddRecipeBasicInfoViewModel>().selectDifficulty(levelValue),
+              onTap: () => context
+                  .read<AddRecipeBasicInfoViewModel>()
+                  .selectDifficulty(levelValue),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.restaurant_menu_rounded,
                     size: 24,
-                    color: selected ? AppColors.secondary : AppColors.textSecondary.withValues(alpha: 0.5),
+                    color: selected
+                        ? AppColors.secondary
+                        : AppColors.textSecondary.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   FittedBox(
@@ -48,7 +49,9 @@ class RecipeDifficultyPicker extends StatelessWidget {
                       maxLines: 1,
                       style: context.text.bodySmall?.copyWith(
                         fontSize: 9,
-                        color: selected ? AppColors.textPrimary : AppColors.textSecondary.withValues(alpha: 0.5),
+                        color: selected
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary.withValues(alpha: 0.5),
                       ),
                     ),
                   ),

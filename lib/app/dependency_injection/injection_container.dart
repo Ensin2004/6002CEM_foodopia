@@ -54,8 +54,10 @@ import '../../features/meal_plan/domain/usecases/get_meal_plan_weather_usecase.d
 import '../../features/recipe/data/datasources/add_recipe_remote_datasource.dart';
 import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart';
 import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
+import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_basic_info_usecase.dart';
+import '../../features/recipe/domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../features/user_home/data/datasources/user_home_mock_datasource.dart';
 import '../../features/user_home/data/datasources/user_home_weather_datasource.dart';
 import '../../features/user_home/data/repositories/user_home_repository_impl.dart';
@@ -232,7 +234,9 @@ void _initRecipeFeature() {
     () => AddRecipeRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton(() => GetAddRecipeSetupUseCase(sl()));
+  sl.registerLazySingleton(() => GetAddRecipeIngredientUnitsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
+  sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
 }
 
 void _initMealPlanFeature() {

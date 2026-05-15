@@ -13,4 +13,3 @@ class GetAddRecipeSetupUseCase {
     return repository.getSetup();
   }
 }
-

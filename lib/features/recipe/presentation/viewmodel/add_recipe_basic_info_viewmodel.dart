@@ -42,7 +42,11 @@ class AddRecipeBasicInfoViewModel extends ChangeNotifier {
   }
 
   void selectDifficulty(int value) {
-    difficultyLevel = value < 1 ? 1 : value > 5 ? 5 : value;
+    difficultyLevel = value < 1
+        ? 1
+        : value > 5
+        ? 5
+        : value;
     errorMessage = null;
     notifyListeners();
   }

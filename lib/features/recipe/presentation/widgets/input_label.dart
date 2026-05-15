@@ -7,11 +7,7 @@ class InputLabel extends StatelessWidget {
   final String text;
   final bool isRequired;
 
-  const InputLabel({
-    super.key,
-    required this.text,
-    this.isRequired = false,
-  });
+  const InputLabel({super.key, required this.text, this.isRequired = false});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +17,14 @@ class InputLabel extends StatelessWidget {
       text: TextSpan(
         text: text,
         style: context.text.titleMedium,
-        children: isRequired ? const [TextSpan(text: " *", style: TextStyle(color: AppColors.error))] : [],
+        children: isRequired
+            ? const [
+                TextSpan(
+                  text: " *",
+                  style: TextStyle(color: AppColors.error),
+                ),
+              ]
+            : [],
       ),
     );
   }

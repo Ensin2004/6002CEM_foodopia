@@ -1,10 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
+import '../../../../app/routers/app_router.dart';
+import '../../../../app/routers/router_args.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
@@ -61,9 +64,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     TextEditingController(),
   ];
 
-  final List<FocusNode> _categoryFocusNodes = [
-    FocusNode(),
-  ];
+  final List<FocusNode> _categoryFocusNodes = [FocusNode()];
 
   final List<TextEditingController> _allergenControllers = [
     TextEditingController(),
@@ -105,7 +106,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<AddRecipeBasicInfoViewModel>();
-    final horizontalPadding = MediaQuery.sizeOf(context).width >= 600 ? 48.0 : AppSpacing.lg;
+    final horizontalPadding = MediaQuery.sizeOf(context).width >= 600
+        ? 48.0
+        : AppSpacing.lg;
 
     if (viewModel.isLoading) {
       return const LoadingDialog();
@@ -123,7 +126,6 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       body: SafeArea(
         child: Column(
           children: [
-
             // Progress Bar
             const Padding(
               padding: EdgeInsets.fromLTRB(
@@ -142,16 +144,16 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
             // Input Fields
             Expanded(
               child: ListView(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.manual,
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
                   AppSpacing.sm,
+                  horizontalPadding,
                   AppSpacing.lg,
-                  AppSpacing.lg,
-                ).copyWith(left: horizontalPadding, right: horizontalPadding),
+                ),
 
                 children: [
-
                   // Recipe Image
                   InputLabel(text: "Recipe Image", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
@@ -178,12 +180,16 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   ..._otherNameControllers.asMap().entries.map((entry) {
                     return Padding(
                       padding: EdgeInsets.only(
-                        bottom: entry.key == _otherNameControllers.length - 1 ? 0 : AppSpacing.sm,
+                        bottom: entry.key == _otherNameControllers.length - 1
+                            ? 0
+                            : AppSpacing.sm,
                       ),
                       child: InputTextField(
                         controller: entry.value,
                         hint: "e.g. Pesto alla Genovese",
-                        onDelete: _otherNameControllers.length > 1 ? () => _removeOtherName(entry.key) : null,
+                        onDelete: _otherNameControllers.length > 1
+                            ? () => _removeOtherName(entry.key)
+                            : null,
                       ),
                     );
                   }),
@@ -196,13 +202,17 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   ..._categoryControllers.asMap().entries.map((entry) {
                     return Padding(
                       padding: EdgeInsets.only(
-                        bottom: entry.key == _categoryControllers.length - 1 ? 0 : AppSpacing.sm,
+                        bottom: entry.key == _categoryControllers.length - 1
+                            ? 0
+                            : AppSpacing.sm,
                       ),
                       child: InputCategoryField(
                         controller: entry.value,
                         focusNode: _categoryFocusNodes[entry.key],
                         options: setup.categories,
-                        onDelete: _categoryControllers.length > 1 ? () => _removeCategory(entry.key) : null,
+                        onDelete: _categoryControllers.length > 1
+                            ? () => _removeCategory(entry.key)
+                            : null,
                       ),
                     );
                   }),
@@ -245,12 +255,16 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   ..._allergenControllers.asMap().entries.map((entry) {
                     return Padding(
                       padding: EdgeInsets.only(
-                        bottom: entry.key == _allergenControllers.length - 1 ? 0 : AppSpacing.sm,
+                        bottom: entry.key == _allergenControllers.length - 1
+                            ? 0
+                            : AppSpacing.sm,
                       ),
                       child: InputTextField(
                         controller: entry.value,
                         hint: "e.g. Nuts",
-                        onDelete: _allergenControllers.length > 1 ? () => _removeAllergen(entry.key) : null,
+                        onDelete: _allergenControllers.length > 1
+                            ? () => _removeAllergen(entry.key)
+                            : null,
                       ),
                     );
                   }),
@@ -261,7 +275,10 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   PrimaryButton(
                     text: "Next",
                     isLoading: viewModel.isSaving,
-                    onPressed: viewModel.isSaving || !_isBasicInfoComplete(viewModel) ? null : () => _handleNext(context, viewModel),
+                    onPressed:
+                        viewModel.isSaving || !_isBasicInfoComplete(viewModel)
+                        ? null
+                        : () => _handleNext(context, viewModel),
                   ),
                 ],
               ),
@@ -281,7 +298,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     if (pickedImages.isEmpty) return;
 
     setState(() {
-      _images.addAll(pickedImages.take(remainingSlots).map((image) => File(image.path)));
+      _images.addAll(
+        pickedImages.take(remainingSlots).map((image) => File(image.path)),
+      );
     });
   }
 
@@ -362,7 +381,10 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   }
 
   // Next Button Helper
-  Future<void> _handleNext(BuildContext context, AddRecipeBasicInfoViewModel viewModel) async {
+  Future<void> _handleNext(
+    BuildContext context,
+    AddRecipeBasicInfoViewModel viewModel,
+  ) async {
     final info = AddRecipeBasicInfo(
       mediaFiles: List<File>.unmodifiable(_images),
       recipeName: _recipeNameController.text.trim(),
@@ -379,32 +401,38 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     if (!context.mounted) return;
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(viewModel.errorMessage ?? 'Unable to save recipe.')),
+        SnackBar(
+          content: Text(viewModel.errorMessage ?? "Unable to save recipe."),
+        ),
       );
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Recipe basic info saved. Ingredients is next.')),
+        const SnackBar(content: Text("Recipe basic info saved."))
+    );
+
+    context.push(
+      AppRouter.addRecipeIngredients,
+      extra: AddRecipeIngredientsArgs(recipeId: viewModel.savedRecipeId!),
     );
   }
 
   List<String> _nonEmptyControllerValues(List<TextEditingController> values) {
     return values
-      .map((controller) => controller.text.trim())
-      .where((value) => value.isNotEmpty)
-      .toList();
+        .map((controller) => controller.text.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
   }
 
   bool _isBasicInfoComplete(AddRecipeBasicInfoViewModel viewModel) {
-    return
-      _images.isNotEmpty &&
-      _recipeNameController.text.trim().isNotEmpty &&
-      _nonEmptyControllerValues(_categoryControllers).isNotEmpty &&
-      (int.tryParse(_prepTimeController.text.trim()) ?? 0) > 0 &&
-      viewModel.difficultyLevel >= 1 &&
-      viewModel.difficultyLevel <= 5 &&
-      (int.tryParse(_servingsController.text.trim()) ?? 0) > 0;
+    return _images.isNotEmpty &&
+        _recipeNameController.text.trim().isNotEmpty &&
+        _nonEmptyControllerValues(_categoryControllers).isNotEmpty &&
+        (int.tryParse(_prepTimeController.text.trim()) ?? 0) > 0 &&
+        viewModel.difficultyLevel >= 1 &&
+        viewModel.difficultyLevel <= 5 &&
+        (int.tryParse(_servingsController.text.trim()) ?? 0) > 0;
   }
 
   void _refreshRequiredState() {
@@ -426,7 +454,7 @@ class _RecipeErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset('assets/images/empty_page.png', height: 140),
+            Image.asset("assets/images/empty_page.png", height: 140),
             const SizedBox(height: AppSpacing.lg),
             Text(
               message ?? "Unable to load page",

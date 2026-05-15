@@ -128,9 +128,7 @@ class _SelectedMediaTile extends StatelessWidget {
               ),
               child: Text(
                 "${index + 1}",
-                style: context.text.bodySmall?.copyWith(
-                  color: Colors.white,
-                ),
+                style: context.text.bodySmall?.copyWith(color: Colors.white),
               ),
             ),
           ),

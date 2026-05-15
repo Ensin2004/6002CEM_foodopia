@@ -32,7 +32,9 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
 
     if (_currentImageIndex >= widget.images.length) {
       setState(() {
-        _currentImageIndex = widget.images.isEmpty ? 0 : widget.images.length - 1;
+        _currentImageIndex = widget.images.isEmpty
+            ? 0
+            : widget.images.length - 1;
       });
     }
   }
@@ -63,10 +65,7 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
                 });
               },
               itemBuilder: (context, index) {
-                return Image.file(
-                  widget.images[index],
-                  fit: BoxFit.cover,
-                );
+                return Image.file(widget.images[index], fit: BoxFit.cover);
               },
             ),
             Positioned(
@@ -112,10 +111,7 @@ class _ImageActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _ImageActionButton({
-    required this.icon,
-    required this.onTap
-  });
+  const _ImageActionButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

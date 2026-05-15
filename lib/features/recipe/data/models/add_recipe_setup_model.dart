@@ -6,4 +6,3 @@ class AddRecipeSetupModel extends AddRecipeSetup {
     required super.difficultyLevels,
   });
 }
-

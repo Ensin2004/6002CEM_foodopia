@@ -42,11 +42,17 @@ class InputCategoryField extends StatelessWidget {
             suffixIcon: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary.withValues(alpha: 0.5)),
+                Icon(
+                  Icons.keyboard_arrow_down,
+                  color: AppColors.textSecondary.withValues(alpha: 0.5),
+                ),
                 if (onDelete != null)
                   IconButton(
                     onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: AppColors.error,
+                    ),
                   ),
               ],
             ),

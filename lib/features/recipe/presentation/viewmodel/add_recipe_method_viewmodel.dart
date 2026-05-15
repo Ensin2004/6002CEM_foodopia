@@ -1,9 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-enum AddRecipeMethod {
-  uploadVideo,
-  scratch,
-}
+enum AddRecipeMethod { uploadVideo, scratch }
 
 class AddRecipeMethodViewModel extends ChangeNotifier {
   AddRecipeMethod? _selectedMethod;
@@ -15,4 +12,3 @@ class AddRecipeMethodViewModel extends ChangeNotifier {
     notifyListeners();
   }
 }
-

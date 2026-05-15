@@ -41,6 +41,13 @@ class AddRecipeBasicInfoArgs {
   const AddRecipeBasicInfoArgs({this.draftId});
 }
 
+/// Typed arguments for the add recipe ingredients route.
+class AddRecipeIngredientsArgs {
+  final String recipeId;
+
+  const AddRecipeIngredientsArgs({required this.recipeId});
+}
+
 /// Typed arguments for add meal planning route.
 class AddMealPlanArgs {
   final String? userId;

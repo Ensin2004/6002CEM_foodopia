@@ -7,4 +7,3 @@ class AddRecipeSetup {
     required this.difficultyLevels,
   });
 }
-

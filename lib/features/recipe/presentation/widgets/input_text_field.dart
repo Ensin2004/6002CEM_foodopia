@@ -33,7 +33,7 @@ class InputTextField extends StatelessWidget {
         suffixIcon: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if(suffixText != null)
+            if (suffixText != null)
               Padding(
                 padding: const EdgeInsets.only(right: AppSpacing.lg),
                 child: Text(
@@ -43,7 +43,7 @@ class InputTextField extends StatelessWidget {
                   ),
                 ),
               ),
-            if(onDelete != null)
+            if (onDelete != null)
               IconButton(
                 onPressed: onDelete,
                 icon: const Icon(Icons.delete_outline, color: AppColors.error),

@@ -16,9 +16,14 @@ class EnvConfig {
   static const String settingsUploadPreset = String.fromEnvironment(
     'CLOUDINARY_SETTINGS_UPLOAD_PRESET',
   );
-
   static const String recipeUploadPreset = String.fromEnvironment(
     'CLOUDINARY_RECIPE_UPLOAD_PRESET',
+  );
+  static const String ingredientUploadPreset = String.fromEnvironment(
+    'CLOUDINARY_INGREDIENT_UPLOAD_PRESET',
+  );
+  static const String instructionUploadPreset = String.fromEnvironment(
+    'CLOUDINARY_INSTRUCTION_UPLOAD_PRESET',
   );
   static const String usdaApiKey = String.fromEnvironment('USDA_API_KEY');
 
