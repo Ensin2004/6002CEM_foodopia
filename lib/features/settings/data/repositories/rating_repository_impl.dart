@@ -71,7 +71,14 @@ class RatingRepositoryImpl implements RatingRepository {
         updatedAt: DateTime.now(),
       );
 
-      await remoteDataSource.saveRating(userId, rating.toJson());
+      final profile = await remoteDataSource.getUserProfile(userId);
+      final profileData = profile.data() as Map<String, dynamic>?;
+      final userName = profileData?['name'] as String? ?? '';
+
+      await remoteDataSource.saveRating(userId, {
+        ...rating.toJson(),
+        'userName': userName,
+      });
       return const Right(null);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
@@ -104,7 +111,9 @@ class RatingRepositoryImpl implements RatingRepository {
 
   /// Loads data for the get user profile operation.
   @override
-  Future<Either<Failure, Map<String, dynamic>>> getUserProfile(String userId) async {
+  Future<Either<Failure, Map<String, dynamic>>> getUserProfile(
+    String userId,
+  ) async {
     try {
       // Runs the guarded operation that can throw.
       final doc = await remoteDataSource.getUserProfile(userId);

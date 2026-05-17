@@ -40,6 +40,11 @@ import '../../features/admin_manage/data/datasources/admin_manage_remote_datasou
 import '../../features/admin_manage/data/repositories/admin_manage_repository_impl.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/explore/data/datasources/explore_mock_datasource.dart';
+import '../../features/explore/data/repositories/explore_repository_impl.dart';
+import '../../features/explore/domain/repositories/explore_repository.dart';
+import '../../features/explore/domain/usecases/get_explore_recipe_detail_usecase.dart';
+import '../../features/explore/domain/usecases/get_explore_recipes_usecase.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_preferences_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
@@ -59,6 +64,10 @@ import '../../features/recipe/domain/usecases/get_add_recipe_setup_usecase.dart'
 import '../../features/recipe/domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_instructions_usecase.dart';
+import '../../features/statistics/data/datasources/statistics_mock_datasource.dart';
+import '../../features/statistics/data/repositories/statistics_repository_impl.dart';
+import '../../features/statistics/domain/repositories/statistics_repository.dart';
+import '../../features/statistics/domain/usecases/get_statistics_dashboard_usecase.dart';
 import '../../features/user_home/data/datasources/user_home_mock_datasource.dart';
 import '../../features/user_home/data/datasources/user_home_weather_datasource.dart';
 import '../../features/user_home/data/repositories/user_home_repository_impl.dart';
@@ -222,6 +231,8 @@ Future<void> initDependencies() async {
   _initMealPlanFeature();
   _initUserSetupFeature();
   _initRecipeFeature();
+  _initStatisticsFeature();
+  _initExploreFeature();
 
   // Add new features here as the app grows
   // _initMealPlanFeature();
@@ -239,6 +250,27 @@ void _initRecipeFeature() {
   sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeInstructionsUseCase(sl()));
+}
+
+void _initStatisticsFeature() {
+  sl.registerLazySingleton(() => StatisticsMockDataSource());
+
+  sl.registerLazySingleton<StatisticsRepository>(
+        () => StatisticsRepositoryImpl(mockDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetStatisticsDashboardUseCase(sl()));
+}
+
+void _initExploreFeature() {
+  sl.registerLazySingleton(() => ExploreMockDataSource());
+
+  sl.registerLazySingleton<ExploreRepository>(
+    () => ExploreRepositoryImpl(mockDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetExploreRecipesUseCase(sl()));
+  sl.registerLazySingleton(() => GetExploreRecipeDetailUseCase(sl()));
 }
 
 void _initMealPlanFeature() {
@@ -684,9 +716,7 @@ void _initHelpCenterFeature() {
   // --------------------------------------------------------------------------
   // 1. DATA SOURCES (External Communication Layer)
   // --------------------------------------------------------------------------
-  sl.registerLazySingleton(
-    () => HelpCenterRemoteDataSource(firestore: sl(), auth: sl()),
-  );
+  sl.registerLazySingleton(() => HelpCenterRemoteDataSource(firestore: sl()));
 
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
@@ -709,9 +739,7 @@ void _initHelpCenterFeature() {
 /// Handles the init rating feature operation.
 void _initRatingFeature() {
   // Data Source
-  sl.registerLazySingleton(
-    () => RatingRemoteDataSource(firestore: sl(), auth: sl()),
-  );
+  sl.registerLazySingleton(() => RatingRemoteDataSource(firestore: sl()));
 
   // Repository
   sl.registerLazySingleton<RatingRepository>(

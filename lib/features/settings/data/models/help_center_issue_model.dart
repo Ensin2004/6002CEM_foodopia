@@ -19,14 +19,20 @@ class HelpCenterIssueModel extends HelpCenterIssue {
   /// Creates a help center issue model instance.
   factory HelpCenterIssueModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final status = data['status'] as String?;
+    final replied = status != null
+        ? status == 'replied' || status == 'closed'
+        : data['replied'] as bool? ?? false;
+    final createdAt = data['createdAt'] ?? data['timestamp'];
+
     /// Handles the help center issue model operation.
     return HelpCenterIssueModel(
       id: doc.id,
       uid: data['uid'] as String? ?? '',
       message: data['message'] as String? ?? '',
       imageUrl: data['imageUrl'] as String?,
-      replied: data['replied'] as bool? ?? false,
-      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      replied: replied,
+      timestamp: (createdAt as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -36,8 +42,12 @@ class HelpCenterIssueModel extends HelpCenterIssue {
       'uid': uid,
       'message': message,
       if (imageUrl != null) 'imageUrl': imageUrl,
-      'replied': replied,
-      'timestamp': Timestamp.fromDate(timestamp),
+      'status': replied ? 'replied' : 'open',
+      'adminReply': '',
+      'repliedBy': '',
+      'repliedAt': null,
+      'createdAt': Timestamp.fromDate(timestamp),
+      'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 }

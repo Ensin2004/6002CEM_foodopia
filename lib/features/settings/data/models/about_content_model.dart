@@ -17,10 +17,11 @@ class AboutContentModel extends AboutContent {
   /// Creates a about content model instance.
   factory AboutContentModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
     /// Handles the about content model operation.
     return AboutContentModel(
       id: doc.id,
-      title: _getTitleFromId(doc.id),
+      title: data['title'] as String? ?? _getTitleFromId(doc.id),
       content: data['content'] ?? '',
       updatedAt: data['updatedAt'] != null
           ? (data['updatedAt'] as Timestamp).toDate()
@@ -44,9 +45,6 @@ class AboutContentModel extends AboutContent {
 
   /// Converts this instance into to json data.
   Map<String, dynamic> toJson() {
-    return {
-      'content': content,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
+    return {'content': content, 'updatedAt': FieldValue.serverTimestamp()};
   }
 }

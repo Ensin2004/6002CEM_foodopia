@@ -1,1 +1,1 @@
-// Builds the admin statistics screen.
+export 'user_statistics_view.dart';
