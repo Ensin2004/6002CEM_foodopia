@@ -56,6 +56,14 @@ import '../../features/meal_plan/domain/usecases/get_manage_grocery_list_detail_
 import '../../features/meal_plan/domain/usecases/get_meal_plan_dashboard_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_weather_usecase.dart';
+import '../../features/recipe/data/datasources/add_recipe_remote_datasource.dart';
+import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart';
+import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
+import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
+import '../../features/recipe/domain/usecases/get_add_recipe_setup_usecase.dart';
+import '../../features/recipe/domain/usecases/save_add_recipe_basic_info_usecase.dart';
+import '../../features/recipe/domain/usecases/save_add_recipe_ingredients_usecase.dart';
+import '../../features/recipe/domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../../features/statistics/data/datasources/statistics_mock_datasource.dart';
 import '../../features/statistics/data/repositories/statistics_repository_impl.dart';
 import '../../features/statistics/domain/repositories/statistics_repository.dart';
@@ -222,12 +230,26 @@ Future<void> initDependencies() async {
   _initUserHomeFeature();
   _initMealPlanFeature();
   _initUserSetupFeature();
+  _initRecipeFeature();
   _initStatisticsFeature();
   _initExploreFeature();
 
   // Add new features here as the app grows
-  // _initRecipeFeature();
   // _initMealPlanFeature();
+}
+
+void _initRecipeFeature() {
+  sl.registerLazySingleton(
+    () => AddRecipeRemoteDataSource(firestore: sl(), auth: sl()),
+  );
+  sl.registerLazySingleton<AddRecipeRepository>(
+    () => AddRecipeRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton(() => GetAddRecipeSetupUseCase(sl()));
+  sl.registerLazySingleton(() => GetAddRecipeIngredientUnitsUseCase(sl()));
+  sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
+  sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
+  sl.registerLazySingleton(() => SaveAddRecipeInstructionsUseCase(sl()));
 }
 
 void _initStatisticsFeature() {

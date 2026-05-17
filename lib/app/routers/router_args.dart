@@ -40,6 +40,28 @@ class AddGroceryListArgs {
   const AddGroceryListArgs({this.userId});
 }
 
+// TODO - Cojean - Confirm with Ensin
+/// Typed arguments for the add recipe basic info route.
+class AddRecipeBasicInfoArgs {
+  final String? draftId;
+
+  const AddRecipeBasicInfoArgs({this.draftId});
+}
+
+/// Typed arguments for the add recipe ingredients route.
+class AddRecipeIngredientsArgs {
+  final String recipeId;
+
+  const AddRecipeIngredientsArgs({required this.recipeId});
+}
+
+/// Typed arguments for the add recipe instructions route.
+class AddRecipeInstructionsArgs {
+  final String recipeId;
+
+  const AddRecipeInstructionsArgs({required this.recipeId});
+}
+
 /// Typed arguments for add meal planning route.
 class AddMealPlanArgs {
   final String? userId;
