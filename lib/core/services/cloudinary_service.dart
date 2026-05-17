@@ -28,7 +28,7 @@ class CloudinaryService {
   /// Handles the ingredient upload preset operation.
   static String get _ingredientUploadPreset => EnvConfig.ingredientUploadPreset;
   /// Handles the instruction upload preset operation.
-  static String get _instructionUploadPreset => EnvConfig.recipeUploadPreset;
+  static String get _instructionUploadPreset => EnvConfig.instructionUploadPreset;
 
   /// Base URL for Cloudinary uploads
   static String _getUploadUrl() {

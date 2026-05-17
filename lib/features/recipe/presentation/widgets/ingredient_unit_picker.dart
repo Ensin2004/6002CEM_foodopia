@@ -91,33 +91,33 @@ class _UnitPickerSheetState extends State<UnitPickerSheet> {
               Expanded(
                 child: widget.units.isEmpty
                     ? Center(
-                  child: Image.asset(
-                    "assets/images/empty_page.png",
-                    height: 120,
-                  ),
-                )
-                    : ListView.separated(
-                  itemCount: widget.units.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final unit = widget.units[index];
-                    final isSelected = widget.selectedUnit == unit;
-                    return ListTile(
-                      title: Text(
-                        unit,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: isSelected
-                          ? const Icon(
-                        Icons.check,
-                        color: AppColors.primary,
+                        child: Image.asset(
+                          "assets/images/empty_page.png",
+                          height: 120,
+                        ),
                       )
-                          : null,
-                      onTap: () => Navigator.of(context).pop(unit),
-                    );
-                  },
-                ),
+                    : ListView.separated(
+                        itemCount: widget.units.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final unit = widget.units[index];
+                          final isSelected = widget.selectedUnit == unit;
+                          return ListTile(
+                            title: Text(
+                              unit,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: isSelected
+                                ? const Icon(
+                                    Icons.check,
+                                    color: AppColors.primary,
+                                  )
+                                : null,
+                            onTap: () => Navigator.of(context).pop(unit),
+                          );
+                        },
+                      ),
               ),
             ],
           ),

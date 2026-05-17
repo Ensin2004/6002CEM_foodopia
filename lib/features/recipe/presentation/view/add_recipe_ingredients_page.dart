@@ -1,11 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/input_ingredient_field.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
+import '../../../../app/routers/app_router.dart';
+import '../../../../app/routers/router_args.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
@@ -95,6 +98,8 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
                 labels: ["Basic Info", "Ingredients", "Instructions", "Review"],
               ),
             ),
+
+            // Label, Tips
             Padding(
               padding: EdgeInsets.fromLTRB(
                 horizontalPadding,
@@ -127,9 +132,20 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
                   0,
                 ),
                 buildDefaultDragHandles: false,
-                itemCount: _rows.length,
+                itemCount: _rows.length + 1,
                 onReorder: _reorderRows,
                 itemBuilder: (context, index) {
+                  if(index == _rows.length) {
+                    return Padding(
+                      key: const ValueKey("add_ingredient_button"),
+                      padding: EdgeInsets.only(top: AppSpacing.sm),
+                      child: SecondaryButton(
+                        text: "+  Add Ingredient",
+                        onPressed: _addRow,
+                      ),
+                    );
+                  }
+
                   final row = _rows[index];
                   return Padding(
                     key: ValueKey(row.id),
@@ -152,20 +168,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
                 horizontalPadding,
                 AppSpacing.lg,
                 horizontalPadding,
-                AppSpacing.sm,
-              ),
-              child: SecondaryButton(
-                text: "+  Add Ingredient",
-                onPressed: _addRow,
-              ),
-            ),
-
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                AppSpacing.sm,
-                horizontalPadding,
-                AppSpacing.sm,
+                AppSpacing.lg,
               ),
               child: PrimaryButton(
                 text: "Next",
@@ -221,7 +224,6 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
         _rows[index].clear();
         return;
       }
-
       final row = _rows.removeAt(index);
       row.dispose();
     });
@@ -256,7 +258,12 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Ingredients saved. Instructions is next.")),
+      const SnackBar(content: Text("Recipe ingredients saved.")),
+    );
+
+    context.push(
+      AppRouter.addRecipeInstructions,
+      extra: AddRecipeInstructionsArgs(recipeId: widget.recipeId),
     );
   }
 

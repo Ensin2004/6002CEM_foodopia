@@ -48,6 +48,13 @@ class AddRecipeIngredientsArgs {
   const AddRecipeIngredientsArgs({required this.recipeId});
 }
 
+/// Typed arguments for the add recipe instructions route.
+class AddRecipeInstructionsArgs {
+  final String recipeId;
+
+  const AddRecipeInstructionsArgs({required this.recipeId});
+}
+
 /// Typed arguments for add meal planning route.
 class AddMealPlanArgs {
   final String? userId;

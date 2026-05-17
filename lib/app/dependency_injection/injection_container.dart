@@ -58,6 +58,7 @@ import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_us
 import '../../features/recipe/domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_ingredients_usecase.dart';
+import '../../features/recipe/domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../../features/user_home/data/datasources/user_home_mock_datasource.dart';
 import '../../features/user_home/data/datasources/user_home_weather_datasource.dart';
 import '../../features/user_home/data/repositories/user_home_repository_impl.dart';
@@ -237,6 +238,7 @@ void _initRecipeFeature() {
   sl.registerLazySingleton(() => GetAddRecipeIngredientUnitsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
+  sl.registerLazySingleton(() => SaveAddRecipeInstructionsUseCase(sl()));
 }
 
 void _initMealPlanFeature() {

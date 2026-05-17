@@ -13,6 +13,7 @@ import '../../features/main/presentation/view/main_page.dart';
 import '../../features/notifications/presentation/view/notifications_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_basic_info_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_ingredients_page.dart';
+import '../../features/recipe/presentation/view/add_recipe_instructions_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_method_page.dart';
 import '../../features/explore/presentation/view/explore_page.dart';
 import '../../features/library/presentation/view/library_page.dart';
@@ -57,6 +58,7 @@ class AppRouter {
   static const String addRecipe = '/recipes/add';
   static const String addRecipeBasicInfo = '/recipes/add/basic-info';
   static const String addRecipeIngredients = '/recipes/add/ingredients';
+  static const String addRecipeInstructions = '/recipes/add/instructions';
   static const String explore = '/explore';
   static const String mealPlan = '/meal-plan';
   static const String addMealPlan = '/meal-plan/planning/add-meal';
@@ -393,6 +395,15 @@ class AppRouter {
         builder: (context, state) {
           final args = state.extra as AddRecipeIngredientsArgs;
           return AddRecipeIngredientsPage(recipeId: args.recipeId);
+        },
+      ),
+
+      GoRoute(
+        name: 'addRecipeInstructions',
+        path: addRecipeInstructions,
+        builder: (context, state) {
+          final args = state.extra as AddRecipeInstructionsArgs;
+          return AddRecipeInstructionsPage(recipeId: args.recipeId);
         },
       ),
 

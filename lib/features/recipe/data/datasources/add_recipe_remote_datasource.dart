@@ -4,8 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/services/cloudinary_service.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_instruction.dart';
 import '../models/add_recipe_basic_info_model.dart';
 import '../models/add_recipe_ingredient_model.dart';
+import '../models/add_recipe_instruction_model.dart';
 import '../models/add_recipe_setup_model.dart';
 
 class AddRecipeRemoteDataSource {
@@ -135,6 +137,47 @@ class AddRecipeRemoteDataSource {
     }
 
     batch.update(recipeRef, {'updatedAt': FieldValue.serverTimestamp()});
+
+    await batch.commit();
+  }
+
+  Future<void> saveInstructions({
+    required String recipeId,
+    required bool useSections,
+    required List<AddRecipeInstruction> instructions,
+  }) async {
+    final recipeRef = firestore.collection('recipes').doc(recipeId);
+    final instructionCollection = recipeRef.collection('instructions');
+    final existingInstructions = await instructionCollection.get();
+    final batch = firestore.batch();
+
+    for (final doc in existingInstructions.docs) {
+      batch.delete(doc.reference);
+    }
+
+    for (final instruction in instructions) {
+      String? stepImageUrl;
+      if (instruction.stepImageFile != null) {
+        stepImageUrl = await CloudinaryService.uploadInstructionImage(
+          instruction.stepImageFile!,
+        );
+      }
+
+      final model = AddRecipeInstructionModel(
+        sectionIndex: instruction.sectionIndex,
+        sectionTitle: instruction.sectionTitle,
+        stepIndex: instruction.stepIndex,
+        stepImage: stepImageUrl,
+        description: instruction.description,
+      );
+
+      batch.set(instructionCollection.doc(), model.toFirestore());
+    }
+
+    batch.update(recipeRef, {
+      'instructionUseSection': useSections,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
 
     await batch.commit();
   }

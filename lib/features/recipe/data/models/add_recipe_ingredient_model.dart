@@ -12,11 +12,6 @@ class AddRecipeIngredientModel {
   });
 
   Map<String, dynamic> toFirestore() {
-    return {
-      'name': name,
-      'image': imageUrl,
-      'amount': amount,
-      'unit': unit,
-    };
+    return {'name': name, 'image': imageUrl, 'amount': amount, 'unit': unit};
   }
 }

@@ -18,8 +18,7 @@ class AddMoreButtonSmall extends StatelessWidget {
           foregroundColor: AppColors.primary,
           padding: const EdgeInsets.only(top: AppSpacing.xs),
         ),
-        icon: const Icon(Icons.add, size: 16),
-        label: const Text("Add more"),
+        label: const Text("+  Add more"),
       ),
     );
   }

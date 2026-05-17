@@ -56,9 +56,7 @@ class InputIngredientField extends StatelessWidget {
                       hintText: "Ingredient Name",
                       isDense: true,
                       enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: AppColors.border,
-                        ),
+                        borderSide: BorderSide(color: AppColors.border),
                       ),
                     ),
                   ),
@@ -76,9 +74,7 @@ class InputIngredientField extends StatelessWidget {
                             hintText: "Amount",
                             isDense: true,
                             enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: AppColors.border,
-                              ),
+                              borderSide: BorderSide(color: AppColors.border),
                             ),
                           ),
                         ),
@@ -92,9 +88,7 @@ class InputIngredientField extends StatelessWidget {
                               hintText: "Unit",
                               isDense: true,
                               enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: AppColors.border,
-                                ),
+                                borderSide: BorderSide(color: AppColors.border),
                               ),
                             ),
                             child: Row(
@@ -107,8 +101,8 @@ class InputIngredientField extends StatelessWidget {
                                     style: context.text.bodyMedium?.copyWith(
                                       color: row.unit.isEmpty
                                           ? AppColors.textSecondary.withValues(
-                                        alpha: 0.5,
-                                      )
+                                              alpha: 0.5,
+                                            )
                                           : AppColors.textPrimary,
                                     ),
                                   ),
@@ -116,7 +110,9 @@ class InputIngredientField extends StatelessWidget {
                                 Icon(
                                   Icons.keyboard_arrow_down,
                                   size: 18,
-                                  color: AppColors.textSecondary.withValues(alpha: 0.5),
+                                  color: AppColors.textSecondary.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                               ],
                             ),
@@ -159,10 +155,10 @@ class _IngredientImageBox extends StatelessWidget {
           color: const Color(0xFFF7F7F7),
           child: imageFile == null
               ? const Icon(
-            Icons.add_photo_alternate_outlined,
-            color: Color(0xFFC9CBCD),
-            size: 30,
-          )
+                  Icons.add_photo_alternate_outlined,
+                  color: Color(0xFFC9CBCD),
+                  size: 30,
+                )
               : Image.file(imageFile!, fit: BoxFit.cover),
         ),
       ),

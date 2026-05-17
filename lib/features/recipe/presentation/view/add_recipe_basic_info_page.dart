@@ -150,7 +150,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   horizontalPadding,
                   AppSpacing.sm,
                   horizontalPadding,
-                  AppSpacing.lg,
+                  0,
                 ),
 
                 children: [
@@ -270,17 +270,23 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   }),
                   AddMoreButtonSmall(onPressed: _addAllergen),
                   const SizedBox(height: AppSpacing.lg),
-
-                  // Next Button
-                  PrimaryButton(
-                    text: "Next",
-                    isLoading: viewModel.isSaving,
-                    onPressed:
-                        viewModel.isSaving || !_isBasicInfoComplete(viewModel)
-                        ? null
-                        : () => _handleNext(context, viewModel),
-                  ),
                 ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                AppSpacing.lg,
+                horizontalPadding,
+                AppSpacing.lg,
+              ),
+              child: PrimaryButton(
+                text: "Next",
+                isLoading: viewModel.isSaving,
+                onPressed:
+                viewModel.isSaving || !_isBasicInfoComplete(viewModel)
+                    ? null
+                    : () => _handleNext(context, viewModel),
               ),
             ),
           ],

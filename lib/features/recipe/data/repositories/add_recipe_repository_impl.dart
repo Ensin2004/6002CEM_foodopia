@@ -3,6 +3,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_setup.dart';
 import '../../domain/repositories/add_recipe_repository.dart';
 import '../datasources/add_recipe_remote_datasource.dart';
@@ -105,6 +106,55 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
       return const Right(null);
     } catch (error) {
       return Left(ServerFailure(message: 'Unable to save ingredients: $error'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> saveInstructions({
+    required String recipeId,
+    required bool useSections,
+    required List<AddRecipeInstruction> instructions,
+  }) async {
+    if (recipeId.trim().isEmpty) {
+      return Left(ValidationFailure(message: 'Recipe id is missing.'));
+    }
+    if (instructions.isEmpty) {
+      return Left(
+        ValidationFailure(message: 'Please add at least one instruction.'),
+      );
+    }
+
+    for (final instruction in instructions) {
+      if (instruction.description.trim().isEmpty) {
+        return Left(
+          ValidationFailure(message: 'Instruction description is required.'),
+        );
+      }
+      if (instruction.stepIndex < 1) {
+        return Left(ValidationFailure(message: 'Instruction step is invalid.'));
+      }
+      if (useSections &&
+          (instruction.sectionIndex == null ||
+              instruction.sectionIndex! < 1 ||
+              instruction.sectionTitle == null ||
+              instruction.sectionTitle!.trim().isEmpty)) {
+        return Left(
+          ValidationFailure(message: 'Instruction section is required.'),
+        );
+      }
+    }
+
+    try {
+      await remoteDataSource.saveInstructions(
+        recipeId: recipeId,
+        useSections: useSections,
+        instructions: instructions,
+      );
+      return const Right(null);
+    } catch (error) {
+      return Left(
+        ServerFailure(message: 'Unable to save instructions: $error'),
+      );
     }
   }
 }
