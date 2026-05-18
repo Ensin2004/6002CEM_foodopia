@@ -6,12 +6,12 @@ import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 
-class UnitPickerSheet extends StatefulWidget {
+class IngredientUnitPickerSheet extends StatefulWidget {
   final List<AddRecipeIngredientUnit> units;
   final String selectedUnitId;
   final String selectedCustomUnit;
 
-  const UnitPickerSheet({
+  const IngredientUnitPickerSheet({
     super.key,
     required this.units,
     required this.selectedUnitId,
@@ -19,10 +19,10 @@ class UnitPickerSheet extends StatefulWidget {
   });
 
   @override
-  State<UnitPickerSheet> createState() => _UnitPickerSheetState();
+  State<IngredientUnitPickerSheet> createState() => _UnitPickerSheetState();
 }
 
-class _UnitPickerSheetState extends State<UnitPickerSheet> {
+class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
   final TextEditingController _customUnitController = TextEditingController();
   AddRecipeIngredientUnit? _selectedUnit;
 
@@ -133,7 +133,7 @@ class _UnitPickerSheetState extends State<UnitPickerSheet> {
     );
   }
 
-  // Init Helper
+  // Get Unit by ID
   AddRecipeIngredientUnit? _unitById(String id) {
     if (id.isEmpty) return null;
     for (final unit in widget.units) {

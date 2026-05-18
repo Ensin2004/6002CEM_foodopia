@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:foodopia/features/recipe/presentation/widgets/input_option_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -15,16 +16,17 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
+import '../../domain/entities/add_recipe_option.dart';
 import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../viewmodel/add_recipe_basic_info_viewmodel.dart';
 import '../widgets/add_more_button_small.dart';
-import '../widgets/input_category_field.dart';
 import '../widgets/recipe_difficulty_picker.dart';
 import '../widgets/recipe_image_edit_sheet.dart';
 import '../widgets/recipe_image_picker.dart';
 import '../widgets/input_label.dart';
 import '../widgets/input_text_field.dart';
+import '../widgets/recipe_option_picker_sheet.dart';
 
 class AddRecipeBasicInfoPage extends StatelessWidget {
   const AddRecipeBasicInfoPage({super.key});
@@ -60,15 +62,10 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     TextEditingController(),
   ];
 
-  final List<TextEditingController> _categoryControllers = [
-    TextEditingController(),
-  ];
-
-  final List<FocusNode> _categoryFocusNodes = [FocusNode()];
-
-  final List<TextEditingController> _allergenControllers = [
-    TextEditingController(),
-  ];
+  List<String> _selectedCategoryIds = [];
+  List<String> _customCategories = [];
+  List<String> _selectedAllergenIds = [];
+  List<String> _customAllergens = [];
 
   @override
   void initState() {
@@ -76,9 +73,6 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     _recipeNameController.addListener(_refreshRequiredState);
     _prepTimeController.addListener(_refreshRequiredState);
     _servingsController.addListener(_refreshRequiredState);
-    for (final controller in _categoryControllers) {
-      controller.addListener(_refreshRequiredState);
-    }
   }
 
   @override
@@ -88,15 +82,6 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     _servingsController.dispose();
 
     for (final controller in _otherNameControllers) {
-      controller.dispose();
-    }
-    for (final controller in _categoryControllers) {
-      controller.dispose();
-    }
-    for (final focusNode in _categoryFocusNodes) {
-      focusNode.dispose();
-    }
-    for (final controller in _allergenControllers) {
       controller.dispose();
     }
 
@@ -199,24 +184,19 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   // Category
                   InputLabel(text: "Category", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
-                  ..._categoryControllers.asMap().entries.map((entry) {
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        bottom: entry.key == _categoryControllers.length - 1
-                            ? 0
-                            : AppSpacing.sm,
-                      ),
-                      child: InputCategoryField(
-                        controller: entry.value,
-                        focusNode: _categoryFocusNodes[entry.key],
-                        options: setup.categories,
-                        onDelete: _categoryControllers.length > 1
-                            ? () => _removeCategory(entry.key)
-                            : null,
-                      ),
-                    );
-                  }),
-                  AddMoreButtonSmall(onPressed: _addCategory),
+                  InputOptionField(
+                    placeholder: "Select categories",
+                    values: _selectedOptionValues(
+                      options: setup.categories,
+                      selectedIds: _selectedCategoryIds,
+                      customOptions: _customCategories,
+                    ),
+                    onDelete: _removeCategorySelection,
+                    onTap: () => _showCategorySheet(setup.categories),
+                  ),
+                  AddMoreButtonSmall(
+                    onPressed: () => _showCategorySheet(setup.categories),
+                  ),
                   const SizedBox(height: AppSpacing.lg),
 
                   // Preparation Time
@@ -252,23 +232,19 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   // Allergen Info
                   InputLabel(text: "Allergen Info"),
                   const SizedBox(height: AppSpacing.sm),
-                  ..._allergenControllers.asMap().entries.map((entry) {
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        bottom: entry.key == _allergenControllers.length - 1
-                            ? 0
-                            : AppSpacing.sm,
-                      ),
-                      child: InputTextField(
-                        controller: entry.value,
-                        hint: "e.g. Nuts",
-                        onDelete: _allergenControllers.length > 1
-                            ? () => _removeAllergen(entry.key)
-                            : null,
-                      ),
-                    );
-                  }),
-                  AddMoreButtonSmall(onPressed: _addAllergen),
+                  InputOptionField(
+                    placeholder: "Select allergens",
+                    values: _selectedOptionValues(
+                      options: setup.allergens,
+                      selectedIds: _selectedAllergenIds,
+                      customOptions: _customAllergens,
+                    ),
+                    onDelete: _removeAllergenSelection,
+                    onTap: () => _showAllergenSheet(setup.allergens),
+                  ),
+                  AddMoreButtonSmall(
+                    onPressed: () => _showAllergenSheet(setup.allergens),
+                  ),
                   const SizedBox(height: AppSpacing.lg),
                 ],
               ),
@@ -326,7 +302,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            return SelectedMediaSheet(
+            return RecipeImageEditSheet(
               images: _images,
               onRemove: (index) {
                 setState(() => _images.removeAt(index));
@@ -343,22 +319,100 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     );
   }
 
-  // Add Input Helper
-  void _addOtherName() {
-    setState(() => _otherNameControllers.add(TextEditingController()));
-  }
+  // Category Picker Helper
+  Future<void> _showCategorySheet(List<AddRecipeOption> categories) async {
+    final selection = await showModalBottomSheet<RecipeOptionPickerSelection>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => RecipeOptionPickerSheet(
+        title: "Select Category",
+        customHint: "Custom Category",
+        presetHeaderText: "Preset Category",
+        selectButtonText: "Select Category",
+        customButtonText: "Use Custom Category",
+        options: categories,
+        selectedOptionIds: _selectedCategoryIds,
+        selectedCustomOptions: _customCategories,
+      ),
+    );
 
-  void _addCategory() {
-    final controller = TextEditingController();
-    controller.addListener(_refreshRequiredState);
+    if (selection == null) return;
     setState(() {
-      _categoryControllers.add(controller);
-      _categoryFocusNodes.add(FocusNode());
+      _selectedCategoryIds = selection.optionIds;
+      _customCategories = selection.customOptions;
     });
   }
 
-  void _addAllergen() {
-    setState(() => _allergenControllers.add(TextEditingController()));
+  // Allergen Picker Helper
+  Future<void> _showAllergenSheet(List<AddRecipeOption> allergens) async {
+    final selection = await showModalBottomSheet<RecipeOptionPickerSelection>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => RecipeOptionPickerSheet(
+        title: "Select Allergen",
+        customHint: "Custom Allergen",
+        presetHeaderText: "Preset Allergen",
+        selectButtonText: "Select Allergen",
+        customButtonText: "Use Custom Allergen",
+        options: allergens,
+        selectedOptionIds: _selectedAllergenIds,
+        selectedCustomOptions: _customAllergens,
+      ),
+    );
+
+    if (selection == null) return;
+    setState(() {
+      _selectedAllergenIds = selection.optionIds;
+      _customAllergens = selection.customOptions;
+    });
+  }
+
+  // Select Option Helper
+  List<SelectedRecipeOption> _selectedOptionValues({
+    required List<AddRecipeOption> options,
+    required List<String> selectedIds,
+    required List<String> customOptions,
+  }) {
+    final optionValues = selectedIds
+        .map((id) => _optionById(options: options, id: id))
+        .whereType<AddRecipeOption>();
+
+    return [
+      ...optionValues.map(
+            (option) => SelectedRecipeOption(
+          id: option.id,
+          name: option.name,
+          isCustom: false,
+        ),
+      ),
+      ...customOptions.map(
+            (option) =>
+            SelectedRecipeOption(id: option, name: option, isCustom: true),
+      ),
+    ];
+  }
+
+  AddRecipeOption? _optionById({
+    required List<AddRecipeOption> options,
+    required String id,
+  }) {
+    for (final option in options) {
+      if (option.id == id) return option;
+    }
+    return null;
+  }
+
+  // Add Input Helper
+  void _addOtherName() {
+    setState(() => _otherNameControllers.add(TextEditingController()));
   }
 
   // Remove Input Helper
@@ -369,20 +423,23 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     });
   }
 
-  void _removeCategory(int index) {
+  void _removeCategorySelection(SelectedRecipeOption option) {
     setState(() {
-      final controller = _categoryControllers.removeAt(index);
-      final focusNode = _categoryFocusNodes.removeAt(index);
-      controller.removeListener(_refreshRequiredState);
-      controller.dispose();
-      focusNode.dispose();
+      if (option.isCustom) {
+        _customCategories.remove(option.id);
+      } else {
+        _selectedCategoryIds.remove(option.id);
+      }
     });
   }
 
-  void _removeAllergen(int index) {
+  void _removeAllergenSelection(SelectedRecipeOption option) {
     setState(() {
-      final controller = _allergenControllers.removeAt(index);
-      controller.dispose();
+      if (option.isCustom) {
+        _customAllergens.remove(option.id);
+      } else {
+        _selectedAllergenIds.remove(option.id);
+      }
     });
   }
 
@@ -395,11 +452,13 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       mediaFiles: List<File>.unmodifiable(_images),
       recipeName: _recipeNameController.text.trim(),
       otherNames: _nonEmptyControllerValues(_otherNameControllers),
-      categories: _nonEmptyControllerValues(_categoryControllers),
+      categoryIds: List<String>.unmodifiable(_selectedCategoryIds),
+      customCategories: List<String>.unmodifiable(_customCategories),
       preparationMinutes: int.tryParse(_prepTimeController.text.trim()) ?? 0,
       difficultyLevel: viewModel.difficultyLevel,
       servings: int.tryParse(_servingsController.text.trim()) ?? 0,
-      allergens: _nonEmptyControllerValues(_allergenControllers),
+      allergenIds: List<String>.unmodifiable(_selectedAllergenIds),
+      customAllergens: List<String>.unmodifiable(_customAllergens),
     );
 
     final success = await viewModel.saveBasicInfo(info);
@@ -434,7 +493,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   bool _isBasicInfoComplete(AddRecipeBasicInfoViewModel viewModel) {
     return _images.isNotEmpty &&
         _recipeNameController.text.trim().isNotEmpty &&
-        _nonEmptyControllerValues(_categoryControllers).isNotEmpty &&
+        (_selectedCategoryIds.isNotEmpty || _customCategories.isNotEmpty) &&
         (int.tryParse(_prepTimeController.text.trim()) ?? 0) > 0 &&
         viewModel.difficultyLevel >= 1 &&
         viewModel.difficultyLevel <= 5 &&
@@ -445,6 +504,19 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     if (!mounted) return;
     setState(() {});
   }
+}
+
+// Selected Recipe Option Class
+class SelectedRecipeOption {
+  final String id;
+  final String name;
+  final bool isCustom;
+
+  const SelectedRecipeOption({
+    required this.id,
+    required this.name,
+    required this.isCustom,
+  });
 }
 
 // Error Page

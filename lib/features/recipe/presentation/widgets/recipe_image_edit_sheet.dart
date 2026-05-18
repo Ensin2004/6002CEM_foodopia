@@ -7,12 +7,12 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
 
-class SelectedMediaSheet extends StatelessWidget {
+class RecipeImageEditSheet extends StatelessWidget {
   final List<File> images;
   final ValueChanged<int> onRemove;
   final VoidCallback onKeep;
 
-  const SelectedMediaSheet({
+  const RecipeImageEditSheet({
     super.key,
     required this.images,
     required this.onRemove,

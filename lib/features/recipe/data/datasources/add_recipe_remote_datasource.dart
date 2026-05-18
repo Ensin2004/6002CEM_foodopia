@@ -6,6 +6,7 @@ import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
+import '../../domain/entities/add_recipe_option.dart';
 import '../models/add_recipe_basic_info_model.dart';
 import '../models/add_recipe_ingredient_model.dart';
 import '../models/add_recipe_instruction_model.dart';
@@ -21,35 +22,12 @@ class AddRecipeRemoteDataSource {
   });
 
   Future<AddRecipeSetupModel> getSetup() async {
-    final categorySnapshot = await firestore
-        .collection('app_config')
-        .doc('recipe_categories')
-        .collection('items')
-        .get();
-
-    final categories =
-        categorySnapshot.docs
-            .map((doc) {
-              final data = doc.data();
-              final isActive = data['isActive'] is bool
-                  ? data['isActive'] as bool
-                  : false;
-              if (!isActive) return null;
-
-              final name = data['name']?.toString().trim() ?? '';
-              if (name.isEmpty) return null;
-
-              return name;
-            })
-            .whereType<String>()
-            .toList()
-          ..sort(
-            (first, second) =>
-                first.toLowerCase().compareTo(second.toLowerCase()),
-          );
+    final categories = await _getActiveOptions(configId: 'recipe_categories');
+    final allergens = await _getActiveOptions(configId: 'allergies');
 
     return AddRecipeSetupModel(
       categories: categories,
+      allergens: allergens,
       difficultyLevels: const [
         'Novice',
         'Beginner',
@@ -58,6 +36,32 @@ class AddRecipeRemoteDataSource {
         'Master',
       ],
     );
+  }
+
+  Future<List<AddRecipeOption>> _getActiveOptions({
+    required String configId,
+  }) async {
+    final snapshot = await firestore
+        .collection('app_config')
+        .doc(configId)
+        .collection('items')
+        .get();
+
+    return snapshot.docs
+        .map((doc) {
+          final data = doc.data();
+          final isActive = data['isActive'] is bool
+              ? data['isActive'] as bool
+              : false;
+          if (!isActive) return null;
+
+          final name = data['name']?.toString().trim() ?? '';
+          if (name.isEmpty) return null;
+
+          return AddRecipeOption(id: doc.id, name: name);
+        })
+        .whereType<AddRecipeOption>()
+        .toList();
   }
 
   Future<List<AddRecipeIngredientUnit>> getIngredientUnits() async {
@@ -137,6 +141,14 @@ class AddRecipeRemoteDataSource {
       creatorUid: uid,
       info: info,
       mediaUrls: mediaUrls,
+      customCategoryIds: await _saveCustomItems(
+        collectionId: 'custom_categories',
+        names: info.customCategories,
+      ),
+      customAllergenIds: await _saveCustomItems(
+        collectionId: 'custom_allergens',
+        names: info.customAllergens,
+      ),
     );
 
     final doc = await firestore.collection('recipes').add(model.toFirestore());
@@ -198,6 +210,55 @@ class AddRecipeRemoteDataSource {
 
     final doc = await collection.add({
       'name': trimmedName,
+      'isActive': true,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return doc.id;
+  }
+
+  Future<List<String>> _saveCustomItems({
+    required String collectionId,
+    required List<String> names,
+  }) async {
+    final ids = <String>[];
+    final seenNames = <String>{};
+
+    for (final name in names) {
+      final trimmedName = name.trim();
+      final normalizedName = trimmedName.toLowerCase();
+      if (trimmedName.isEmpty || seenNames.contains(normalizedName)) continue;
+
+      seenNames.add(normalizedName);
+      ids.add(
+        await _saveCustomItem(collectionId: collectionId, name: trimmedName),
+      );
+    }
+
+    return ids;
+  }
+
+  Future<String> _saveCustomItem({
+    required String collectionId,
+    required String name,
+  }) async {
+    final collection = firestore
+        .collection('custom')
+        .doc(collectionId)
+        .collection('items');
+
+    final existing = await collection
+        .where('name', isEqualTo: name)
+        .where('isActive', isEqualTo: true)
+        .limit(1)
+        .get();
+
+    if (existing.docs.isNotEmpty) {
+      return existing.docs.first.id;
+    }
+
+    final doc = await collection.add({
+      'name': name,
       'isActive': true,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),

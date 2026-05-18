@@ -43,7 +43,7 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
     if (info.recipeName.trim().isEmpty) {
       return Left(ValidationFailure(message: 'Please enter a recipe name.'));
     }
-    if (info.categories.isEmpty) {
+    if (info.categoryIds.isEmpty && info.customCategories.isEmpty) {
       return Left(ValidationFailure(message: 'Please select a category.'));
     }
     if (info.preparationMinutes <= 0) {

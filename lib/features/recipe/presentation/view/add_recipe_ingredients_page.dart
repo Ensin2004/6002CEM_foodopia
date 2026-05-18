@@ -20,7 +20,7 @@ import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../viewmodel/add_recipe_ingredients_viewmodel.dart';
-import '../widgets/ingredient_unit_picker.dart';
+import '../widgets/ingredient_unit_picker_sheet.dart';
 import '../widgets/input_label.dart';
 
 class AddRecipeIngredientsPage extends StatelessWidget {
@@ -204,7 +204,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) => UnitPickerSheet(
+      builder: (context) => IngredientUnitPickerSheet(
         units: units,
         selectedUnitId: row.unitId,
         selectedCustomUnit: row.isCustomUnit ? row.unitName : '',
