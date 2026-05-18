@@ -28,24 +28,16 @@ class FlatInstructionList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ReorderableListView.builder(
-      padding: EdgeInsets.fromLTRB(
-        horizontalPadding,
-        0,
-        horizontalPadding,
-        0,
-      ),
+      padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 0),
       buildDefaultDragHandles: false,
       itemCount: steps.length + 1,
       onReorder: onReorderStep,
       itemBuilder: (context, index) {
-        if(index == steps.length) {
+        if (index == steps.length) {
           return Padding(
             key: const ValueKey("add_step_button"),
             padding: EdgeInsets.only(top: AppSpacing.sm),
-            child: SecondaryButton(
-              text: "+  Add Step",
-              onPressed: onAddStep,
-            ),
+            child: SecondaryButton(text: "+  Add Step", onPressed: onAddStep),
           );
         }
         final step = steps[index];
@@ -116,7 +108,10 @@ class _InstructionStepCard extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.error,
+                  ),
                 ),
               ],
             ),

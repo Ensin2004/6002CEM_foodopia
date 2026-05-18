@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/services/cloudinary_service.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
 import '../models/add_recipe_basic_info_model.dart';
 import '../models/add_recipe_ingredient_model.dart';
@@ -59,7 +60,25 @@ class AddRecipeRemoteDataSource {
     );
   }
 
-  Future<List<String>> getIngredientUnits() async {
+  Future<List<AddRecipeIngredientUnit>> getIngredientUnits() async {
+    final categorySnapshot = await firestore
+        .collection('app_config')
+        .doc('ingredient_units_categories')
+        .collection('items')
+        .get();
+
+    final activeCategories = <String, String>{};
+    for (final doc in categorySnapshot.docs) {
+      final data = doc.data();
+      final isActive = data['isActive'] is bool
+          ? data['isActive'] as bool
+          : false;
+      final name = data['name']?.toString().trim() ?? '';
+      if (isActive && name.isNotEmpty) {
+        activeCategories[doc.id] = name;
+      }
+    }
+
     final unitSnapshot = await firestore
         .collection('app_config')
         .doc('ingredient_units')
@@ -77,13 +96,26 @@ class AddRecipeRemoteDataSource {
           final name = data['name']?.toString().trim() ?? '';
           if (name.isEmpty) return null;
 
-          return name;
+          final categoryId = data['unitCategory']?.toString().trim() ?? '';
+          final categoryName = activeCategories[categoryId];
+          if (categoryId.isNotEmpty && categoryName == null) return null;
+
+          return AddRecipeIngredientUnit(
+            id: doc.id,
+            name: name,
+            categoryId: categoryId,
+            categoryName: categoryName ?? 'Other',
+          );
         })
-        .whereType<String>()
+        .whereType<AddRecipeIngredientUnit>()
         .toList()
-      ..sort(
-        (first, second) => first.toLowerCase().compareTo(second.toLowerCase()),
-      );
+      ..sort((first, second) {
+        final categoryCompare = first.categoryName.toLowerCase().compareTo(
+          second.categoryName.toLowerCase(),
+        );
+        if (categoryCompare != 0) return categoryCompare;
+        return first.name.toLowerCase().compareTo(second.name.toLowerCase());
+      });
   }
 
   Future<String> saveBasicInfo(AddRecipeBasicInfo info) async {
@@ -125,12 +157,16 @@ class AddRecipeRemoteDataSource {
           ingredient.imageFile!,
         );
       }
+      final customUnitId = ingredient.customUnit.isNotEmpty
+          ? await _saveCustomUnit(ingredient.customUnit)
+          : null;
 
       final model = AddRecipeIngredientModel(
         name: ingredient.name,
         imageUrl: imageUrl,
         amount: ingredient.amount,
-        unit: ingredient.unit,
+        unitId: ingredient.unitId.isEmpty ? null : ingredient.unitId,
+        customUnitId: customUnitId,
       );
 
       batch.set(recipeRef.collection('ingredients').doc(), model.toFirestore());
@@ -139,6 +175,34 @@ class AddRecipeRemoteDataSource {
     batch.update(recipeRef, {'updatedAt': FieldValue.serverTimestamp()});
 
     await batch.commit();
+  }
+
+  Future<String> _saveCustomUnit(String name) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) return '';
+
+    final collection = firestore
+        .collection('custom')
+        .doc('custom_units')
+        .collection('items');
+
+    final existing = await collection
+        .where('name', isEqualTo: trimmedName)
+        .where('isActive', isEqualTo: true)
+        .limit(1)
+        .get();
+
+    if (existing.docs.isNotEmpty) {
+      return existing.docs.first.id;
+    }
+
+    final doc = await collection.add({
+      'name': trimmedName,
+      'isActive': true,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return doc.id;
   }
 
   Future<void> saveInstructions({

@@ -3,15 +3,19 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
+import '../../../../core/widgets/buttons/primary_button.dart';
+import '../../domain/entities/add_recipe_ingredient_unit.dart';
 
 class UnitPickerSheet extends StatefulWidget {
-  final List<String> units;
-  final String selectedUnit;
+  final List<AddRecipeIngredientUnit> units;
+  final String selectedUnitId;
+  final String selectedCustomUnit;
 
   const UnitPickerSheet({
     super.key,
     required this.units,
-    required this.selectedUnit,
+    required this.selectedUnitId,
+    required this.selectedCustomUnit,
   });
 
   @override
@@ -20,9 +24,19 @@ class UnitPickerSheet extends StatefulWidget {
 
 class _UnitPickerSheetState extends State<UnitPickerSheet> {
   final TextEditingController _customUnitController = TextEditingController();
+  AddRecipeIngredientUnit? _selectedUnit;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedUnit = _unitById(widget.selectedUnitId);
+    _customUnitController.text = widget.selectedCustomUnit;
+    _customUnitController.addListener(_onCustomTextChanged);
+  }
 
   @override
   void dispose() {
+    _customUnitController.removeListener(_onCustomTextChanged);
     _customUnitController.dispose();
     super.dispose();
   }
@@ -31,6 +45,11 @@ class _UnitPickerSheetState extends State<UnitPickerSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.72;
+    final query = _customUnitController.text.trim();
+    final matchingUnits = _matchingUnits(query);
+    final groupedUnits = _groupUnits(
+      query.isEmpty ? widget.units : matchingUnits,
+    );
 
     return SafeArea(
       child: Padding(
@@ -76,48 +95,36 @@ class _UnitPickerSheetState extends State<UnitPickerSheet> {
                     borderSide: const BorderSide(color: AppColors.border),
                   ),
                 ),
-                onSubmitted: _submitCustomUnit,
+                onSubmitted: (_) => _submitSelection(),
               ),
               const SizedBox(height: AppSpacing.sm),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () =>
-                      _submitCustomUnit(_customUnitController.text),
-                  child: const Text("Use Custom Unit"),
-                ),
-              ),
-              const Divider(height: AppSpacing.lg),
               Expanded(
-                child: widget.units.isEmpty
+                child: widget.units.isEmpty || groupedUnits.isEmpty
                     ? Center(
                         child: Image.asset(
                           "assets/images/empty_page.png",
                           height: 120,
                         ),
                       )
-                    : ListView.separated(
-                        itemCount: widget.units.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final unit = widget.units[index];
-                          final isSelected = widget.selectedUnit == unit;
-                          return ListTile(
-                            title: Text(
-                              unit,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: isSelected
-                                ? const Icon(
-                                    Icons.check,
-                                    color: AppColors.primary,
-                                  )
-                                : null,
-                            onTap: () => Navigator.of(context).pop(unit),
-                          );
-                        },
+                    : ListView(
+                        children: groupedUnits.entries
+                            .map(
+                              (entry) => _UnitCategorySection(
+                                categoryName: entry.key,
+                                units: entry.value,
+                                selectedUnitId: _selectedUnit?.id ?? "",
+                                onSelected: (unit) {
+                                  setState(() => _selectedUnit = unit);
+                                },
+                              ),
+                            )
+                            .toList(),
                       ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              PrimaryButton(
+                text: _selectedUnit != null ? "Select Unit" : "Use Custom Unit",
+                onPressed: _selectedUnit != null || query.isNotEmpty ? _submitSelection : null,
               ),
             ],
           ),
@@ -126,9 +133,141 @@ class _UnitPickerSheetState extends State<UnitPickerSheet> {
     );
   }
 
-  void _submitCustomUnit(String value) {
-    final unit = value.trim();
-    if (unit.isEmpty) return;
-    Navigator.of(context).pop(unit);
+  // Init Helper
+  AddRecipeIngredientUnit? _unitById(String id) {
+    if (id.isEmpty) return null;
+    for (final unit in widget.units) {
+      if (unit.id == id) return unit;
+    }
+    return null;
+  }
+
+  // Match, Group Helper
+  List<AddRecipeIngredientUnit> _matchingUnits(String query) {
+    if (query.isEmpty) return widget.units;
+    final normalized = query.toLowerCase();
+    return widget.units
+        .where((unit) => unit.name.toLowerCase().contains(normalized))
+        .toList();
+  }
+
+  Map<String, List<AddRecipeIngredientUnit>> _groupUnits(
+    List<AddRecipeIngredientUnit> units,
+  ) {
+    final grouped = <String, List<AddRecipeIngredientUnit>>{};
+    for (final unit in units) {
+      grouped.putIfAbsent(unit.categoryName, () => []).add(unit);
+    }
+    return grouped;
+  }
+
+  // Submit Button Helper
+  void _submitSelection() {
+    if (_selectedUnit != null) {
+      Navigator.of(context).pop(UnitPickerSelection.fromList(_selectedUnit!));
+      return;
+    }
+
+    final customUnit = _customUnitController.text.trim();
+    if (customUnit.isEmpty) return;
+    Navigator.of(context).pop(UnitPickerSelection.custom(customUnit));
+  }
+
+  void _onCustomTextChanged() {
+    if (_selectedUnit != null) {
+      setState(() => _selectedUnit = null);
+      return;
+    }
+    setState(() {});
+  }
+}
+
+class _UnitCategorySection extends StatelessWidget {
+  final String categoryName;
+  final List<AddRecipeIngredientUnit> units;
+  final String selectedUnitId;
+  final ValueChanged<AddRecipeIngredientUnit> onSelected;
+
+  const _UnitCategorySection({
+    required this.categoryName,
+    required this.units,
+    required this.selectedUnitId,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Text(
+              categoryName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.titleMedium,
+            ),
+          ),
+          const Divider(color: AppColors.border),
+          ...units.map((unit) {
+            final selected = unit.id == selectedUnitId;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  unit.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: selected
+                    ? CircleAvatar(
+                        radius: 10,
+                        backgroundColor: AppColors.primary,
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                      )
+                    : null,
+                onTap: () => onSelected(unit),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+// Unit Picker Selection Class
+class UnitPickerSelection {
+  final String unitId;
+  final String unitName;
+  final bool isCustom;
+
+  const UnitPickerSelection({
+    required this.unitId,
+    required this.unitName,
+    required this.isCustom,
+  });
+
+  factory UnitPickerSelection.fromList(AddRecipeIngredientUnit unit) {
+    return UnitPickerSelection(
+      unitId: unit.id,
+      unitName: unit.name,
+      isCustom: false,
+    );
+  }
+
+  factory UnitPickerSelection.custom(String unitName) {
+    return UnitPickerSelection(
+        unitId: "",
+        unitName: unitName,
+        isCustom: true);
   }
 }

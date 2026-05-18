@@ -16,6 +16,7 @@ import '../../../../core/widgets/buttons/secondary_button.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../viewmodel/add_recipe_ingredients_viewmodel.dart';
@@ -135,7 +136,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
                 itemCount: _rows.length + 1,
                 onReorder: _reorderRows,
                 itemBuilder: (context, index) {
-                  if(index == _rows.length) {
+                  if (index == _rows.length) {
                     return Padding(
                       key: const ValueKey("add_ingredient_button"),
                       padding: EdgeInsets.only(top: AppSpacing.sm),
@@ -194,21 +195,28 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
   // Unit Picker Helper
   Future<void> _showUnitSheet({
     required IngredientRowState row,
-    required List<String> units,
+    required List<AddRecipeIngredientUnit> units,
   }) async {
-    final selected = await showModalBottomSheet<String>(
+    final selected = await showModalBottomSheet<UnitPickerSelection>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) =>
-          UnitPickerSheet(units: units, selectedUnit: row.unit),
+      builder: (context) => UnitPickerSheet(
+        units: units,
+        selectedUnitId: row.unitId,
+        selectedCustomUnit: row.isCustomUnit ? row.unitName : '',
+      ),
     );
 
     if (selected == null) return;
-    setState(() => row.unit = selected);
+    setState(() {
+      row.unitId = selected.unitId;
+      row.unitName = selected.unitName;
+      row.isCustomUnit = selected.isCustom;
+    });
   }
 
   // Add, Remove, Reorder Helper
@@ -251,15 +259,17 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(viewModel.errorMessage ?? "Unable to save ingredients."),
+          content: Text(
+            viewModel.errorMessage ?? "Unable to save ingredients.",
+          ),
         ),
       );
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Recipe ingredients saved.")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Recipe ingredients saved.")));
 
     context.push(
       AppRouter.addRecipeInstructions,
@@ -275,7 +285,8 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
             name: row.nameController.text.trim(),
             imageFile: row.imageFile,
             amount: double.parse(row.amountController.text.trim()),
-            unit: row.unit,
+            unitId: row.isCustomUnit ? "" : row.unitId,
+            customUnit: row.isCustomUnit ? row.unitName : "",
           ),
         )
         .toList();
@@ -300,19 +311,25 @@ class IngredientRowState {
   final TextEditingController amountController = TextEditingController();
   final List<VoidCallback> _listeners = [];
   File? imageFile;
-  String unit = '';
+  String unitId = "";
+  String unitName = "";
+  bool isCustomUnit = false;
+
+  String get unitDisplayName => unitName;
+
+  String get unitValueForSave => isCustomUnit ? unitName : unitId;
 
   bool get isComplete {
     return nameController.text.trim().isNotEmpty &&
         (double.tryParse(amountController.text.trim()) ?? 0) > 0 &&
-        unit.trim().isNotEmpty;
+        unitValueForSave.trim().isNotEmpty;
   }
 
   bool get isPartial {
     final hasContent =
         nameController.text.trim().isNotEmpty ||
         amountController.text.trim().isNotEmpty ||
-        unit.trim().isNotEmpty ||
+        unitValueForSave.trim().isNotEmpty ||
         imageFile != null;
     return hasContent && !isComplete;
   }
@@ -327,7 +344,9 @@ class IngredientRowState {
     nameController.clear();
     amountController.clear();
     imageFile = null;
-    unit = '';
+    unitId = "";
+    unitName = "";
+    isCustomUnit = false;
     for (final listener in _listeners) {
       listener();
     }

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 
@@ -9,7 +10,7 @@ class AddRecipeIngredientsViewModel extends ChangeNotifier {
   final GetAddRecipeIngredientUnitsUseCase getIngredientUnitsUseCase;
   final SaveAddRecipeIngredientsUseCase saveIngredientsUseCase;
 
-  List<String> units = [];
+  List<AddRecipeIngredientUnit> units = [];
   bool isLoadingUnits = true;
   bool isSaving = false;
   String? errorMessage;

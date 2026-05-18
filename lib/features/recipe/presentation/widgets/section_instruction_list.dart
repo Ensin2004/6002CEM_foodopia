@@ -14,7 +14,12 @@ class SectionInstructionList extends StatelessWidget {
   final void Function(InstructionSectionState section, int index) onRemoveStep;
   final void Function() onAddSection;
   final void Function(int sectionIndex) onRemoveSection;
-  final void Function(InstructionSectionState section, int oldIndex, int newIndex) onReorderStep;
+  final void Function(
+    InstructionSectionState section,
+    int oldIndex,
+    int newIndex,
+  )
+  onReorderStep;
   final void Function(int oldIndex, int newIndex) onReorderSection;
 
   const SectionInstructionList({
@@ -33,17 +38,12 @@ class SectionInstructionList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ReorderableListView.builder(
-      padding: EdgeInsets.fromLTRB(
-        horizontalPadding,
-        0,
-        horizontalPadding,
-        0,
-      ),
+      padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 0),
       buildDefaultDragHandles: false,
       itemCount: sections.length + 1,
       onReorder: onReorderSection,
       itemBuilder: (context, sectionIndex) {
-        if(sectionIndex == sections.length) {
+        if (sectionIndex == sections.length) {
           return Padding(
             key: const ValueKey("add_section_button"),
             padding: EdgeInsets.only(top: AppSpacing.sm),
@@ -131,7 +131,10 @@ class _InstructionSectionCard extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: onRemoveSection,
-                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.error,
+                  ),
                 ),
               ],
             ),

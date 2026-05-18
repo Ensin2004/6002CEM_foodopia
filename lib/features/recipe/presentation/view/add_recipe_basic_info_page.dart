@@ -284,7 +284,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                 text: "Next",
                 isLoading: viewModel.isSaving,
                 onPressed:
-                viewModel.isSaving || !_isBasicInfoComplete(viewModel)
+                    viewModel.isSaving || !_isBasicInfoComplete(viewModel)
                     ? null
                     : () => _handleNext(context, viewModel),
               ),
@@ -414,9 +414,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Recipe basic info saved."))
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Recipe basic info saved.")));
 
     context.push(
       AppRouter.addRecipeIngredients,
