@@ -44,7 +44,8 @@ class _AddRecipeInstructionsView extends StatefulWidget {
       _AddRecipeInstructionsViewState();
 }
 
-class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> {
+class _AddRecipeInstructionsViewState
+    extends State<_AddRecipeInstructionsView> {
   final ImagePicker _imagePicker = ImagePicker();
   final List<InstructionStepState> _steps = [InstructionStepState()];
   final List<InstructionSectionState> _sections = [InstructionSectionState()];
@@ -268,10 +269,10 @@ class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> 
   }
 
   void _reorderSectionStep(
-      InstructionSectionState section,
-      int oldIndex,
-      int newIndex,
-      ) {
+    InstructionSectionState section,
+    int oldIndex,
+    int newIndex,
+  ) {
     setState(() {
       if (newIndex > oldIndex) newIndex -= 1;
       final step = section.steps.removeAt(oldIndex);
@@ -294,15 +295,17 @@ class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> 
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(viewModel.errorMessage ?? "Unable to save instructions."),
+          content: Text(
+            viewModel.errorMessage ?? "Unable to save instructions.",
+          ),
         ),
       );
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Recipe instructions saved.")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Recipe instructions saved.")));
   }
 
   List<AddRecipeInstruction> get _completedInstructions {
@@ -329,7 +332,11 @@ class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> 
         .where((section) => section.isComplete)
         .toList();
 
-    for (var sectionIndex = 0; sectionIndex < completeSections.length; sectionIndex++) {
+    for (
+      var sectionIndex = 0;
+      sectionIndex < completeSections.length;
+      sectionIndex++
+    ) {
       final section = completeSections[sectionIndex];
       final completeSteps = section.steps
           .where((step) => step.isComplete)
@@ -417,7 +424,9 @@ class InstructionSectionState {
   bool get isPartial {
     final hasContent =
         titleController.text.trim().isNotEmpty ||
-        steps.any((step) => step.descriptionController.text.trim().isNotEmpty) ||
+        steps.any(
+          (step) => step.descriptionController.text.trim().isNotEmpty,
+        ) ||
         steps.any((step) => step.imageFile != null);
     return hasContent && !isComplete;
   }

@@ -95,11 +95,13 @@ class InputIngredientField extends StatelessWidget {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    row.unit.isEmpty ? "Unit" : row.unit,
+                                    row.unitDisplayName.isEmpty
+                                        ? "Unit"
+                                        : row.unitDisplayName,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: context.text.bodyMedium?.copyWith(
-                                      color: row.unit.isEmpty
+                                      color: row.unitDisplayName.isEmpty
                                           ? AppColors.textSecondary.withValues(
                                               alpha: 0.5,
                                             )

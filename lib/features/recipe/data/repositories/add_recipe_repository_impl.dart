@@ -3,6 +3,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_setup.dart';
 import '../../domain/repositories/add_recipe_repository.dart';
@@ -24,7 +25,8 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
   }
 
   @override
-  Future<Either<Failure, List<String>>> getIngredientUnits() async {
+  Future<Either<Failure, List<AddRecipeIngredientUnit>>>
+  getIngredientUnits() async {
     try {
       final units = await remoteDataSource.getIngredientUnits();
       return Right(units);
@@ -41,7 +43,7 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
     if (info.recipeName.trim().isEmpty) {
       return Left(ValidationFailure(message: 'Please enter a recipe name.'));
     }
-    if (info.categories.isEmpty) {
+    if (info.categoryIds.isEmpty && info.customCategories.isEmpty) {
       return Left(ValidationFailure(message: 'Please select a category.'));
     }
     if (info.preparationMinutes <= 0) {
@@ -93,7 +95,8 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
           ValidationFailure(message: 'Ingredient amount must be more than 0.'),
         );
       }
-      if (ingredient.unit.trim().isEmpty) {
+      if (ingredient.unitId.trim().isEmpty &&
+          ingredient.customUnit.trim().isEmpty) {
         return Left(ValidationFailure(message: 'Ingredient unit is required.'));
       }
     }
