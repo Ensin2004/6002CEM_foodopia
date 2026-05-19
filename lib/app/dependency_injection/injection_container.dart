@@ -109,12 +109,10 @@ import '../../features/settings/data/repositories/about_repository_impl.dart';
 import '../../features/admin_home/domain/repositories/admin_home_repository.dart';
 import '../../features/admin_home/domain/usecases/get_admin_home_dashboard_usecase.dart';
 import '../../features/admin_manage/domain/repositories/admin_manage_repository.dart';
-import '../../features/admin_manage/domain/entities/admin_manage_seed_defaults.dart';
 import '../../features/admin_manage/domain/usecases/delete_admin_manage_item_usecase.dart';
 import '../../features/admin_manage/domain/usecases/get_admin_manage_items_usecase.dart';
 import '../../features/admin_manage/domain/usecases/reorder_admin_manage_items_usecase.dart';
 import '../../features/admin_manage/domain/usecases/save_admin_manage_item_usecase.dart';
-import '../../features/admin_manage/domain/usecases/seed_admin_manage_defaults_usecase.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/signup_usecase.dart';
@@ -184,23 +182,7 @@ import '../../features/onboarding/presentation/viewmodel/onboarding_viewmodel.da
 import '../../features/main/presentation/viewmodel/main_viewmodel.dart';
 import '../../features/settings/domain/usecases/support/rating/upload_rating_image_usecase.dart';
 
-// ============================================================================
-// GET IT INSTANCE
-// ============================================================================
-// sl = Service Locator - The main warehouse for all dependencies
 final sl = GetIt.instance;
-
-Future<void> seedAdminManageDefaultsOnLaunch() async {
-  final seedDefaultsUseCase = sl<SeedAdminManageDefaultsUseCase>();
-
-  for (final entry in AdminManageSeedDefaults.valuesByCategory.entries) {
-    final result = await seedDefaultsUseCase.execute(
-      categoryId: entry.key,
-      values: entry.value,
-    );
-    result.fold((failure) => null, (_) => null);
-  }
-}
 
 // ============================================================================
 // INITIALIZATION
@@ -256,7 +238,7 @@ void _initStatisticsFeature() {
   sl.registerLazySingleton(() => StatisticsMockDataSource());
 
   sl.registerLazySingleton<StatisticsRepository>(
-        () => StatisticsRepositoryImpl(mockDataSource: sl()),
+    () => StatisticsRepositoryImpl(mockDataSource: sl()),
   );
 
   sl.registerLazySingleton(() => GetStatisticsDashboardUseCase(sl()));
@@ -349,7 +331,6 @@ void _initAdminManageFeature() {
   sl.registerLazySingleton(() => SaveAdminManageItemUseCase(sl()));
   sl.registerLazySingleton(() => DeleteAdminManageItemUseCase(sl()));
   sl.registerLazySingleton(() => ReorderAdminManageItemsUseCase(sl()));
-  sl.registerLazySingleton(() => SeedAdminManageDefaultsUseCase(sl()));
 
   sl.registerFactory(
     () => AdminManageViewModel(
@@ -357,7 +338,6 @@ void _initAdminManageFeature() {
       saveItemUseCase: sl(),
       deleteItemUseCase: sl(),
       reorderItemsUseCase: sl(),
-      seedDefaultsUseCase: sl(),
     ),
   );
 }

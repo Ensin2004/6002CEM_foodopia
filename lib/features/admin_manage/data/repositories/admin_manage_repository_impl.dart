@@ -34,6 +34,8 @@ class AdminManageRepositoryImpl implements AdminManageRepository {
         item: AdminManageItemModel.fromEntity(item),
       );
       return const Right(null);
+    } on StateError catch (e) {
+      return Left(ServerFailure(message: e.message));
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -61,22 +63,6 @@ class AdminManageRepositoryImpl implements AdminManageRepository {
       await remoteDataSource.reorderItems(
         categoryId: categoryId,
         items: items.map(AdminManageItemModel.fromEntity).toList(),
-      );
-      return const Right(null);
-    } catch (e) {
-      return Left(ServerFailure(message: e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> seedDefaults({
-    required String categoryId,
-    required List<String> values,
-  }) async {
-    try {
-      await remoteDataSource.seedDefaults(
-        categoryId: categoryId,
-        values: values,
       );
       return const Right(null);
     } catch (e) {

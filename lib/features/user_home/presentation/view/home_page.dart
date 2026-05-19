@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
-import '../../../../app/routers/app_router.dart';
-import '../../../../app/routers/router_args.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../domain/entities/user_home_dashboard.dart';
@@ -18,8 +15,9 @@ import '../widgets/user_quick_links_grid.dart';
 
 class HomePage extends StatelessWidget {
   final String userName;
+  final ValueChanged<UserHomeQuickLinkTarget>? onQuickLinkTap;
 
-  const HomePage({super.key, required this.userName});
+  const HomePage({super.key, required this.userName, this.onQuickLinkTap});
 
   @override
   Widget build(BuildContext context) {
@@ -29,13 +27,15 @@ class HomePage extends StatelessWidget {
         getDashboardUseCase: sl<GetUserHomeDashboardUseCase>(),
         getWeatherUseCase: sl<GetUserHomeWeatherUseCase>(),
       ),
-      child: const _HomeView(),
+      child: _HomeView(onQuickLinkTap: onQuickLinkTap),
     );
   }
 }
 
 class _HomeView extends StatelessWidget {
-  const _HomeView();
+  final ValueChanged<UserHomeQuickLinkTarget>? onQuickLinkTap;
+
+  const _HomeView({this.onQuickLinkTap});
 
   @override
   Widget build(BuildContext context) {
@@ -79,32 +79,15 @@ class _HomeView extends StatelessWidget {
   }
 
   void _handleQuickLink(BuildContext context, UserHomeQuickLinkTarget target) {
-    switch (target) {
-      case UserHomeQuickLinkTarget.explore:
-        context.push(AppRouter.explore, extra: const AuthenticatedRouteArgs());
-        break;
-      case UserHomeQuickLinkTarget.addRecipe:
-        context.push(
-          AppRouter.addRecipe,
-          extra: const AuthenticatedRouteArgs(),
-        );
-        break;
-      case UserHomeQuickLinkTarget.mealPlan:
-        context.push(AppRouter.mealPlan, extra: const AuthenticatedRouteArgs());
-        break;
-      case UserHomeQuickLinkTarget.statistics:
-        context.push(
-          AppRouter.statistics,
-          extra: const StatisticsArgs(isAdmin: false),
-        );
-        break;
-      case UserHomeQuickLinkTarget.tryAi:
-      case UserHomeQuickLinkTarget.groceryList:
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Coming Soon')));
-        break;
+    final handler = onQuickLinkTap;
+    if (handler == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Menu is unavailable')));
+      return;
     }
+
+    handler(target);
   }
 }
 

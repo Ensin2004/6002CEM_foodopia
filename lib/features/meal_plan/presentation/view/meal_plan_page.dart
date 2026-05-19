@@ -59,6 +59,17 @@ class _MealPlanViewState extends State<_MealPlanView>
   }
 
   @override
+  void didUpdateWidget(covariant _MealPlanView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final nextIndex = widget.initialTabIndex.clamp(0, 2);
+    if (oldWidget.initialTabIndex != widget.initialTabIndex &&
+        _tabController.index != nextIndex) {
+      _tabController.animateTo(nextIndex);
+    }
+  }
+
+  @override
   void dispose() {
     _tabController.dispose();
     super.dispose();

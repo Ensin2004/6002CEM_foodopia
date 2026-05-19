@@ -21,9 +21,4 @@ abstract class AdminManageRepository {
     required String categoryId,
     required List<AdminManageItem> items,
   });
-
-  Future<Either<Failure, void>> seedDefaults({
-    required String categoryId,
-    required List<String> values,
-  });
 }

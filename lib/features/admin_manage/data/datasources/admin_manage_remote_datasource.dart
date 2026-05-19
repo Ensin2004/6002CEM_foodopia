@@ -17,6 +17,7 @@ class AdminManageRemoteDataSource {
     required AdminManageItemModel item,
   }) async {
     final data = item.toFirestore();
+    await _throwIfDuplicateName(categoryId: categoryId, item: item);
 
     if (item.id.isEmpty) {
       await _collection(
@@ -50,40 +51,20 @@ class AdminManageRemoteDataSource {
     await batch.commit();
   }
 
-  Future<void> seedDefaults({
+  Future<void> _throwIfDuplicateName({
     required String categoryId,
-    required List<String> values,
+    required AdminManageItemModel item,
   }) async {
     final existingSnapshot = await _collection(categoryId).get();
-    final existingNames = existingSnapshot.docs
-        .map((doc) => doc.data()['name']?.toString().trim().toLowerCase())
-        .whereType<String>()
-        .toSet();
+    final normalizedName = _normalizeName(item.name);
 
-    final batch = firestore.batch();
-    var nextSortOrder = existingSnapshot.docs.length + 1;
-    var hasWrites = false;
-
-    for (final value in values) {
-      final normalized = value.trim().toLowerCase();
-      if (normalized.isEmpty || existingNames.contains(normalized)) continue;
-
-      final ref = _collection(categoryId).doc();
-      batch.set(ref, {
-        'name': value,
-        'description': '',
-        'iconKey': '',
-        'sortOrder': nextSortOrder,
-        'isActive': true,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      existingNames.add(normalized);
-      nextSortOrder++;
-      hasWrites = true;
+    for (final doc in existingSnapshot.docs) {
+      if (doc.id == item.id) continue;
+      final existingName = doc.data()['name']?.toString() ?? '';
+      if (_normalizeName(existingName) == normalizedName) {
+        throw StateError('This name already exists in this list');
+      }
     }
-
-    if (hasWrites) await batch.commit();
   }
 
   CollectionReference<Map<String, dynamic>> _collection(String categoryId) {
@@ -92,4 +73,6 @@ class AdminManageRemoteDataSource {
         .doc(categoryId)
         .collection('items');
   }
+
+  String _normalizeName(String value) => value.trim().toLowerCase();
 }
