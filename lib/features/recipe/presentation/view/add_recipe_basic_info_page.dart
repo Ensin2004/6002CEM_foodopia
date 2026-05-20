@@ -55,6 +55,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   final ImagePicker _imagePicker = ImagePicker();
   final List<File> _images = [];
   final TextEditingController _recipeNameController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _prepTimeController = TextEditingController();
   final TextEditingController _servingsController = TextEditingController();
 
@@ -71,6 +72,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   void initState() {
     super.initState();
     _recipeNameController.addListener(_refreshRequiredState);
+    _descriptionController.addListener(_refreshRequiredState);
     _prepTimeController.addListener(_refreshRequiredState);
     _servingsController.addListener(_refreshRequiredState);
   }
@@ -78,6 +80,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   @override
   void dispose() {
     _recipeNameController.dispose();
+    _descriptionController.dispose();
     _prepTimeController.dispose();
     _servingsController.dispose();
 
@@ -156,6 +159,18 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                     controller: _recipeNameController,
                     hint: "e.g. Classic Italian Basil Pesto Pasta",
                     textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Recipe Description
+                  InputLabel(text: "Recipe Description", isRequired: true),
+                  const SizedBox(height: AppSpacing.sm),
+                  InputTextField(
+                    controller: _descriptionController,
+                    hint: "Describe what makes this recipe delicious",
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    maxLines: 4,
                   ),
                   const SizedBox(height: AppSpacing.lg),
 
@@ -387,14 +402,14 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
 
     return [
       ...optionValues.map(
-            (option) => SelectedRecipeOption(
+        (option) => SelectedRecipeOption(
           id: option.id,
           name: option.name,
           isCustom: false,
         ),
       ),
       ...customOptions.map(
-            (option) =>
+        (option) =>
             SelectedRecipeOption(id: option, name: option, isCustom: true),
       ),
     ];
@@ -451,6 +466,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     final info = AddRecipeBasicInfo(
       mediaFiles: List<File>.unmodifiable(_images),
       recipeName: _recipeNameController.text.trim(),
+      description: _descriptionController.text.trim(),
       otherNames: _nonEmptyControllerValues(_otherNameControllers),
       categoryIds: List<String>.unmodifiable(_selectedCategoryIds),
       customCategories: List<String>.unmodifiable(_customCategories),
@@ -493,6 +509,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   bool _isBasicInfoComplete(AddRecipeBasicInfoViewModel viewModel) {
     return _images.isNotEmpty &&
         _recipeNameController.text.trim().isNotEmpty &&
+        _descriptionController.text.trim().isNotEmpty &&
         (_selectedCategoryIds.isNotEmpty || _customCategories.isNotEmpty) &&
         (int.tryParse(_prepTimeController.text.trim()) ?? 0) > 0 &&
         viewModel.difficultyLevel >= 1 &&

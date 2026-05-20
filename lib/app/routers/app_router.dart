@@ -16,6 +16,7 @@ import '../../features/recipe/presentation/view/add_recipe_ingredients_page.dart
 import '../../features/recipe/presentation/view/add_recipe_instructions_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_method_page.dart';
 import '../../features/explore/presentation/view/explore_page.dart';
+import '../../features/explore/presentation/view/explore_creator_detail_page.dart';
 import '../../features/explore/presentation/view/explore_recipe_detail_page.dart';
 import '../../features/library/presentation/view/library_page.dart';
 import '../../features/meal_plan/presentation/view/add_grocery_list_page.dart';
@@ -62,6 +63,7 @@ class AppRouter {
   static const String addRecipeInstructions = '/recipes/add/instructions';
   static const String explore = '/explore';
   static const String exploreRecipeDetail = '/explore/recipe';
+  static const String exploreCreatorDetail = '/explore/creator';
   static const String mealPlan = '/meal-plan';
   static const String addMealPlan = '/meal-plan/planning/add-meal';
   static const String generateAiMeal =
@@ -421,6 +423,15 @@ class AppRouter {
         builder: (context, state) {
           final args = state.extra as ExploreRecipeDetailArgs?;
           return ExploreRecipeDetailPage(recipeId: args?.recipeId ?? '');
+        },
+      ),
+
+      GoRoute(
+        name: 'exploreCreatorDetail',
+        path: exploreCreatorDetail,
+        builder: (context, state) {
+          final args = state.extra as ExploreCreatorDetailArgs?;
+          return ExploreCreatorDetailPage(creatorUid: args?.creatorUid ?? '');
         },
       ),
 

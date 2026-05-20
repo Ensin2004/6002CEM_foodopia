@@ -11,6 +11,7 @@ class InputTextField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final String? suffixText;
   final VoidCallback? onDelete;
+  final int? maxLines;
 
   const InputTextField({
     super.key,
@@ -20,6 +21,7 @@ class InputTextField extends StatelessWidget {
     this.textInputAction,
     this.suffixText,
     this.onDelete,
+    this.maxLines = 1,
   });
 
   @override
@@ -28,6 +30,7 @@ class InputTextField extends StatelessWidget {
       controller: controller,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
+      maxLines: maxLines,
       decoration: InputDecoration(
         hintText: hint,
         suffixIcon: Row(

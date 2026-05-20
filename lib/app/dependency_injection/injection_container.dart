@@ -40,11 +40,22 @@ import '../../features/admin_manage/data/datasources/admin_manage_remote_datasou
 import '../../features/admin_manage/data/repositories/admin_manage_repository_impl.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
-import '../../features/explore/data/datasources/explore_mock_datasource.dart';
+import '../../features/explore/data/datasources/explore_remote_datasource.dart';
 import '../../features/explore/data/repositories/explore_repository_impl.dart';
 import '../../features/explore/domain/repositories/explore_repository.dart';
+import '../../features/explore/domain/usecases/add_recipe_comment_usecase.dart';
+import '../../features/explore/domain/usecases/add_recipe_comment_reply_usecase.dart';
+import '../../features/explore/domain/usecases/add_recipe_reply_to_reply_usecase.dart';
 import '../../features/explore/domain/usecases/get_explore_recipe_detail_usecase.dart';
+import '../../features/explore/domain/usecases/get_explore_creator_detail_usecase.dart';
 import '../../features/explore/domain/usecases/get_explore_recipes_usecase.dart';
+import '../../features/explore/domain/usecases/increment_recipe_view_count_usecase.dart';
+import '../../features/explore/domain/usecases/submit_recipe_rating_usecase.dart';
+import '../../features/explore/domain/usecases/toggle_recipe_comment_like_usecase.dart';
+import '../../features/explore/domain/usecases/toggle_recipe_reply_like_usecase.dart';
+import '../../features/explore/domain/usecases/toggle_creator_follow_usecase.dart';
+import '../../features/explore/domain/usecases/watch_explore_recipes_usecase.dart';
+import '../../features/explore/domain/usecases/watch_explore_recipe_detail_usecase.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_preferences_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
@@ -245,14 +256,27 @@ void _initStatisticsFeature() {
 }
 
 void _initExploreFeature() {
-  sl.registerLazySingleton(() => ExploreMockDataSource());
+  sl.registerLazySingleton(
+    () => ExploreRemoteDataSource(firestore: sl(), auth: sl()),
+  );
 
   sl.registerLazySingleton<ExploreRepository>(
-    () => ExploreRepositoryImpl(mockDataSource: sl()),
+    () => ExploreRepositoryImpl(remoteDataSource: sl()),
   );
 
   sl.registerLazySingleton(() => GetExploreRecipesUseCase(sl()));
   sl.registerLazySingleton(() => GetExploreRecipeDetailUseCase(sl()));
+  sl.registerLazySingleton(() => GetExploreCreatorDetailUseCase(sl()));
+  sl.registerLazySingleton(() => SubmitRecipeRatingUseCase(sl()));
+  sl.registerLazySingleton(() => AddRecipeCommentUseCase(sl()));
+  sl.registerLazySingleton(() => IncrementRecipeViewCountUseCase(sl()));
+  sl.registerLazySingleton(() => ToggleRecipeCommentLikeUseCase(sl()));
+  sl.registerLazySingleton(() => AddRecipeCommentReplyUseCase(sl()));
+  sl.registerLazySingleton(() => WatchExploreRecipesUseCase(sl()));
+  sl.registerLazySingleton(() => WatchExploreRecipeDetailUseCase(sl()));
+  sl.registerLazySingleton(() => ToggleRecipeReplyLikeUseCase(sl()));
+  sl.registerLazySingleton(() => AddRecipeReplyToReplyUseCase(sl()));
+  sl.registerLazySingleton(() => ToggleCreatorFollowUseCase(sl()));
 }
 
 void _initMealPlanFeature() {

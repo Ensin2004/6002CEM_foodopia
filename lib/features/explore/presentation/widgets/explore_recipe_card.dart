@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
+import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../domain/entities/explore_recipe.dart';
 
 class ExploreRecipeCard extends StatelessWidget {
   final ExploreRecipe recipe;
   final VoidCallback onTap;
   final VoidCallback onComingSoonTap;
+  final VoidCallback? onImageLongPress;
 
   const ExploreRecipeCard({
     super.key,
     required this.recipe,
     required this.onTap,
     required this.onComingSoonTap,
+    this.onImageLongPress,
   });
 
   @override
@@ -40,19 +43,62 @@ class ExploreRecipeCard extends StatelessWidget {
               SizedBox(
                 height: 92,
                 width: double.infinity,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(8),
-                  ),
-                  child: ColoredBox(
-                    color: colors.surfaceContainerHighest,
-                    child: Image.asset(
-                      recipe.imagePath,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.contain,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onLongPress: onImageLongPress,
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8),
+                          ),
+                          child: ColoredBox(
+                            color: colors.surfaceContainerHighest,
+                            child: AppRemoteOrAssetImage(
+                              imagePath: recipe.imagePath,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.58),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.visibility,
+                                size: 13,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                _compactCount(recipe.totalViews),
+                                style: textTheme.labelSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Expanded(
@@ -108,9 +154,7 @@ class ExploreRecipeCard extends StatelessWidget {
                           recipe.description,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodySmall?.copyWith(
-                            height: 1.22,
-                          ),
+                          style: textTheme.bodySmall?.copyWith(height: 1.22),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -118,12 +162,10 @@ class ExploreRecipeCard extends StatelessWidget {
                         height: 36,
                         child: Row(
                           children: [
-                            CircleAvatar(
+                            AppRemoteOrAssetAvatar(
                               radius: 16,
                               backgroundColor: colors.primary,
-                              backgroundImage: AssetImage(
-                                recipe.authorAvatarPath,
-                              ),
+                              imagePath: recipe.authorAvatarPath,
                             ),
                             const SizedBox(width: 7),
                             Expanded(
@@ -144,8 +186,9 @@ class ExploreRecipeCard extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: textTheme.bodySmall?.copyWith(
-                                      color: AppColors.textSecondary
-                                          .withValues(alpha: 0.72),
+                                      color: AppColors.textSecondary.withValues(
+                                        alpha: 0.72,
+                                      ),
                                     ),
                                   ),
                                 ],
