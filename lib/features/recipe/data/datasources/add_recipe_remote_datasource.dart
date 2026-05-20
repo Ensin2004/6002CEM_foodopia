@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/services/cloudinary_service.dart';
+import '../../../../core/services/food_search_service.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
+import '../../domain/entities/add_recipe_food_search_result.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
@@ -15,10 +17,12 @@ import '../models/add_recipe_setup_model.dart';
 class AddRecipeRemoteDataSource {
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
+  final FoodSearchService foodSearchService;
 
   const AddRecipeRemoteDataSource({
     required this.firestore,
     required this.auth,
+    required this.foodSearchService,
   });
 
   Future<AddRecipeSetupModel> getSetup() async {
@@ -122,6 +126,20 @@ class AddRecipeRemoteDataSource {
       });
   }
 
+  Future<List<AddRecipeFoodSearchResult>> searchFoods(String query) async {
+    final foods = await foodSearchService.searchUsdaFoods(query);
+    return foods
+        .map(
+          (food) =>
+              AddRecipeFoodSearchResult(fdcId: food.fdcId, name: food.name),
+        )
+        .toList();
+  }
+
+  Future<Map<String, dynamic>?> getFoodLabelNutrients(int fdcId) {
+    return foodSearchService.getUsdaLabelNutrients(fdcId);
+  }
+
   Future<String> saveBasicInfo(AddRecipeBasicInfo info) async {
     final uid = auth.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
@@ -179,6 +197,8 @@ class AddRecipeRemoteDataSource {
         amount: ingredient.amount,
         unitId: ingredient.unitId.isEmpty ? null : ingredient.unitId,
         customUnitId: customUnitId,
+        usdaId: ingredient.usdaId,
+        nutrients: ingredient.usdaNutrients,
       );
 
       batch.set(recipeRef.collection('ingredients').doc(), model.toFirestore());

@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
+import '../../domain/entities/add_recipe_food_search_result.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
@@ -32,6 +33,30 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
       return Right(units);
     } catch (_) {
       return Left(ServerFailure(message: 'Unable to load ingredient units.'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<AddRecipeFoodSearchResult>>> searchFoods(
+    String query,
+  ) async {
+    try {
+      final foods = await remoteDataSource.searchFoods(query);
+      return Right(foods);
+    } catch (_) {
+      return Left(ServerFailure(message: 'Unable to search USDA foods.'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>?>> getFoodLabelNutrients(
+    int fdcId,
+  ) async {
+    try {
+      final nutrients = await remoteDataSource.getFoodLabelNutrients(fdcId);
+      return Right(nutrients);
+    } catch (_) {
+      return Left(ServerFailure(message: 'Unable to load USDA nutrients.'));
     }
   }
 

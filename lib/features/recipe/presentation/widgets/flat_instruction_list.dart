@@ -27,32 +27,43 @@ class FlatInstructionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ReorderableListView.builder(
-      padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 0),
-      buildDefaultDragHandles: false,
-      itemCount: steps.length + 1,
-      onReorder: onReorderStep,
-      itemBuilder: (context, index) {
-        if (index == steps.length) {
-          return Padding(
-            key: const ValueKey("add_step_button"),
-            padding: EdgeInsets.only(top: AppSpacing.sm),
-            child: SecondaryButton(text: "+  Add Step", onPressed: onAddStep),
-          );
-        }
-        final step = steps[index];
-        return Padding(
-          key: ValueKey(step.id),
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: _InstructionStepCard(
-            index: index,
-            title: "Step ${index + 1}",
-            step: step,
-            onPickImage: () => onPickImage(step),
-            onDelete: () => onRemoveStep(index),
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
+          0,
+          horizontalPadding,
+          0,
+      ),
+      children: [
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          itemCount: steps.length,
+          onReorder: onReorderStep,
+          itemBuilder: (context, index) {
+            final step = steps[index];
+            return Padding(
+              key: ValueKey(step.id),
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _InstructionStepCard(
+                index: index,
+                title: "Step ${index + 1}",
+                step: step,
+                onPickImage: () => onPickImage(step),
+                onDelete: () => onRemoveStep(index),
+              ),
+            );
+          },
+        ),
+        Padding(
+          padding: EdgeInsets.only(top: AppSpacing.sm),
+          child: SecondaryButton(
+            text: "+  Add Step",
+            onPressed: onAddStep,
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }

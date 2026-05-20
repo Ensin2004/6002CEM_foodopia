@@ -60,10 +60,12 @@ import '../../features/recipe/data/datasources/add_recipe_remote_datasource.dart
 import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart';
 import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
+import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_instructions_usecase.dart';
+import '../../features/recipe/domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../../features/statistics/data/datasources/statistics_mock_datasource.dart';
 import '../../features/statistics/data/repositories/statistics_repository_impl.dart';
 import '../../features/statistics/domain/repositories/statistics_repository.dart';
@@ -222,13 +224,19 @@ Future<void> initDependencies() async {
 
 void _initRecipeFeature() {
   sl.registerLazySingleton(
-    () => AddRecipeRemoteDataSource(firestore: sl(), auth: sl()),
+    () => AddRecipeRemoteDataSource(
+      firestore: sl(),
+      auth: sl(),
+      foodSearchService: sl(),
+    ),
   );
   sl.registerLazySingleton<AddRecipeRepository>(
     () => AddRecipeRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton(() => GetAddRecipeSetupUseCase(sl()));
   sl.registerLazySingleton(() => GetAddRecipeIngredientUnitsUseCase(sl()));
+  sl.registerLazySingleton(() => SearchAddRecipeFoodsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAddRecipeFoodNutrientsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeInstructionsUseCase(sl()));

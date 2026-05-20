@@ -86,7 +86,7 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                 controller: _customUnitController,
                 textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
-                  hintText: "Custom Unit",
+                  hintText: "Unit",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
@@ -99,7 +99,7 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
               ),
               const SizedBox(height: AppSpacing.sm),
               Expanded(
-                child: widget.units.isEmpty || groupedUnits.isEmpty
+                child: groupedUnits.isEmpty
                     ? Center(
                         child: Image.asset(
                           "assets/images/empty_page.png",
@@ -107,18 +107,54 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                         ),
                       )
                     : ListView(
-                        children: groupedUnits.entries
-                            .map(
-                              (entry) => _UnitCategorySection(
-                                categoryName: entry.key,
-                                units: entry.value,
-                                selectedUnitId: _selectedUnit?.id ?? "",
-                                onSelected: (unit) {
-                                  setState(() => _selectedUnit = unit);
-                                },
+                        children: [
+                          ...groupedUnits.entries.map((entry) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: AppSpacing.sm),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Center(
+                                    child: Text(
+                                      entry.key,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: context.text.titleMedium,
+                                    ),
+                                  ),
+                                  const Divider(color: AppColors.border),
+                                  ...entry.value.map((unit) {
+                                    final selected = unit.id == (_selectedUnit?.id ?? "");
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                                      child: ListTile(
+                                        dense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                        title: Text(
+                                          unit.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        trailing: selected
+                                            ? CircleAvatar(
+                                          radius: 10,
+                                          backgroundColor: AppColors.primary,
+                                          child: const Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                            size: 12,
+                                          ),
+                                        )
+                                            : null,
+                                        onTap: () => _toggleUnit(unit),
+                                      ),
+                                    );
+                                  }),
+                                ],
                               ),
-                            )
-                            .toList(),
+                            );
+                          }),
+                        ],
                       ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -161,6 +197,17 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
     return grouped;
   }
 
+  // Toggle Helper
+  void _toggleUnit(AddRecipeIngredientUnit unit) {
+    setState(() {
+      if (unit.id == _selectedUnit?.id) {
+        _selectedUnit = null;
+      } else {
+        _selectedUnit = unit;
+      }
+    });
+  }
+
   // Submit Button Helper
   void _submitSelection() {
     if (_selectedUnit != null) {
@@ -173,74 +220,13 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
     Navigator.of(context).pop(UnitPickerSelection.custom(customUnit));
   }
 
+  // Listener Helper
   void _onCustomTextChanged() {
     if (_selectedUnit != null) {
       setState(() => _selectedUnit = null);
       return;
     }
     setState(() {});
-  }
-}
-
-class _UnitCategorySection extends StatelessWidget {
-  final String categoryName;
-  final List<AddRecipeIngredientUnit> units;
-  final String selectedUnitId;
-  final ValueChanged<AddRecipeIngredientUnit> onSelected;
-
-  const _UnitCategorySection({
-    required this.categoryName,
-    required this.units,
-    required this.selectedUnitId,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.sm),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Text(
-              categoryName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.text.titleMedium,
-            ),
-          ),
-          const Divider(color: AppColors.border),
-          ...units.map((unit) {
-            final selected = unit.id == selectedUnitId;
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              child: ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  unit.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: selected
-                    ? CircleAvatar(
-                        radius: 10,
-                        backgroundColor: AppColors.primary,
-                        child: const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 12,
-                        ),
-                      )
-                    : null,
-                onTap: () => onSelected(unit),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
   }
 }
 

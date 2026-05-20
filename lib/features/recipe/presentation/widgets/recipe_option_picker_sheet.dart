@@ -1,31 +1,31 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
+import '../../domain/entities/add_recipe_food_search_result.dart';
 import '../../domain/entities/add_recipe_option.dart';
 
+typedef SearchFoodsCallback =
+    Future<List<AddRecipeFoodSearchResult>> Function(String query);
+
 class RecipeOptionPickerSheet extends StatefulWidget {
-  final String title;
-  final String customHint;
-  final String presetHeaderText;
-  final String selectButtonText;
-  final String customButtonText;
+  final String pickType;
   final List<AddRecipeOption> options;
   final List<String> selectedOptionIds;
   final List<String> selectedCustomOptions;
+  final SearchFoodsCallback? onSearchFoods;
 
   const RecipeOptionPickerSheet({
     super.key,
-    required this.title,
-    required this.customHint,
-    required this.presetHeaderText,
-    required this.selectButtonText,
-    required this.customButtonText,
+    required this.pickType,
     required this.options,
     required this.selectedOptionIds,
     required this.selectedCustomOptions,
+    this.onSearchFoods,
   });
 
   @override
@@ -37,6 +37,9 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
   final TextEditingController _customController = TextEditingController();
   late final Set<String> _selectedOptionIds;
   late final List<String> _customOptions;
+  Timer? _debounce;
+  List<AddRecipeFoodSearchResult> _searchResults = [];
+  bool _isSearchingFoods = false;
 
   @override
   void initState() {
@@ -48,6 +51,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _customController.removeListener(_onCustomTextChanged);
     _customController.dispose();
     super.dispose();
@@ -59,6 +63,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
     final maxHeight = MediaQuery.sizeOf(context).height * 0.72;
     final query = _customController.text.trim();
     final visibleOptions = _matchingOptions(query);
+    final visibleCustomOptions = _matchingCustomOptions(query);
     final hasSelection =
         _selectedOptionIds.isNotEmpty || _customOptions.isNotEmpty;
 
@@ -87,7 +92,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                widget.title,
+                "Select ${widget.pickType}",
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: context.text.titleMedium,
@@ -97,7 +102,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                 controller: _customController,
                 textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
-                  hintText: widget.customHint,
+                  hintText: widget.pickType,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
@@ -110,7 +115,11 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
               ),
               const SizedBox(height: AppSpacing.sm),
               Expanded(
-                child: visibleOptions.isEmpty
+                child:
+                    visibleCustomOptions.isEmpty &&
+                        visibleOptions.isEmpty &&
+                        _searchResults.isEmpty &&
+                        !_isSearchingFoods
                     ? Center(
                         child: Image.asset(
                           "assets/images/empty_page.png",
@@ -119,22 +128,22 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                       )
                     : ListView(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: AppSpacing.sm),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (_customOptions.isNotEmpty) ...[
+                          if (visibleCustomOptions.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(top: AppSpacing.sm),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Center(
                                     child: Text(
-                                      widget.customHint,
+                                      "Custom ${widget.pickType}",
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: context.text.titleMedium,
                                     ),
                                   ),
                                   const Divider(color: AppColors.border),
-                                  ..._customOptions.map((option) {
+                                  ...visibleCustomOptions.map((option) {
                                     return Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                                       child: ListTile(
@@ -159,59 +168,115 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                                     );
                                   }),
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(top: AppSpacing.sm),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Center(
-                                  child: Text(
-                                    widget.presetHeaderText,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: context.text.titleMedium,
-                                  ),
-                                ),
-                                const Divider(color: AppColors.border),
-                                ...visibleOptions.map((option) {
-                                  final selected = _selectedOptionIds.contains(option.id);
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                                    child: ListTile(
-                                      dense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                      title: Text(
-                                        option.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      trailing: selected
-                                          ? CircleAvatar(
-                                        radius: 10,
-                                        backgroundColor: AppColors.primary,
-                                        child: const Icon(
-                                          Icons.check,
-                                          color: Colors.white,
-                                          size: 12,
-                                        ),
-                                      )
-                                          : null,
-                                      onTap: () => _toggleOption(option.id),
+                          ],
+                          if (visibleOptions.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(top: AppSpacing.sm),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Center(
+                                    child: Text(
+                                      "Preset ${widget.pickType}",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: context.text.titleMedium,
                                     ),
-                                  );
-                                }),
-                              ],
+                                  ),
+                                  const Divider(color: AppColors.border),
+                                  ...visibleOptions.map((option) {
+                                    final selected = _selectedOptionIds.contains(option.id);
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                                      child: ListTile(
+                                        dense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                        title: Text(
+                                          option.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        trailing: selected
+                                            ? CircleAvatar(
+                                                radius: 10,
+                                                backgroundColor: AppColors.primary,
+                                                child: const Icon(
+                                                  Icons.check,
+                                                  color: Colors.white,
+                                                  size: 12,
+                                                ),
+                                              )
+                                            : null,
+                                        onTap: () => _toggleOption(option.id),
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
                             ),
-                          )
+                          ],
+                          if (_isSearchingFoods) ...[
+                            const Padding(
+                              padding: EdgeInsets.only(top: AppSpacing.sm),
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                          ],
+                          if (_searchResults.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(top: AppSpacing.sm),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Center(
+                                    child: Text(
+                                      "Search Results",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: context.text.titleMedium,
+                                    ),
+                                  ),
+                                  const Divider(color: AppColors.border),
+                                  ..._searchResults.map((food) {
+                                    final selected = _customOptions.any(
+                                      (option) => option.toLowerCase() == food.name.toLowerCase(),
+                                    );
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                                      child: ListTile(
+                                        dense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                        title: Text(
+                                          food.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        trailing: selected
+                                            ? CircleAvatar(
+                                                radius: 10,
+                                                backgroundColor: AppColors.primary,
+                                                child: const Icon(
+                                                  Icons.check,
+                                                  color: Colors.white,
+                                                  size: 12,
+                                                ),
+                                              )
+                                            : null,
+                                        onTap: () => _toggleFoodOption(food),
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
               ),
               const SizedBox(height: AppSpacing.lg),
               PrimaryButton(
-                text: hasSelection ? widget.selectButtonText : widget.customButtonText,
+                text: hasSelection ? "Select ${widget.pickType}" : "Use Custom ${widget.pickType}",
                 onPressed: hasSelection || query.isNotEmpty ? _submitSelection : null,
               ),
             ],
@@ -239,6 +304,14 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
         .toList();
   }
 
+  List<String> _matchingCustomOptions(String query) {
+    if (query.isEmpty) return _customOptions;
+    final normalized = query.toLowerCase();
+    return _customOptions
+        .where((option) => option.toLowerCase().contains(normalized))
+        .toList();
+  }
+
   // Toggle Helper
   void _toggleOption(String optionId) {
     setState(() {
@@ -246,6 +319,22 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
         _selectedOptionIds.remove(optionId);
       } else {
         _selectedOptionIds.add(optionId);
+        _customController.clear();
+      }
+    });
+  }
+
+  void _toggleFoodOption(AddRecipeFoodSearchResult food) {
+    final existingIndex = _customOptions.indexWhere(
+      (option) => option.toLowerCase() == food.name.toLowerCase(),
+    );
+
+    setState(() {
+      if (existingIndex >= 0) {
+        _customOptions.removeAt(existingIndex);
+      } else {
+        _customOptions.add(food.name);
+        _customController.clear();
       }
     });
   }
@@ -288,13 +377,42 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
     Navigator.of(context).pop(
       RecipeOptionPickerSelection(
         optionIds: _selectedOptionIds.toList(),
-        customOptions: List<String>.unmodifiable(_customOptions),
+        customOptions: _customOptions,
       ),
     );
   }
 
+  // Listener Helper
   void _onCustomTextChanged() {
     setState(() {});
+    if (widget.onSearchFoods == null) return;
+
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      _searchFoods(_customController.text);
+    });
+  }
+
+  Future<void> _searchFoods(String query) async {
+    final searchFoods = widget.onSearchFoods;
+    final trimmed = query.trim();
+    if (searchFoods == null || trimmed.length < 2) {
+      if (!mounted) return;
+      setState(() {
+        _searchResults = [];
+        _isSearchingFoods = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearchingFoods = true);
+    final results = await searchFoods(trimmed);
+    if (!mounted || trimmed != _customController.text.trim()) return;
+
+    setState(() {
+      _searchResults = results;
+      _isSearchingFoods = false;
+    });
   }
 }
 

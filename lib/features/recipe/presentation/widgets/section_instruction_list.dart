@@ -37,39 +37,46 @@ class SectionInstructionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ReorderableListView.builder(
-      padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 0),
-      buildDefaultDragHandles: false,
-      itemCount: sections.length + 1,
-      onReorder: onReorderSection,
-      itemBuilder: (context, sectionIndex) {
-        if (sectionIndex == sections.length) {
-          return Padding(
-            key: const ValueKey("add_section_button"),
-            padding: EdgeInsets.only(top: AppSpacing.sm),
-            child: SecondaryButton(
-              text: "+  Add Section",
-              onPressed: onAddSection,
-            ),
-          );
-        }
-
-        final section = sections[sectionIndex];
-        return Padding(
-          key: ValueKey(section.id),
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: _InstructionSectionCard(
-            sectionIndex: sectionIndex,
-            section: section,
-            onPickImage: onPickImage,
-            onAddStep: () => onAddStep(section),
-            onRemoveStep: (stepIndex) => onRemoveStep(section, stepIndex),
-            onRemoveSection: () => onRemoveSection(sectionIndex),
-            onReorderStep: (oldIndex, newIndex) =>
-                onReorderStep(section, oldIndex, newIndex),
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding,
+        0,
+        horizontalPadding,
+        0,
+      ),
+      children: [
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          itemCount: sections.length,
+          onReorder: onReorderSection,
+          itemBuilder: (context, sectionIndex) {
+            final section = sections[sectionIndex];
+            return Padding(
+              key: ValueKey(section.id),
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _InstructionSectionCard(
+                sectionIndex: sectionIndex,
+                section: section,
+                onPickImage: onPickImage,
+                onAddStep: () => onAddStep(section),
+                onRemoveStep: (stepIndex) => onRemoveStep(section, stepIndex),
+                onRemoveSection: () => onRemoveSection(sectionIndex),
+                onReorderStep: (oldIndex, newIndex) =>
+                    onReorderStep(section, oldIndex, newIndex),
+              ),
+            );
+          },
+        ),
+        Padding(
+          padding: EdgeInsets.only(top: AppSpacing.sm),
+          child: SecondaryButton(
+            text: "+  Add Section",
+            onPressed: onAddSection,
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }
