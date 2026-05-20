@@ -24,6 +24,7 @@ class AddRecipeBasicInfoModel {
       'creatorUid': creatorUid,
       'media': mediaUrls,
       'name': info.recipeName,
+      'description': info.description,
       'otherNames': info.otherNames,
       'categoryIds': info.categoryIds,
       'customCategoryIds': customCategoryIds,
@@ -33,6 +34,10 @@ class AddRecipeBasicInfoModel {
       'allergenIds': info.allergenIds,
       'customAllergenIds': customAllergenIds,
       'visibility': visibility,
+      'averageRating': 0.0,
+      'ratingCount': 0,
+      'commentCount': 0,
+      'totalViews': 0,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
