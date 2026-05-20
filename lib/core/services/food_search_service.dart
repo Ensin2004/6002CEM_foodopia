@@ -18,6 +18,8 @@ class FoodSearchService {
 
   // Simple in-memory cache to avoid calling USDA repeatedly for the same query.
   final Map<String, List<String>> _cache = {};
+  final Map<String, List<UsdaFoodSearchResult>> _usdaSearchCache = {};
+  final Map<int, Map<String, dynamic>> _labelNutrientsCache = {};
 
   FoodSearchService({required this.client, this.apiKey = EnvConfig.usdaApiKey});
 
@@ -52,6 +54,68 @@ class FoodSearchService {
     final results = terms.take(10).toList();
     _cache[trimmed] = results;
     return results;
+  }
+
+  Future<List<UsdaFoodSearchResult>> searchUsdaFoods(String query) async {
+    final trimmed = query.trim().toLowerCase();
+    if (trimmed.length < 2) return [];
+
+    final cached = _usdaSearchCache[trimmed];
+    if (cached != null) return cached;
+    if (apiKey.trim().isEmpty) return [];
+
+    final results = <UsdaFoodSearchResult>[];
+    for (final dataType in _preferredDataTypes) {
+      final foods = await _fetchFoods(trimmed, dataType: dataType);
+      _addUsdaFoodResults(results, foods);
+      if (results.length >= 10) break;
+    }
+
+    if (results.isEmpty) {
+      final fallbackFoods = await _fetchFoods(trimmed);
+      _addUsdaFoodResults(results, fallbackFoods);
+    }
+
+    final limitedResults = results.take(10).toList();
+    _usdaSearchCache[trimmed] = limitedResults;
+    return limitedResults;
+  }
+
+  Future<Map<String, dynamic>?> getUsdaLabelNutrients(int fdcId) async {
+    final cached = _labelNutrientsCache[fdcId];
+    if (cached != null) return cached;
+    if (apiKey.trim().isEmpty) return null;
+
+    final uri = Uri.https('api.nal.usda.gov', '/fdc/v1/food/$fdcId', {
+      'api_key': apiKey,
+    });
+
+    try {
+      final response = await client
+          .get(
+            uri,
+            headers: const {
+              'User-Agent': 'Foodopia/1.0 (recipe ingredient nutrients)',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 6));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return null;
+
+      final labelNutrients = _cleanMap(decoded['labelNutrients']);
+      if (labelNutrients.isEmpty) return null;
+
+      _labelNutrientsCache[fdcId] = labelNutrients;
+      return labelNutrients;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<Map<String, dynamic>>> _fetchFoods(
@@ -124,6 +188,28 @@ class FoodSearchService {
     }
   }
 
+  void _addUsdaFoodResults(
+      List<UsdaFoodSearchResult> results,
+      List<Map<String, dynamic>> foods,
+      ) {
+    for (final food in foods) {
+      final fdcId = food['fdcId'];
+      final rawName = food['description'];
+      if (fdcId is! int || rawName is! String) continue;
+
+      final formatted = _formatFoodName(rawName);
+      if (formatted.isEmpty) continue;
+
+      final exists = results.any((result) {
+        return result.fdcId == fdcId ||
+            result.name.toLowerCase() == formatted.toLowerCase();
+      });
+      if (exists) continue;
+
+      results.add(UsdaFoodSearchResult(fdcId: fdcId, name: formatted));
+    }
+  }
+
   String _formatFoodName(String raw) {
     // USDA descriptions often look like "Milk, whole, 3.25% milkfat".
     // Use the first part so the chip label stays short and readable.
@@ -144,4 +230,38 @@ class FoodSearchService {
     })
         .join(' ');
   }
+
+  Map<String, dynamic> _cleanMap(dynamic value) {
+    if (value is! Map) return const {};
+
+    final clean = <String, dynamic>{};
+    for (final entry in value.entries) {
+      final key = entry.key?.toString();
+      if (key == null || key.isEmpty) continue;
+      final cleanValue = _cleanValue(entry.value);
+      if (cleanValue != null) clean[key] = cleanValue;
+    }
+    return clean;
+  }
+
+  dynamic _cleanValue(dynamic value) {
+    if (value == null || value is num || value is String || value is bool) {
+      return value;
+    }
+    if (value is Map) return _cleanMap(value);
+    if (value is List) {
+      return value
+          .map(_cleanValue)
+          .where((item) => item != null)
+          .toList(growable: false);
+    }
+    return value.toString();
+  }
+}
+
+class UsdaFoodSearchResult {
+  final int fdcId;
+  final String name;
+
+  const UsdaFoodSearchResult({required this.fdcId, required this.name});
 }

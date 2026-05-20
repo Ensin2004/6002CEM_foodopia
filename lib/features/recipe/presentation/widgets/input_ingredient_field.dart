@@ -11,6 +11,7 @@ class InputIngredientField extends StatelessWidget {
   final int index;
   final IngredientRowState row;
   final VoidCallback onPickImage;
+  final VoidCallback onSelectName;
   final VoidCallback onSelectUnit;
   final VoidCallback onDelete;
 
@@ -19,6 +20,7 @@ class InputIngredientField extends StatelessWidget {
     required this.index,
     required this.row,
     required this.onPickImage,
+    required this.onSelectName,
     required this.onSelectUnit,
     required this.onDelete,
   });
@@ -49,14 +51,42 @@ class InputIngredientField extends StatelessWidget {
             Expanded(
               child: Column(
                 children: [
-                  TextField(
-                    controller: row.nameController,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      hintText: "Ingredient Name",
-                      isDense: true,
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: AppColors.border),
+                  InkWell(
+                    onTap: onSelectName,
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        hintText: "Ingredient Name",
+                        isDense: true,
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              row.nameController.text.trim().isEmpty
+                                  ? "Ingredient Name"
+                                  : row.nameController.text.trim(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.text.bodyMedium?.copyWith(
+                                color: row.nameController.text.trim().isEmpty
+                                    ? AppColors.textSecondary.withValues(
+                                        alpha: 0.5,
+                                      )
+                                    : AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: AppColors.textSecondary.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

@@ -19,6 +19,7 @@ import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_option.dart';
 import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
+import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_basic_info_viewmodel.dart';
 import '../widgets/add_more_button_small.dart';
 import '../widgets/recipe_difficulty_picker.dart';
@@ -36,6 +37,7 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => AddRecipeBasicInfoViewModel(
         getSetupUseCase: sl<GetAddRecipeSetupUseCase>(),
+        searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
         saveBasicInfoUseCase: sl<SaveAddRecipeBasicInfoUseCase>(),
       ),
       child: const _AddRecipeBasicInfoView(),
@@ -240,10 +242,16 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                       customOptions: _customAllergens,
                     ),
                     onDelete: _removeAllergenSelection,
-                    onTap: () => _showAllergenSheet(setup.allergens),
+                    onTap: () => _showAllergenSheet(
+                      setup.allergens,
+                      viewModel.searchFoods,
+                    ),
                   ),
                   AddMoreButtonSmall(
-                    onPressed: () => _showAllergenSheet(setup.allergens),
+                    onPressed: () => _showAllergenSheet(
+                      setup.allergens,
+                      viewModel.searchFoods,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                 ],
@@ -329,11 +337,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (_) => RecipeOptionPickerSheet(
-        title: "Select Category",
-        customHint: "Custom Category",
-        presetHeaderText: "Preset Category",
-        selectButtonText: "Select Category",
-        customButtonText: "Use Custom Category",
+        pickType: "Category",
         options: categories,
         selectedOptionIds: _selectedCategoryIds,
         selectedCustomOptions: _customCategories,
@@ -348,7 +352,10 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   }
 
   // Allergen Picker Helper
-  Future<void> _showAllergenSheet(List<AddRecipeOption> allergens) async {
+  Future<void> _showAllergenSheet(
+    List<AddRecipeOption> allergens,
+    SearchFoodsCallback searchFoods,
+  ) async {
     final selection = await showModalBottomSheet<RecipeOptionPickerSelection>(
       context: context,
       isScrollControlled: true,
@@ -357,14 +364,11 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (_) => RecipeOptionPickerSheet(
-        title: "Select Allergen",
-        customHint: "Custom Allergen",
-        presetHeaderText: "Preset Allergen",
-        selectButtonText: "Select Allergen",
-        customButtonText: "Use Custom Allergen",
+        pickType: "Allergen",
         options: allergens,
         selectedOptionIds: _selectedAllergenIds,
         selectedCustomOptions: _customAllergens,
+        onSearchFoods: searchFoods,
       ),
     );
 
@@ -387,14 +391,14 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
 
     return [
       ...optionValues.map(
-            (option) => SelectedRecipeOption(
+        (option) => SelectedRecipeOption(
           id: option.id,
           name: option.name,
           isCustom: false,
         ),
       ),
       ...customOptions.map(
-            (option) =>
+        (option) =>
             SelectedRecipeOption(id: option, name: option, isCustom: true),
       ),
     ];

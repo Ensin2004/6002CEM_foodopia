@@ -98,10 +98,8 @@ class _OptionField extends StatelessWidget {
               const SizedBox(width: AppSpacing.xs),
               IconButton(
                 onPressed: onDelete,
-                icon: const Icon(
-                  Icons.delete_outline,
-                  color: AppColors.error,
-                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.delete_outline, color: AppColors.error),
               ),
             ],
           ],

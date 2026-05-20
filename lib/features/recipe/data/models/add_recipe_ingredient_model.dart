@@ -4,6 +4,8 @@ class AddRecipeIngredientModel {
   final double amount;
   final String? unitId;
   final String? customUnitId;
+  final int? usdaId;
+  final Map<String, dynamic>? nutrients;
 
   const AddRecipeIngredientModel({
     required this.name,
@@ -11,6 +13,8 @@ class AddRecipeIngredientModel {
     required this.amount,
     this.unitId,
     this.customUnitId,
+    this.usdaId,
+    this.nutrients,
   });
 
   Map<String, dynamic> toFirestore() {
@@ -20,6 +24,8 @@ class AddRecipeIngredientModel {
       'amount': amount,
       'unitId': unitId,
       'customUnitId': customUnitId,
+      'usda_id': usdaId,
+      'nutrients': nutrients,
     };
   }
 }

@@ -2,12 +2,15 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
+import '../../domain/entities/add_recipe_food_search_result.dart';
 import '../../domain/entities/add_recipe_setup.dart';
 import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
+import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 
 class AddRecipeBasicInfoViewModel extends ChangeNotifier {
   final GetAddRecipeSetupUseCase getSetupUseCase;
+  final SearchAddRecipeFoodsUseCase searchFoodsUseCase;
   final SaveAddRecipeBasicInfoUseCase saveBasicInfoUseCase;
 
   AddRecipeSetup? setup;
@@ -19,6 +22,7 @@ class AddRecipeBasicInfoViewModel extends ChangeNotifier {
 
   AddRecipeBasicInfoViewModel({
     required this.getSetupUseCase,
+    required this.searchFoodsUseCase,
     required this.saveBasicInfoUseCase,
   }) {
     loadSetup();
@@ -68,5 +72,11 @@ class AddRecipeBasicInfoViewModel extends ChangeNotifier {
     isSaving = false;
     notifyListeners();
     return success;
+  }
+
+  Future<List<AddRecipeFoodSearchResult>> searchFoods(String query) async {
+    final result = await searchFoodsUseCase.execute(query);
+    if (result.isLeft()) return [];
+    return result.right ?? [];
   }
 }
