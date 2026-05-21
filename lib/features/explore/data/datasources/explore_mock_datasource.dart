@@ -94,9 +94,9 @@ const _defaultNutrition = ExploreNutrition(
   fatGrams: 17,
 );
 
-const _defaultCommunity = ExploreCommunity(
+final _defaultCommunity = ExploreCommunity(
   authorBio: 'Hi, I am the author and recipe creator behind this meal.',
-  ratingBreakdown: [
+  ratingBreakdown: const [
     ExploreRatingBreakdown(stars: 5, count: 110),
     ExploreRatingBreakdown(stars: 4, count: 12),
     ExploreRatingBreakdown(stars: 3, count: 4),
@@ -108,60 +108,87 @@ const _defaultCommunity = ExploreCommunity(
       author: 'Amir Arif',
       avatarPath: _avatar,
       timeAgo: '2 min ago',
+      createdAt: DateTime(2026, 5, 19, 8, 58),
       rating: 4,
     ),
     ExploreReview(
       author: 'Emma Johnson',
       avatarPath: _avatar,
       timeAgo: '18 min ago',
+      createdAt: DateTime(2026, 5, 19, 8, 42),
       rating: 5,
     ),
     ExploreReview(
       author: 'Sophia Lee',
       avatarPath: _avatar,
       timeAgo: '47 min ago',
+      createdAt: DateTime(2026, 5, 19, 8, 13),
       rating: 5,
     ),
     ExploreReview(
       author: 'Jeffrey Epstein',
       avatarPath: _avatar,
       timeAgo: '1 hr ago',
+      createdAt: DateTime(2026, 5, 19, 8),
       rating: 5,
     ),
     ExploreReview(
       author: 'Briyani',
       avatarPath: _avatar,
       timeAgo: '2 hrs ago',
+      createdAt: DateTime(2026, 5, 19, 7),
       rating: 5,
     ),
   ],
   comments: [
     ExploreComment(
+      id: 'mock-comment-1',
       author: 'You',
       avatarPath: _avatar,
       timeAgo: '2 min ago',
+      createdAt: DateTime(2026, 5, 19, 8, 58),
       content:
           'I burnt the toast but decided to blame this recipe instead. Definitely not my problem.',
       likes: 128,
+      replies: [
+        ExploreCommentReply(
+          id: 'mock-reply-1',
+          documentPath:
+              'recipes/sunny-egg-toast/comments/mock-comment-1/replies/mock-reply-1',
+          author: 'Alex Fala',
+          avatarPath: _avatar,
+          timeAgo: '1 min ago',
+          createdAt: DateTime(2026, 5, 19, 8, 59),
+          content: 'A little lower heat helps a lot.',
+          likes: 4,
+        ),
+      ],
     ),
     ExploreComment(
+      id: 'mock-comment-2',
       author: 'Emma Johnson',
       avatarPath: _avatar,
       timeAgo: '18 min ago',
+      createdAt: DateTime(2026, 5, 19, 8, 42),
       content: 'Absolutely delicious and easy to make! My go-to breakfast now.',
       likes: 67,
     ),
     ExploreComment(
+      id: 'mock-comment-3',
       author: 'Sophia Lee',
       avatarPath: _avatar,
       timeAgo: '47 min ago',
-      content: 'Great recipe for a simple morning. Absolutely love this recipe.',
+      createdAt: DateTime(2026, 5, 19, 8, 13),
+      content:
+          'Great recipe for a simple morning. Absolutely love this recipe.',
       likes: 56,
     ),
     ExploreComment(
+      id: 'mock-comment-4',
       author: 'Jeffrey Epstein',
       avatarPath: _avatar,
       timeAgo: '1 hr ago',
+      createdAt: DateTime(2026, 5, 19, 8),
       content:
           'I loved me some raw avocado in the morning. Especially eating them with kids.',
       likes: 999,
@@ -172,6 +199,7 @@ const _defaultCommunity = ExploreCommunity(
 final _recipes = <ExploreRecipeModel>[
   ExploreRecipeModel(
     id: 'sunny-egg-toast',
+    creatorUid: 'mock-creator',
     title: 'Sunny Egg & Toast Avocado',
     author: 'Alex Fala',
     publishedAtLabel: '2hrs Ago',
@@ -184,14 +212,19 @@ final _recipes = <ExploreRecipeModel>[
     ],
     description:
         'Crispy sourdough layered with savory garlic spread and fanned avocado, served with a sunny-side-up egg. A simple, flavor-packed meal that is high in protein and healthy fats.',
+    otherNames: const ['Avocado Egg Toast'],
     category: 'Breakfast, Healthy, Bread',
+    categoryIds: const ['breakfast', 'healthy', 'bread'],
     allergenInfo: 'Gluten, dairy',
     totalTime: '15 min',
     difficulty: 'Easy',
     rating: 4.9,
     ratingCount: 128,
     commentCount: 4,
+    totalViews: 1500,
+    publishedAt: DateTime(2026, 5, 19, 9),
     isFollowingAuthor: false,
+    isCreatedByCurrentUser: false,
     ingredients: _defaultIngredients,
     instructionSections: _defaultInstructionSections,
     nutrition: _defaultNutrition,
@@ -238,10 +271,7 @@ final _recipes = <ExploreRecipeModel>[
     id: 'classic-pesto',
     title: 'Classic Italian Basil Pesto Pasta',
     imagePath: 'assets/images/meal3(2).png',
-    imagePaths: const [
-      'assets/images/meal3(2).png',
-      'assets/images/meal1.png',
-    ],
+    imagePaths: const ['assets/images/meal3(2).png', 'assets/images/meal1.png'],
     category: 'Pasta, Italian',
     rating: 3.2,
     publishedAtLabel: '14 Mar 2026',
@@ -281,6 +311,7 @@ ExploreRecipeModel _simpleRecipe({
 }) {
   return ExploreRecipeModel(
     id: id,
+    creatorUid: 'mock-creator',
     title: title,
     author: 'Alex Fala',
     publishedAtLabel: publishedAtLabel,
@@ -289,14 +320,19 @@ ExploreRecipeModel _simpleRecipe({
     imagePaths: imagePaths,
     description:
         'Lorem ipsum dolor sit amet, consectetur adipiscing elit. A balanced meal for everyday cooking.',
+    otherNames: const [],
     category: category,
+    categoryIds: category.split(',').map((item) => item.trim()).toList(),
     allergenInfo: 'Check ingredients before cooking',
     totalTime: '20 min',
     difficulty: 'Easy',
     rating: rating,
     ratingCount: 80,
     commentCount: 12,
+    totalViews: 320,
+    publishedAt: DateTime(2026, 5, 19, 8),
     isFollowingAuthor: isFollowing,
+    isCreatedByCurrentUser: false,
     ingredients: _defaultIngredients,
     instructionSections: _defaultInstructionSections,
     nutrition: _defaultNutrition,

@@ -14,12 +14,17 @@ import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../core/widgets/buttons/secondary_button.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
+import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_ingredient_unit.dart';
+import '../../domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
+import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_ingredients_viewmodel.dart';
-import '../widgets/ingredient_unit_picker.dart';
+import '../widgets/ingredient_name_picker_sheet.dart';
+import '../widgets/ingredient_unit_picker_sheet.dart';
 import '../widgets/input_label.dart';
 
 class AddRecipeIngredientsPage extends StatelessWidget {
@@ -32,6 +37,8 @@ class AddRecipeIngredientsPage extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => AddRecipeIngredientsViewModel(
         getIngredientUnitsUseCase: sl<GetAddRecipeIngredientUnitsUseCase>(),
+        searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
+        getFoodNutrientsUseCase: sl<GetAddRecipeFoodNutrientsUseCase>(),
         saveIngredientsUseCase: sl<SaveAddRecipeIngredientsUseCase>(),
       ),
       child: _AddRecipeIngredientsView(recipeId: recipeId),
@@ -124,42 +131,48 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
 
             // Input Fields
             Expanded(
-              child: ReorderableListView.builder(
+              child: ListView(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
                   0,
                   horizontalPadding,
                   0,
                 ),
-                buildDefaultDragHandles: false,
-                itemCount: _rows.length + 1,
-                onReorder: _reorderRows,
-                itemBuilder: (context, index) {
-                  if(index == _rows.length) {
-                    return Padding(
-                      key: const ValueKey("add_ingredient_button"),
-                      padding: EdgeInsets.only(top: AppSpacing.sm),
-                      child: SecondaryButton(
-                        text: "+  Add Ingredient",
-                        onPressed: _addRow,
-                      ),
-                    );
-                  }
-
-                  final row = _rows[index];
-                  return Padding(
-                    key: ValueKey(row.id),
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: InputIngredientField(
-                      index: index,
-                      row: row,
-                      onPickImage: () => _pickIngredientImage(row),
-                      onSelectUnit: () =>
-                          _showUnitSheet(row: row, units: viewModel.units),
-                      onDelete: () => _removeRow(index),
+                children: [
+                  ReorderableListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    buildDefaultDragHandles: false,
+                    itemCount: _rows.length,
+                    onReorder: _reorderRows,
+                    itemBuilder: (context, index) {
+                      final row = _rows[index];
+                      return Padding(
+                        key: ValueKey(row.id),
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: InputIngredientField(
+                          index: index,
+                          row: row,
+                          onPickImage: () => _pickIngredientImage(row),
+                          onSelectName: () => _showIngredientNameSheet(
+                            row: row,
+                            viewModel: viewModel,
+                          ),
+                          onSelectUnit: () =>
+                              _showUnitSheet(row: row, units: viewModel.units),
+                          onDelete: () => _removeRow(index),
+                        ),
+                      );
+                    },
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(top: AppSpacing.sm),
+                    child: SecondaryButton(
+                      text: "+  Add Ingredient",
+                      onPressed: _addRow,
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
             ),
 
@@ -191,24 +204,73 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     setState(() => row.imageFile = File(image.path));
   }
 
-  // Unit Picker Helper
-  Future<void> _showUnitSheet({
+  // Name Picker Helper
+  Future<void> _showIngredientNameSheet({
     required IngredientRowState row,
-    required List<String> units,
+    required AddRecipeIngredientsViewModel viewModel,
   }) async {
-    final selected = await showModalBottomSheet<String>(
+    final selected = await showModalBottomSheet<IngredientNamePickerSelection>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) =>
-          UnitPickerSheet(units: units, selectedUnit: row.unit),
+      builder: (_) => IngredientNamePickerSheet(
+        selectedName: row.nameController.text.trim(),
+        selectedUsdaId: row.usdaId,
+        onSearchFoods: viewModel.searchFoods,
+      ),
     );
 
     if (selected == null) return;
-    setState(() => row.unit = selected);
+    if (!mounted) return;
+
+    Map<String, dynamic>? nutrients;
+    if (!selected.isCustom && selected.usdaId != null) {
+      final rootNavigator = Navigator.of(context, rootNavigator: true);
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const LoadingDialog(),
+      );
+      nutrients = await viewModel.getFoodNutrients(selected.usdaId!);
+      if (mounted) rootNavigator.pop();
+    }
+
+    if (!mounted) return;
+    setState(() {
+      row.nameController.text = selected.name;
+      row.usdaId = selected.usdaId;
+      row.usdaNutrients = selected.isCustom ? null : nutrients;
+    });
+  }
+
+  // Unit Picker Helper
+  Future<void> _showUnitSheet({
+    required IngredientRowState row,
+    required List<AddRecipeIngredientUnit> units,
+  }) async {
+    final selected = await showModalBottomSheet<UnitPickerSelection>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => IngredientUnitPickerSheet(
+        units: units,
+        selectedUnitId: row.unitId,
+        selectedCustomUnit: row.isCustomUnit ? row.unitName : '',
+      ),
+    );
+
+    if (selected == null) return;
+    setState(() {
+      row.unitId = selected.unitId;
+      row.unitName = selected.unitName;
+      row.isCustomUnit = selected.isCustom;
+    });
   }
 
   // Add, Remove, Reorder Helper
@@ -251,15 +313,17 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(viewModel.errorMessage ?? "Unable to save ingredients."),
+          content: Text(
+            viewModel.errorMessage ?? "Unable to save ingredients.",
+          ),
         ),
       );
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Recipe ingredients saved.")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Recipe ingredients saved.")));
 
     context.push(
       AppRouter.addRecipeInstructions,
@@ -275,7 +339,10 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
             name: row.nameController.text.trim(),
             imageFile: row.imageFile,
             amount: double.parse(row.amountController.text.trim()),
-            unit: row.unit,
+            unitId: row.isCustomUnit ? "" : row.unitId,
+            customUnit: row.isCustomUnit ? row.unitName : "",
+            usdaId: row.usdaId,
+            usdaNutrients: row.usdaNutrients,
           ),
         )
         .toList();
@@ -300,19 +367,27 @@ class IngredientRowState {
   final TextEditingController amountController = TextEditingController();
   final List<VoidCallback> _listeners = [];
   File? imageFile;
-  String unit = '';
+  String unitId = "";
+  String unitName = "";
+  bool isCustomUnit = false;
+  int? usdaId;
+  Map<String, dynamic>? usdaNutrients;
+
+  String get unitDisplayName => unitName;
+
+  String get unitValueForSave => isCustomUnit ? unitName : unitId;
 
   bool get isComplete {
     return nameController.text.trim().isNotEmpty &&
         (double.tryParse(amountController.text.trim()) ?? 0) > 0 &&
-        unit.trim().isNotEmpty;
+        unitValueForSave.trim().isNotEmpty;
   }
 
   bool get isPartial {
     final hasContent =
         nameController.text.trim().isNotEmpty ||
         amountController.text.trim().isNotEmpty ||
-        unit.trim().isNotEmpty ||
+        unitValueForSave.trim().isNotEmpty ||
         imageFile != null;
     return hasContent && !isComplete;
   }
@@ -327,7 +402,11 @@ class IngredientRowState {
     nameController.clear();
     amountController.clear();
     imageFile = null;
-    unit = '';
+    unitId = "";
+    unitName = "";
+    isCustomUnit = false;
+    usdaId = null;
+    usdaNutrients = null;
     for (final listener in _listeners) {
       listener();
     }

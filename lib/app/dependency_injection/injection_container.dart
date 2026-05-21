@@ -40,10 +40,14 @@ import '../../features/admin_manage/data/datasources/admin_manage_remote_datasou
 import '../../features/admin_manage/data/repositories/admin_manage_repository_impl.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
-import '../../features/explore/data/datasources/explore_mock_datasource.dart';
+import '../../features/explore/data/datasources/explore_remote_datasource.dart';
 import '../../features/explore/data/repositories/explore_repository_impl.dart';
 import '../../features/explore/domain/repositories/explore_repository.dart';
+import '../../features/explore/domain/usecases/add_recipe_comment_usecase.dart';
+import '../../features/explore/domain/usecases/add_recipe_comment_reply_usecase.dart';
+import '../../features/explore/domain/usecases/add_recipe_reply_to_reply_usecase.dart';
 import '../../features/explore/domain/usecases/get_explore_recipe_detail_usecase.dart';
+import '../../features/explore/domain/usecases/get_explore_creator_detail_usecase.dart';
 import '../../features/explore/domain/usecases/get_explore_recipes_usecase.dart';
 import '../../features/library/data/datasources/library_remote_datasource.dart';
 import '../../features/library/data/repositories/library_repository_impl.dart';
@@ -52,6 +56,13 @@ import '../../features/library/domain/usecases/get_library_profile_usecase.dart'
 import '../../features/library/domain/usecases/get_library_recipe_detail_usecase.dart';
 import '../../features/library/domain/usecases/get_library_recipes_usecase.dart';
 import '../../features/library/domain/usecases/update_library_profile_usecase.dart';
+import '../../features/explore/domain/usecases/increment_recipe_view_count_usecase.dart';
+import '../../features/explore/domain/usecases/submit_recipe_rating_usecase.dart';
+import '../../features/explore/domain/usecases/toggle_recipe_comment_like_usecase.dart';
+import '../../features/explore/domain/usecases/toggle_recipe_reply_like_usecase.dart';
+import '../../features/explore/domain/usecases/toggle_creator_follow_usecase.dart';
+import '../../features/explore/domain/usecases/watch_explore_recipes_usecase.dart';
+import '../../features/explore/domain/usecases/watch_explore_recipe_detail_usecase.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_preferences_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
@@ -67,10 +78,12 @@ import '../../features/recipe/data/datasources/add_recipe_remote_datasource.dart
 import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart';
 import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
+import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_instructions_usecase.dart';
+import '../../features/recipe/domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../../features/statistics/data/datasources/statistics_mock_datasource.dart';
 import '../../features/statistics/data/repositories/statistics_repository_impl.dart';
 import '../../features/statistics/domain/repositories/statistics_repository.dart';
@@ -116,12 +129,10 @@ import '../../features/settings/data/repositories/about_repository_impl.dart';
 import '../../features/admin_home/domain/repositories/admin_home_repository.dart';
 import '../../features/admin_home/domain/usecases/get_admin_home_dashboard_usecase.dart';
 import '../../features/admin_manage/domain/repositories/admin_manage_repository.dart';
-import '../../features/admin_manage/domain/entities/admin_manage_seed_defaults.dart';
 import '../../features/admin_manage/domain/usecases/delete_admin_manage_item_usecase.dart';
 import '../../features/admin_manage/domain/usecases/get_admin_manage_items_usecase.dart';
 import '../../features/admin_manage/domain/usecases/reorder_admin_manage_items_usecase.dart';
 import '../../features/admin_manage/domain/usecases/save_admin_manage_item_usecase.dart';
-import '../../features/admin_manage/domain/usecases/seed_admin_manage_defaults_usecase.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/signup_usecase.dart';
@@ -191,23 +202,7 @@ import '../../features/onboarding/presentation/viewmodel/onboarding_viewmodel.da
 import '../../features/main/presentation/viewmodel/main_viewmodel.dart';
 import '../../features/settings/domain/usecases/support/rating/upload_rating_image_usecase.dart';
 
-// ============================================================================
-// GET IT INSTANCE
-// ============================================================================
-// sl = Service Locator - The main warehouse for all dependencies
 final sl = GetIt.instance;
-
-Future<void> seedAdminManageDefaultsOnLaunch() async {
-  final seedDefaultsUseCase = sl<SeedAdminManageDefaultsUseCase>();
-
-  for (final entry in AdminManageSeedDefaults.valuesByCategory.entries) {
-    final result = await seedDefaultsUseCase.execute(
-      categoryId: entry.key,
-      values: entry.value,
-    );
-    result.fold((failure) => null, (_) => null);
-  }
-}
 
 // ============================================================================
 // INITIALIZATION
@@ -248,13 +243,19 @@ Future<void> initDependencies() async {
 
 void _initRecipeFeature() {
   sl.registerLazySingleton(
-    () => AddRecipeRemoteDataSource(firestore: sl(), auth: sl()),
+    () => AddRecipeRemoteDataSource(
+      firestore: sl(),
+      auth: sl(),
+      foodSearchService: sl(),
+    ),
   );
   sl.registerLazySingleton<AddRecipeRepository>(
     () => AddRecipeRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton(() => GetAddRecipeSetupUseCase(sl()));
   sl.registerLazySingleton(() => GetAddRecipeIngredientUnitsUseCase(sl()));
+  sl.registerLazySingleton(() => SearchAddRecipeFoodsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAddRecipeFoodNutrientsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeInstructionsUseCase(sl()));
@@ -271,14 +272,27 @@ void _initStatisticsFeature() {
 }
 
 void _initExploreFeature() {
-  sl.registerLazySingleton(() => ExploreMockDataSource());
+  sl.registerLazySingleton(
+    () => ExploreRemoteDataSource(firestore: sl(), auth: sl()),
+  );
 
   sl.registerLazySingleton<ExploreRepository>(
-    () => ExploreRepositoryImpl(mockDataSource: sl()),
+    () => ExploreRepositoryImpl(remoteDataSource: sl()),
   );
 
   sl.registerLazySingleton(() => GetExploreRecipesUseCase(sl()));
   sl.registerLazySingleton(() => GetExploreRecipeDetailUseCase(sl()));
+  sl.registerLazySingleton(() => GetExploreCreatorDetailUseCase(sl()));
+  sl.registerLazySingleton(() => SubmitRecipeRatingUseCase(sl()));
+  sl.registerLazySingleton(() => AddRecipeCommentUseCase(sl()));
+  sl.registerLazySingleton(() => IncrementRecipeViewCountUseCase(sl()));
+  sl.registerLazySingleton(() => ToggleRecipeCommentLikeUseCase(sl()));
+  sl.registerLazySingleton(() => AddRecipeCommentReplyUseCase(sl()));
+  sl.registerLazySingleton(() => WatchExploreRecipesUseCase(sl()));
+  sl.registerLazySingleton(() => WatchExploreRecipeDetailUseCase(sl()));
+  sl.registerLazySingleton(() => ToggleRecipeReplyLikeUseCase(sl()));
+  sl.registerLazySingleton(() => AddRecipeReplyToReplyUseCase(sl()));
+  sl.registerLazySingleton(() => ToggleCreatorFollowUseCase(sl()));
 }
 
 void _initLibraryFeature() {
@@ -372,7 +386,6 @@ void _initAdminManageFeature() {
   sl.registerLazySingleton(() => SaveAdminManageItemUseCase(sl()));
   sl.registerLazySingleton(() => DeleteAdminManageItemUseCase(sl()));
   sl.registerLazySingleton(() => ReorderAdminManageItemsUseCase(sl()));
-  sl.registerLazySingleton(() => SeedAdminManageDefaultsUseCase(sl()));
 
   sl.registerFactory(
     () => AdminManageViewModel(
@@ -380,7 +393,6 @@ void _initAdminManageFeature() {
       saveItemUseCase: sl(),
       deleteItemUseCase: sl(),
       reorderItemsUseCase: sl(),
-      seedDefaultsUseCase: sl(),
     ),
   );
 }

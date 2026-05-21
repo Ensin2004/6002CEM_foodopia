@@ -62,7 +62,8 @@ class InputStepField extends StatelessWidget {
                 maxLines: 4,
                 textInputAction: TextInputAction.newline,
                 decoration: InputDecoration(
-                  hintText: "Describe each step clearly (e.g. Boil water to 80°C)",
+                  hintText:
+                      "Describe each step clearly (e.g. Boil water to 80°C)",
                   isDense: true,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6),
@@ -108,10 +109,10 @@ class _InstructionImageBox extends StatelessWidget {
           color: const Color(0xFFF7F7F7),
           child: imageFile == null
               ? const Icon(
-            Icons.add_photo_alternate_outlined,
-            color: Color(0xFFC9CBCD),
-            size: 30,
-          )
+                  Icons.add_photo_alternate_outlined,
+                  color: Color(0xFFC9CBCD),
+                  size: 30,
+                )
               : Image.file(imageFile!, fit: BoxFit.cover),
         ),
       ),

@@ -28,7 +28,9 @@ class InstructionModeButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withValues(alpha: 0.05) : Colors.white,
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.05)
+              : Colors.white,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: selected ? AppColors.primary : AppColors.border,
@@ -51,7 +53,9 @@ class InstructionModeButton extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: context.text.bodyMedium?.copyWith(
-                      color: selected ? AppColors.primary : AppColors.textPrimary,
+                      color: selected
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -60,7 +64,9 @@ class InstructionModeButton extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: context.text.bodySmall?.copyWith(
-                      color: selected ? AppColors.primary : AppColors.textPrimary,
+                      color: selected
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
                     ),
                   ),
                 ],

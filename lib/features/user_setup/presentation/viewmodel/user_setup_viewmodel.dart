@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
@@ -40,6 +42,8 @@ class UserSetupViewModel extends ChangeNotifier {
   UserSetupPreferences _preferences = const UserSetupPreferences();
   final Map<String, bool> _notificationSettings = {};
   String _activeSearchQuery = '';
+  Timer? _searchDebounce;
+  bool _isDisposed = false;
   UserSetupNavigationEvent? _navigationEvent;
 
   UserSetupViewModel({
@@ -72,7 +76,13 @@ class UserSetupViewModel extends ChangeNotifier {
     return event;
   }
 
-  Future<void> load() async {
+  Future<void> load({
+    List<String> optionCategoryIds = const [
+      'meal_preferences',
+      'allergies',
+      'dislikes',
+    ],
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -81,9 +91,7 @@ class UserSetupViewModel extends ChangeNotifier {
     preferencesResult.ifLeft((failure) => _errorMessage = failure.message);
     preferencesResult.ifRight((preferences) => _preferences = preferences);
 
-    await _loadOptions('meal_preferences');
-    await _loadOptions('allergies');
-    await _loadOptions('dislikes');
+    await Future.wait(optionCategoryIds.map(_loadOptions));
     _loadNotificationSettings();
 
     _isLoading = false;
@@ -91,6 +99,7 @@ class UserSetupViewModel extends ChangeNotifier {
   }
 
   Future<void> search(String query) async {
+    _searchDebounce?.cancel();
     final trimmed = query.trim();
     if (trimmed.length < 2) {
       _activeSearchQuery = '';
@@ -105,8 +114,14 @@ class UserSetupViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      _runSearch(trimmed);
+    });
+  }
+
+  Future<void> _runSearch(String trimmed) async {
     final result = await _searchFoodsUseCase.execute(trimmed);
-    if (_activeSearchQuery != trimmed) return;
+    if (_isDisposed || _activeSearchQuery != trimmed) return;
 
     result.ifLeft((failure) => _errorMessage = failure.message);
     result.ifRight((items) => _searchResults = items);
@@ -115,10 +130,18 @@ class UserSetupViewModel extends ChangeNotifier {
   }
 
   void clearSearch() {
+    _searchDebounce?.cancel();
     _activeSearchQuery = '';
     _searchResults = const [];
     _isSearching = false;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _searchDebounce?.cancel();
+    super.dispose();
   }
 
   void selectDiet(String value) {

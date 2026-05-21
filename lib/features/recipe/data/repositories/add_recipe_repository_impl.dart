@@ -2,7 +2,9 @@ import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
+import '../../domain/entities/add_recipe_food_search_result.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_setup.dart';
 import '../../domain/repositories/add_recipe_repository.dart';
@@ -24,12 +26,37 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
   }
 
   @override
-  Future<Either<Failure, List<String>>> getIngredientUnits() async {
+  Future<Either<Failure, List<AddRecipeIngredientUnit>>>
+  getIngredientUnits() async {
     try {
       final units = await remoteDataSource.getIngredientUnits();
       return Right(units);
     } catch (_) {
       return Left(ServerFailure(message: 'Unable to load ingredient units.'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<AddRecipeFoodSearchResult>>> searchFoods(
+    String query,
+  ) async {
+    try {
+      final foods = await remoteDataSource.searchFoods(query);
+      return Right(foods);
+    } catch (_) {
+      return Left(ServerFailure(message: 'Unable to search USDA foods.'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>?>> getFoodLabelNutrients(
+    int fdcId,
+  ) async {
+    try {
+      final nutrients = await remoteDataSource.getFoodLabelNutrients(fdcId);
+      return Right(nutrients);
+    } catch (_) {
+      return Left(ServerFailure(message: 'Unable to load USDA nutrients.'));
     }
   }
 
@@ -41,7 +68,12 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
     if (info.recipeName.trim().isEmpty) {
       return Left(ValidationFailure(message: 'Please enter a recipe name.'));
     }
-    if (info.categories.isEmpty) {
+    if (info.description.trim().isEmpty) {
+      return Left(
+        ValidationFailure(message: 'Please enter a recipe description.'),
+      );
+    }
+    if (info.categoryIds.isEmpty && info.customCategories.isEmpty) {
       return Left(ValidationFailure(message: 'Please select a category.'));
     }
     if (info.preparationMinutes <= 0) {
@@ -93,7 +125,8 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
           ValidationFailure(message: 'Ingredient amount must be more than 0.'),
         );
       }
-      if (ingredient.unit.trim().isEmpty) {
+      if (ingredient.unitId.trim().isEmpty &&
+          ingredient.customUnit.trim().isEmpty) {
         return Left(ValidationFailure(message: 'Ingredient unit is required.'));
       }
     }

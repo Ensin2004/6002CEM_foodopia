@@ -1,21 +1,29 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
+import '../../domain/entities/add_recipe_food_search_result.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_ingredient_unit.dart';
+import '../../domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
+import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 
 class AddRecipeIngredientsViewModel extends ChangeNotifier {
   final GetAddRecipeIngredientUnitsUseCase getIngredientUnitsUseCase;
+  final SearchAddRecipeFoodsUseCase searchFoodsUseCase;
+  final GetAddRecipeFoodNutrientsUseCase getFoodNutrientsUseCase;
   final SaveAddRecipeIngredientsUseCase saveIngredientsUseCase;
 
-  List<String> units = [];
+  List<AddRecipeIngredientUnit> units = [];
   bool isLoadingUnits = true;
   bool isSaving = false;
   String? errorMessage;
 
   AddRecipeIngredientsViewModel({
     required this.getIngredientUnitsUseCase,
+    required this.searchFoodsUseCase,
+    required this.getFoodNutrientsUseCase,
     required this.saveIngredientsUseCase,
   }) {
     loadUnits();
@@ -58,5 +66,17 @@ class AddRecipeIngredientsViewModel extends ChangeNotifier {
     isSaving = false;
     notifyListeners();
     return success;
+  }
+
+  Future<List<AddRecipeFoodSearchResult>> searchFoods(String query) async {
+    final result = await searchFoodsUseCase.execute(query);
+    if (result.isLeft()) return [];
+    return result.right ?? [];
+  }
+
+  Future<Map<String, dynamic>?> getFoodNutrients(int fdcId) async {
+    final result = await getFoodNutrientsUseCase.execute(fdcId);
+    if (result.isLeft()) return null;
+    return result.right;
   }
 }
