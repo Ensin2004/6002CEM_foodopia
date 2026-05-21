@@ -1,0 +1,69 @@
+import 'dart:io';
+
+import 'package:dartz/dartz.dart';
+
+import '../../../../core/error/failures.dart';
+import '../../domain/entities/library_profile.dart';
+import '../../domain/entities/library_recipe.dart';
+import '../../domain/repositories/library_repository.dart';
+import '../datasources/library_remote_datasource.dart';
+
+class LibraryRepositoryImpl implements LibraryRepository {
+  final LibraryRemoteDataSource remoteDataSource;
+
+  const LibraryRepositoryImpl({required this.remoteDataSource});
+
+  @override
+  Future<Either<Failure, LibraryProfile>> getProfile() async {
+    try {
+      final profile = await remoteDataSource.getProfile();
+      return Right(profile);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<LibraryRecipe>>> getRecipes() async {
+    try {
+      final recipes = await remoteDataSource.getRecipes();
+      return Right(recipes);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, LibraryRecipe>> getRecipeDetail(
+    String recipeId,
+  ) async {
+    try {
+      final recipe = await remoteDataSource.getRecipeDetail(recipeId);
+      return Right(recipe);
+    } on StateError {
+      return Left(NotFoundFailure(message: 'Recipe not found.'));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateProfile({
+    required String name,
+    required String bio,
+    File? imageFile,
+  }) async {
+    try {
+      await remoteDataSource.updateProfile(
+        name: name,
+        bio: bio,
+        imageFile: imageFile,
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+}

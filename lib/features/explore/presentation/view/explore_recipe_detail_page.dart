@@ -18,8 +18,15 @@ import '../viewmodel/explore_recipe_detail_viewmodel.dart';
 
 class ExploreRecipeDetailPage extends StatelessWidget {
   final String recipeId;
+  final bool showLibraryActions;
+  final bool isPublished;
 
-  const ExploreRecipeDetailPage({super.key, required this.recipeId});
+  const ExploreRecipeDetailPage({
+    super.key,
+    required this.recipeId,
+    this.showLibraryActions = false,
+    this.isPublished = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +44,22 @@ class ExploreRecipeDetailPage extends StatelessWidget {
         watchRecipeDetailUseCase: sl(),
         toggleCreatorFollowUseCase: sl(),
       ),
-      child: const _ExploreRecipeDetailView(),
+      child: _ExploreRecipeDetailView(
+        showLibraryActions: showLibraryActions,
+        isPublished: isPublished,
+      ),
     );
   }
 }
 
 class _ExploreRecipeDetailView extends StatefulWidget {
-  const _ExploreRecipeDetailView();
+  final bool showLibraryActions;
+  final bool isPublished;
+
+  const _ExploreRecipeDetailView({
+    required this.showLibraryActions,
+    required this.isPublished,
+  });
 
   @override
   State<_ExploreRecipeDetailView> createState() =>
@@ -106,6 +122,8 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         viewModel: viewModel,
         tabController: _tabController,
         onComingSoonTap: _showComingSoonMessage,
+        showLibraryActions: widget.showLibraryActions,
+        isPublished: widget.isPublished,
       ),
     );
   }
@@ -115,11 +133,15 @@ class _DetailBody extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final TabController tabController;
   final VoidCallback onComingSoonTap;
+  final bool showLibraryActions;
+  final bool isPublished;
 
   const _DetailBody({
     required this.viewModel,
     required this.tabController,
     required this.onComingSoonTap,
+    required this.showLibraryActions,
+    required this.isPublished,
   });
 
   @override
@@ -147,10 +169,15 @@ class _DetailBody extends StatelessWidget {
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: EdgeInsets.zero,
       children: [
-        _HeroImage(recipe: recipe),
+        _HeroImage(
+          recipe: recipe,
+          showLibraryActions: showLibraryActions,
+          isPublished: isPublished,
+          onActionTap: onComingSoonTap,
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: _RecipeHeader(recipe: recipe),
+          child: _RecipeHeader(recipe: recipe, isPublished: isPublished),
         ),
         _TopTabs(tabController: tabController),
         Padding(
@@ -159,6 +186,7 @@ class _DetailBody extends StatelessWidget {
             viewModel: viewModel,
             recipe: recipe,
             onComingSoonTap: onComingSoonTap,
+            isPublished: isPublished,
           ),
         ),
       ],
@@ -168,8 +196,16 @@ class _DetailBody extends StatelessWidget {
 
 class _HeroImage extends StatefulWidget {
   final ExploreRecipe recipe;
+  final bool showLibraryActions;
+  final bool isPublished;
+  final VoidCallback onActionTap;
 
-  const _HeroImage({required this.recipe});
+  const _HeroImage({
+    required this.recipe,
+    required this.showLibraryActions,
+    required this.isPublished,
+    required this.onActionTap,
+  });
 
   @override
   State<_HeroImage> createState() => _HeroImageState();
@@ -230,6 +266,28 @@ class _HeroImageState extends State<_HeroImage> {
             ),
           ),
         ),
+        if (widget.showLibraryActions) ...[
+          Positioned(
+            left: 8,
+            top: 8,
+            child: _LibraryImageActionButton(
+              label: 'Edit',
+              foregroundColor: AppColors.textPrimary,
+              onTap: widget.onActionTap,
+            ),
+          ),
+          Positioned(
+            right: 8,
+            top: 8,
+            child: _LibraryImageActionButton(
+              label: widget.isPublished ? 'Private' : 'Publish',
+              foregroundColor: widget.isPublished
+                  ? AppColors.error
+                  : AppColors.primary,
+              onTap: widget.onActionTap,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -275,10 +333,47 @@ class _HeroImageState extends State<_HeroImage> {
   }
 }
 
+class _LibraryImageActionButton extends StatelessWidget {
+  final String label;
+  final Color foregroundColor;
+  final VoidCallback onTap;
+
+  const _LibraryImageActionButton({
+    required this.label,
+    required this.foregroundColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.92),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.bodySmall?.copyWith(
+              color: foregroundColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _RecipeHeader extends StatelessWidget {
   final ExploreRecipe recipe;
+  final bool isPublished;
 
-  const _RecipeHeader({required this.recipe});
+  const _RecipeHeader({required this.recipe, required this.isPublished});
 
   @override
   Widget build(BuildContext context) {
@@ -325,7 +420,9 @@ class _RecipeHeader extends StatelessWidget {
               child: _MetricTile(
                 icon: Icons.star,
                 color: AppColors.secondary,
-                title: recipe.rating.toStringAsFixed(1),
+                title: isPublished
+                    ? recipe.rating.toStringAsFixed(1)
+                    : 'No rating',
                 subtitle: 'Rating',
               ),
             ),
@@ -416,11 +513,13 @@ class _SelectedTabContent extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
+  final bool isPublished;
 
   const _SelectedTabContent({
     required this.viewModel,
     required this.recipe,
     required this.onComingSoonTap,
+    required this.isPublished,
   });
 
   @override
@@ -439,6 +538,7 @@ class _SelectedTabContent extends StatelessWidget {
           viewModel: viewModel,
           recipe: recipe,
           onComingSoonTap: onComingSoonTap,
+          isPublished: isPublished,
         );
     }
   }
@@ -1089,11 +1189,13 @@ class _CommunityTab extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
+  final bool isPublished;
 
   const _CommunityTab({
     required this.viewModel,
     required this.recipe,
     required this.onComingSoonTap,
+    required this.isPublished,
   });
 
   @override
@@ -1396,12 +1498,17 @@ class _RatingsPanel extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      recipe.rating.toStringAsFixed(1),
+                      isPublished
+                          ? recipe.rating.toStringAsFixed(1)
+                          : 'No rating',
+                      textAlign: TextAlign.center,
                       style: textTheme.headlineSmall,
                     ),
                     _RatingStars(size: 22, rating: recipe.rating),
                     Text(
-                      '(${recipe.ratingCount} ratings)',
+                      isPublished
+                          ? '(${recipe.ratingCount} ratings)'
+                          : 'Unpublished',
                       style: textTheme.bodySmall,
                     ),
                   ],

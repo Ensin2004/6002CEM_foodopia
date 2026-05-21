@@ -25,16 +25,26 @@ import '../../../statistics/presentation/view/statistics_page.dart';
 class MainPage extends StatelessWidget {
   final UserEntity user;
   final String role;
+  final int initialIndex;
 
   /// Creates a main page instance.
-  const MainPage({super.key, required this.user, required this.role});
+  const MainPage({
+    super.key,
+    required this.user,
+    required this.role,
+    this.initialIndex = 0,
+  });
 
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
     /// Runs the change notifier provider operation.
     return ChangeNotifierProvider(
-      create: (_) => MainViewModel(user: user, repository: sl()),
+      create: (_) => MainViewModel(
+        user: user,
+        repository: sl(),
+        initialIndex: initialIndex,
+      ),
       child: const _MainPageView(),
     );
   }
@@ -132,7 +142,7 @@ class _MainPageViewState extends State<_MainPageView> {
             userId: viewModel.user.uid,
           );
         case 4:
-          return const LibraryPage();
+          return LibraryPage(onExploreNow: () => viewModel.onTabTapped(1));
         default:
           return HomePage(
             userName: viewModel.user.name ?? 'Foodie',
