@@ -1,10 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
+import '../../../../app/routers/app_router.dart';
+import '../../../../app/routers/router_args.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
@@ -13,22 +16,39 @@ import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../viewmodel/add_recipe_instructions_viewmodel.dart';
-import '../widgets/flat_instruction_list.dart';
-import '../widgets/input_label.dart';
-import '../widgets/instruction_mode_button.dart';
-import '../widgets/section_instruction_list.dart';
+import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/instructions/flat_instruction_list.dart';
+import '../widgets/label.dart';
+import '../widgets/instructions/instruction_mode_button.dart';
+import '../widgets/recipe_visibility_action_button.dart';
+import '../widgets/instructions/section_instruction_list.dart';
 
 class AddRecipeInstructionsPage extends StatelessWidget {
   final String recipeId;
+  final String initialVisibility;
 
-  const AddRecipeInstructionsPage({super.key, required this.recipeId});
+  const AddRecipeInstructionsPage({
+    super.key,
+    required this.recipeId,
+    this.initialVisibility = "private",
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AddRecipeInstructionsViewModel(
-        saveInstructionsUseCase: sl<SaveAddRecipeInstructionsUseCase>(),
-      ),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AddRecipeInstructionsViewModel(
+            saveInstructionsUseCase: sl<SaveAddRecipeInstructionsUseCase>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AddRecipeVisibilityViewModel(
+            updateVisibilityUseCase: sl(),
+            visibility: initialVisibility,
+          ),
+        ),
+      ],
       child: _AddRecipeInstructionsView(recipeId: recipeId),
     );
   }
@@ -44,8 +64,7 @@ class _AddRecipeInstructionsView extends StatefulWidget {
       _AddRecipeInstructionsViewState();
 }
 
-class _AddRecipeInstructionsViewState
-    extends State<_AddRecipeInstructionsView> {
+class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> {
   final ImagePicker _imagePicker = ImagePicker();
   final List<InstructionStepState> _steps = [InstructionStepState()];
   final List<InstructionSectionState> _sections = [InstructionSectionState()];
@@ -83,7 +102,33 @@ class _AddRecipeInstructionsViewState
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
-      appBar: const CustomAppBar(title: "New Recipe"),
+      appBar: CustomAppBar(
+        title: "New Recipe",
+        actions: [
+          Consumer<AddRecipeVisibilityViewModel>(
+            builder: (context, visibilityViewModel, _) {
+              return RecipeVisibilityActionButton(
+                visibility: visibilityViewModel.visibility,
+                isSaving: visibilityViewModel.isSaving,
+                onChanged: (value) async {
+                  final success = await visibilityViewModel.updateVisibility(
+                    recipeId: widget.recipeId,
+                    value: value,
+                  );
+                  if (!context.mounted || success) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        visibilityViewModel.errorMessage ?? "Unable to update visibility.",
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,7 +159,7 @@ class _AddRecipeInstructionsViewState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InputLabel(text: "Instructions", isRequired: true),
+                  Label(text: "Instructions", isRequired: true),
                   const SizedBox(height: 2),
                   Text(
                     "Add step by step instructions for your recipe",
@@ -306,6 +351,11 @@ class _AddRecipeInstructionsViewState
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("Recipe instructions saved.")));
+
+    context.push(
+      AppRouter.addRecipeReview,
+      extra: AddRecipeReviewArgs(recipeId: widget.recipeId),
+    );
   }
 
   List<AddRecipeInstruction> get _completedInstructions {

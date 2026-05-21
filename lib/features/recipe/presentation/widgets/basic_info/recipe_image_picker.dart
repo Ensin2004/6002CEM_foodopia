@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/theme_extension.dart';
-import '../../../../core/widgets/cards/method_card.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_spacing.dart';
+import '../../../../../core/theme/theme_extension.dart';
+import '../../../../../core/widgets/cards/method_card.dart';
 
 class RecipeImagePicker extends StatefulWidget {
   final List<File> images;
@@ -41,6 +41,8 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     if (widget.images.isEmpty) {
       return MethodCard(
         icon: Icons.add_photo_alternate_outlined,
@@ -50,23 +52,36 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
       );
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: AppColors.border,
+          width: 1,
+        ),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
         child: Stack(
-          fit: StackFit.expand,
           children: [
-            PageView.builder(
-              itemCount: widget.images.length,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentImageIndex = index;
-                });
-              },
-              itemBuilder: (context, index) {
-                return Image.file(widget.images[index], fit: BoxFit.cover);
-              },
+            ColoredBox(
+              color: colors.surfaceContainerHighest,
+              child: AspectRatio(
+                aspectRatio: 1.55,
+                child: PageView.builder(
+                  itemCount: widget.images.length,
+                  onPageChanged: (index) {
+                    setState(() => _currentImageIndex = index);
+                  },
+                  itemBuilder: (context, index) {
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _showExpandedImage(context, widget.images[index]),
+                      child: Image.file(widget.images[index], fit: BoxFit.contain),
+                    );
+                  },
+                ),
+              ),
             ),
             Positioned(
               left: AppSpacing.sm,
@@ -88,14 +103,14 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
                   vertical: AppSpacing.xs,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.90),
-                  borderRadius: BorderRadius.circular(16),
+                  color: colors.onSurface.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   "${_currentImageIndex + 1}/${widget.images.length}",
-                  style: context.text.labelLarge?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
+                  style: context.text.bodySmall?.copyWith(
+                    color: colors.surface,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -103,6 +118,38 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showExpandedImage(BuildContext context, File image) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 1,
+                    maxScale: 4,
+                    child: Image.file(image, fit: BoxFit.contain)
+                  ),
+                ),
+                Positioned(
+                  top: AppSpacing.sm,
+                  right: AppSpacing.sm,
+                  child: IconButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

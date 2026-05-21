@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:foodopia/features/recipe/presentation/widgets/input_ingredient_field.dart';
+import 'package:foodopia/features/recipe/presentation/widgets/ingredients/input_ingredient_field.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -23,24 +23,41 @@ import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_ingredients_viewmodel.dart';
-import '../widgets/ingredient_name_picker_sheet.dart';
-import '../widgets/ingredient_unit_picker_sheet.dart';
-import '../widgets/input_label.dart';
+import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/ingredients/ingredient_name_picker_sheet.dart';
+import '../widgets/ingredients/ingredient_unit_picker_sheet.dart';
+import '../widgets/label.dart';
+import '../widgets/recipe_visibility_action_button.dart';
 
 class AddRecipeIngredientsPage extends StatelessWidget {
   final String recipeId;
+  final String initialVisibility;
 
-  const AddRecipeIngredientsPage({super.key, required this.recipeId});
+  const AddRecipeIngredientsPage({
+    super.key,
+    required this.recipeId,
+    this.initialVisibility = "private",
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AddRecipeIngredientsViewModel(
-        getIngredientUnitsUseCase: sl<GetAddRecipeIngredientUnitsUseCase>(),
-        searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
-        getFoodNutrientsUseCase: sl<GetAddRecipeFoodNutrientsUseCase>(),
-        saveIngredientsUseCase: sl<SaveAddRecipeIngredientsUseCase>(),
-      ),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AddRecipeIngredientsViewModel(
+            getIngredientUnitsUseCase: sl<GetAddRecipeIngredientUnitsUseCase>(),
+            searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
+            getFoodNutrientsUseCase: sl<GetAddRecipeFoodNutrientsUseCase>(),
+            saveIngredientsUseCase: sl<SaveAddRecipeIngredientsUseCase>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AddRecipeVisibilityViewModel(
+            updateVisibilityUseCase: sl(),
+            visibility: initialVisibility,
+          ),
+        ),
+      ],
       child: _AddRecipeIngredientsView(recipeId: recipeId),
     );
   }
@@ -86,7 +103,33 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
-      appBar: const CustomAppBar(title: "New Recipe"),
+      appBar: CustomAppBar(
+        title: "New Recipe",
+        actions: [
+          Consumer<AddRecipeVisibilityViewModel>(
+            builder: (context, visibilityViewModel, _) {
+              return RecipeVisibilityActionButton(
+                visibility: visibilityViewModel.visibility,
+                isSaving: visibilityViewModel.isSaving,
+                onChanged: (value) async {
+                  final success = await visibilityViewModel.updateVisibility(
+                    recipeId: widget.recipeId,
+                    value: value,
+                  );
+                  if (!context.mounted || success) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        visibilityViewModel.errorMessage ?? "Unable to update visibility.",
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,7 +160,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InputLabel(text: "Ingredients", isRequired: true),
+                  Label(text: "Ingredients", isRequired: true),
                   const SizedBox(height: 2),
                   Text(
                     "Add all the ingredients for your recipe",
@@ -327,7 +370,10 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
 
     context.push(
       AppRouter.addRecipeInstructions,
-      extra: AddRecipeInstructionsArgs(recipeId: widget.recipeId),
+      extra: AddRecipeInstructionsArgs(
+        recipeId: widget.recipeId,
+        visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+      ),
     );
   }
 

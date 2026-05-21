@@ -72,11 +72,13 @@ import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart'
 import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
+import '../../features/recipe/domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../../features/recipe/domain/usecases/search_add_recipe_foods_usecase.dart';
+import '../../features/recipe/domain/usecases/update_add_recipe_visibility_usecase.dart';
 import '../../features/statistics/data/datasources/statistics_mock_datasource.dart';
 import '../../features/statistics/data/repositories/statistics_repository_impl.dart';
 import '../../features/statistics/domain/repositories/statistics_repository.dart';
@@ -251,6 +253,8 @@ void _initRecipeFeature() {
   sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeInstructionsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAddRecipeReviewUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateAddRecipeVisibilityUseCase(sl()));
 }
 
 void _initStatisticsFeature() {

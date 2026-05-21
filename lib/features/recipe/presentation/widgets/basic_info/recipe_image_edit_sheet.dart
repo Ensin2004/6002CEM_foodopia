@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/theme_extension.dart';
-import '../../../../core/widgets/buttons/primary_button.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_spacing.dart';
+import '../../../../../core/theme/theme_extension.dart';
+import '../../../../../core/widgets/buttons/primary_button.dart';
 
 class RecipeImageEditSheet extends StatelessWidget {
   final List<File> images;
@@ -62,6 +62,7 @@ class RecipeImageEditSheet extends StatelessWidget {
                     "${images.length}/10",
                     style: context.text.bodySmall?.copyWith(
                       color: AppColors.primary,
+                      fontWeight: FontWeight.w600
                     ),
                   ),
                 ],
@@ -108,52 +109,66 @@ class _SelectedMediaTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.file(image, fit: BoxFit.cover),
-          Positioned(
-            left: AppSpacing.xs,
-            top: AppSpacing.xs,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.xs,
-                vertical: AppSpacing.xs,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.50),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                "${index + 1}",
-                style: context.text.bodySmall?.copyWith(color: Colors.white),
-              ),
-            ),
-          ),
-          Positioned(
-            right: AppSpacing.xs,
-            top: AppSpacing.xs,
-            child: InkWell(
-              onTap: onRemove,
-              borderRadius: BorderRadius.circular(14),
+    final colors = context.colors;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: AppColors.border,
+          width: 1,
+        ),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.file(image, fit: BoxFit.cover),
+            Positioned(
+              left: AppSpacing.xs,
+              top: AppSpacing.xs,
               child: Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.90),
-                  shape: BoxShape.circle,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xs,
+                  vertical: AppSpacing.xs,
                 ),
-                child: const Icon(
-                  Icons.close,
-                  color: AppColors.error,
-                  size: 16,
+                decoration: BoxDecoration(
+                  color: colors.onSurface.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  "${index + 1}",
+                  style: context.text.bodySmall?.copyWith(
+                    color: colors.surface,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+            Positioned(
+              right: AppSpacing.xs,
+              top: AppSpacing.xs,
+              child: InkWell(
+                onTap: onRemove,
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.90),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: AppColors.error,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

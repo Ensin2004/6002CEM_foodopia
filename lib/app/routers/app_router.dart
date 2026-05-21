@@ -15,6 +15,7 @@ import '../../features/recipe/presentation/view/add_recipe_basic_info_page.dart'
 import '../../features/recipe/presentation/view/add_recipe_ingredients_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_instructions_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_method_page.dart';
+import '../../features/recipe/presentation/view/add_recipe_review_page.dart';
 import '../../features/explore/presentation/view/explore_page.dart';
 import '../../features/explore/presentation/view/explore_creator_detail_page.dart';
 import '../../features/explore/presentation/view/explore_recipe_detail_page.dart';
@@ -61,6 +62,7 @@ class AppRouter {
   static const String addRecipeBasicInfo = '/recipes/add/basic-info';
   static const String addRecipeIngredients = '/recipes/add/ingredients';
   static const String addRecipeInstructions = '/recipes/add/instructions';
+  static const String addRecipeReview = '/recipes/add/review';
   static const String explore = '/explore';
   static const String exploreRecipeDetail = '/explore/recipe';
   static const String exploreCreatorDetail = '/explore/creator';
@@ -383,13 +385,12 @@ class AppRouter {
         builder: (context, state) => const AddRecipePage(),
       ),
 
-      // TODO - Cojean - Confirm with Ensin
       GoRoute(
         name: 'addRecipeBasicInfo',
         path: addRecipeBasicInfo,
         builder: (context, state) {
           final args = state.extra as AddRecipeBasicInfoArgs?;
-          return AddRecipeBasicInfoPage(key: ValueKey(args?.draftId));
+          return AddRecipeBasicInfoPage(key: ValueKey(args?.recipeId));
         },
       ),
 
@@ -398,7 +399,10 @@ class AppRouter {
         path: addRecipeIngredients,
         builder: (context, state) {
           final args = state.extra as AddRecipeIngredientsArgs;
-          return AddRecipeIngredientsPage(recipeId: args.recipeId);
+          return AddRecipeIngredientsPage(
+            recipeId: args.recipeId,
+            initialVisibility: args.visibility,
+          );
         },
       ),
 
@@ -407,7 +411,19 @@ class AppRouter {
         path: addRecipeInstructions,
         builder: (context, state) {
           final args = state.extra as AddRecipeInstructionsArgs;
-          return AddRecipeInstructionsPage(recipeId: args.recipeId);
+          return AddRecipeInstructionsPage(
+            recipeId: args.recipeId,
+            initialVisibility: args.visibility,
+          );
+        },
+      ),
+
+      GoRoute(
+        name: 'addRecipeReview',
+        path: addRecipeReview,
+        builder: (context, state) {
+          final args = state.extra as AddRecipeReviewArgs;
+          return AddRecipeReviewPage(recipeId: args.recipeId);
         },
       ),
 

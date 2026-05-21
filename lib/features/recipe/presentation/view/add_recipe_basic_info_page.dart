@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:foodopia/features/recipe/presentation/widgets/input_option_field.dart';
+import 'package:foodopia/features/recipe/presentation/widgets/basic_info/input_option_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -21,25 +21,36 @@ import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_basic_info_viewmodel.dart';
-import '../widgets/add_more_button_small.dart';
-import '../widgets/recipe_difficulty_picker.dart';
-import '../widgets/recipe_image_edit_sheet.dart';
-import '../widgets/recipe_image_picker.dart';
-import '../widgets/input_label.dart';
-import '../widgets/input_text_field.dart';
-import '../widgets/recipe_option_picker_sheet.dart';
+import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/basic_info/add_more_button_small.dart';
+import '../widgets/recipe_visibility_action_button.dart';
+import '../widgets/basic_info/recipe_difficulty_picker.dart';
+import '../widgets/basic_info/recipe_image_edit_sheet.dart';
+import '../widgets/basic_info/recipe_image_picker.dart';
+import '../widgets/label.dart';
+import '../widgets/basic_info/input_text_field.dart';
+import '../widgets/basic_info/recipe_option_picker_sheet.dart';
 
 class AddRecipeBasicInfoPage extends StatelessWidget {
   const AddRecipeBasicInfoPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AddRecipeBasicInfoViewModel(
-        getSetupUseCase: sl<GetAddRecipeSetupUseCase>(),
-        searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
-        saveBasicInfoUseCase: sl<SaveAddRecipeBasicInfoUseCase>(),
-      ),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AddRecipeBasicInfoViewModel(
+            getSetupUseCase: sl<GetAddRecipeSetupUseCase>(),
+            searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
+            saveBasicInfoUseCase: sl<SaveAddRecipeBasicInfoUseCase>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AddRecipeVisibilityViewModel(
+              updateVisibilityUseCase: sl(),
+          ),
+        ),
+      ],
       child: const _AddRecipeBasicInfoView(),
     );
   }
@@ -112,7 +123,23 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
-      appBar: CustomAppBar(title: "New Recipe"),
+      appBar: CustomAppBar(
+        title: "New Recipe",
+        actions: [
+          Consumer<AddRecipeVisibilityViewModel>(
+            builder: (context, visibilityViewModel, _) {
+              return RecipeVisibilityActionButton(
+                visibility: visibilityViewModel.visibility,
+                isSaving: visibilityViewModel.isSaving,
+                onChanged: (value) => visibilityViewModel.updateVisibility(
+                  recipeId: "",
+                  value: value,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -145,17 +172,17 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
 
                 children: [
                   // Recipe Image
-                  InputLabel(text: "Recipe Image", isRequired: true),
+                  Label(text: "Recipe Image", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   RecipeImagePicker(
                     images: _images,
                     onPick: _pickImages,
                     onEdit: _showSelectedMediaSheet,
                   ),
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // Recipe Name
-                  InputLabel(text: "Recipe Name", isRequired: true),
+                  Label(text: "Recipe Name", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   InputTextField(
                     controller: _recipeNameController,
@@ -165,7 +192,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Recipe Description
-                  InputLabel(text: "Recipe Description", isRequired: true),
+                  Label(text: "Recipe Description", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   InputTextField(
                     controller: _descriptionController,
@@ -177,7 +204,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Other Name
-                  InputLabel(text: "Other Name"),
+                  Label(text: "Other Name"),
                   const SizedBox(height: AppSpacing.sm),
                   ..._otherNameControllers.asMap().entries.map((entry) {
                     return Padding(
@@ -199,7 +226,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Category
-                  InputLabel(text: "Category", isRequired: true),
+                  Label(text: "Category", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   InputOptionField(
                     placeholder: "Select categories",
@@ -217,7 +244,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Preparation Time
-                  InputLabel(text: "Preparation Time", isRequired: true),
+                  Label(text: "Preparation Time", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   InputTextField(
                     controller: _prepTimeController,
@@ -229,13 +256,13 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Difficulty Level
-                  InputLabel(text: "Difficulty Level", isRequired: true),
+                  Label(text: "Difficulty Level", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   RecipeDifficultyPicker(levels: setup.difficultyLevels),
                   const SizedBox(height: AppSpacing.lg),
 
                   // Servings
-                  InputLabel(text: "Servings", isRequired: true),
+                  Label(text: "Servings", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   InputTextField(
                     controller: _servingsController,
@@ -247,7 +274,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Allergen Info
-                  InputLabel(text: "Allergen Info"),
+                  Label(text: "Allergen Info"),
                   const SizedBox(height: AppSpacing.sm),
                   InputOptionField(
                     placeholder: "Select allergens",
@@ -479,6 +506,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       servings: int.tryParse(_servingsController.text.trim()) ?? 0,
       allergenIds: List<String>.unmodifiable(_selectedAllergenIds),
       customAllergens: List<String>.unmodifiable(_customAllergens),
+      visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
     );
 
     final success = await viewModel.saveBasicInfo(info);
@@ -499,7 +527,10 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
 
     context.push(
       AppRouter.addRecipeIngredients,
-      extra: AddRecipeIngredientsArgs(recipeId: viewModel.savedRecipeId!),
+      extra: AddRecipeIngredientsArgs(
+        recipeId: viewModel.savedRecipeId!,
+        visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+      ),
     );
   }
 

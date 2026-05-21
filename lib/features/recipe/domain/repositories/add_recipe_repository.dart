@@ -6,6 +6,7 @@ import '../entities/add_recipe_food_search_result.dart';
 import '../entities/add_recipe_ingredient.dart';
 import '../entities/add_recipe_ingredient_unit.dart';
 import '../entities/add_recipe_instruction.dart';
+import '../entities/add_recipe_review.dart';
 import '../entities/add_recipe_setup.dart';
 
 abstract class AddRecipeRepository {
@@ -32,5 +33,12 @@ abstract class AddRecipeRepository {
     required String recipeId,
     required bool useSections,
     required List<AddRecipeInstruction> instructions,
+  });
+
+  Future<Either<Failure, AddRecipeReview>> getReview(String recipeId);
+
+  Future<Either<Failure, void>> updateVisibility({
+    required String recipeId,
+    required String visibility,
   });
 }

@@ -12,6 +12,7 @@ class AddRecipeBasicInfo {
   final int servings;
   final List<String> allergenIds;
   final List<String> customAllergens;
+  final String visibility;
 
   const AddRecipeBasicInfo({
     required this.mediaFiles,
@@ -25,5 +26,6 @@ class AddRecipeBasicInfo {
     required this.servings,
     required this.allergenIds,
     required this.customAllergens,
+    this.visibility = 'private',
   });
 }
