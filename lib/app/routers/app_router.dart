@@ -18,6 +18,7 @@ import '../../features/recipe/presentation/view/add_recipe_method_page.dart';
 import '../../features/explore/presentation/view/explore_page.dart';
 import '../../features/explore/presentation/view/explore_recipe_detail_page.dart';
 import '../../features/library/presentation/view/library_page.dart';
+import '../../features/library/presentation/view/library_recipe_detail_page.dart';
 import '../../features/meal_plan/presentation/view/add_grocery_list_page.dart';
 import '../../features/meal_plan/presentation/view/manage_grocery_list_page.dart';
 import '../../features/meal_plan/presentation/view/meal_plan_page.dart';
@@ -62,6 +63,7 @@ class AppRouter {
   static const String addRecipeInstructions = '/recipes/add/instructions';
   static const String explore = '/explore';
   static const String exploreRecipeDetail = '/explore/recipe';
+  static const String libraryRecipeDetail = '/library/recipe';
   static const String mealPlan = '/meal-plan';
   static const String addMealPlan = '/meal-plan/planning/add-meal';
   static const String generateAiMeal =
@@ -277,7 +279,11 @@ class AppRouter {
           }
 
           /// Handles the main page operation.
-          return MainPage(user: userEntity, role: args?.role ?? 'user');
+          return MainPage(
+            user: userEntity,
+            role: args?.role ?? 'user',
+            initialIndex: args?.initialTabIndex ?? 0,
+          );
         },
       ),
 
@@ -412,7 +418,18 @@ class AppRouter {
       GoRoute(
         name: 'explore',
         path: explore,
-        builder: (context, state) => const ExplorePage(),
+        builder: (context, state) {
+          final userEntity = user;
+          if (userEntity == null) {
+            return const ExplorePage();
+          }
+
+          return MainPage(
+            user: userEntity,
+            role: userEntity.role.name,
+            initialIndex: 1,
+          );
+        },
       ),
 
       GoRoute(
@@ -484,7 +501,16 @@ class AppRouter {
       GoRoute(
         name: 'library',
         path: library,
-        builder: (context, state) => const LibraryPage(),
+        builder: (context, state) => const LibraryPage(showAppBar: true),
+      ),
+
+      GoRoute(
+        name: 'libraryRecipeDetail',
+        path: libraryRecipeDetail,
+        builder: (context, state) {
+          final args = state.extra as LibraryRecipeDetailArgs?;
+          return LibraryRecipeDetailPage(recipeId: args?.recipeId ?? '');
+        },
       ),
 
       GoRoute(

@@ -16,8 +16,12 @@ class MainViewModel extends ChangeNotifier {
   bool _isDisposed = false;
 
   /// Creates a main view model instance.
-  MainViewModel({required this.user, required MainRepository repository})
-    : _repository = repository {
+  MainViewModel({
+    required this.user,
+    required MainRepository repository,
+    int initialIndex = 0,
+  }) : _repository = repository,
+       _selectedIndex = initialIndex {
     _loadUserProfile();
     _updateLastLogin();
   }

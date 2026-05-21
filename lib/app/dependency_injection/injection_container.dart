@@ -45,6 +45,13 @@ import '../../features/explore/data/repositories/explore_repository_impl.dart';
 import '../../features/explore/domain/repositories/explore_repository.dart';
 import '../../features/explore/domain/usecases/get_explore_recipe_detail_usecase.dart';
 import '../../features/explore/domain/usecases/get_explore_recipes_usecase.dart';
+import '../../features/library/data/datasources/library_remote_datasource.dart';
+import '../../features/library/data/repositories/library_repository_impl.dart';
+import '../../features/library/domain/repositories/library_repository.dart';
+import '../../features/library/domain/usecases/get_library_profile_usecase.dart';
+import '../../features/library/domain/usecases/get_library_recipe_detail_usecase.dart';
+import '../../features/library/domain/usecases/get_library_recipes_usecase.dart';
+import '../../features/library/domain/usecases/update_library_profile_usecase.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_preferences_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
@@ -233,6 +240,7 @@ Future<void> initDependencies() async {
   _initRecipeFeature();
   _initStatisticsFeature();
   _initExploreFeature();
+  _initLibraryFeature();
 
   // Add new features here as the app grows
   // _initMealPlanFeature();
@@ -256,7 +264,7 @@ void _initStatisticsFeature() {
   sl.registerLazySingleton(() => StatisticsMockDataSource());
 
   sl.registerLazySingleton<StatisticsRepository>(
-        () => StatisticsRepositoryImpl(mockDataSource: sl()),
+    () => StatisticsRepositoryImpl(mockDataSource: sl()),
   );
 
   sl.registerLazySingleton(() => GetStatisticsDashboardUseCase(sl()));
@@ -271,6 +279,21 @@ void _initExploreFeature() {
 
   sl.registerLazySingleton(() => GetExploreRecipesUseCase(sl()));
   sl.registerLazySingleton(() => GetExploreRecipeDetailUseCase(sl()));
+}
+
+void _initLibraryFeature() {
+  sl.registerLazySingleton(
+    () => LibraryRemoteDataSource(firestore: sl(), auth: sl()),
+  );
+
+  sl.registerLazySingleton<LibraryRepository>(
+    () => LibraryRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetLibraryRecipesUseCase(sl()));
+  sl.registerLazySingleton(() => GetLibraryProfileUseCase(sl()));
+  sl.registerLazySingleton(() => GetLibraryRecipeDetailUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateLibraryProfileUseCase(sl()));
 }
 
 void _initMealPlanFeature() {

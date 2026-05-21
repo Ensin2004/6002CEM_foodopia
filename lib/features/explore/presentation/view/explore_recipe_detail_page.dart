@@ -15,8 +15,15 @@ import '../viewmodel/explore_recipe_detail_viewmodel.dart';
 
 class ExploreRecipeDetailPage extends StatelessWidget {
   final String recipeId;
+  final bool showLibraryActions;
+  final bool isPublished;
 
-  const ExploreRecipeDetailPage({super.key, required this.recipeId});
+  const ExploreRecipeDetailPage({
+    super.key,
+    required this.recipeId,
+    this.showLibraryActions = false,
+    this.isPublished = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,13 +32,22 @@ class ExploreRecipeDetailPage extends StatelessWidget {
         recipeId: recipeId,
         getRecipeDetailUseCase: sl(),
       ),
-      child: const _ExploreRecipeDetailView(),
+      child: _ExploreRecipeDetailView(
+        showLibraryActions: showLibraryActions,
+        isPublished: isPublished,
+      ),
     );
   }
 }
 
 class _ExploreRecipeDetailView extends StatefulWidget {
-  const _ExploreRecipeDetailView();
+  final bool showLibraryActions;
+  final bool isPublished;
+
+  const _ExploreRecipeDetailView({
+    required this.showLibraryActions,
+    required this.isPublished,
+  });
 
   @override
   State<_ExploreRecipeDetailView> createState() =>
@@ -61,9 +77,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   void _showComingSoonMessage() {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('Coming soon')),
-      );
+      ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
   @override
@@ -96,6 +110,8 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         viewModel: viewModel,
         tabController: _tabController,
         onComingSoonTap: _showComingSoonMessage,
+        showLibraryActions: widget.showLibraryActions,
+        isPublished: widget.isPublished,
       ),
     );
   }
@@ -105,11 +121,15 @@ class _DetailBody extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final TabController tabController;
   final VoidCallback onComingSoonTap;
+  final bool showLibraryActions;
+  final bool isPublished;
 
   const _DetailBody({
     required this.viewModel,
     required this.tabController,
     required this.onComingSoonTap,
+    required this.showLibraryActions,
+    required this.isPublished,
   });
 
   @override
@@ -137,10 +157,15 @@ class _DetailBody extends StatelessWidget {
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: EdgeInsets.zero,
       children: [
-        _HeroImage(recipe: recipe),
+        _HeroImage(
+          recipe: recipe,
+          showLibraryActions: showLibraryActions,
+          isPublished: isPublished,
+          onActionTap: onComingSoonTap,
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: _RecipeHeader(recipe: recipe),
+          child: _RecipeHeader(recipe: recipe, isPublished: isPublished),
         ),
         _TopTabs(tabController: tabController),
         Padding(
@@ -149,6 +174,7 @@ class _DetailBody extends StatelessWidget {
             viewModel: viewModel,
             recipe: recipe,
             onComingSoonTap: onComingSoonTap,
+            isPublished: isPublished,
           ),
         ),
       ],
@@ -158,8 +184,16 @@ class _DetailBody extends StatelessWidget {
 
 class _HeroImage extends StatefulWidget {
   final ExploreRecipe recipe;
+  final bool showLibraryActions;
+  final bool isPublished;
+  final VoidCallback onActionTap;
 
-  const _HeroImage({required this.recipe});
+  const _HeroImage({
+    required this.recipe,
+    required this.showLibraryActions,
+    required this.isPublished,
+    required this.onActionTap,
+  });
 
   @override
   State<_HeroImage> createState() => _HeroImageState();
@@ -215,15 +249,74 @@ class _HeroImageState extends State<_HeroImage> {
             ),
           ),
         ),
+        if (widget.showLibraryActions) ...[
+          Positioned(
+            left: 8,
+            top: 8,
+            child: _LibraryImageActionButton(
+              label: 'Edit',
+              foregroundColor: AppColors.textPrimary,
+              onTap: widget.onActionTap,
+            ),
+          ),
+          Positioned(
+            right: 8,
+            top: 8,
+            child: _LibraryImageActionButton(
+              label: widget.isPublished ? 'Private' : 'Publish',
+              foregroundColor: widget.isPublished
+                  ? AppColors.error
+                  : AppColors.primary,
+              onTap: widget.onActionTap,
+            ),
+          ),
+        ],
       ],
+    );
+  }
+}
+
+class _LibraryImageActionButton extends StatelessWidget {
+  final String label;
+  final Color foregroundColor;
+  final VoidCallback onTap;
+
+  const _LibraryImageActionButton({
+    required this.label,
+    required this.foregroundColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.92),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.bodySmall?.copyWith(
+              color: foregroundColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
 class _RecipeHeader extends StatelessWidget {
   final ExploreRecipe recipe;
+  final bool isPublished;
 
-  const _RecipeHeader({required this.recipe});
+  const _RecipeHeader({required this.recipe, required this.isPublished});
 
   @override
   Widget build(BuildContext context) {
@@ -270,7 +363,9 @@ class _RecipeHeader extends StatelessWidget {
               child: _MetricTile(
                 icon: Icons.star,
                 color: AppColors.secondary,
-                title: recipe.rating.toStringAsFixed(1),
+                title: isPublished
+                    ? recipe.rating.toStringAsFixed(1)
+                    : 'No rating',
                 subtitle: 'Rating',
               ),
             ),
@@ -361,11 +456,13 @@ class _SelectedTabContent extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
+  final bool isPublished;
 
   const _SelectedTabContent({
     required this.viewModel,
     required this.recipe,
     required this.onComingSoonTap,
+    required this.isPublished,
   });
 
   @override
@@ -378,15 +475,13 @@ class _SelectedTabContent extends StatelessWidget {
           onComingSoonTap: onComingSoonTap,
         );
       case ExploreRecipeDetailTab.nutrition:
-        return _NutritionTab(
-          recipe: recipe,
-          onServingTap: onComingSoonTap,
-        );
+        return _NutritionTab(recipe: recipe, onServingTap: onComingSoonTap);
       case ExploreRecipeDetailTab.community:
         return _CommunityTab(
           viewModel: viewModel,
           recipe: recipe,
           onComingSoonTap: onComingSoonTap,
+          isPublished: isPublished,
         );
     }
   }
@@ -433,9 +528,8 @@ class _RecipeTab extends StatelessWidget {
           selectedIndex: ExploreRecipeMethodTab.values.indexOf(
             viewModel.selectedMethodTab,
           ),
-          onChanged: (index) => viewModel.selectMethodTab(
-            ExploreRecipeMethodTab.values[index],
-          ),
+          onChanged: (index) =>
+              viewModel.selectMethodTab(ExploreRecipeMethodTab.values[index]),
         ),
         const SizedBox(height: 16),
         if (viewModel.selectedMethodTab == ExploreRecipeMethodTab.ingredients)
@@ -584,9 +678,7 @@ class _InstructionsList extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _InstructionTimelineMarker(
-                        showLine: !isLast,
-                      ),
+                      _InstructionTimelineMarker(showLine: !isLast),
                       const SizedBox(width: 12),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
@@ -603,10 +695,7 @@ class _InstructionsList extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(step.title, style: textTheme.labelLarge),
-                            Text(
-                              step.description,
-                              style: textTheme.bodySmall,
-                            ),
+                            Text(step.description, style: textTheme.bodySmall),
                           ],
                         ),
                       ),
@@ -625,9 +714,7 @@ class _InstructionsList extends StatelessWidget {
 class _InstructionTimelineMarker extends StatelessWidget {
   final bool showLine;
 
-  const _InstructionTimelineMarker({
-    required this.showLine,
-  });
+  const _InstructionTimelineMarker({required this.showLine});
 
   @override
   Widget build(BuildContext context) {
@@ -638,14 +725,8 @@ class _InstructionTimelineMarker extends StatelessWidget {
       height: 82,
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 11,
-            backgroundColor: colors.primary,
-          ),
-          if (showLine)
-            const Expanded(
-              child: _DottedTimelineLine(),
-            ),
+          CircleAvatar(radius: 11, backgroundColor: colors.primary),
+          if (showLine) const Expanded(child: _DottedTimelineLine()),
         ],
       ),
     );
@@ -696,10 +777,7 @@ class _NutritionTab extends StatelessWidget {
   final ExploreRecipe recipe;
   final VoidCallback onServingTap;
 
-  const _NutritionTab({
-    required this.recipe,
-    required this.onServingTap,
-  });
+  const _NutritionTab({required this.recipe, required this.onServingTap});
 
   @override
   Widget build(BuildContext context) {
@@ -819,9 +897,7 @@ class _NutritionTab extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               ...recipe.ingredients.map(
-                (ingredient) => _IngredientNutritionRow(
-                  ingredient: ingredient,
-                ),
+                (ingredient) => _IngredientNutritionRow(ingredient: ingredient),
               ),
             ],
           ),
@@ -856,7 +932,11 @@ class _MacroRow extends StatelessWidget {
   final int grams;
   final Color color;
 
-  const _MacroRow({required this.label, required this.grams, required this.color});
+  const _MacroRow({
+    required this.label,
+    required this.grams,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1045,11 +1125,13 @@ class _CommunityTab extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
+  final bool isPublished;
 
   const _CommunityTab({
     required this.viewModel,
     required this.recipe,
     required this.onComingSoonTap,
+    required this.isPublished,
   });
 
   @override
@@ -1169,18 +1251,18 @@ class _CommunityTab extends StatelessWidget {
           selectedIndex: ExploreCommunityTab.values.indexOf(
             viewModel.selectedCommunityTab,
           ),
-          onChanged: (index) => viewModel.selectCommunityTab(
-            ExploreCommunityTab.values[index],
-          ),
+          onChanged: (index) =>
+              viewModel.selectCommunityTab(ExploreCommunityTab.values[index]),
         ),
         const SizedBox(height: 14),
         if (viewModel.selectedCommunityTab == ExploreCommunityTab.ratings)
-          _RatingsPanel(recipe: recipe, onComingSoonTap: onComingSoonTap)
-        else
-          _CommentsPanel(
+          _RatingsPanel(
             recipe: recipe,
             onComingSoonTap: onComingSoonTap,
-          ),
+            isPublished: isPublished,
+          )
+        else
+          _CommentsPanel(recipe: recipe, onComingSoonTap: onComingSoonTap),
       ],
     );
   }
@@ -1189,10 +1271,12 @@ class _CommunityTab extends StatelessWidget {
 class _RatingsPanel extends StatelessWidget {
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
+  final bool isPublished;
 
   const _RatingsPanel({
     required this.recipe,
     required this.onComingSoonTap,
+    required this.isPublished,
   });
 
   @override
@@ -1215,12 +1299,17 @@ class _RatingsPanel extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      recipe.rating.toStringAsFixed(1),
+                      isPublished
+                          ? recipe.rating.toStringAsFixed(1)
+                          : 'No rating',
+                      textAlign: TextAlign.center,
                       style: textTheme.headlineSmall,
                     ),
-                    const _RatingStars(size: 22, rating: 5),
+                    if (isPublished) const _RatingStars(size: 22, rating: 5),
                     Text(
-                      '(${recipe.ratingCount} ratings)',
+                      isPublished
+                          ? '(${recipe.ratingCount} ratings)'
+                          : 'Unpublished',
                       style: textTheme.bodySmall,
                     ),
                   ],
@@ -1240,7 +1329,10 @@ class _RatingsPanel extends StatelessWidget {
                             width: 22,
                             child: Row(
                               children: [
-                                Text('${row.stars}', style: textTheme.bodySmall),
+                                Text(
+                                  '${row.stars}',
+                                  style: textTheme.bodySmall,
+                                ),
                                 const Icon(
                                   Icons.star,
                                   size: 12,
@@ -1252,7 +1344,9 @@ class _RatingsPanel extends StatelessWidget {
                           const SizedBox(width: 8),
                           Expanded(
                             child: LinearProgressIndicator(
-                              value: row.count / recipe.ratingCount,
+                              value: isPublished
+                                  ? row.count / recipe.ratingCount
+                                  : 0,
                               color: context.colors.primary,
                               backgroundColor: AppColors.background,
                               minHeight: 4,
@@ -1261,7 +1355,10 @@ class _RatingsPanel extends StatelessWidget {
                           const SizedBox(width: 8),
                           SizedBox(
                             width: 24,
-                            child: Text('${row.count}', style: textTheme.bodySmall),
+                            child: Text(
+                              '${row.count}',
+                              style: textTheme.bodySmall,
+                            ),
                           ),
                         ],
                       ),
@@ -1332,10 +1429,7 @@ class _ViewRatingsCard extends StatelessWidget {
   final List<ExploreReview> reviews;
   final VoidCallback onFilterTap;
 
-  const _ViewRatingsCard({
-    required this.reviews,
-    required this.onFilterTap,
-  });
+  const _ViewRatingsCard({required this.reviews, required this.onFilterTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1455,10 +1549,7 @@ class _CommentsPanel extends StatelessWidget {
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
 
-  const _CommentsPanel({
-    required this.recipe,
-    required this.onComingSoonTap,
-  });
+  const _CommentsPanel({required this.recipe, required this.onComingSoonTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1527,36 +1618,42 @@ class _CommentsPanel extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(radius: 18, backgroundImage: AssetImage(comment.avatarPath)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(comment.author, style: textTheme.labelLarge),
-                        Text(comment.timeAgo, style: textTheme.bodySmall),
-                        const SizedBox(height: 4),
-                        Text(comment.content, style: textTheme.bodySmall),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Text('${comment.likes}', style: textTheme.bodySmall),
-                            const SizedBox(width: 2),
-                            const Icon(
-                              Icons.thumb_up,
-                              size: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: 16),
-                            Text('Reply', style: textTheme.bodySmall),
-                          ],
-                        ),
-                      ],
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundImage: AssetImage(comment.avatarPath),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(comment.author, style: textTheme.labelLarge),
+                          Text(comment.timeAgo, style: textTheme.bodySmall),
+                          const SizedBox(height: 4),
+                          Text(comment.content, style: textTheme.bodySmall),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                '${comment.likes}',
+                                style: textTheme.bodySmall,
+                              ),
+                              const SizedBox(width: 2),
+                              const Icon(
+                                Icons.thumb_up,
+                                size: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 16),
+                              Text('Reply', style: textTheme.bodySmall),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );

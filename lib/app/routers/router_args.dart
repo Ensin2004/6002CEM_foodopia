@@ -25,6 +25,19 @@ class ExploreRecipeDetailArgs {
   const ExploreRecipeDetailArgs({required this.recipeId});
 }
 
+/// Typed arguments for library recipe detail route.
+class LibraryRecipeDetailArgs {
+  final String recipeId;
+  final bool isSelfPublished;
+  final bool isPublished;
+
+  const LibraryRecipeDetailArgs({
+    required this.recipeId,
+    required this.isSelfPublished,
+    required this.isPublished,
+  });
+}
+
 /// Typed arguments for the meal plan route.
 class MealPlanArgs {
   final int initialTabIndex;
@@ -96,9 +109,14 @@ class StatisticsArgs {
 class HomeArgs {
   final UserEntity user;
   final String role;
+  final int initialTabIndex;
 
   /// Creates a user_home args instance.
-  const HomeArgs({required this.user, required this.role});
+  const HomeArgs({
+    required this.user,
+    required this.role,
+    this.initialTabIndex = 0,
+  });
 }
 
 /// Typed arguments for edit profile route
