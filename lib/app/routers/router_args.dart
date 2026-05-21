@@ -36,6 +36,8 @@ class LibraryRecipeDetailArgs {
     required this.isSelfPublished,
     required this.isPublished,
   });
+}
+
 /// Typed arguments for explore creator detail route.
 class ExploreCreatorDetailArgs {
   final String creatorUid;

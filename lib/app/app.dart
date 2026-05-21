@@ -1,7 +1,6 @@
 // Configures the app application module.
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_theme.dart';
 import '../features/auth/domain/entities/user_entity.dart';
