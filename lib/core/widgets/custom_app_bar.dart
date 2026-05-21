@@ -1,0 +1,139 @@
+import 'package:flutter/material.dart';
+
+import '../theme/app_colors.dart';
+
+// ============================================================================
+// CUSTOM APP BAR
+// ============================================================================
+// Reusable app bar widget for the entire app
+// Design: White background, black text/icons, centered title, with shadow
+// ============================================================================
+
+class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final bool centerTitle;
+  final Widget? leading;
+  final Widget? titleWidget;
+  final List<Widget>? actions;
+  final bool showConfirmationOnBack;
+  final bool hasUnsavedChanges;
+  final VoidCallback? onSaveChanges;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final double elevation;
+  final double toolbarHeight;
+  final double? leadingWidth;
+  final double? titleSpacing;
+
+  /// Creates a custom app bar instance.
+  const CustomAppBar({
+    super.key,
+    required this.title,
+    this.centerTitle = true,
+    this.leading,
+    this.titleWidget,
+    this.actions,
+    this.showConfirmationOnBack = false,
+    this.hasUnsavedChanges = false,
+    this.onSaveChanges,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.elevation = 4,
+    this.toolbarHeight = kToolbarHeight,
+    this.leadingWidth,
+    this.titleSpacing,
+  });
+
+  /// Handles the preferred size operation.
+  @override
+  Size get preferredSize => Size.fromHeight(toolbarHeight);
+
+  /// Builds the widget tree for this component.
+  @override
+  Widget build(BuildContext context) {
+    // Default to white background, black text
+    final bgColor = backgroundColor ?? Colors.white;
+    final fgColor = foregroundColor ?? Colors.black;
+
+    /// Handles the app bar operation.
+    return AppBar(
+      backgroundColor: bgColor,
+      foregroundColor: fgColor,
+      elevation: elevation,
+      shadowColor: Colors.grey.withValues(alpha: 0.35),
+      surfaceTintColor: Colors.transparent,
+      toolbarHeight: toolbarHeight,
+      shape: const Border(
+        bottom: BorderSide(color: AppColors.border, width: 0.5),
+      ),
+      centerTitle: centerTitle,
+      leading: leading ?? _buildBackButton(context, fgColor),
+      leadingWidth: leadingWidth,
+      titleSpacing: titleSpacing,
+      title:
+          titleWidget ??
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 20,
+              color: fgColor,
+            ),
+          ),
+      actions: actions,
+    );
+  }
+
+  /// Handles the build back button operation.
+  Widget _buildBackButton(BuildContext context, Color color) {
+    /// Handles the icon button operation.
+    return IconButton(
+      icon: Icon(Icons.arrow_back, color: color),
+      onPressed: () {
+        if (showConfirmationOnBack && hasUnsavedChanges) {
+          _showConfirmationDialog(context);
+        } else {
+          Navigator.pop(context);
+        }
+      },
+    );
+  }
+
+  /// Handles the show confirmation dialog operation.
+  void _showConfirmationDialog(BuildContext context) {
+    showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unsaved Changes'),
+        content: const Text(
+          'You have unsaved changes. Do you want to save them before leaving?',
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        actions: [
+          /// Creates a text button instance.
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Discard'),
+          ),
+
+          /// Creates a text button instance.
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ).then((shouldSave) {
+      if (!context.mounted) return;
+
+      if (shouldSave == true && onSaveChanges != null) {
+        onSaveChanges!();
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (context.mounted) Navigator.pop(context);
+        });
+      } else if (shouldSave == false) {
+        Navigator.pop(context);
+      }
+    });
+  }
+}

@@ -1,0 +1,2264 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../../../../app/dependency_injection/injection_container.dart';
+import '../../../../app/routers/app_router.dart';
+import '../../../../app/routers/router_args.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_extension.dart';
+import '../../../../core/widgets/buttons/primary_button.dart';
+import '../../../../core/widgets/custom_app_bar.dart';
+import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
+import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
+import '../../domain/entities/explore_recipe.dart';
+import '../viewmodel/explore_recipe_detail_viewmodel.dart';
+
+class ExploreRecipeDetailPage extends StatelessWidget {
+  final String recipeId;
+
+  const ExploreRecipeDetailPage({super.key, required this.recipeId});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => ExploreRecipeDetailViewModel(
+        recipeId: recipeId,
+        getRecipeDetailUseCase: sl(),
+        submitRecipeRatingUseCase: sl(),
+        addRecipeCommentUseCase: sl(),
+        incrementRecipeViewCountUseCase: sl(),
+        toggleRecipeCommentLikeUseCase: sl(),
+        addRecipeCommentReplyUseCase: sl(),
+        toggleRecipeReplyLikeUseCase: sl(),
+        addRecipeReplyToReplyUseCase: sl(),
+        watchRecipeDetailUseCase: sl(),
+        toggleCreatorFollowUseCase: sl(),
+      ),
+      child: const _ExploreRecipeDetailView(),
+    );
+  }
+}
+
+class _ExploreRecipeDetailView extends StatefulWidget {
+  const _ExploreRecipeDetailView();
+
+  @override
+  State<_ExploreRecipeDetailView> createState() =>
+      _ExploreRecipeDetailViewState();
+}
+
+class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      length: ExploreRecipeDetailTab.values.length,
+      vsync: this,
+    );
+    _tabController.addListener(_handleTabChanged);
+  }
+
+  void _handleTabChanged() {
+    context.read<ExploreRecipeDetailViewModel>().selectTab(
+      ExploreRecipeDetailTab.values[_tabController.index],
+    );
+  }
+
+  void _showComingSoonMessage() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Coming soon')));
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_handleTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<ExploreRecipeDetailViewModel>();
+
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: CustomAppBar(
+        title: 'Recipe Details',
+        leading: IconButton(
+          onPressed: () => context.pop(),
+          icon: const Icon(Icons.chevron_left),
+        ),
+        actions: [
+          IconButton(
+            onPressed: _showComingSoonMessage,
+            icon: const Icon(Icons.bookmark_border),
+          ),
+        ],
+      ),
+      body: _DetailBody(
+        viewModel: viewModel,
+        tabController: _tabController,
+        onComingSoonTap: _showComingSoonMessage,
+      ),
+    );
+  }
+}
+
+class _DetailBody extends StatelessWidget {
+  final ExploreRecipeDetailViewModel viewModel;
+  final TabController tabController;
+  final VoidCallback onComingSoonTap;
+
+  const _DetailBody({
+    required this.viewModel,
+    required this.tabController,
+    required this.onComingSoonTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (viewModel.isLoading) {
+      return const LoadingDialog(message: 'Loading recipe...', inline: true);
+    }
+
+    final error = viewModel.errorMessage;
+    final recipe = viewModel.recipe;
+    if (error != null || recipe == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            error ?? 'Recipe unavailable',
+            textAlign: TextAlign.center,
+            style: context.text.bodyMedium,
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: EdgeInsets.zero,
+      children: [
+        _HeroImage(recipe: recipe),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: _RecipeHeader(recipe: recipe),
+        ),
+        _TopTabs(tabController: tabController),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: _SelectedTabContent(
+            viewModel: viewModel,
+            recipe: recipe,
+            onComingSoonTap: onComingSoonTap,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroImage extends StatefulWidget {
+  final ExploreRecipe recipe;
+
+  const _HeroImage({required this.recipe});
+
+  @override
+  State<_HeroImage> createState() => _HeroImageState();
+}
+
+class _HeroImageState extends State<_HeroImage> {
+  int _currentImageIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final recipeImages = widget.recipe.imagePaths;
+    final images = recipeImages == null || recipeImages.isEmpty
+        ? <String>[widget.recipe.imagePath]
+        : recipeImages;
+
+    return Stack(
+      children: [
+        ColoredBox(
+          color: colors.surfaceContainerHighest,
+          child: AspectRatio(
+            aspectRatio: 1.55,
+            child: PageView.builder(
+              itemCount: images.length,
+              onPageChanged: (index) {
+                setState(() => _currentImageIndex = index);
+              },
+              itemBuilder: (context, index) {
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _showExpandedImage(context, images[index]),
+                  child: AppRemoteOrAssetImage(
+                    imagePath: images[index],
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.contain,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        Positioned(
+          right: 10,
+          bottom: 10,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: colors.onSurface.withValues(alpha: 0.75),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '${_currentImageIndex + 1}/${images.length}',
+              style: context.text.bodySmall?.copyWith(
+                color: colors.surface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showExpandedImage(
+    BuildContext context,
+    String imagePath,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 1,
+                    maxScale: 4,
+                    child: AppRemoteOrAssetImage(
+                      imagePath: imagePath,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _RecipeHeader extends StatelessWidget {
+  final ExploreRecipe recipe;
+
+  const _RecipeHeader({required this.recipe});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          recipe.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: textTheme.titleLarge,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'By ${recipe.author} - ${recipe.publishedAtLabel}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _MetricTile(
+                icon: Icons.schedule,
+                color: context.colors.primary,
+                title: recipe.totalTime,
+                subtitle: 'Time',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _MetricTile(
+                icon: Icons.restaurant_menu,
+                color: AppColors.error,
+                title: recipe.difficulty,
+                subtitle: 'Difficulty',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _MetricTile(
+                icon: Icons.star,
+                color: AppColors.secondary,
+                title: recipe.rating.toStringAsFixed(1),
+                subtitle: 'Rating',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+
+  const _MetricTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+    final colors = context.colors;
+
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: color.withValues(alpha: 0.14),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelLarge,
+                ),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopTabs extends StatelessWidget {
+  final TabController tabController;
+
+  const _TopTabs({required this.tabController});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSegmentedTabs(
+      controller: tabController,
+      tabs: ExploreRecipeDetailTab.values.map(_detailTabLabel).toList(),
+      margin: const EdgeInsets.only(top: 12),
+      isScrollable: false,
+    );
+  }
+}
+
+class _SelectedTabContent extends StatelessWidget {
+  final ExploreRecipeDetailViewModel viewModel;
+  final ExploreRecipe recipe;
+  final VoidCallback onComingSoonTap;
+
+  const _SelectedTabContent({
+    required this.viewModel,
+    required this.recipe,
+    required this.onComingSoonTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    switch (viewModel.selectedTab) {
+      case ExploreRecipeDetailTab.recipe:
+        return _RecipeTab(
+          viewModel: viewModel,
+          recipe: recipe,
+          onComingSoonTap: onComingSoonTap,
+        );
+      case ExploreRecipeDetailTab.nutrition:
+        return _NutritionTab(recipe: recipe, onServingTap: onComingSoonTap);
+      case ExploreRecipeDetailTab.community:
+        return _CommunityTab(
+          viewModel: viewModel,
+          recipe: recipe,
+          onComingSoonTap: onComingSoonTap,
+        );
+    }
+  }
+}
+
+class _RecipeTab extends StatelessWidget {
+  final ExploreRecipeDetailViewModel viewModel;
+  final ExploreRecipe recipe;
+  final VoidCallback onComingSoonTap;
+
+  const _RecipeTab({
+    required this.viewModel,
+    required this.recipe,
+    required this.onComingSoonTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('About This Recipe', style: textTheme.titleMedium),
+        const SizedBox(height: 6),
+        Text(recipe.description, style: textTheme.bodyMedium),
+        const SizedBox(height: 14),
+        Text('Other Names', style: textTheme.titleMedium),
+        const SizedBox(height: 6),
+        Text(
+          recipe.otherNames.isEmpty ? 'None' : recipe.otherNames.join(', '),
+          style: textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 14),
+        Text('Category', style: textTheme.titleMedium),
+        const SizedBox(height: 6),
+        Text(recipe.category, style: textTheme.bodyMedium),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Text('Allergen Info', style: textTheme.titleMedium),
+            const SizedBox(width: 4),
+            const Icon(Icons.warning_amber, size: 15, color: AppColors.error),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(recipe.allergenInfo, style: textTheme.bodyMedium),
+        const SizedBox(height: 14),
+        AppPillSegmentedControl(
+          labels: const ['Ingredients', 'Instructions'],
+          selectedIndex: ExploreRecipeMethodTab.values.indexOf(
+            viewModel.selectedMethodTab,
+          ),
+          onChanged: (index) =>
+              viewModel.selectMethodTab(ExploreRecipeMethodTab.values[index]),
+        ),
+        const SizedBox(height: 16),
+        if (viewModel.selectedMethodTab == ExploreRecipeMethodTab.ingredients)
+          _IngredientsList(recipe: recipe, onUnitTap: onComingSoonTap)
+        else
+          _InstructionsList(recipe: recipe),
+      ],
+    );
+  }
+}
+
+class _IngredientsList extends StatelessWidget {
+  final ExploreRecipe recipe;
+  final VoidCallback onUnitTap;
+
+  const _IngredientsList({required this.recipe, required this.onUnitTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+    final colors = context.colors;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Ingredients List', style: textTheme.titleMedium),
+        Text('${recipe.ingredients.length} items', style: textTheme.bodyMedium),
+        const SizedBox(height: 10),
+        ...recipe.ingredients.map((ingredient) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [
+                BoxShadow(
+                  color: colors.onSurface.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: AppRemoteOrAssetImage(
+                    imagePath: ingredient.imagePath,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ingredient.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelLarge,
+                      ),
+                      Text(ingredient.calories, style: textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+                InkWell(
+                  onTap: onUnitTap,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    width: 86,
+                    height: 34,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            ingredient.amount,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodySmall,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: AppColors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 6),
+        PrimaryButton(
+          onPressed: () {},
+          text: 'Start Cooking',
+          verticalPadding: 14,
+        ),
+      ],
+    );
+  }
+}
+
+class _InstructionsList extends StatelessWidget {
+  final ExploreRecipe recipe;
+
+  const _InstructionsList({required this.recipe});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: recipe.instructionSections.map((section) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                section.title,
+                style: textTheme.titleMedium?.copyWith(
+                  color: context.colors.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...section.steps.asMap().entries.map((entry) {
+                final stepIndex = entry.key;
+                final step = entry.value;
+                final isLast = stepIndex == section.steps.length - 1;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _InstructionTimelineMarker(showLine: !isLast),
+                      const SizedBox(width: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: AppRemoteOrAssetImage(
+                          imagePath: step.imagePath,
+                          width: 42,
+                          height: 70,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(step.title, style: textTheme.labelLarge),
+                            Text(step.description, style: textTheme.bodySmall),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _InstructionTimelineMarker extends StatelessWidget {
+  final bool showLine;
+
+  const _InstructionTimelineMarker({required this.showLine});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return SizedBox(
+      width: 24,
+      height: 82,
+      child: Column(
+        children: [
+          CircleAvatar(radius: 11, backgroundColor: colors.primary),
+          if (showLine) const Expanded(child: _DottedTimelineLine()),
+        ],
+      ),
+    );
+  }
+}
+
+class _DottedTimelineLine extends StatelessWidget {
+  const _DottedTimelineLine();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DottedTimelineLinePainter(color: context.colors.primary),
+      child: const SizedBox(width: 1, height: double.infinity),
+    );
+  }
+}
+
+class _DottedTimelineLinePainter extends CustomPainter {
+  final Color color;
+
+  const _DottedTimelineLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.55)
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    const dashHeight = 3.0;
+    const gap = 4.0;
+    final x = size.width / 2;
+
+    double y = 4;
+    while (y < size.height) {
+      canvas.drawLine(Offset(x, y), Offset(x, y + dashHeight), paint);
+      y += dashHeight + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DottedTimelineLinePainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
+}
+
+class _NutritionTab extends StatelessWidget {
+  final ExploreRecipe recipe;
+  final VoidCallback onServingTap;
+
+  const _NutritionTab({required this.recipe, required this.onServingTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+    final nutrition = recipe.nutrition;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _NutritionPanel(
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Text('Nutrition Summary', style: textTheme.titleMedium),
+                  const Spacer(),
+                  InkWell(
+                    onTap: onServingTap,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      height: 30,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Per serving', style: textTheme.bodySmall),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 16,
+                            color: AppColors.textSecondary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 118,
+                    height: 118,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CustomPaint(
+                          size: const Size.square(118),
+                          painter: _MacroRingPainter(
+                            carbs: nutrition.carbsGrams,
+                            protein: nutrition.proteinGrams,
+                            fat: nutrition.fatGrams,
+                          ),
+                        ),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${nutrition.calories}',
+                              style: textTheme.headlineSmall,
+                            ),
+                            Text('kcal', style: textTheme.bodySmall),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _MacroRow(
+                          label: 'Carbohydrate',
+                          grams: nutrition.carbsGrams,
+                          color: AppColors.primary,
+                        ),
+                        _MacroRow(
+                          label: 'Protein',
+                          grams: nutrition.proteinGrams,
+                          color: AppColors.error,
+                        ),
+                        _MacroRow(
+                          label: 'Fat',
+                          grams: nutrition.fatGrams,
+                          color: AppColors.secondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _NutritionPanel(
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Text('Ingredients Breakdown', style: textTheme.titleMedium),
+                  const Spacer(),
+                  Text(
+                    'See all',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: context.colors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ...recipe.ingredients.map(
+                (ingredient) => _IngredientNutritionRow(ingredient: ingredient),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NutritionPanel extends StatelessWidget {
+  final Widget child;
+
+  const _NutritionPanel({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _MacroRow extends StatelessWidget {
+  final String label;
+  final int grams;
+  final Color color;
+
+  const _MacroRow({
+    required this.label,
+    required this.grams,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+    final value = (grams / 40).clamp(0.0, 1.0);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: textTheme.bodySmall),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: LinearProgressIndicator(
+                  value: value,
+                  color: color,
+                  backgroundColor: AppColors.background,
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 44,
+                child: Text(
+                  '${(value * 100).round()}%',
+                  style: textTheme.bodySmall,
+                  textAlign: TextAlign.right,
+                ),
+              ),
+              SizedBox(
+                width: 34,
+                child: Text(
+                  '${grams}g',
+                  style: textTheme.labelLarge,
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MacroRingPainter extends CustomPainter {
+  final int carbs;
+  final int protein;
+  final int fat;
+
+  const _MacroRingPainter({
+    required this.carbs,
+    required this.protein,
+    required this.fat,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokeWidth = 12.0;
+    final rect = Offset.zero & size;
+    final total = (carbs + protein + fat).toDouble();
+    final backgroundPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..color = AppColors.background;
+
+    canvas.drawArc(
+      rect.deflate(strokeWidth / 2),
+      -1.5708,
+      6.2832,
+      false,
+      backgroundPaint,
+    );
+
+    if (total <= 0) return;
+
+    final segmentPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    var startAngle = -1.5708;
+    const gapAngle = 0.08;
+    final segments = [
+      _MacroRingSegment(value: carbs, color: AppColors.primary),
+      _MacroRingSegment(value: protein, color: AppColors.error),
+      _MacroRingSegment(value: fat, color: AppColors.secondary),
+    ];
+
+    for (final segment in segments) {
+      final sweep = (segment.value / total) * 6.2832;
+      segmentPaint.color = segment.color;
+      canvas.drawArc(
+        rect.deflate(strokeWidth / 2),
+        startAngle,
+        (sweep - gapAngle).clamp(0.0, 6.2832).toDouble(),
+        false,
+        segmentPaint,
+      );
+      startAngle += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MacroRingPainter oldDelegate) {
+    return oldDelegate.carbs != carbs ||
+        oldDelegate.protein != protein ||
+        oldDelegate.fat != fat;
+  }
+}
+
+class _MacroRingSegment {
+  final int value;
+  final Color color;
+
+  const _MacroRingSegment({required this.value, required this.color});
+}
+
+class _IngredientNutritionRow extends StatelessWidget {
+  final ExploreIngredient ingredient;
+
+  const _IngredientNutritionRow({required this.ingredient});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: AppRemoteOrAssetImage(
+              imagePath: ingredient.imagePath,
+              width: 24,
+              height: 24,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        ingredient.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelLarge,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      ingredient.calories,
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                      style: textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                LinearProgressIndicator(
+                  value: ingredient.nutritionPercent,
+                  color: context.colors.primary,
+                  backgroundColor: AppColors.background,
+                  minHeight: 4,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommunityTab extends StatelessWidget {
+  final ExploreRecipeDetailViewModel viewModel;
+  final ExploreRecipe recipe;
+  final VoidCallback onComingSoonTap;
+
+  const _CommunityTab({
+    required this.viewModel,
+    required this.recipe,
+    required this.onComingSoonTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+    final relatedRecipes = recipe.relatedRecipes.take(3).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Creator', style: textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            AppRemoteOrAssetAvatar(imagePath: recipe.authorAvatarPath),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(recipe.author, style: textTheme.titleMedium),
+                  Text(
+                    recipe.community.authorBio,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            if (!recipe.isCreatedByCurrentUser)
+              SizedBox(
+                height: 34,
+                child: recipe.isFollowingAuthor
+                    ? FilledButton.icon(
+                        onPressed: () => viewModel.toggleCreatorFollow(),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: context.colors.primary,
+                          foregroundColor: Colors.white,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(Icons.check, size: 16),
+                        label: const Text('Following'),
+                      )
+                    : OutlinedButton(
+                        onPressed: () => viewModel.toggleCreatorFollow(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: context.colors.primary,
+                          side: BorderSide(color: context.colors.primary),
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('Follow'),
+                      ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Text('Related Recipes', style: textTheme.titleMedium),
+            const Spacer(),
+            TextButton(
+              onPressed: () {
+                context.push(
+                  AppRouter.exploreCreatorDetail,
+                  extra: ExploreCreatorDetailArgs(
+                    creatorUid: recipe.creatorUid,
+                  ),
+                );
+              },
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('See All'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (relatedRecipes.isEmpty)
+          Text(
+            'No recent recipes from this creator yet.',
+            style: textTheme.bodySmall,
+          )
+        else
+          SizedBox(
+            height: 156,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: relatedRecipes.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: index == relatedRecipes.length - 1 ? 0 : 10,
+                    ),
+                    child: _RelatedRecipeCard(item: item),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        const SizedBox(height: 20),
+        AppPillSegmentedControl(
+          labels: const ['Ratings', 'Comments'],
+          selectedIndex: ExploreCommunityTab.values.indexOf(
+            viewModel.selectedCommunityTab,
+          ),
+          onChanged: (index) =>
+              viewModel.selectCommunityTab(ExploreCommunityTab.values[index]),
+        ),
+        const SizedBox(height: 14),
+        if (viewModel.selectedCommunityTab == ExploreCommunityTab.ratings)
+          _RatingsPanel(
+            viewModel: viewModel,
+            recipe: recipe,
+            isSubmitting: viewModel.isSubmittingCommunityAction,
+            canRate: !recipe.isCreatedByCurrentUser,
+            onRatingSelected: (rating) =>
+                _submitRating(context, viewModel, rating),
+          )
+        else
+          _CommentsPanel(
+            viewModel: viewModel,
+            recipe: recipe,
+            isSubmitting: viewModel.isSubmittingCommunityAction,
+            onAddComment: (content) =>
+                _submitComment(context, viewModel, content),
+            onToggleLike: (commentId) => viewModel.toggleCommentLike(commentId),
+            onReply: (commentId, content) => viewModel.addCommentReply(
+              commentId: commentId,
+              content: content,
+            ),
+            onToggleReplyLike: viewModel.toggleReplyLike,
+            onReplyToReply: (replyPath, content) => viewModel.addReplyToReply(
+              replyPath: replyPath,
+              content: content,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _submitRating(
+    BuildContext context,
+    ExploreRecipeDetailViewModel viewModel,
+    int rating,
+  ) async {
+    final success = await viewModel.submitRating(rating.toDouble());
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Rating submitted.'
+                : viewModel.communityActionErrorMessage ??
+                      'Unable to submit rating.',
+          ),
+        ),
+      );
+  }
+
+  Future<void> _submitComment(
+    BuildContext context,
+    ExploreRecipeDetailViewModel viewModel,
+    String content,
+  ) async {
+    final success = await viewModel.addComment(content);
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Comment posted.'
+                : viewModel.communityActionErrorMessage ??
+                      'Unable to post comment.',
+          ),
+        ),
+      );
+  }
+}
+
+class _RelatedRecipeCard extends StatelessWidget {
+  final ExploreRecipeSummary item;
+
+  const _RelatedRecipeCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textTheme = context.text;
+
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(8),
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () {
+          context.push(
+            AppRouter.exploreRecipeDetail,
+            extra: ExploreRecipeDetailArgs(recipeId: item.id),
+          );
+        },
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(8),
+                  ),
+                  child: ColoredBox(
+                    color: colors.surfaceContainerHighest,
+                    child: AppRemoteOrAssetImage(
+                      imagePath: item.imagePath,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(
+                height: 42,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+                  child: Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      height: 1.15,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RatingsPanel extends StatelessWidget {
+  final ExploreRecipeDetailViewModel viewModel;
+  final ExploreRecipe recipe;
+  final bool isSubmitting;
+  final bool canRate;
+  final ValueChanged<int> onRatingSelected;
+
+  const _RatingsPanel({
+    required this.viewModel,
+    required this.recipe,
+    required this.isSubmitting,
+    required this.canRate,
+    required this.onRatingSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 94,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      recipe.rating.toStringAsFixed(1),
+                      style: textTheme.headlineSmall,
+                    ),
+                    _RatingStars(size: 22, rating: recipe.rating),
+                    Text(
+                      '(${recipe.ratingCount} ratings)',
+                      style: textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(width: 1, height: 110, color: AppColors.border),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  children: recipe.community.ratingBreakdown.map((row) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 22,
+                            child: Row(
+                              children: [
+                                Text(
+                                  '${row.stars}',
+                                  style: textTheme.bodySmall,
+                                ),
+                                const Icon(
+                                  Icons.star,
+                                  size: 12,
+                                  color: AppColors.secondary,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: LinearProgressIndicator(
+                              value: recipe.ratingCount == 0
+                                  ? 0
+                                  : row.count / recipe.ratingCount,
+                              color: context.colors.primary,
+                              backgroundColor: AppColors.background,
+                              minHeight: 4,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 24,
+                            child: Text(
+                              '${row.count}',
+                              style: textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _RateRecipeCard(
+          isSubmitting: isSubmitting,
+          canRate: canRate,
+          onRatingSelected: onRatingSelected,
+        ),
+        const SizedBox(height: 12),
+        _ViewRatingsCard(
+          reviews: viewModel.visibleReviews,
+          starFilter: viewModel.ratingStarFilter,
+          dateFilter: viewModel.ratingDateFilter,
+          onFiltersChanged: viewModel.updateRatingFilters,
+        ),
+      ],
+    );
+  }
+}
+
+class _RateRecipeCard extends StatefulWidget {
+  final bool isSubmitting;
+  final bool canRate;
+  final ValueChanged<int> onRatingSelected;
+
+  const _RateRecipeCard({
+    required this.isSubmitting,
+    required this.canRate,
+    required this.onRatingSelected,
+  });
+
+  @override
+  State<_RateRecipeCard> createState() => _RateRecipeCardState();
+}
+
+class _RateRecipeCardState extends State<_RateRecipeCard> {
+  int _selectedRating = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Rate this Recipe', style: textTheme.titleMedium),
+          Text(
+            widget.canRate
+                ? 'Tap a star to rate'
+                : 'You cannot rate your own recipe',
+            style: textTheme.bodySmall,
+          ),
+          const SizedBox(height: 10),
+          if (widget.isSubmitting)
+            const LoadingDialog(message: 'Submitting rating...', inline: true)
+          else if (!widget.canRate)
+            const SizedBox.shrink()
+          else
+            Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(5, (index) {
+                    final rating = index + 1;
+                    return InkResponse(
+                      onTap: () => setState(() => _selectedRating = rating),
+                      radius: 26,
+                      child: Icon(
+                        rating <= _selectedRating
+                            ? Icons.star
+                            : Icons.star_border,
+                        color: AppColors.secondary,
+                        size: 34,
+                      ),
+                    );
+                  }),
+                ),
+                if (_selectedRating > 0) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => widget.onRatingSelected(_selectedRating),
+                      child: const Text('Submit Rating'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ViewRatingsCard extends StatelessWidget {
+  final List<ExploreReview> reviews;
+  final ExploreRatingStarFilter starFilter;
+  final ExploreCommunityDateFilter dateFilter;
+  final void Function({
+    required ExploreRatingStarFilter star,
+    required ExploreCommunityDateFilter date,
+  })
+  onFiltersChanged;
+
+  const _ViewRatingsCard({
+    required this.reviews,
+    required this.starFilter,
+    required this.dateFilter,
+    required this.onFiltersChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text('View Ratings', style: textTheme.titleMedium),
+              const Spacer(),
+              _CompactPopupDropdown(
+                label: _ratingsDropdownLabel(starFilter, dateFilter),
+                items: [
+                  ...ExploreRatingStarFilter.values.map(
+                    (filter) => _CompactPopupItem(
+                      value: 'star:${filter.name}',
+                      label: _ratingStarLabel(filter),
+                    ),
+                  ),
+                  ...ExploreCommunityDateFilter.values.map(
+                    (filter) => _CompactPopupItem(
+                      value: 'date:${filter.name}',
+                      label: _dateFilterLabel(filter),
+                    ),
+                  ),
+                ],
+                onSelected: (value) {
+                  if (value.startsWith('star:')) {
+                    final filter = ExploreRatingStarFilter.values.firstWhere(
+                      (item) => item.name == value.substring(5),
+                    );
+                    onFiltersChanged(star: filter, date: dateFilter);
+                  } else if (value.startsWith('date:')) {
+                    final filter = ExploreCommunityDateFilter.values.firstWhere(
+                      (item) => item.name == value.substring(5),
+                    );
+                    onFiltersChanged(star: starFilter, date: filter);
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (reviews.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text('No ratings yet', style: textTheme.bodySmall),
+            )
+          else
+            ...reviews.map((review) => _ReviewTile(review: review)),
+        ],
+      ),
+    );
+  }
+
+  static String _ratingStarLabel(ExploreRatingStarFilter filter) {
+    switch (filter) {
+      case ExploreRatingStarFilter.all:
+        return 'All';
+      case ExploreRatingStarFilter.one:
+        return '1 star';
+      case ExploreRatingStarFilter.two:
+        return '2 star';
+      case ExploreRatingStarFilter.three:
+        return '3 star';
+      case ExploreRatingStarFilter.four:
+        return '4 star';
+      case ExploreRatingStarFilter.five:
+        return '5 star';
+    }
+  }
+
+  static String _dateFilterLabel(ExploreCommunityDateFilter filter) {
+    switch (filter) {
+      case ExploreCommunityDateFilter.all:
+        return 'All';
+      case ExploreCommunityDateFilter.latest:
+        return 'Latest';
+      case ExploreCommunityDateFilter.oldest:
+        return 'Oldest';
+    }
+  }
+
+  static String _ratingsDropdownLabel(
+    ExploreRatingStarFilter star,
+    ExploreCommunityDateFilter date,
+  ) {
+    if (star == ExploreRatingStarFilter.all &&
+        date == ExploreCommunityDateFilter.all) {
+      return 'All';
+    }
+    final parts = <String>[];
+    if (star != ExploreRatingStarFilter.all) parts.add(_ratingStarLabel(star));
+    if (date != ExploreCommunityDateFilter.all) {
+      parts.add(_dateFilterLabel(date));
+    }
+    return parts.join(', ');
+  }
+}
+
+class _ReviewTile extends StatelessWidget {
+  final ExploreReview review;
+
+  const _ReviewTile({required this.review});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            AppRemoteOrAssetAvatar(imagePath: review.avatarPath),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(review.author, style: textTheme.labelLarge),
+                  Text(review.timeAgo, style: textTheme.bodySmall),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: 92,
+              child: _RatingStars(size: 18, rating: review.rating),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactPopupItem {
+  final String value;
+  final String label;
+
+  const _CompactPopupItem({required this.value, required this.label});
+}
+
+class _CompactPopupDropdown extends StatelessWidget {
+  final String label;
+  final List<_CompactPopupItem> items;
+  final ValueChanged<String> onSelected;
+
+  const _CompactPopupDropdown({
+    required this.label,
+    required this.items,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      position: PopupMenuPosition.under,
+      constraints: const BoxConstraints(minWidth: 150, maxWidth: 240),
+      onSelected: onSelected,
+      itemBuilder: (context) {
+        return items.map((item) {
+          return PopupMenuItem(value: item.value, child: Text(item.label));
+        }).toList();
+      },
+      child: Container(
+        height: 30,
+        constraints: const BoxConstraints(maxWidth: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.bodySmall,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.keyboard_arrow_down,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RatingStars extends StatelessWidget {
+  final double size;
+  final double rating;
+
+  const _RatingStars({required this.size, required this.rating});
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(5, (index) {
+          final isFilled = index < rating.round();
+          return Icon(
+            Icons.star,
+            size: size,
+            color: isFilled ? AppColors.secondary : AppColors.border,
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _CommentsPanel extends StatefulWidget {
+  final ExploreRecipeDetailViewModel viewModel;
+  final ExploreRecipe recipe;
+  final bool isSubmitting;
+  final ValueChanged<String> onAddComment;
+  final ValueChanged<String> onToggleLike;
+  final Future<bool> Function(String commentId, String content) onReply;
+  final ValueChanged<String> onToggleReplyLike;
+  final Future<bool> Function(String replyPath, String content) onReplyToReply;
+
+  const _CommentsPanel({
+    required this.viewModel,
+    required this.recipe,
+    required this.isSubmitting,
+    required this.onAddComment,
+    required this.onToggleLike,
+    required this.onReply,
+    required this.onToggleReplyLike,
+    required this.onReplyToReply,
+  });
+
+  @override
+  State<_CommentsPanel> createState() => _CommentsPanelState();
+}
+
+class _CommentsPanelState extends State<_CommentsPanel> {
+  final _commentController = TextEditingController();
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  void _submitComment() {
+    final content = _commentController.text.trim();
+    if (content.isEmpty || widget.isSubmitting) return;
+    widget.onAddComment(content);
+    _commentController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+    final comments = widget.viewModel.visibleComments;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('${comments.length} Comments', style: textTheme.titleMedium),
+              const Spacer(),
+              _CompactPopupDropdown(
+                label: _commentDateLabel(widget.viewModel.commentDateFilter),
+                items: ExploreCommunityDateFilter.values.map((filter) {
+                  return _CompactPopupItem(
+                    value: filter.name,
+                    label: _commentDateLabel(filter),
+                  );
+                }).toList(),
+                onSelected: (value) {
+                  final filter = ExploreCommunityDateFilter.values.firstWhere(
+                    (item) => item.name == value,
+                  );
+                  widget.viewModel.updateCommentDateFilter(filter);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _commentController,
+            minLines: 1,
+            maxLines: 3,
+            enabled: !widget.isSubmitting,
+            textInputAction: TextInputAction.send,
+            onSubmitted: (_) => _submitComment(),
+            decoration: InputDecoration(
+              hintText: 'Add a comment',
+              suffixIcon: IconButton(
+                onPressed: widget.isSubmitting ? null : _submitComment,
+                icon: const Icon(Icons.send),
+              ),
+            ),
+          ),
+          if (widget.isSubmitting)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
+              child: LoadingDialog(message: 'Posting comment...', inline: true),
+            ),
+          const SizedBox(height: 10),
+          if (comments.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text('No comments yet', style: textTheme.bodySmall),
+            )
+          else
+            ...comments.map((comment) {
+              return _CommentTile(
+                comment: comment,
+                isSubmitting: widget.isSubmitting,
+                onToggleLike: () => widget.onToggleLike(comment.id),
+                onReply: (content) => widget.onReply(comment.id, content),
+                onToggleReplyLike: widget.onToggleReplyLike,
+                onReplyToReply: widget.onReplyToReply,
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  static String _commentDateLabel(ExploreCommunityDateFilter filter) {
+    switch (filter) {
+      case ExploreCommunityDateFilter.all:
+        return 'All';
+      case ExploreCommunityDateFilter.latest:
+        return 'Latest';
+      case ExploreCommunityDateFilter.oldest:
+        return 'Oldest';
+    }
+  }
+}
+
+class _CommentTile extends StatefulWidget {
+  final ExploreComment comment;
+  final bool isSubmitting;
+  final VoidCallback onToggleLike;
+  final Future<bool> Function(String content) onReply;
+  final ValueChanged<String> onToggleReplyLike;
+  final Future<bool> Function(String replyPath, String content) onReplyToReply;
+
+  const _CommentTile({
+    required this.comment,
+    required this.isSubmitting,
+    required this.onToggleLike,
+    required this.onReply,
+    required this.onToggleReplyLike,
+    required this.onReplyToReply,
+  });
+
+  @override
+  State<_CommentTile> createState() => _CommentTileState();
+}
+
+class _CommentTileState extends State<_CommentTile> {
+  final _replyController = TextEditingController();
+  bool _isReplying = false;
+
+  @override
+  void dispose() {
+    _replyController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitReply() async {
+    final content = _replyController.text.trim();
+    if (content.isEmpty || widget.isSubmitting) return;
+    final success = await widget.onReply(content);
+    if (!mounted) return;
+    if (success) {
+      _replyController.clear();
+      setState(() => _isReplying = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+    final comment = widget.comment;
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                AppRemoteOrAssetAvatar(
+                  radius: 18,
+                  imagePath: comment.avatarPath,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(comment.author, style: textTheme.labelLarge),
+                      Text(comment.timeAgo, style: textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(comment.content, style: textTheme.bodySmall),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                InkWell(
+                  onTap: widget.isSubmitting ? null : widget.onToggleLike,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 2,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      children: [
+                        Text('${comment.likes}', style: textTheme.bodySmall),
+                        const SizedBox(width: 3),
+                        Icon(
+                          comment.isLiked
+                              ? Icons.thumb_up
+                              : Icons.thumb_up_alt_outlined,
+                          size: 14,
+                          color: comment.isLiked
+                              ? context.colors.primary
+                              : AppColors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                TextButton(
+                  onPressed: widget.isSubmitting
+                      ? null
+                      : () => setState(() => _isReplying = !_isReplying),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Reply'),
+                ),
+              ],
+            ),
+            if (comment.replies.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.only(left: 16),
+                child: Column(
+                  children: comment.replies.map((reply) {
+                    return _ReplyTile(
+                      reply: reply,
+                      isSubmitting: widget.isSubmitting,
+                      onToggleLike: widget.onToggleReplyLike,
+                      onReply: widget.onReplyToReply,
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+            if (_isReplying) ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: _replyController,
+                minLines: 1,
+                maxLines: 3,
+                enabled: !widget.isSubmitting,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _submitReply(),
+                decoration: InputDecoration(
+                  hintText: 'Write a reply',
+                  suffixIcon: IconButton(
+                    onPressed: widget.isSubmitting ? null : _submitReply,
+                    icon: const Icon(Icons.send),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReplyTile extends StatefulWidget {
+  final ExploreCommentReply reply;
+  final bool isSubmitting;
+  final ValueChanged<String> onToggleLike;
+  final Future<bool> Function(String replyPath, String content) onReply;
+
+  const _ReplyTile({
+    required this.reply,
+    required this.isSubmitting,
+    required this.onToggleLike,
+    required this.onReply,
+  });
+
+  @override
+  State<_ReplyTile> createState() => _ReplyTileState();
+}
+
+class _ReplyTileState extends State<_ReplyTile> {
+  final _replyController = TextEditingController();
+  bool _isReplying = false;
+
+  @override
+  void dispose() {
+    _replyController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitReply() async {
+    final content = _replyController.text.trim();
+    if (content.isEmpty || widget.isSubmitting) return;
+    final success = await widget.onReply(widget.reply.documentPath, content);
+    if (!mounted) return;
+    if (success) {
+      _replyController.clear();
+      setState(() => _isReplying = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+    final reply = widget.reply;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              AppRemoteOrAssetAvatar(radius: 14, imagePath: reply.avatarPath),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(reply.author, style: textTheme.labelMedium),
+                    Text(reply.timeAgo, style: textTheme.bodySmall),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(reply.content, style: textTheme.bodySmall),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              InkWell(
+                onTap: widget.isSubmitting
+                    ? null
+                    : () => widget.onToggleLike(reply.documentPath),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 2,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    children: [
+                      Text('${reply.likes}', style: textTheme.bodySmall),
+                      const SizedBox(width: 3),
+                      Icon(
+                        reply.isLiked
+                            ? Icons.thumb_up
+                            : Icons.thumb_up_alt_outlined,
+                        size: 13,
+                        color: reply.isLiked
+                            ? context.colors.primary
+                            : AppColors.textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              TextButton(
+                onPressed: widget.isSubmitting
+                    ? null
+                    : () => setState(() => _isReplying = !_isReplying),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Reply'),
+              ),
+            ],
+          ),
+          if (reply.replies.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 16),
+              child: Column(
+                children: reply.replies.map((nestedReply) {
+                  return _ReplyTile(
+                    reply: nestedReply,
+                    isSubmitting: widget.isSubmitting,
+                    onToggleLike: widget.onToggleLike,
+                    onReply: widget.onReply,
+                  );
+                }).toList(),
+              ),
+            ),
+          if (_isReplying) ...[
+            const SizedBox(height: 6),
+            TextField(
+              controller: _replyController,
+              minLines: 1,
+              maxLines: 3,
+              enabled: !widget.isSubmitting,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _submitReply(),
+              decoration: InputDecoration(
+                hintText: 'Write a reply',
+                suffixIcon: IconButton(
+                  onPressed: widget.isSubmitting ? null : _submitReply,
+                  icon: const Icon(Icons.send),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+String _detailTabLabel(ExploreRecipeDetailTab tab) {
+  switch (tab) {
+    case ExploreRecipeDetailTab.recipe:
+      return 'Recipe';
+    case ExploreRecipeDetailTab.nutrition:
+      return 'Nutrition';
+    case ExploreRecipeDetailTab.community:
+      return 'Community';
+  }
+}

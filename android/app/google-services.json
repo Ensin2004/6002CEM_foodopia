@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "775474370484",
+    "project_id": "foodopia-10f3d",
+    "storage_bucket": "foodopia-10f3d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:775474370484:android:80e541c77345ac5d2584e1",
+        "android_client_info": {
+          "package_name": "com.example.foodopia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJZNAFAI8a-1wHWazZ9wtmWGIb3I_rj5w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

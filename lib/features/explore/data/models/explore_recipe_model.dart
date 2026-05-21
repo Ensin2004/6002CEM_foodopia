@@ -1,0 +1,35 @@
+import '../../domain/entities/explore_recipe.dart';
+
+class ExploreRecipeModel extends ExploreRecipe {
+  const ExploreRecipeModel({
+    required super.id,
+    required super.creatorUid,
+    required super.title,
+    required super.author,
+    required super.publishedAtLabel,
+    required super.authorAvatarPath,
+    super.authorFollowerCount,
+    required super.imagePath,
+    super.imagePaths,
+    required super.description,
+    super.otherNames,
+    required super.category,
+    super.categoryIds,
+    super.customCategoryIds,
+    required super.allergenInfo,
+    required super.totalTime,
+    required super.difficulty,
+    required super.rating,
+    required super.ratingCount,
+    required super.commentCount,
+    required super.totalViews,
+    required super.publishedAt,
+    required super.isFollowingAuthor,
+    required super.isCreatedByCurrentUser,
+    required super.ingredients,
+    required super.instructionSections,
+    required super.nutrition,
+    required super.community,
+    required super.relatedRecipes,
+  });
+}
