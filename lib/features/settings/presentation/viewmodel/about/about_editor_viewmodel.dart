@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
-import '../../../domain/entities/about_content.dart';
 import '../../../domain/usecases/about/get_about_content_usecase.dart';
 import '../../../domain/usecases/about/save_about_content_usecase.dart';
 
@@ -25,26 +24,32 @@ class AboutEditorViewModel extends ChangeNotifier {
     required String title,
     required GetAboutContentUseCase getAboutContentUseCase,
     required SaveAboutContentUseCase saveAboutContentUseCase,
-  })  : _documentId = documentId,
-        _title = title,
-        _getAboutContentUseCase = getAboutContentUseCase,
-        _saveAboutContentUseCase = saveAboutContentUseCase {
+  }) : _documentId = documentId,
+       _title = title,
+       _getAboutContentUseCase = getAboutContentUseCase,
+       _saveAboutContentUseCase = saveAboutContentUseCase {
     /// Loads data for the load content operation.
     loadContent();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+
   /// Handles the is saving operation.
   bool get isSaving => _isSaving;
+
   /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+
   /// Handles the content operation.
   String get content => _content;
+
   /// Handles the title operation.
   String get title => _title;
+
   /// Handles the has changes operation.
   bool get hasChanges => _hasChanges;
+
   /// Handles the is save disabled operation.
   bool get isSaveDisabled => _isSaving || _content.trim().isEmpty;
 

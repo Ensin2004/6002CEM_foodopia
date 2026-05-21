@@ -1321,6 +1321,7 @@ class _CommunityTab extends StatelessWidget {
           _RatingsPanel(
             viewModel: viewModel,
             recipe: recipe,
+            isPublished: isPublished,
             isSubmitting: viewModel.isSubmittingCommunityAction,
             canRate: !recipe.isCreatedByCurrentUser,
             onRatingSelected: (rating) =>
@@ -1466,6 +1467,7 @@ class _RelatedRecipeCard extends StatelessWidget {
 class _RatingsPanel extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
+  final bool isPublished;
   final bool isSubmitting;
   final bool canRate;
   final ValueChanged<int> onRatingSelected;
@@ -1473,6 +1475,7 @@ class _RatingsPanel extends StatelessWidget {
   const _RatingsPanel({
     required this.viewModel,
     required this.recipe,
+    required this.isPublished,
     required this.isSubmitting,
     required this.canRate,
     required this.onRatingSelected,
