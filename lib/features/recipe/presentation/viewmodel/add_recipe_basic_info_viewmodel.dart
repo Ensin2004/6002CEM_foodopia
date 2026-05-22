@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_food_search_result.dart';
+import '../../domain/entities/add_recipe_review.dart';
 import '../../domain/entities/add_recipe_setup.dart';
+import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
@@ -12,8 +14,10 @@ class AddRecipeBasicInfoViewModel extends ChangeNotifier {
   final GetAddRecipeSetupUseCase getSetupUseCase;
   final SearchAddRecipeFoodsUseCase searchFoodsUseCase;
   final SaveAddRecipeBasicInfoUseCase saveBasicInfoUseCase;
+  final GetAddRecipeReviewUseCase getReviewUseCase;
 
   AddRecipeSetup? setup;
+  AddRecipeReview? existingReview;
   bool isLoading = true;
   bool isSaving = false;
   String? errorMessage;
@@ -24,6 +28,7 @@ class AddRecipeBasicInfoViewModel extends ChangeNotifier {
     required this.getSetupUseCase,
     required this.searchFoodsUseCase,
     required this.saveBasicInfoUseCase,
+    required this.getReviewUseCase,
   }) {
     loadSetup();
   }
@@ -38,7 +43,29 @@ class AddRecipeBasicInfoViewModel extends ChangeNotifier {
       errorMessage = result.left?.message ?? 'Unable to load recipe setup.';
     } else {
       setup = result.right;
-      difficultyLevel = 0;
+      difficultyLevel = existingReview?.difficultyLevel ?? 0;
+    }
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadExistingRecipe(String recipeId) async {
+    if (recipeId.trim().isEmpty || existingReview?.recipeId == recipeId) {
+      return;
+    }
+
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    final result = await getReviewUseCase.execute(recipeId);
+    if (result.isLeft()) {
+      errorMessage = result.left?.message ?? 'Unable to load recipe details.';
+      existingReview = null;
+    } else {
+      existingReview = result.right;
+      difficultyLevel = existingReview?.difficultyLevel ?? difficultyLevel;
     }
 
     isLoading = false;

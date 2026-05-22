@@ -6,6 +6,7 @@ import '../../domain/entities/add_recipe_food_search_result.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
+import '../../domain/entities/add_recipe_review.dart';
 import '../../domain/entities/add_recipe_setup.dart';
 import '../../domain/repositories/add_recipe_repository.dart';
 import '../datasources/add_recipe_remote_datasource.dart';
@@ -62,7 +63,7 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
 
   @override
   Future<Either<Failure, String>> saveBasicInfo(AddRecipeBasicInfo info) async {
-    if (info.mediaFiles.isEmpty) {
+    if (info.mediaFiles.isEmpty && info.existingMediaUrls.isEmpty) {
       return Left(ValidationFailure(message: 'Please upload a recipe image.'));
     }
     if (info.recipeName.trim().isEmpty) {
@@ -187,6 +188,47 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
     } catch (error) {
       return Left(
         ServerFailure(message: 'Unable to save instructions: $error'),
+      );
+    }
+  }
+
+  @override
+  Future<Either<Failure, AddRecipeReview>> getReview(String recipeId) async {
+    if (recipeId.trim().isEmpty) {
+      return Left(ValidationFailure(message: 'Recipe id is missing.'));
+    }
+
+    try {
+      final review = await remoteDataSource.getReview(recipeId);
+      return Right(review);
+    } catch (error) {
+      return Left(
+        ServerFailure(message: 'Unable to load recipe review: $error'),
+      );
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateVisibility({
+    required String recipeId,
+    required String visibility,
+  }) async {
+    if (recipeId.trim().isEmpty) {
+      return Left(ValidationFailure(message: 'Recipe id is missing.'));
+    }
+    if (visibility != 'public' && visibility != 'private') {
+      return Left(ValidationFailure(message: 'Recipe visibility is invalid.'));
+    }
+
+    try {
+      await remoteDataSource.updateVisibility(
+        recipeId: recipeId,
+        visibility: visibility,
+      );
+      return const Right(null);
+    } catch (error) {
+      return Left(
+        ServerFailure(message: 'Unable to update recipe visibility: $error'),
       );
     }
   }

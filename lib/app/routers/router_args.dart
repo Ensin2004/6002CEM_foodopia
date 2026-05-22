@@ -60,26 +60,45 @@ class AddGroceryListArgs {
   const AddGroceryListArgs({this.userId});
 }
 
-// TODO - Cojean - Confirm with Ensin
 /// Typed arguments for the add recipe basic info route.
 class AddRecipeBasicInfoArgs {
-  final String? draftId;
+  final String? recipeId;
+  final bool returnToReview;
 
-  const AddRecipeBasicInfoArgs({this.draftId});
+  const AddRecipeBasicInfoArgs({this.recipeId, this.returnToReview = false});
 }
 
 /// Typed arguments for the add recipe ingredients route.
 class AddRecipeIngredientsArgs {
   final String recipeId;
+  final String visibility;
+  final bool returnToReview;
 
-  const AddRecipeIngredientsArgs({required this.recipeId});
+  const AddRecipeIngredientsArgs({
+    required this.recipeId,
+    this.visibility = 'private',
+    this.returnToReview = false,
+  });
 }
 
 /// Typed arguments for the add recipe instructions route.
 class AddRecipeInstructionsArgs {
   final String recipeId;
+  final String visibility;
+  final bool returnToReview;
 
-  const AddRecipeInstructionsArgs({required this.recipeId});
+  const AddRecipeInstructionsArgs({
+    required this.recipeId,
+    this.visibility = 'private',
+    this.returnToReview = false,
+  });
+}
+
+/// Typed arguments for the add recipe review route.
+class AddRecipeReviewArgs {
+  final String recipeId;
+
+  const AddRecipeReviewArgs({required this.recipeId});
 }
 
 /// Typed arguments for add meal planning route.
