@@ -24,6 +24,7 @@ class ExplorePage extends StatelessWidget {
         getRecipesUseCase: sl(),
         watchRecipesUseCase: sl(),
         toggleCreatorFollowUseCase: sl(),
+        toggleFavouriteUseCase: sl(),
       ),
       child: const _ExplorePageView(),
     );
@@ -115,13 +116,13 @@ class _ExplorePageViewState extends State<_ExplorePageView>
     BuildContext context,
     ExploreViewModel viewModel,
   ) async {
-    final selected = await showModalBottomSheet<ExploreSortOption>(
+    final selected = await showModalBottomSheet<Set<ExploreSortOption>>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) =>
-          _RecipeSortSheet(selected: viewModel.sortOption),
+          _RecipeSortSheet(selected: viewModel.sortOptions),
     );
-    if (selected != null) viewModel.updateSortOption(selected);
+    if (selected != null) viewModel.updateSortOptions(selected);
   }
 
   Future<void> _showFilterSheet(
@@ -219,7 +220,7 @@ class _ExploreContent extends StatelessWidget {
           crossAxisCount: crossAxisCount,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          mainAxisExtent: width < 380 ? 216 : 220,
+          mainAxisExtent: width < 380 ? 258 : 282,
         ),
         itemCount: recipes.length,
         itemBuilder: (context, index) {
@@ -227,6 +228,7 @@ class _ExploreContent extends StatelessWidget {
           return ExploreRecipeCard(
             recipe: recipe,
             onComingSoonTap: onComingSoonTap,
+            onFavouriteTap: () => viewModel.toggleFavourite(recipe.id),
             onImageLongPress: () => _showRecipeImage(context, recipe),
             onTap: () {
               context.push(
@@ -247,20 +249,32 @@ class _ExploreContent extends StatelessWidget {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return Dialog(
-          insetPadding: const EdgeInsets.all(18),
-          clipBehavior: Clip.antiAlias,
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: InteractiveViewer(
-              minScale: 1,
-              maxScale: 4,
-              child: AppRemoteOrAssetImage(
-                imagePath: recipe.imagePath,
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.contain,
-              ),
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 1,
+                    maxScale: 4,
+                    child: AppRemoteOrAssetImage(
+                      imagePath: recipe.imagePath,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -884,7 +898,7 @@ class _CategoryDropdown extends StatelessWidget {
 }
 
 class _RecipeSortSheet extends StatefulWidget {
-  final ExploreSortOption selected;
+  final Set<ExploreSortOption> selected;
 
   const _RecipeSortSheet({required this.selected});
 
@@ -893,12 +907,29 @@ class _RecipeSortSheet extends StatefulWidget {
 }
 
 class _RecipeSortSheetState extends State<_RecipeSortSheet> {
-  late ExploreSortOption _selected;
+  late Set<ExploreSortOption> _selected;
 
   @override
   void initState() {
     super.initState();
-    _selected = widget.selected;
+    _selected = {...widget.selected};
+  }
+
+  void _toggleSortOption(
+    ExploreSortOption option,
+    List<ExploreSortOption> group,
+  ) {
+    setState(() {
+      if (_selected.contains(option)) {
+        _selected.remove(option);
+      } else {
+        _selected.removeAll(group);
+        _selected.add(option);
+      }
+      if (_selected.isEmpty) {
+        _selected.add(ExploreSortOption.alphabetAZ);
+      }
+    });
   }
 
   @override
@@ -916,48 +947,47 @@ class _RecipeSortSheetState extends State<_RecipeSortSheet> {
             ),
             const SizedBox(height: 12),
             _SortButtonSection(
-              title: 'Alphabet',
+              title: 'By Alphabet:',
               selected: _selected,
               values: const [
-                ExploreSortOption.none,
                 ExploreSortOption.alphabetAZ,
                 ExploreSortOption.alphabetZA,
               ],
               labelBuilder: _sortLabel,
-              onSelected: (value) => setState(() => _selected = value),
+              onSelected: _toggleSortOption,
             ),
             const SizedBox(height: 14),
             _SortButtonSection(
-              title: 'Date',
+              title: 'By Date:',
               selected: _selected,
               values: const [
                 ExploreSortOption.newest,
                 ExploreSortOption.oldest,
               ],
               labelBuilder: _sortLabel,
-              onSelected: (value) => setState(() => _selected = value),
+              onSelected: _toggleSortOption,
             ),
             const SizedBox(height: 14),
             _SortButtonSection(
-              title: 'Rating',
+              title: 'By Rating:',
               selected: _selected,
               values: const [
                 ExploreSortOption.ratingHighLow,
                 ExploreSortOption.ratingLowHigh,
               ],
               labelBuilder: _sortLabel,
-              onSelected: (value) => setState(() => _selected = value),
+              onSelected: _toggleSortOption,
             ),
             const SizedBox(height: 14),
             _SortButtonSection(
-              title: 'Views',
+              title: 'By Views:',
               selected: _selected,
               values: const [
                 ExploreSortOption.viewsHighLow,
                 ExploreSortOption.viewsLowHigh,
               ],
               labelBuilder: _sortLabel,
-              onSelected: (value) => setState(() => _selected = value),
+              onSelected: _toggleSortOption,
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -975,8 +1005,6 @@ class _RecipeSortSheetState extends State<_RecipeSortSheet> {
 
   static String _sortLabel(ExploreSortOption option) {
     switch (option) {
-      case ExploreSortOption.none:
-        return 'Default';
       case ExploreSortOption.alphabetAZ:
         return 'Alphabet: A-Z';
       case ExploreSortOption.alphabetZA:
@@ -999,10 +1027,11 @@ class _RecipeSortSheetState extends State<_RecipeSortSheet> {
 
 class _SortButtonSection extends StatelessWidget {
   final String title;
-  final ExploreSortOption selected;
+  final Set<ExploreSortOption> selected;
   final List<ExploreSortOption> values;
   final String Function(ExploreSortOption value) labelBuilder;
-  final ValueChanged<ExploreSortOption> onSelected;
+  final void Function(ExploreSortOption value, List<ExploreSortOption> group)
+  onSelected;
 
   const _SortButtonSection({
     required this.title,
@@ -1024,11 +1053,11 @@ class _SortButtonSection extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: values.map((value) {
-            final isSelected = value == selected;
+            final isSelected = selected.contains(value);
             return ChoiceChip(
               label: Text(labelBuilder(value)),
               selected: isSelected,
-              onSelected: (_) => onSelected(value),
+              onSelected: (_) => onSelected(value, values),
               selectedColor: AppColors.primary.withValues(alpha: 0.14),
               labelStyle: textTheme.bodySmall?.copyWith(
                 color: isSelected ? AppColors.primary : AppColors.textPrimary,
@@ -1147,16 +1176,14 @@ class _RecipeFilterSheetState extends State<_RecipeFilterSheet> {
     switch (value) {
       case ExploreRatingFilter.all:
         return 'All';
-      case ExploreRatingFilter.one:
-        return '1 star';
-      case ExploreRatingFilter.two:
-        return '2 star';
-      case ExploreRatingFilter.three:
-        return '3 star';
-      case ExploreRatingFilter.four:
-        return '4 star';
-      case ExploreRatingFilter.five:
-        return '5 star';
+      case ExploreRatingFilter.oneToTwo:
+        return '1 - 2 star';
+      case ExploreRatingFilter.twoToThree:
+        return '2 - 3 star';
+      case ExploreRatingFilter.threeToFour:
+        return '3 - 4 star';
+      case ExploreRatingFilter.fourToFive:
+        return '4 - 5 star';
     }
   }
 

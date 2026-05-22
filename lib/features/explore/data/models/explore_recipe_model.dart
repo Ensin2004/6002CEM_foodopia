@@ -25,6 +25,7 @@ class ExploreRecipeModel extends ExploreRecipe {
     required super.totalViews,
     required super.publishedAt,
     required super.isFollowingAuthor,
+    super.isFavourite,
     required super.isCreatedByCurrentUser,
     required super.ingredients,
     required super.instructionSections,
