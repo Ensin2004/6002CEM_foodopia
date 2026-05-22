@@ -16,6 +16,7 @@ class LibraryRecipe {
   final double rating;
   final int ratingCount;
   final int commentCount;
+  final int totalViews;
   final bool isSelfPublished;
   final bool isFollowingAuthor;
   final bool isPublished;
@@ -41,6 +42,7 @@ class LibraryRecipe {
     required this.rating,
     required this.ratingCount,
     required this.commentCount,
+    required this.totalViews,
     required this.isSelfPublished,
     required this.isFollowingAuthor,
     required this.isPublished,

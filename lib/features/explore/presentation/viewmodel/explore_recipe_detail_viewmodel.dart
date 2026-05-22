@@ -13,6 +13,7 @@ import '../../domain/usecases/submit_recipe_rating_usecase.dart';
 import '../../domain/usecases/toggle_recipe_comment_like_usecase.dart';
 import '../../domain/usecases/toggle_recipe_reply_like_usecase.dart';
 import '../../domain/usecases/toggle_creator_follow_usecase.dart';
+import '../../domain/usecases/update_recipe_visibility_usecase.dart';
 import '../../domain/usecases/watch_explore_recipe_detail_usecase.dart';
 
 enum ExploreRecipeDetailTab { recipe, nutrition, community }
@@ -36,6 +37,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   final AddRecipeReplyToReplyUseCase _addRecipeReplyToReplyUseCase;
   final WatchExploreRecipeDetailUseCase _watchRecipeDetailUseCase;
   final ToggleCreatorFollowUseCase _toggleCreatorFollowUseCase;
+  final UpdateRecipeVisibilityUseCase _updateRecipeVisibilityUseCase;
   final String recipeId;
 
   ExploreRecipe? _recipe;
@@ -50,6 +52,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
       ExploreCommunityDateFilter.all;
   bool _isLoading = true;
   bool _isSubmittingCommunityAction = false;
+  bool _isUpdatingVisibility = false;
   bool _isDisposed = false;
   String? _errorMessage;
   String? _communityActionErrorMessage;
@@ -66,6 +69,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     required AddRecipeReplyToReplyUseCase addRecipeReplyToReplyUseCase,
     required WatchExploreRecipeDetailUseCase watchRecipeDetailUseCase,
     required ToggleCreatorFollowUseCase toggleCreatorFollowUseCase,
+    required UpdateRecipeVisibilityUseCase updateRecipeVisibilityUseCase,
   }) : _getRecipeDetailUseCase = getRecipeDetailUseCase,
        _submitRecipeRatingUseCase = submitRecipeRatingUseCase,
        _addRecipeCommentUseCase = addRecipeCommentUseCase,
@@ -75,7 +79,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
        _toggleRecipeReplyLikeUseCase = toggleRecipeReplyLikeUseCase,
        _addRecipeReplyToReplyUseCase = addRecipeReplyToReplyUseCase,
        _watchRecipeDetailUseCase = watchRecipeDetailUseCase,
-       _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase {
+       _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
+       _updateRecipeVisibilityUseCase = updateRecipeVisibilityUseCase {
     Future.microtask(_openRecipe);
     _watchRecipeDetail();
   }
@@ -89,6 +94,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   ExploreCommunityDateFilter get commentDateFilter => _commentDateFilter;
   bool get isLoading => _isLoading;
   bool get isSubmittingCommunityAction => _isSubmittingCommunityAction;
+  bool get isUpdatingVisibility => _isUpdatingVisibility;
   String? get errorMessage => _errorMessage;
   String? get communityActionErrorMessage => _communityActionErrorMessage;
 
@@ -421,6 +427,31 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     } else {
       await loadRecipe();
     }
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> updateVisibility({required bool isPublished}) async {
+    _isUpdatingVisibility = true;
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _updateRecipeVisibilityUseCase.execute(
+      recipeId: recipeId,
+      isPublished: isPublished,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+
+    if (success) {
+      await loadRecipe();
+    }
+
+    _isUpdatingVisibility = false;
     _notifyIfActive();
     return success;
   }

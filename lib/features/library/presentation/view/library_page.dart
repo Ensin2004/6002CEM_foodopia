@@ -31,6 +31,7 @@ class LibraryPage extends StatelessWidget {
       create: (_) => LibraryViewModel(
         getProfileUseCase: sl(),
         getRecipesUseCase: sl(),
+        toggleFavouriteUseCase: sl(),
         updateProfileUseCase: sl(),
       ),
       child: _LibraryPageView(onExploreNow: onExploreNow),
@@ -106,6 +107,22 @@ class _LibraryPageViewState extends State<_LibraryPageView>
       ..showSnackBar(const SnackBar(content: Text('Profile updated')));
   }
 
+  Future<void> _toggleFavourite(String recipeId) async {
+    final viewModel = context.read<LibraryViewModel>();
+    final success = await viewModel.toggleFavourite(recipeId);
+    if (!mounted || success) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            viewModel.errorMessage ?? 'Unable to update favourite.',
+          ),
+        ),
+      );
+  }
+
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChanged);
@@ -124,6 +141,7 @@ class _LibraryPageViewState extends State<_LibraryPageView>
           widget.onExploreNow ?? () => context.push(AppRouter.explore),
       onComingSoonTap: _showComingSoonMessage,
       onEditProfileTap: _showEditProfileSheet,
+      onFavouriteTap: _toggleFavourite,
     );
   }
 }
@@ -134,6 +152,7 @@ class _LibraryContent extends StatelessWidget {
   final VoidCallback onExploreNow;
   final VoidCallback onComingSoonTap;
   final VoidCallback onEditProfileTap;
+  final ValueChanged<String> onFavouriteTap;
 
   const _LibraryContent({
     required this.viewModel,
@@ -141,6 +160,7 @@ class _LibraryContent extends StatelessWidget {
     required this.onExploreNow,
     required this.onComingSoonTap,
     required this.onEditProfileTap,
+    required this.onFavouriteTap,
   });
 
   @override
@@ -206,8 +226,9 @@ class _LibraryContent extends StatelessWidget {
                   return LibraryRecipeCard(
                     recipe: recipe,
                     onComingSoonTap: onComingSoonTap,
-                    onTap: () {
-                      context.push(
+                    onFavouriteTap: () => onFavouriteTap(recipe.id),
+                    onTap: () async {
+                      await context.push(
                         AppRouter.libraryRecipeDetail,
                         extra: LibraryRecipeDetailArgs(
                           recipeId: recipe.id,
@@ -215,6 +236,8 @@ class _LibraryContent extends StatelessWidget {
                           isPublished: recipe.isPublished,
                         ),
                       );
+                      if (!context.mounted) return;
+                      await viewModel.loadLibrary();
                     },
                   );
                 }, childCount: recipes.length),

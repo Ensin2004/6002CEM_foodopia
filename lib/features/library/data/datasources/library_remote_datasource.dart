@@ -109,6 +109,28 @@ class LibraryRemoteDataSource {
     );
   }
 
+  Future<void> toggleFavourite({
+    required String recipeId,
+    required bool isFavourite,
+  }) async {
+    final uid = _currentUid();
+    final favouriteRef = firestore
+        .collection('users')
+        .doc(uid)
+        .collection('saved_recipes')
+        .doc(recipeId);
+
+    if (isFavourite) {
+      await favouriteRef.set({
+        'recipeId': recipeId,
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      return;
+    }
+
+    await favouriteRef.delete();
+  }
+
   String _currentUid() {
     final uid = auth.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
@@ -253,6 +275,7 @@ class LibraryRemoteDataSource {
       rating: rating,
       ratingCount: ratingCount,
       commentCount: _intValue(data['commentCount']) ?? 0,
+      totalViews: _intValue(data['totalViews']) ?? 0,
       isSelfPublished: creatorUid == uid,
       isFollowingAuthor: isFollowingAuthor,
       isPublished: isPublished,

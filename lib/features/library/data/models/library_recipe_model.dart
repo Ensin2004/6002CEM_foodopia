@@ -17,6 +17,7 @@ class LibraryRecipeModel extends LibraryRecipe {
     required super.rating,
     required super.ratingCount,
     required super.commentCount,
+    required super.totalViews,
     required super.isSelfPublished,
     required super.isFollowingAuthor,
     required super.isPublished,

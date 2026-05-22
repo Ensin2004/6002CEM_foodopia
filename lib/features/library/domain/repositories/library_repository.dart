@@ -13,6 +13,11 @@ abstract class LibraryRepository {
 
   Future<Either<Failure, LibraryRecipe>> getRecipeDetail(String recipeId);
 
+  Future<Either<Failure, void>> toggleFavourite({
+    required String recipeId,
+    required bool isFavourite,
+  });
+
   Future<Either<Failure, void>> updateProfile({
     required String name,
     required String bio,

@@ -826,6 +826,34 @@ class ExploreRemoteDataSource {
     });
   }
 
+  Future<void> updateRecipeVisibility({
+    required String recipeId,
+    required bool isPublished,
+  }) async {
+    final uid = _requiredUid();
+    final recipeRef = firestore.collection('recipes').doc(recipeId);
+
+    await firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(recipeRef);
+      if (!snapshot.exists) {
+        throw StateError('Recipe not found');
+      }
+
+      final data = snapshot.data() ?? {};
+      final creatorUid = _stringValue(data['creatorId']).isNotEmpty
+          ? _stringValue(data['creatorId'])
+          : _stringValue(data['creatorUid']);
+      if (creatorUid != uid) {
+        throw StateError('Only the recipe creator can change visibility.');
+      }
+
+      transaction.update(recipeRef, {
+        'visibility': isPublished ? 'public' : 'private',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
   String _requiredUid() {
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) {

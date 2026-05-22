@@ -7,11 +7,13 @@ import '../../domain/entities/library_profile.dart';
 import '../../domain/entities/library_recipe.dart';
 import '../../domain/usecases/get_library_profile_usecase.dart';
 import '../../domain/usecases/get_library_recipes_usecase.dart';
+import '../../domain/usecases/toggle_library_recipe_favourite_usecase.dart';
 import '../../domain/usecases/update_library_profile_usecase.dart';
 
 class LibraryViewModel extends ChangeNotifier {
   final GetLibraryProfileUseCase _getProfileUseCase;
   final GetLibraryRecipesUseCase _getRecipesUseCase;
+  final ToggleLibraryRecipeFavouriteUseCase _toggleFavouriteUseCase;
   final UpdateLibraryProfileUseCase _updateProfileUseCase;
 
   LibraryProfile? _profile;
@@ -26,9 +28,11 @@ class LibraryViewModel extends ChangeNotifier {
   LibraryViewModel({
     required GetLibraryProfileUseCase getProfileUseCase,
     required GetLibraryRecipesUseCase getRecipesUseCase,
+    required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
     required UpdateLibraryProfileUseCase updateProfileUseCase,
   }) : _getProfileUseCase = getProfileUseCase,
        _getRecipesUseCase = getRecipesUseCase,
+       _toggleFavouriteUseCase = toggleFavouriteUseCase,
        _updateProfileUseCase = updateProfileUseCase {
     Future.microtask(loadLibrary);
   }
@@ -58,9 +62,7 @@ class LibraryViewModel extends ChangeNotifier {
         );
         break;
       case LibraryRecipeTab.favourites:
-        results = results.where(
-          (recipe) => !recipe.isSelfPublished && recipe.isFollowingAuthor,
-        );
+        results = results.where((recipe) => recipe.isFollowingAuthor);
         break;
     }
 
@@ -158,6 +160,76 @@ class LibraryViewModel extends ChangeNotifier {
     _isSavingProfile = false;
     _notifyIfActive();
     return success;
+  }
+
+  Future<bool> toggleFavourite(String recipeId) async {
+    final recipeIndex = _recipes.indexWhere((recipe) => recipe.id == recipeId);
+    if (recipeIndex == -1) return false;
+
+    final originalRecipe = _recipes[recipeIndex];
+    final nextFavourite = !originalRecipe.isFollowingAuthor;
+    _recipes = [
+      for (final recipe in _recipes)
+        if (recipe.id == recipeId)
+          _copyRecipe(recipe, isFollowingAuthor: nextFavourite)
+        else
+          recipe,
+    ];
+    _errorMessage = null;
+    _notifyIfActive();
+
+    final result = await _toggleFavouriteUseCase.execute(
+      recipeId: recipeId,
+      isFavourite: nextFavourite,
+    );
+    if (_isDisposed) return false;
+
+    var success = false;
+    result.ifRight((_) {
+      success = true;
+    });
+    result.ifLeft((failure) {
+      _errorMessage = failure.message;
+    });
+
+    if (!success) {
+      _recipes = [
+        for (final recipe in _recipes)
+          if (recipe.id == recipeId) originalRecipe else recipe,
+      ];
+      _notifyIfActive();
+    }
+
+    return success;
+  }
+
+  LibraryRecipe _copyRecipe(LibraryRecipe recipe, {bool? isFollowingAuthor}) {
+    return LibraryRecipe(
+      id: recipe.id,
+      title: recipe.title,
+      author: recipe.author,
+      publishedAtLabel: recipe.publishedAtLabel,
+      authorAvatarPath: recipe.authorAvatarPath,
+      imagePath: recipe.imagePath,
+      imagePaths: recipe.imagePaths,
+      description: recipe.description,
+      category: recipe.category,
+      allergenInfo: recipe.allergenInfo,
+      totalTime: recipe.totalTime,
+      difficulty: recipe.difficulty,
+      rating: recipe.rating,
+      ratingCount: recipe.ratingCount,
+      commentCount: recipe.commentCount,
+      totalViews: recipe.totalViews,
+      isSelfPublished: recipe.isSelfPublished,
+      isFollowingAuthor: isFollowingAuthor ?? recipe.isFollowingAuthor,
+      isPublished: recipe.isPublished,
+      ingredients: recipe.ingredients,
+      instructionSections: recipe.instructionSections,
+      nutrition: recipe.nutrition,
+      community: recipe.community,
+      relatedRecipes: recipe.relatedRecipes,
+    );
   }
 
   void _notifyIfActive() {

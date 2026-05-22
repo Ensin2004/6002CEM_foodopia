@@ -8,12 +8,14 @@ class LibraryRecipeCard extends StatelessWidget {
   final LibraryRecipe recipe;
   final VoidCallback onTap;
   final VoidCallback onComingSoonTap;
+  final VoidCallback onFavouriteTap;
 
   const LibraryRecipeCard({
     super.key,
     required this.recipe,
     required this.onTap,
     required this.onComingSoonTap,
+    required this.onFavouriteTap,
   });
 
   @override
@@ -46,7 +48,7 @@ class LibraryRecipeCard extends StatelessWidget {
                     Positioned(
                       right: 8,
                       top: 8,
-                      child: _BookmarkButton(onTap: onComingSoonTap),
+                      child: _ViewsBadge(count: recipe.totalViews),
                     ),
                     Positioned(
                       left: 8,
@@ -84,7 +86,7 @@ class LibraryRecipeCard extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         recipe.description,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: textTheme.bodySmall?.copyWith(height: 1.35),
                       ),
@@ -122,21 +124,22 @@ class LibraryRecipeCard extends StatelessWidget {
                               ],
                             ),
                           ),
-                          Text(
-                            _compactCount(recipe.commentCount),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          InkResponse(
+                          _CountWithIcon(
+                            icon: Icons.chat_bubble,
+                            label: _compactCount(recipe.commentCount),
                             onTap: onComingSoonTap,
+                          ),
+                          const SizedBox(width: 6),
+                          InkResponse(
+                            onTap: onFavouriteTap,
                             radius: 18,
-                            child: const Icon(
-                              Icons.favorite_border,
-                              color: AppColors.textSecondary,
+                            child: Icon(
+                              recipe.isFollowingAuthor
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: recipe.isFollowingAuthor
+                                  ? AppColors.favourite
+                                  : AppColors.textSecondary,
                               size: 22,
                             ),
                           ),
@@ -197,53 +200,114 @@ class _RatingLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!recipe.isPublished) {
-      return Flexible(
-        child: Text(
-          'No rating',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: context.text.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w700,
+      return SizedBox(
+        width: 64,
+        child: Align(
+          alignment: Alignment.topRight,
+          child: Text(
+            'No rating',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: context.text.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       );
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          recipe.rating.toStringAsFixed(1),
-          style: context.text.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w700,
+    return SizedBox(
+      width: 44,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            recipe.rating.toStringAsFixed(1),
+            style: context.text.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        const SizedBox(width: 3),
-        const Icon(Icons.star, color: AppColors.secondary, size: 20),
-      ],
+          const SizedBox(width: 3),
+          const Icon(Icons.star, color: AppColors.secondary, size: 20),
+        ],
+      ),
     );
   }
 }
 
-class _BookmarkButton extends StatelessWidget {
-  final VoidCallback onTap;
+class _ViewsBadge extends StatelessWidget {
+  final int count;
 
-  const _BookmarkButton({required this.onTap});
+  const _ViewsBadge({required this.count});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.9),
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: const Padding(
-          padding: EdgeInsets.all(6),
-          child: Icon(Icons.bookmark, color: AppColors.textSecondary, size: 20),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.58),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.visibility, size: 13, color: Colors.white),
+            const SizedBox(width: 3),
+            Text(
+              _compactCount(count),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.labelSmall?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _CountWithIcon extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _CountWithIcon({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkResponse(
+      onTap: onTap,
+      radius: 18,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.bodySmall?.copyWith(
+              color: AppColors.textSecondary.withValues(alpha: 0.72),
+            ),
+          ),
+          const SizedBox(width: 3),
+          Icon(
+            icon,
+            size: 18,
+            color: AppColors.textSecondary.withValues(alpha: 0.55),
+          ),
+        ],
       ),
     );
   }
