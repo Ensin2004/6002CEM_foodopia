@@ -50,6 +50,26 @@ class LibraryRepositoryImpl implements LibraryRepository {
   }
 
   @override
+  Future<Either<Failure, void>> toggleFavourite({
+    required String recipeId,
+    required bool isFavourite,
+  }) async {
+    if (recipeId.trim().isEmpty) {
+      return Left(ValidationFailure(message: 'Recipe id is missing.'));
+    }
+
+    try {
+      await remoteDataSource.toggleFavourite(
+        recipeId: recipeId,
+        isFavourite: isFavourite,
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> updateProfile({
     required String name,
     required String bio,

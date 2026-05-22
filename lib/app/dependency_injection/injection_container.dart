@@ -55,12 +55,14 @@ import '../../features/library/domain/repositories/library_repository.dart';
 import '../../features/library/domain/usecases/get_library_profile_usecase.dart';
 import '../../features/library/domain/usecases/get_library_recipe_detail_usecase.dart';
 import '../../features/library/domain/usecases/get_library_recipes_usecase.dart';
+import '../../features/library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
 import '../../features/library/domain/usecases/update_library_profile_usecase.dart';
 import '../../features/explore/domain/usecases/increment_recipe_view_count_usecase.dart';
 import '../../features/explore/domain/usecases/submit_recipe_rating_usecase.dart';
 import '../../features/explore/domain/usecases/toggle_recipe_comment_like_usecase.dart';
 import '../../features/explore/domain/usecases/toggle_recipe_reply_like_usecase.dart';
 import '../../features/explore/domain/usecases/toggle_creator_follow_usecase.dart';
+import '../../features/explore/domain/usecases/update_recipe_visibility_usecase.dart';
 import '../../features/explore/domain/usecases/watch_explore_recipes_usecase.dart';
 import '../../features/explore/domain/usecases/watch_explore_recipe_detail_usecase.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
@@ -293,6 +295,7 @@ void _initExploreFeature() {
   sl.registerLazySingleton(() => ToggleRecipeReplyLikeUseCase(sl()));
   sl.registerLazySingleton(() => AddRecipeReplyToReplyUseCase(sl()));
   sl.registerLazySingleton(() => ToggleCreatorFollowUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateRecipeVisibilityUseCase(sl()));
 }
 
 void _initLibraryFeature() {
@@ -307,6 +310,7 @@ void _initLibraryFeature() {
   sl.registerLazySingleton(() => GetLibraryRecipesUseCase(sl()));
   sl.registerLazySingleton(() => GetLibraryProfileUseCase(sl()));
   sl.registerLazySingleton(() => GetLibraryRecipeDetailUseCase(sl()));
+  sl.registerLazySingleton(() => ToggleLibraryRecipeFavouriteUseCase(sl()));
   sl.registerLazySingleton(() => UpdateLibraryProfileUseCase(sl()));
 }
 

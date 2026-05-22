@@ -43,6 +43,7 @@ class ExploreRecipeDetailPage extends StatelessWidget {
         addRecipeReplyToReplyUseCase: sl(),
         watchRecipeDetailUseCase: sl(),
         toggleCreatorFollowUseCase: sl(),
+        updateRecipeVisibilityUseCase: sl(),
       ),
       child: _ExploreRecipeDetailView(
         showLibraryActions: showLibraryActions,
@@ -69,6 +70,7 @@ class _ExploreRecipeDetailView extends StatefulWidget {
 class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  late bool _isPublished;
 
   @override
   void initState() {
@@ -78,6 +80,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       vsync: this,
     );
     _tabController.addListener(_handleTabChanged);
+    _isPublished = widget.isPublished;
   }
 
   void _handleTabChanged() {
@@ -90,6 +93,74 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
+  }
+
+  Future<void> _confirmVisibilityChange(
+    ExploreRecipeDetailViewModel viewModel,
+  ) async {
+    final nextPublished = !_isPublished;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            nextPublished ? 'Publish recipe?' : 'Make recipe private?',
+          ),
+          content: Text(
+            nextPublished
+                ? 'This recipe will be visible to other users in Explore.'
+                : 'This recipe will be hidden from Explore but remain in your library.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(nextPublished ? 'Publish' : 'Make Private'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => LoadingDialog(
+        message: nextPublished ? 'Publishing recipe...' : 'Updating recipe...',
+      ),
+    );
+
+    final success = await viewModel.updateVisibility(
+      isPublished: nextPublished,
+    );
+
+    if (!mounted) return;
+    rootNavigator.pop();
+
+    if (success) {
+      setState(() => _isPublished = nextPublished);
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? nextPublished
+                      ? 'Recipe published.'
+                      : 'Recipe is now private.'
+                : viewModel.communityActionErrorMessage ??
+                      'Unable to update recipe visibility.',
+          ),
+        ),
+      );
   }
 
   @override
@@ -123,7 +194,8 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         tabController: _tabController,
         onComingSoonTap: _showComingSoonMessage,
         showLibraryActions: widget.showLibraryActions,
-        isPublished: widget.isPublished,
+        isPublished: _isPublished,
+        onVisibilityTap: () => _confirmVisibilityChange(viewModel),
       ),
     );
   }
@@ -133,6 +205,7 @@ class _DetailBody extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final TabController tabController;
   final VoidCallback onComingSoonTap;
+  final VoidCallback onVisibilityTap;
   final bool showLibraryActions;
   final bool isPublished;
 
@@ -140,6 +213,7 @@ class _DetailBody extends StatelessWidget {
     required this.viewModel,
     required this.tabController,
     required this.onComingSoonTap,
+    required this.onVisibilityTap,
     required this.showLibraryActions,
     required this.isPublished,
   });
@@ -173,7 +247,8 @@ class _DetailBody extends StatelessWidget {
           recipe: recipe,
           showLibraryActions: showLibraryActions,
           isPublished: isPublished,
-          onActionTap: onComingSoonTap,
+          onEditTap: onComingSoonTap,
+          onVisibilityTap: onVisibilityTap,
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -198,13 +273,15 @@ class _HeroImage extends StatefulWidget {
   final ExploreRecipe recipe;
   final bool showLibraryActions;
   final bool isPublished;
-  final VoidCallback onActionTap;
+  final VoidCallback onEditTap;
+  final VoidCallback onVisibilityTap;
 
   const _HeroImage({
     required this.recipe,
     required this.showLibraryActions,
     required this.isPublished,
-    required this.onActionTap,
+    required this.onEditTap,
+    required this.onVisibilityTap,
   });
 
   @override
@@ -273,7 +350,7 @@ class _HeroImageState extends State<_HeroImage> {
             child: _LibraryImageActionButton(
               label: 'Edit',
               foregroundColor: AppColors.textPrimary,
-              onTap: widget.onActionTap,
+              onTap: widget.onEditTap,
             ),
           ),
           Positioned(
@@ -284,7 +361,7 @@ class _HeroImageState extends State<_HeroImage> {
               foregroundColor: widget.isPublished
                   ? AppColors.error
                   : AppColors.primary,
-              onTap: widget.onActionTap,
+              onTap: widget.onVisibilityTap,
             ),
           ),
         ],
@@ -398,7 +475,8 @@ class _RecipeHeader extends StatelessWidget {
         const SizedBox(height: 14),
         Row(
           children: [
-            Expanded(
+            Flexible(
+              flex: 3,
               child: _MetricTile(
                 icon: Icons.schedule,
                 color: context.colors.primary,
@@ -407,7 +485,8 @@ class _RecipeHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Expanded(
+            Flexible(
+              flex: 3,
               child: _MetricTile(
                 icon: Icons.restaurant_menu,
                 color: AppColors.error,
@@ -416,7 +495,8 @@ class _RecipeHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Expanded(
+            Flexible(
+              flex: isPublished ? 3 : 4,
               child: _MetricTile(
                 icon: Icons.star,
                 color: AppColors.secondary,
@@ -476,6 +556,7 @@ class _MetricTile extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  softWrap: false,
                   style: textTheme.labelLarge,
                 ),
                 Text(
