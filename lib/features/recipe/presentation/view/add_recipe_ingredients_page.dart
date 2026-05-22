@@ -20,6 +20,7 @@ import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
+import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_ingredients_viewmodel.dart';
@@ -32,11 +33,13 @@ import '../widgets/recipe_visibility_action_button.dart';
 class AddRecipeIngredientsPage extends StatelessWidget {
   final String recipeId;
   final String initialVisibility;
+  final bool returnToReview;
 
   const AddRecipeIngredientsPage({
     super.key,
     required this.recipeId,
     this.initialVisibility = "private",
+    this.returnToReview = false,
   });
 
   @override
@@ -49,6 +52,7 @@ class AddRecipeIngredientsPage extends StatelessWidget {
             searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
             getFoodNutrientsUseCase: sl<GetAddRecipeFoodNutrientsUseCase>(),
             saveIngredientsUseCase: sl<SaveAddRecipeIngredientsUseCase>(),
+            getReviewUseCase: sl<GetAddRecipeReviewUseCase>(),
           ),
         ),
         ChangeNotifierProvider(
@@ -58,24 +62,32 @@ class AddRecipeIngredientsPage extends StatelessWidget {
           ),
         ),
       ],
-      child: _AddRecipeIngredientsView(recipeId: recipeId),
+      child: _AddRecipeIngredientsView(
+        recipeId: recipeId,
+        returnToReview: returnToReview,
+      ),
     );
   }
 }
 
 class _AddRecipeIngredientsView extends StatefulWidget {
   final String recipeId;
+  final bool returnToReview;
 
-  const _AddRecipeIngredientsView({required this.recipeId});
+  const _AddRecipeIngredientsView({
+    required this.recipeId,
+    required this.returnToReview,
+  });
 
   @override
-  State<_AddRecipeIngredientsView> createState() =>
-      _AddRecipeIngredientsViewState();
+  State<_AddRecipeIngredientsView> createState() => _AddRecipeIngredientsViewState();
 }
 
 class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
   final ImagePicker _imagePicker = ImagePicker();
   final List<IngredientRowState> _rows = [IngredientRowState()];
+  String? _seededRecipeId;
+  String? _requestedRecipeId;
 
   @override
   void initState() {
@@ -99,6 +111,27 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     final horizontalPadding = MediaQuery.sizeOf(context).width >= 600
         ? 48.0
         : AppSpacing.lg;
+
+    if (viewModel.isLoadingUnits) {
+      return const LoadingDialog();
+    }
+
+    if (viewModel.existingReview == null &&
+        _requestedRecipeId != widget.recipeId) {
+      _requestedRecipeId = widget.recipeId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<AddRecipeIngredientsViewModel>().loadExistingRecipe(
+          widget.recipeId,
+        );
+      });
+      return const LoadingDialog();
+    }
+
+    final existingReview = viewModel.existingReview;
+    if (existingReview != null && _seededRecipeId != existingReview.recipeId) {
+      _seedFromReview(viewModel);
+    }
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -227,7 +260,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
                 AppSpacing.lg,
               ),
               child: PrimaryButton(
-                text: "Next",
+                text: widget.returnToReview ? "Save & Review" : "Save & Continue",
                 isLoading: viewModel.isSaving,
                 onPressed: viewModel.isSaving || !_canSave
                     ? null
@@ -368,6 +401,14 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       context,
     ).showSnackBar(const SnackBar(content: Text("Recipe ingredients saved.")));
 
+    if (widget.returnToReview) {
+      context.pushReplacement(
+        AppRouter.addRecipeReview,
+        extra: AddRecipeReviewArgs(recipeId: widget.recipeId),
+      );
+      return;
+    }
+
     context.push(
       AppRouter.addRecipeInstructions,
       extra: AddRecipeInstructionsArgs(
@@ -384,6 +425,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
           (row) => AddRecipeIngredient(
             name: row.nameController.text.trim(),
             imageFile: row.imageFile,
+            existingImageUrl: row.existingImageUrl,
             amount: double.parse(row.amountController.text.trim()),
             unitId: row.isCustomUnit ? "" : row.unitId,
             customUnit: row.isCustomUnit ? row.unitName : "",
@@ -404,6 +446,63 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     if (!mounted) return;
     setState(() {});
   }
+
+  // Review Helper
+  void _seedFromReview(AddRecipeIngredientsViewModel viewModel) {
+    final review = viewModel.existingReview;
+    if (review == null) return;
+
+    for (final row in _rows) {
+      row.dispose();
+    }
+    _rows
+      ..clear()
+      ..addAll(
+        (review.ingredients.isEmpty ? [null] : review.ingredients).map((item) {
+          final row = IngredientRowState();
+          if (item != null) {
+            row.nameController.text = item.name;
+            row.amountController.text = item.amount;
+            row.existingImageUrl = item.image.trim().isEmpty
+                ? null
+                : item.image;
+            final unit = _unitByName(viewModel.units, item.unit);
+            if (unit == null) {
+              row.unitName = item.unit;
+              row.isCustomUnit = item.unit.trim().isNotEmpty;
+            } else {
+              row.unitId = unit.id;
+              row.unitName = unit.name;
+              row.isCustomUnit = false;
+            }
+            row.usdaId = item.usdaId;
+            row.usdaNutrients = item.nutrients;
+          }
+          row.addListener(_refreshFormState);
+          return row;
+        }),
+      );
+
+    _seededRecipeId = review.recipeId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AddRecipeVisibilityViewModel>().seedVisibility(
+        review.visibility,
+      );
+    });
+  }
+
+  AddRecipeIngredientUnit? _unitByName(
+    List<AddRecipeIngredientUnit> units,
+    String name,
+  ) {
+    for (final unit in units) {
+      if (unit.name.toLowerCase() == name.toLowerCase()) {
+        return unit;
+      }
+    }
+    return null;
+  }
 }
 
 // Ingredient Row State Class
@@ -413,6 +512,7 @@ class IngredientRowState {
   final TextEditingController amountController = TextEditingController();
   final List<VoidCallback> _listeners = [];
   File? imageFile;
+  String? existingImageUrl;
   String unitId = "";
   String unitName = "";
   bool isCustomUnit = false;
@@ -434,7 +534,8 @@ class IngredientRowState {
         nameController.text.trim().isNotEmpty ||
         amountController.text.trim().isNotEmpty ||
         unitValueForSave.trim().isNotEmpty ||
-        imageFile != null;
+        imageFile != null ||
+        existingImageUrl != null;
     return hasContent && !isComplete;
   }
 
@@ -448,6 +549,7 @@ class IngredientRowState {
     nameController.clear();
     amountController.clear();
     imageFile = null;
+    existingImageUrl = null;
     unitId = "";
     unitName = "";
     isCustomUnit = false;

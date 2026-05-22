@@ -18,6 +18,7 @@ import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_option.dart';
 import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
+import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_basic_info_viewmodel.dart';
@@ -32,7 +33,14 @@ import '../widgets/basic_info/input_text_field.dart';
 import '../widgets/basic_info/recipe_option_picker_sheet.dart';
 
 class AddRecipeBasicInfoPage extends StatelessWidget {
-  const AddRecipeBasicInfoPage({super.key});
+  final String? recipeId;
+  final bool returnToReview;
+
+  const AddRecipeBasicInfoPage({
+    super.key,
+    this.recipeId,
+    this.returnToReview = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -43,30 +51,39 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
             getSetupUseCase: sl<GetAddRecipeSetupUseCase>(),
             searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
             saveBasicInfoUseCase: sl<SaveAddRecipeBasicInfoUseCase>(),
+            getReviewUseCase: sl<GetAddRecipeReviewUseCase>(),
           ),
         ),
         ChangeNotifierProvider(
-          create: (_) => AddRecipeVisibilityViewModel(
-              updateVisibilityUseCase: sl(),
-          ),
+          create: (_) =>
+              AddRecipeVisibilityViewModel(updateVisibilityUseCase: sl()),
         ),
       ],
-      child: const _AddRecipeBasicInfoView(),
+      child: _AddRecipeBasicInfoView(
+        recipeId: recipeId,
+        returnToReview: returnToReview,
+      ),
     );
   }
 }
 
 class _AddRecipeBasicInfoView extends StatefulWidget {
-  const _AddRecipeBasicInfoView();
+  final String? recipeId;
+  final bool returnToReview;
+
+  const _AddRecipeBasicInfoView({
+    this.recipeId,
+    required this.returnToReview
+  });
 
   @override
-  State<_AddRecipeBasicInfoView> createState() =>
-      _AddRecipeBasicInfoViewState();
+  State<_AddRecipeBasicInfoView> createState() => _AddRecipeBasicInfoViewState();
 }
 
 class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   final ImagePicker _imagePicker = ImagePicker();
   final List<File> _images = [];
+  final List<String> _existingImageUrls = [];
   final TextEditingController _recipeNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _prepTimeController = TextEditingController();
@@ -80,6 +97,8 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   List<String> _customCategories = [];
   List<String> _selectedAllergenIds = [];
   List<String> _customAllergens = [];
+  String? _seededRecipeId;
+  String? _requestedRecipeId;
 
   @override
   void initState() {
@@ -120,6 +139,26 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       return _RecipeErrorState(message: viewModel.errorMessage);
     }
 
+    final recipeId = widget.recipeId;
+    if (recipeId != null &&
+        recipeId.trim().isNotEmpty &&
+        viewModel.existingReview == null &&
+        _requestedRecipeId != recipeId) {
+      _requestedRecipeId = recipeId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<AddRecipeBasicInfoViewModel>().loadExistingRecipe(
+          recipeId,
+        );
+      });
+      return const LoadingDialog();
+    }
+
+    final existingReview = viewModel.existingReview;
+    if (existingReview != null && _seededRecipeId != existingReview.recipeId) {
+      _seedFromReview(viewModel, setup.categories, setup.allergens);
+    }
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
@@ -132,7 +171,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                 visibility: visibilityViewModel.visibility,
                 isSaving: visibilityViewModel.isSaving,
                 onChanged: (value) => visibilityViewModel.updateVisibility(
-                  recipeId: "",
+                  recipeId: widget.recipeId ?? "",
                   value: value,
                 ),
               );
@@ -176,6 +215,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.sm),
                   RecipeImagePicker(
                     images: _images,
+                    existingImageUrls: _existingImageUrls,
                     onPick: _pickImages,
                     onEdit: _showSelectedMediaSheet,
                   ),
@@ -307,7 +347,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                 AppSpacing.lg,
               ),
               child: PrimaryButton(
-                text: "Next",
+                text: widget.returnToReview ? "Save & Review" : "Save & Continue",
                 isLoading: viewModel.isSaving,
                 onPressed:
                     viewModel.isSaving || !_isBasicInfoComplete(viewModel)
@@ -323,7 +363,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
 
   // Image Picker Helper
   Future<void> _pickImages() async {
-    final remainingSlots = 10 - _images.length;
+    final remainingSlots = 10 - _images.length - _existingImageUrls.length;
     if (remainingSlots <= 0) return;
 
     final pickedImages = await _imagePicker.pickMultiImage();
@@ -337,7 +377,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   }
 
   Future<void> _showSelectedMediaSheet() async {
-    if (_images.isEmpty) {
+    if (_images.isEmpty && _existingImageUrls.isEmpty) {
       await _pickImages();
       return;
     }
@@ -354,10 +394,18 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
           builder: (context, setSheetState) {
             return RecipeImageEditSheet(
               images: _images,
+              existingImageUrls: _existingImageUrls,
+              onRemoveExisting: (index) {
+                setState(() => _existingImageUrls.removeAt(index));
+                setSheetState(() {});
+                if (_images.isEmpty && _existingImageUrls.isEmpty) {
+                  Navigator.of(sheetContext).pop();
+                }
+              },
               onRemove: (index) {
                 setState(() => _images.removeAt(index));
                 setSheetState(() {});
-                if (_images.isEmpty) {
+                if (_images.isEmpty && _existingImageUrls.isEmpty) {
                   Navigator.of(sheetContext).pop();
                 }
               },
@@ -495,7 +543,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     AddRecipeBasicInfoViewModel viewModel,
   ) async {
     final info = AddRecipeBasicInfo(
+      recipeId: widget.recipeId,
       mediaFiles: List<File>.unmodifiable(_images),
+      existingMediaUrls: List<String>.unmodifiable(_existingImageUrls),
       recipeName: _recipeNameController.text.trim(),
       description: _descriptionController.text.trim(),
       otherNames: _nonEmptyControllerValues(_otherNameControllers),
@@ -525,6 +575,14 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       context,
     ).showSnackBar(const SnackBar(content: Text("Recipe basic info saved.")));
 
+    if (widget.returnToReview) {
+      context.pushReplacement(
+        AppRouter.addRecipeReview,
+        extra: AddRecipeReviewArgs(recipeId: viewModel.savedRecipeId!),
+      );
+      return;
+    }
+
     context.push(
       AppRouter.addRecipeIngredients,
       extra: AddRecipeIngredientsArgs(
@@ -542,7 +600,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   }
 
   bool _isBasicInfoComplete(AddRecipeBasicInfoViewModel viewModel) {
-    return _images.isNotEmpty &&
+    return (_images.isNotEmpty || _existingImageUrls.isNotEmpty) &&
         _recipeNameController.text.trim().isNotEmpty &&
         _descriptionController.text.trim().isNotEmpty &&
         (_selectedCategoryIds.isNotEmpty || _customCategories.isNotEmpty) &&
@@ -556,6 +614,95 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     if (!mounted) return;
     setState(() {});
   }
+
+  // Review Helper
+  void _seedFromReview(
+    AddRecipeBasicInfoViewModel viewModel,
+    List<AddRecipeOption> categories,
+    List<AddRecipeOption> allergens,
+  ) {
+    final review = viewModel.existingReview;
+    if (review == null) return;
+
+    _existingImageUrls
+      ..clear()
+      ..addAll(review.media.where((url) => url.trim().isNotEmpty));
+    _recipeNameController.text = review.recipeName;
+    _descriptionController.text = review.description;
+    _prepTimeController.text = review.preparationMinutes.toString();
+    _servingsController.text = review.servings.toString();
+
+    for (final controller in _otherNameControllers) {
+      controller.dispose();
+    }
+    _otherNameControllers
+      ..clear()
+      ..addAll(
+        (review.otherNames.isEmpty ? [""] : review.otherNames).map(
+          (name) => TextEditingController(text: name),
+        ),
+      );
+    for (final controller in _otherNameControllers) {
+      controller.addListener(_refreshRequiredState);
+    }
+
+    final categorySelection = _splitSavedOptions(
+      savedNames: review.categories,
+      options: categories,
+    );
+    _selectedCategoryIds = categorySelection.optionIds;
+    _customCategories = categorySelection.customNames;
+
+    final allergenSelection = _splitSavedOptions(
+      savedNames: review.allergens,
+      options: allergens,
+    );
+    _selectedAllergenIds = allergenSelection.optionIds;
+    _customAllergens = allergenSelection.customNames;
+
+    _seededRecipeId = review.recipeId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AddRecipeVisibilityViewModel>().seedVisibility(
+        review.visibility,
+      );
+    });
+  }
+
+  _SavedRecipeOption _splitSavedOptions({
+    required List<String> savedNames,
+    required List<AddRecipeOption> options,
+  }) {
+    final optionIds = <String>[];
+    final customNames = <String>[];
+
+    for (final name in savedNames) {
+      final match = options.where(
+        (option) => option.name.toLowerCase() == name.toLowerCase(),
+      );
+      if (match.isNotEmpty) {
+        optionIds.add(match.first.id);
+      } else if (name.trim().isNotEmpty) {
+        customNames.add(name);
+      }
+    }
+
+    return _SavedRecipeOption(
+      optionIds: optionIds,
+      customNames: customNames,
+    );
+  }
+}
+
+// Saved Recipe Option Class
+class _SavedRecipeOption {
+  final List<String> optionIds;
+  final List<String> customNames;
+
+  const _SavedRecipeOption({
+    required this.optionIds,
+    required this.customNames,
+  });
 }
 
 // Selected Recipe Option Class

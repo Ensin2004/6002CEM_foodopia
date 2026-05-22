@@ -50,18 +50,21 @@ class AddGroceryListArgs {
 /// Typed arguments for the add recipe basic info route.
 class AddRecipeBasicInfoArgs {
   final String? recipeId;
+  final bool returnToReview;
 
-  const AddRecipeBasicInfoArgs({this.recipeId});
+  const AddRecipeBasicInfoArgs({this.recipeId, this.returnToReview = false});
 }
 
 /// Typed arguments for the add recipe ingredients route.
 class AddRecipeIngredientsArgs {
   final String recipeId;
   final String visibility;
+  final bool returnToReview;
 
   const AddRecipeIngredientsArgs({
     required this.recipeId,
     this.visibility = 'private',
+    this.returnToReview = false,
   });
 }
 
@@ -69,10 +72,12 @@ class AddRecipeIngredientsArgs {
 class AddRecipeInstructionsArgs {
   final String recipeId;
   final String visibility;
+  final bool returnToReview;
 
   const AddRecipeInstructionsArgs({
     required this.recipeId,
     this.visibility = 'private',
+    this.returnToReview = false,
   });
 }
 

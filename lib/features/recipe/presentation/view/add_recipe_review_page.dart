@@ -39,9 +39,8 @@ class AddRecipeReviewPage extends StatelessWidget {
           )..loadReview(recipeId),
         ),
         ChangeNotifierProvider(
-          create: (_) => AddRecipeVisibilityViewModel(
-            updateVisibilityUseCase: sl(),
-          ),
+          create: (_) =>
+              AddRecipeVisibilityViewModel(updateVisibilityUseCase: sl()),
         ),
       ],
       child: _AddRecipeReviewView(recipeId: recipeId),
@@ -168,7 +167,10 @@ class _AddRecipeReviewView extends StatelessWidget {
                     title: "Basic Info",
                     onEdit: () => context.push(
                       AppRouter.addRecipeBasicInfo,
-                      extra: AddRecipeBasicInfoArgs(recipeId: recipeId),
+                      extra: AddRecipeBasicInfoArgs(
+                        recipeId: recipeId,
+                        returnToReview: true,
+                      ),
                     ),
                     children: [
                       ReviewInfoRow(
@@ -176,8 +178,8 @@ class _AddRecipeReviewView extends StatelessWidget {
                         value: review.recipeName,
                       ),
                       ReviewInfoRow(
-                          label: "Description",
-                          value: review.description,
+                        label: "Description",
+                        value: review.description,
                       ),
                       ReviewInfoRow(
                         label: "Other Name",
@@ -197,7 +199,9 @@ class _AddRecipeReviewView extends StatelessWidget {
                       ),
                       ReviewInfoRow(
                         label: "Servings",
-                        value: review.servings == 1 ? "${review.servings} serving" : "${review.servings} servings",
+                        value: review.servings == 1
+                            ? "${review.servings} serving"
+                            : "${review.servings} servings",
                       ),
                       ReviewInfoRow(
                         label: "Allergen Info",
@@ -210,7 +214,7 @@ class _AddRecipeReviewView extends StatelessWidget {
                   // Nutrients Section
                   ReviewSectionRow(
                     icon: Icons.science_rounded,
-                    title: "Nutrients",
+                    title: "Nutrients (AI Estimated)",
                     children: [
                       ReviewInfoRow(
                         label: "Calories",
@@ -241,6 +245,7 @@ class _AddRecipeReviewView extends StatelessWidget {
                       extra: AddRecipeIngredientsArgs(
                         recipeId: recipeId,
                         visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+                        returnToReview: true,
                       ),
                     ),
                     children: review.ingredients
@@ -258,6 +263,7 @@ class _AddRecipeReviewView extends StatelessWidget {
                       extra: AddRecipeInstructionsArgs(
                         recipeId: recipeId,
                         visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+                        returnToReview: true,
                       ),
                     ),
                     children: _instructionsWidgets(review),

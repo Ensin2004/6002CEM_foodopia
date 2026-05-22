@@ -1,7 +1,9 @@
 import 'dart:io';
 
 class AddRecipeBasicInfo {
+  final String? recipeId;
   final List<File> mediaFiles;
+  final List<String> existingMediaUrls;
   final String recipeName;
   final String description;
   final List<String> otherNames;
@@ -15,7 +17,9 @@ class AddRecipeBasicInfo {
   final String visibility;
 
   const AddRecipeBasicInfo({
+    this.recipeId,
     required this.mediaFiles,
+    this.existingMediaUrls = const [],
     required this.recipeName,
     required this.description,
     required this.otherNames,

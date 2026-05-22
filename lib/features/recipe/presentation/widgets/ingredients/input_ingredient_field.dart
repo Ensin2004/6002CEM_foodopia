@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
+import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../view/add_recipe_ingredients_page.dart';
 
 class InputIngredientField extends StatelessWidget {
@@ -46,7 +47,11 @@ class InputIngredientField extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.xs),
-            _IngredientImageBox(imageFile: row.imageFile, onTap: onPickImage),
+            _IngredientImageBox(
+              imageFile: row.imageFile,
+              imageUrl: row.existingImageUrl,
+              onTap: onPickImage,
+            ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -170,9 +175,14 @@ class InputIngredientField extends StatelessWidget {
 
 class _IngredientImageBox extends StatelessWidget {
   final File? imageFile;
+  final String? imageUrl;
   final VoidCallback onTap;
 
-  const _IngredientImageBox({required this.imageFile, required this.onTap});
+  const _IngredientImageBox({
+    required this.imageFile,
+    required this.imageUrl,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -186,11 +196,13 @@ class _IngredientImageBox extends StatelessWidget {
           height: 58,
           color: const Color(0xFFF7F7F7),
           child: imageFile == null
-              ? const Icon(
-                  Icons.add_photo_alternate_outlined,
-                  color: Color(0xFFC9CBCD),
-                  size: 30,
-                )
+              ? imageUrl == null
+                  ? const Icon(
+                      Icons.add_photo_alternate_outlined,
+                      color: Color(0xFFC9CBCD),
+                      size: 30,
+                    )
+                  : AppRemoteOrAssetImage(imagePath: imageUrl!, fit: BoxFit.cover)
               : Image.file(imageFile!, fit: BoxFit.cover),
         ),
       ),

@@ -151,7 +151,7 @@ class AddRecipeRemoteDataSource {
       );
     }
 
-    final mediaUrls = <String>[];
+    final mediaUrls = <String>[...info.existingMediaUrls];
     for (final mediaFile in info.mediaFiles) {
       final url = await CloudinaryService.uploadRecipeImage(mediaFile);
       mediaUrls.add(url);
@@ -171,6 +171,15 @@ class AddRecipeRemoteDataSource {
       ),
     );
 
+    final recipeId = info.recipeId?.trim() ?? '';
+    if (recipeId.isNotEmpty) {
+      await firestore
+          .collection('recipes')
+          .doc(recipeId)
+          .update(model.toFirestoreForUpdate());
+      return recipeId;
+    }
+
     final doc = await firestore.collection('recipes').add(model.toFirestore());
     return doc.id;
   }
@@ -180,10 +189,16 @@ class AddRecipeRemoteDataSource {
     required List<AddRecipeIngredient> ingredients,
   }) async {
     final recipeRef = firestore.collection('recipes').doc(recipeId);
+    final ingredientCollection = recipeRef.collection('ingredients');
+    final existingIngredients = await ingredientCollection.get();
     final batch = firestore.batch();
 
+    for (final doc in existingIngredients.docs) {
+      batch.delete(doc.reference);
+    }
+
     for (final ingredient in ingredients) {
-      String? imageUrl;
+      String? imageUrl = ingredient.existingImageUrl;
       if (ingredient.imageFile != null) {
         imageUrl = await CloudinaryService.uploadIngredientImage(
           ingredient.imageFile!,
@@ -203,7 +218,7 @@ class AddRecipeRemoteDataSource {
         nutrients: ingredient.usdaNutrients,
       );
 
-      batch.set(recipeRef.collection('ingredients').doc(), model.toFirestore());
+      batch.set(ingredientCollection.doc(), model.toFirestore());
     }
 
     batch.update(recipeRef, {'updatedAt': FieldValue.serverTimestamp()});
@@ -303,7 +318,7 @@ class AddRecipeRemoteDataSource {
     }
 
     for (final instruction in instructions) {
-      String? stepImageUrl;
+      String? stepImageUrl = instruction.existingStepImageUrl;
       if (instruction.stepImageFile != null) {
         stepImageUrl = await CloudinaryService.uploadInstructionImage(
           instruction.stepImageFile!,
@@ -371,6 +386,10 @@ class AddRecipeRemoteDataSource {
             unitId: data['unitId']?.toString() ?? '',
             customUnitId: data['customUnitId']?.toString() ?? '',
           ),
+          usdaId: _nullOrInt(data['usda_id']),
+          nutrients: data['nutrients'] is Map<String, dynamic>
+              ? data['nutrients'] as Map<String, dynamic>
+              : null,
         ),
       );
     }

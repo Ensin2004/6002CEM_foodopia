@@ -6,16 +6,21 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/buttons/primary_button.dart';
+import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 
 class RecipeImageEditSheet extends StatelessWidget {
   final List<File> images;
+  final List<String> existingImageUrls;
   final ValueChanged<int> onRemove;
+  final ValueChanged<int> onRemoveExisting;
   final VoidCallback onKeep;
 
   const RecipeImageEditSheet({
     super.key,
     required this.images,
+    this.existingImageUrls = const [],
     required this.onRemove,
+    required this.onRemoveExisting,
     required this.onKeep,
   });
 
@@ -59,10 +64,10 @@ class RecipeImageEditSheet extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    "${images.length}/10",
+                    "${images.length + existingImageUrls.length}/10",
                     style: context.text.bodySmall?.copyWith(
                       color: AppColors.primary,
-                      fontWeight: FontWeight.w600
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -71,17 +76,25 @@ class RecipeImageEditSheet extends StatelessWidget {
               Expanded(
                 child: GridView.builder(
                   shrinkWrap: true,
-                  itemCount: images.length,
+                  itemCount: images.length + existingImageUrls.length,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
                     crossAxisSpacing: AppSpacing.sm,
                     mainAxisSpacing: AppSpacing.sm,
                   ),
                   itemBuilder: (context, index) {
+                    if (index < existingImageUrls.length) {
+                      return _SelectedMediaTile(
+                        imageUrl: existingImageUrls[index],
+                        index: index,
+                        onRemove: () => onRemoveExisting(index),
+                      );
+                    }
+                    final fileIndex = index - existingImageUrls.length;
                     return _SelectedMediaTile(
-                      image: images[index],
+                      imageFile: images[fileIndex],
                       index: index,
-                      onRemove: () => onRemove(index),
+                      onRemove: () => onRemove(fileIndex),
                     );
                   },
                 ),
@@ -97,12 +110,14 @@ class RecipeImageEditSheet extends StatelessWidget {
 }
 
 class _SelectedMediaTile extends StatelessWidget {
-  final File image;
+  final File? imageFile;
+  final String? imageUrl;
   final int index;
   final VoidCallback onRemove;
 
   const _SelectedMediaTile({
-    required this.image,
+    this.imageFile,
+    this.imageUrl,
     required this.index,
     required this.onRemove,
   });
@@ -113,18 +128,17 @@ class _SelectedMediaTile extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(
-          color: AppColors.border,
-          width: 1,
-        ),
-        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.border, width: 1),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.file(image, fit: BoxFit.cover),
+            imageFile != null
+                ? Image.file(imageFile!, fit: BoxFit.cover)
+                : AppRemoteOrAssetImage(imagePath: imageUrl!, fit: BoxFit.cover),
             Positioned(
               left: AppSpacing.xs,
               top: AppSpacing.xs,

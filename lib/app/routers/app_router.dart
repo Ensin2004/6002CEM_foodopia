@@ -390,7 +390,11 @@ class AppRouter {
         path: addRecipeBasicInfo,
         builder: (context, state) {
           final args = state.extra as AddRecipeBasicInfoArgs?;
-          return AddRecipeBasicInfoPage(key: ValueKey(args?.recipeId));
+          return AddRecipeBasicInfoPage(
+            key: ValueKey(args?.recipeId),
+            recipeId: args?.recipeId,
+            returnToReview: args?.returnToReview ?? false,
+          );
         },
       ),
 
@@ -402,6 +406,7 @@ class AppRouter {
           return AddRecipeIngredientsPage(
             recipeId: args.recipeId,
             initialVisibility: args.visibility,
+            returnToReview: args.returnToReview,
           );
         },
       ),
@@ -414,6 +419,7 @@ class AppRouter {
           return AddRecipeInstructionsPage(
             recipeId: args.recipeId,
             initialVisibility: args.visibility,
+            returnToReview: args.returnToReview,
           );
         },
       ),

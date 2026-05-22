@@ -40,4 +40,22 @@ class AddRecipeBasicInfoModel {
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
+
+  Map<String, dynamic> toFirestoreForUpdate() {
+    return {
+      'media': mediaUrls,
+      'name': info.recipeName,
+      'description': info.description,
+      'otherNames': info.otherNames,
+      'categoryIds': info.categoryIds,
+      'customCategoryIds': customCategoryIds,
+      'preparationTime': info.preparationMinutes,
+      'difficultyLevel': info.difficultyLevel,
+      'servings': info.servings,
+      'allergenIds': info.allergenIds,
+      'customAllergenIds': customAllergenIds,
+      'visibility': info.visibility,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+  }
 }

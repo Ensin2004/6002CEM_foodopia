@@ -6,15 +6,18 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/cards/method_card.dart';
+import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 
 class RecipeImagePicker extends StatefulWidget {
   final List<File> images;
+  final List<String> existingImageUrls;
   final VoidCallback onPick;
   final VoidCallback onEdit;
 
   const RecipeImagePicker({
     super.key,
     required this.images,
+    this.existingImageUrls = const [],
     required this.onPick,
     required this.onEdit,
   });
@@ -30,11 +33,10 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
   void didUpdateWidget(covariant RecipeImagePicker oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (_currentImageIndex >= widget.images.length) {
+    final imageCount = widget.existingImageUrls.length + widget.images.length;
+    if (_currentImageIndex >= imageCount) {
       setState(() {
-        _currentImageIndex = widget.images.isEmpty
-            ? 0
-            : widget.images.length - 1;
+        _currentImageIndex = imageCount == 0 ? 0 : imageCount - 1;
       });
     }
   }
@@ -43,7 +45,8 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    if (widget.images.isEmpty) {
+    final imageCount = widget.existingImageUrls.length + widget.images.length;
+    if (imageCount == 0) {
       return MethodCard(
         icon: Icons.add_photo_alternate_outlined,
         title: "Upload Image",
@@ -54,10 +57,7 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(
-          color: AppColors.border,
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.border, width: 1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: ClipRRect(
@@ -69,15 +69,28 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
               child: AspectRatio(
                 aspectRatio: 1.55,
                 child: PageView.builder(
-                  itemCount: widget.images.length,
+                  itemCount: imageCount,
                   onPageChanged: (index) {
                     setState(() => _currentImageIndex = index);
                   },
                   itemBuilder: (context, index) {
+                    final existingUrl = index < widget.existingImageUrls.length
+                        ? widget.existingImageUrls[index]
+                        : null;
+                    final fileIndex = index - widget.existingImageUrls.length;
                     return GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => _showExpandedImage(context, widget.images[index]),
-                      child: Image.file(widget.images[index], fit: BoxFit.contain),
+                      onTap: () => existingUrl == null
+                          ? _showExpandedImage(context: context, imageFile: widget.images[fileIndex])
+                          : _showExpandedImage(context: context, imageUrl: existingUrl),
+                      child: existingUrl == null
+                          ? Image.file(widget.images[fileIndex], fit: BoxFit.contain)
+                          : AppRemoteOrAssetImage(
+                              imagePath: existingUrl,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.contain,
+                            ),
                     );
                   },
                 ),
@@ -107,7 +120,7 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  "${_currentImageIndex + 1}/${widget.images.length}",
+                  "${_currentImageIndex + 1}/$imageCount",
                   style: context.text.bodySmall?.copyWith(
                     color: colors.surface,
                     fontWeight: FontWeight.w700,
@@ -121,7 +134,11 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
     );
   }
 
-  Future<void> _showExpandedImage(BuildContext context, File image) async {
+  Future<void> _showExpandedImage({
+    required BuildContext context,
+    File? imageFile,
+    String? imageUrl,
+  }) async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -134,7 +151,14 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
                   child: InteractiveViewer(
                     minScale: 1,
                     maxScale: 4,
-                    child: Image.file(image, fit: BoxFit.contain)
+                    child: imageFile != null
+                        ? Image.file(imageFile, fit: BoxFit.contain)
+                        : AppRemoteOrAssetImage(
+                            imagePath: imageUrl ?? "",
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.contain,
+                          ),
                   ),
                 ),
                 Positioned(
