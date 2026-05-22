@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
+import '../../../library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../../domain/usecases/get_explore_creator_detail_usecase.dart';
 import '../../domain/usecases/toggle_creator_follow_usecase.dart';
@@ -10,6 +11,7 @@ enum ExploreCreatorRecipeTab { all, popular, recent }
 class ExploreCreatorDetailViewModel extends ChangeNotifier {
   final GetExploreCreatorDetailUseCase _getCreatorDetailUseCase;
   final ToggleCreatorFollowUseCase _toggleCreatorFollowUseCase;
+  final ToggleLibraryRecipeFavouriteUseCase _toggleFavouriteUseCase;
   final String creatorUid;
 
   ExploreCreatorDetail? _creator;
@@ -23,8 +25,10 @@ class ExploreCreatorDetailViewModel extends ChangeNotifier {
     required this.creatorUid,
     required GetExploreCreatorDetailUseCase getCreatorDetailUseCase,
     required ToggleCreatorFollowUseCase toggleCreatorFollowUseCase,
+    required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
   }) : _getCreatorDetailUseCase = getCreatorDetailUseCase,
-       _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase {
+       _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
+       _toggleFavouriteUseCase = toggleFavouriteUseCase {
     Future.microtask(loadCreator);
   }
 
@@ -108,9 +112,48 @@ class ExploreCreatorDetailViewModel extends ChangeNotifier {
     return success;
   }
 
+  Future<bool> toggleFavourite(String recipeId) async {
+    final creator = _creator;
+    if (creator == null) return false;
+
+    final recipeIndex = creator.recipes.indexWhere(
+      (recipe) => recipe.id == recipeId,
+    );
+    if (recipeIndex == -1) return false;
+
+    final recipe = creator.recipes[recipeIndex];
+    final nextFavourite = !recipe.isFavourite;
+    _creator = _copyCreator(
+      creator,
+      recipes: creator.recipes.map((item) {
+        if (item.id != recipeId) return item;
+        return _copyRecipe(item, isFavourite: nextFavourite);
+      }).toList(),
+    );
+    _errorMessage = null;
+    _notifyIfActive();
+
+    final result = await _toggleFavouriteUseCase.execute(
+      recipeId: recipeId,
+      isFavourite: nextFavourite,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _errorMessage = failure.message;
+    });
+    if (!success) {
+      _creator = creator;
+      _notifyIfActive();
+    }
+    return success;
+  }
+
   ExploreCreatorDetail _copyCreator(
     ExploreCreatorDetail creator, {
     bool? isFollowing,
+    List<ExploreRecipe>? recipes,
   }) {
     return ExploreCreatorDetail(
       summary: creator.summary,
@@ -118,7 +161,42 @@ class ExploreCreatorDetailViewModel extends ChangeNotifier {
       postCount: creator.postCount,
       followingCount: creator.followingCount,
       isFollowing: isFollowing ?? creator.isFollowing,
-      recipes: creator.recipes,
+      recipes: recipes ?? creator.recipes,
+    );
+  }
+
+  ExploreRecipe _copyRecipe(ExploreRecipe recipe, {bool? isFavourite}) {
+    return ExploreRecipe(
+      id: recipe.id,
+      creatorUid: recipe.creatorUid,
+      title: recipe.title,
+      author: recipe.author,
+      publishedAtLabel: recipe.publishedAtLabel,
+      authorAvatarPath: recipe.authorAvatarPath,
+      authorFollowerCount: recipe.authorFollowerCount,
+      imagePath: recipe.imagePath,
+      imagePaths: recipe.imagePaths,
+      description: recipe.description,
+      otherNames: recipe.otherNames,
+      category: recipe.category,
+      categoryIds: recipe.categoryIds,
+      customCategoryIds: recipe.customCategoryIds,
+      allergenInfo: recipe.allergenInfo,
+      totalTime: recipe.totalTime,
+      difficulty: recipe.difficulty,
+      rating: recipe.rating,
+      ratingCount: recipe.ratingCount,
+      commentCount: recipe.commentCount,
+      totalViews: recipe.totalViews,
+      publishedAt: recipe.publishedAt,
+      isFollowingAuthor: recipe.isFollowingAuthor,
+      isFavourite: isFavourite ?? recipe.isFavourite,
+      isCreatedByCurrentUser: recipe.isCreatedByCurrentUser,
+      ingredients: recipe.ingredients,
+      instructionSections: recipe.instructionSections,
+      nutrition: recipe.nutrition,
+      community: recipe.community,
+      relatedRecipes: recipe.relatedRecipes,
     );
   }
 

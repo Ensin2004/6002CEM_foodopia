@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
+import '../../../library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../../domain/usecases/add_recipe_comment_usecase.dart';
 import '../../domain/usecases/add_recipe_comment_reply_usecase.dart';
@@ -38,6 +39,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   final WatchExploreRecipeDetailUseCase _watchRecipeDetailUseCase;
   final ToggleCreatorFollowUseCase _toggleCreatorFollowUseCase;
   final UpdateRecipeVisibilityUseCase _updateRecipeVisibilityUseCase;
+  final ToggleLibraryRecipeFavouriteUseCase _toggleFavouriteUseCase;
   final String recipeId;
 
   ExploreRecipe? _recipe;
@@ -70,6 +72,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     required WatchExploreRecipeDetailUseCase watchRecipeDetailUseCase,
     required ToggleCreatorFollowUseCase toggleCreatorFollowUseCase,
     required UpdateRecipeVisibilityUseCase updateRecipeVisibilityUseCase,
+    required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
   }) : _getRecipeDetailUseCase = getRecipeDetailUseCase,
        _submitRecipeRatingUseCase = submitRecipeRatingUseCase,
        _addRecipeCommentUseCase = addRecipeCommentUseCase,
@@ -80,7 +83,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
        _addRecipeReplyToReplyUseCase = addRecipeReplyToReplyUseCase,
        _watchRecipeDetailUseCase = watchRecipeDetailUseCase,
        _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
-       _updateRecipeVisibilityUseCase = updateRecipeVisibilityUseCase {
+       _updateRecipeVisibilityUseCase = updateRecipeVisibilityUseCase,
+       _toggleFavouriteUseCase = toggleFavouriteUseCase {
     Future.microtask(_openRecipe);
     _watchRecipeDetail();
   }
@@ -431,6 +435,33 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     return success;
   }
 
+  Future<bool> toggleFavourite() async {
+    final recipe = _recipe;
+    if (recipe == null) return false;
+
+    final nextFavourite = !recipe.isFavourite;
+    final previousRecipe = recipe;
+    _recipe = _copyRecipe(recipe, isFavourite: nextFavourite);
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _toggleFavouriteUseCase.execute(
+      recipeId: recipe.id,
+      isFavourite: nextFavourite,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+    if (!success) {
+      _recipe = previousRecipe;
+    }
+    _notifyIfActive();
+    return success;
+  }
+
   Future<bool> updateVisibility({required bool isPublished}) async {
     _isUpdatingVisibility = true;
     _communityActionErrorMessage = null;
@@ -657,6 +688,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     int? ratingCount,
     int? commentCount,
     bool? isFollowingAuthor,
+    bool? isFavourite,
     ExploreCommunity? community,
   }) {
     return ExploreRecipe(
@@ -683,6 +715,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
       totalViews: recipe.totalViews,
       publishedAt: recipe.publishedAt,
       isFollowingAuthor: isFollowingAuthor ?? recipe.isFollowingAuthor,
+      isFavourite: isFavourite ?? recipe.isFavourite,
       isCreatedByCurrentUser: recipe.isCreatedByCurrentUser,
       ingredients: recipe.ingredients,
       instructionSections: recipe.instructionSections,

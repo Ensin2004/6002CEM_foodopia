@@ -69,6 +69,14 @@ class ExploreRemoteDataSource {
                 .snapshots()
                 .listen((_) => emitRecipes()),
           );
+          subscriptions.add(
+            firestore
+                .collection('users')
+                .doc(uid)
+                .collection('saved_recipes')
+                .snapshots()
+                .listen((_) => emitRecipes()),
+          );
         }
       },
       onCancel: () async {
@@ -131,6 +139,14 @@ class ExploreRemoteDataSource {
                 .collection('users')
                 .doc(uid)
                 .collection('followingCreators')
+                .snapshots()
+                .listen((_) => emitRecipe()),
+          );
+          subscriptions.add(
+            firestore
+                .collection('users')
+                .doc(uid)
+                .collection('saved_recipes')
                 .snapshots()
                 .listen((_) => emitRecipe()),
           );
@@ -234,6 +250,7 @@ class ExploreRemoteDataSource {
     final isCurrentUserCreator =
         creatorUid.isNotEmpty && creatorUid == currentUid;
     final isFollowingAuthor = await _isFollowingCreator(creatorUid);
+    final isFavourite = await _isFavouriteRecipe(doc.id);
     final creator = await _getCreator(creatorUid);
     final categoryIds = _stringList(data['categoryIds']);
     final customCategoryIds = _stringList(data['customCategoryIds']);
@@ -303,6 +320,7 @@ class ExploreRemoteDataSource {
       totalViews: _intValue(data['totalViews']),
       publishedAt: publishedAt,
       isFollowingAuthor: isFollowingAuthor,
+      isFavourite: isFavourite,
       isCreatedByCurrentUser: isCurrentUserCreator,
       ingredients: ingredients,
       instructionSections: instructions,
@@ -351,7 +369,7 @@ class ExploreRemoteDataSource {
           return secondDate.compareTo(firstDate);
         });
 
-    return docs.take(3).map((doc) {
+    return docs.take(4).map((doc) {
       final data = doc.data();
       final media = _stringList(data['media']);
       return ExploreRecipeSummary(
@@ -392,6 +410,18 @@ class ExploreRemoteDataSource {
         .doc(uid)
         .collection('followingCreators')
         .doc(creatorUid)
+        .get();
+    return doc.exists;
+  }
+
+  Future<bool> _isFavouriteRecipe(String recipeId) async {
+    final uid = auth.currentUser?.uid ?? '';
+    if (uid.isEmpty || recipeId.isEmpty) return false;
+    final doc = await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('saved_recipes')
+        .doc(recipeId)
         .get();
     return doc.exists;
   }
