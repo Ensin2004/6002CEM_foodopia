@@ -25,6 +25,26 @@ class ExploreRecipeDetailArgs {
   const ExploreRecipeDetailArgs({required this.recipeId});
 }
 
+/// Typed arguments for library recipe detail route.
+class LibraryRecipeDetailArgs {
+  final String recipeId;
+  final bool isSelfPublished;
+  final bool isPublished;
+
+  const LibraryRecipeDetailArgs({
+    required this.recipeId,
+    required this.isSelfPublished,
+    required this.isPublished,
+  });
+}
+
+/// Typed arguments for explore creator detail route.
+class ExploreCreatorDetailArgs {
+  final String creatorUid;
+
+  const ExploreCreatorDetailArgs({required this.creatorUid});
+}
+
 /// Typed arguments for the meal plan route.
 class MealPlanArgs {
   final int initialTabIndex;
@@ -38,6 +58,47 @@ class AddGroceryListArgs {
   final String? userId;
 
   const AddGroceryListArgs({this.userId});
+}
+
+/// Typed arguments for the add recipe basic info route.
+class AddRecipeBasicInfoArgs {
+  final String? recipeId;
+  final bool returnToReview;
+
+  const AddRecipeBasicInfoArgs({this.recipeId, this.returnToReview = false});
+}
+
+/// Typed arguments for the add recipe ingredients route.
+class AddRecipeIngredientsArgs {
+  final String recipeId;
+  final String visibility;
+  final bool returnToReview;
+
+  const AddRecipeIngredientsArgs({
+    required this.recipeId,
+    this.visibility = 'private',
+    this.returnToReview = false,
+  });
+}
+
+/// Typed arguments for the add recipe instructions route.
+class AddRecipeInstructionsArgs {
+  final String recipeId;
+  final String visibility;
+  final bool returnToReview;
+
+  const AddRecipeInstructionsArgs({
+    required this.recipeId,
+    this.visibility = 'private',
+    this.returnToReview = false,
+  });
+}
+
+/// Typed arguments for the add recipe review route.
+class AddRecipeReviewArgs {
+  final String recipeId;
+
+  const AddRecipeReviewArgs({required this.recipeId});
 }
 
 /// Typed arguments for add meal planning route.
@@ -81,9 +142,14 @@ class StatisticsDetailArgs {
 class HomeArgs {
   final UserEntity user;
   final String role;
+  final int initialTabIndex;
 
   /// Creates a user_home args instance.
-  const HomeArgs({required this.user, required this.role});
+  const HomeArgs({
+    required this.user,
+    required this.role,
+    this.initialTabIndex = 0,
+  });
 }
 
 /// Typed arguments for edit profile route

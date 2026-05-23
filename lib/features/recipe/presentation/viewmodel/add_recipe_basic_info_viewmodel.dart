@@ -1,0 +1,109 @@
+import 'package:flutter/foundation.dart';
+
+import '../../../../core/extensions/either_extensions.dart';
+import '../../domain/entities/add_recipe_basic_info.dart';
+import '../../domain/entities/add_recipe_food_search_result.dart';
+import '../../domain/entities/add_recipe_review.dart';
+import '../../domain/entities/add_recipe_setup.dart';
+import '../../domain/usecases/get_add_recipe_review_usecase.dart';
+import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
+import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
+import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
+
+class AddRecipeBasicInfoViewModel extends ChangeNotifier {
+  final GetAddRecipeSetupUseCase getSetupUseCase;
+  final SearchAddRecipeFoodsUseCase searchFoodsUseCase;
+  final SaveAddRecipeBasicInfoUseCase saveBasicInfoUseCase;
+  final GetAddRecipeReviewUseCase getReviewUseCase;
+
+  AddRecipeSetup? setup;
+  AddRecipeReview? existingReview;
+  bool isLoading = true;
+  bool isSaving = false;
+  String? errorMessage;
+  String? savedRecipeId;
+  int difficultyLevel = 0;
+
+  AddRecipeBasicInfoViewModel({
+    required this.getSetupUseCase,
+    required this.searchFoodsUseCase,
+    required this.saveBasicInfoUseCase,
+    required this.getReviewUseCase,
+  }) {
+    loadSetup();
+  }
+
+  Future<void> loadSetup() async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    final result = await getSetupUseCase.execute();
+    if (result.isLeft()) {
+      errorMessage = result.left?.message ?? 'Unable to load recipe setup.';
+    } else {
+      setup = result.right;
+      difficultyLevel = existingReview?.difficultyLevel ?? 0;
+    }
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadExistingRecipe(String recipeId) async {
+    if (recipeId.trim().isEmpty || existingReview?.recipeId == recipeId) {
+      return;
+    }
+
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    final result = await getReviewUseCase.execute(recipeId);
+    if (result.isLeft()) {
+      errorMessage = result.left?.message ?? 'Unable to load recipe details.';
+      existingReview = null;
+    } else {
+      existingReview = result.right;
+      difficultyLevel = existingReview?.difficultyLevel ?? difficultyLevel;
+    }
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+  void selectDifficulty(int value) {
+    difficultyLevel = value < 1
+        ? 1
+        : value > 5
+        ? 5
+        : value;
+    errorMessage = null;
+    notifyListeners();
+  }
+
+  Future<bool> saveBasicInfo(AddRecipeBasicInfo info) async {
+    isSaving = true;
+    errorMessage = null;
+    notifyListeners();
+
+    final result = await saveBasicInfoUseCase.execute(info);
+    final success = result.isRight();
+    if (!success) {
+      errorMessage = result.left?.message ?? 'Unable to save basic info.';
+      savedRecipeId = null;
+    } else {
+      savedRecipeId = result.right;
+    }
+
+    isSaving = false;
+    notifyListeners();
+    return success;
+  }
+
+  Future<List<AddRecipeFoodSearchResult>> searchFoods(String query) async {
+    final result = await searchFoodsUseCase.execute(query);
+    if (result.isLeft()) return [];
+    return result.right ?? [];
+  }
+}

@@ -566,6 +566,10 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
 
     if (success && context.mounted) {
       Navigator.pop(context);
+    } else if (context.mounted && viewModel.errorMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(viewModel.errorMessage!)));
     }
   }
 }

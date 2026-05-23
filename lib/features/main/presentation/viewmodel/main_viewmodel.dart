@@ -9,6 +9,7 @@ class MainViewModel extends ChangeNotifier {
   final MainRepository _repository;
 
   int _selectedIndex = 0;
+  int _mealPlanInitialTabIndex = 0;
   String? _profileImageUrl;
   bool _isLoading = false;
   String? _errorMessage;
@@ -16,14 +17,20 @@ class MainViewModel extends ChangeNotifier {
   bool _isDisposed = false;
 
   /// Creates a main view model instance.
-  MainViewModel({required this.user, required MainRepository repository})
-    : _repository = repository {
+  MainViewModel({
+    required this.user,
+    required MainRepository repository,
+    int initialIndex = 0,
+  }) : _repository = repository,
+       _selectedIndex = initialIndex {
     _loadUserProfile();
     _updateLastLogin();
   }
 
   // Getters
   int get selectedIndex => _selectedIndex;
+
+  int get mealPlanInitialTabIndex => _mealPlanInitialTabIndex;
 
   /// Handles the profile image url operation.
   String? get profileImageUrl => _profileImageUrl;
@@ -55,7 +62,24 @@ class MainViewModel extends ChangeNotifier {
       return;
     }
 
+    if (!isAdmin && index == 3) {
+      _mealPlanInitialTabIndex = 0;
+    }
+
     _selectedIndex = index;
+    _notifyIfActive();
+  }
+
+  void goToExplore() {
+    if (isAdmin) return;
+    _selectedIndex = 1;
+    _notifyIfActive();
+  }
+
+  void goToMealPlan({int initialTabIndex = 0}) {
+    if (isAdmin) return;
+    _mealPlanInitialTabIndex = initialTabIndex.clamp(0, 2);
+    _selectedIndex = 3;
     _notifyIfActive();
   }
 

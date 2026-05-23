@@ -9,6 +9,7 @@ import '../../../../core/widgets/buttons/app_floating_action_button.dart';
 import '../../../admin_home/presentation/view/admin_home_page.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../admin_manage/presentation/view/admin_manage_page.dart';
+import '../../../user_home/domain/entities/user_home_dashboard.dart';
 import '../../../user_home/presentation/view/home_page.dart';
 import '../../../user_setup/domain/usecases/get_user_setup_status_usecase.dart';
 import '../viewmodel/main_viewmodel.dart';
@@ -24,16 +25,26 @@ import '../../../statistics/presentation/view/statistics_page.dart';
 class MainPage extends StatelessWidget {
   final UserEntity user;
   final String role;
+  final int initialIndex;
 
   /// Creates a main page instance.
-  const MainPage({super.key, required this.user, required this.role});
+  const MainPage({
+    super.key,
+    required this.user,
+    required this.role,
+    this.initialIndex = 0,
+  });
 
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
     /// Runs the change notifier provider operation.
     return ChangeNotifierProvider(
-      create: (_) => MainViewModel(user: user, repository: sl()),
+      create: (_) => MainViewModel(
+        user: user,
+        repository: sl(),
+        initialIndex: initialIndex,
+      ),
       child: const _MainPageView(),
     );
   }
@@ -100,7 +111,7 @@ class _MainPageViewState extends State<_MainPageView> {
         onFavoritesTap: isAdmin ? null : viewModel.goToFavorites,
         onNotificationsTap: isAdmin ? null : viewModel.goToNotifications,
       ),
-      body: _buildBody(viewModel),
+      body: _buildBody(context, viewModel),
       bottomNavigationBar: _buildBottomNavigationBar(context, viewModel),
       floatingActionButton: isAdmin
           ? null
@@ -110,7 +121,7 @@ class _MainPageViewState extends State<_MainPageView> {
   }
 
   /// Handles the build body operation.
-  Widget _buildBody(MainViewModel viewModel) {
+  Widget _buildBody(BuildContext context, MainViewModel viewModel) {
     final isAdmin = viewModel.isAdmin;
     final currentIndex = viewModel.selectedIndex;
 
@@ -118,15 +129,26 @@ class _MainPageViewState extends State<_MainPageView> {
       // User pages
       switch (currentIndex) {
         case 0:
-          return HomePage(userName: viewModel.user.name ?? 'Foodie');
+          return HomePage(
+            userName: viewModel.user.name ?? 'Foodie',
+            onQuickLinkTap: (target) =>
+                _handleUserHomeQuickLink(context, target, viewModel),
+          );
         case 1:
           return const ExplorePage();
         case 3:
-          return MealPlanPage(userId: viewModel.user.uid);
+          return MealPlanPage(
+            initialTabIndex: viewModel.mealPlanInitialTabIndex,
+            userId: viewModel.user.uid,
+          );
         case 4:
-          return const LibraryPage();
+          return LibraryPage(onExploreNow: () => viewModel.onTabTapped(1));
         default:
-          return HomePage(userName: viewModel.user.name ?? 'Foodie');
+          return HomePage(
+            userName: viewModel.user.name ?? 'Foodie',
+            onQuickLinkTap: (target) =>
+                _handleUserHomeQuickLink(context, target, viewModel),
+          );
       }
     } else {
       // Admin pages
@@ -140,6 +162,42 @@ class _MainPageViewState extends State<_MainPageView> {
         default:
           return HomePage(userName: viewModel.user.name ?? 'Foodie');
       }
+    }
+  }
+
+  void _handleUserHomeQuickLink(
+    BuildContext context,
+    UserHomeQuickLinkTarget target,
+    MainViewModel viewModel,
+  ) {
+    switch (target) {
+      case UserHomeQuickLinkTarget.explore:
+        viewModel.goToExplore();
+        break;
+      case UserHomeQuickLinkTarget.addRecipe:
+        viewModel.goToAddRecipe();
+        break;
+      case UserHomeQuickLinkTarget.mealPlan:
+        viewModel.goToMealPlan();
+        break;
+      case UserHomeQuickLinkTarget.groceryList:
+        viewModel.goToMealPlan(initialTabIndex: 2);
+        break;
+      case UserHomeQuickLinkTarget.statistics:
+        context.push(
+          AppRouter.statistics,
+          extra: const StatisticsArgs(isAdmin: false),
+        );
+        break;
+      case UserHomeQuickLinkTarget.tryAi:
+        context.push(
+          AppRouter.generateAiMeal,
+          extra: GenerateAiMealArgs(
+            userId: viewModel.user.uid,
+            mealType: 'Breakfast',
+          ),
+        );
+        break;
     }
   }
 

@@ -12,8 +12,13 @@ import '../../features/onboarding/presentation/view/onboarding_screen.dart';
 import '../../features/main/presentation/view/main_page.dart';
 import '../../features/notifications/presentation/view/notification_settings_page.dart';
 import '../../features/notifications/presentation/view/notifications_page.dart';
-import '../../features/recipe/presentation/view/add_recipe_page.dart';
+import '../../features/recipe/presentation/view/add_recipe_basic_info_page.dart';
+import '../../features/recipe/presentation/view/add_recipe_ingredients_page.dart';
+import '../../features/recipe/presentation/view/add_recipe_instructions_page.dart';
+import '../../features/recipe/presentation/view/add_recipe_method_page.dart';
+import '../../features/recipe/presentation/view/add_recipe_review_page.dart';
 import '../../features/explore/presentation/view/explore_page.dart';
+import '../../features/explore/presentation/view/explore_creator_detail_page.dart';
 import '../../features/explore/presentation/view/explore_recipe_detail_page.dart';
 import '../../features/library/presentation/view/library_page.dart';
 import '../../features/meal_plan/presentation/view/add_grocery_list_page.dart';
@@ -69,8 +74,14 @@ class AppRouter {
   static const String notifications = '/notifications';
   static const String notificationSettings = '/notifications/settings';
   static const String addRecipe = '/recipes/add';
+  static const String addRecipeBasicInfo = '/recipes/add/basic-info';
+  static const String addRecipeIngredients = '/recipes/add/ingredients';
+  static const String addRecipeInstructions = '/recipes/add/instructions';
+  static const String addRecipeReview = '/recipes/add/review';
   static const String explore = '/explore';
   static const String exploreRecipeDetail = '/explore/recipe';
+  static const String libraryRecipeDetail = '/library/recipe';
+  static const String exploreCreatorDetail = '/explore/creator';
   static const String mealPlan = '/meal-plan';
   static const String addMealPlan = '/meal-plan/planning/add-meal';
   static const String generateAiMeal =
@@ -300,7 +311,11 @@ class AppRouter {
           }
 
           /// Handles the main page operation.
-          return MainPage(user: userEntity, role: args?.role ?? 'user');
+          return MainPage(
+            user: userEntity,
+            role: args?.role ?? 'user',
+            initialIndex: args?.initialTabIndex ?? 0,
+          );
         },
       ),
 
@@ -411,9 +426,68 @@ class AppRouter {
       ),
 
       GoRoute(
+        name: 'addRecipeBasicInfo',
+        path: addRecipeBasicInfo,
+        builder: (context, state) {
+          final args = state.extra as AddRecipeBasicInfoArgs?;
+          return AddRecipeBasicInfoPage(
+            key: ValueKey(args?.recipeId),
+            recipeId: args?.recipeId,
+            returnToReview: args?.returnToReview ?? false,
+          );
+        },
+      ),
+
+      GoRoute(
+        name: 'addRecipeIngredients',
+        path: addRecipeIngredients,
+        builder: (context, state) {
+          final args = state.extra as AddRecipeIngredientsArgs;
+          return AddRecipeIngredientsPage(
+            recipeId: args.recipeId,
+            initialVisibility: args.visibility,
+            returnToReview: args.returnToReview,
+          );
+        },
+      ),
+
+      GoRoute(
+        name: 'addRecipeInstructions',
+        path: addRecipeInstructions,
+        builder: (context, state) {
+          final args = state.extra as AddRecipeInstructionsArgs;
+          return AddRecipeInstructionsPage(
+            recipeId: args.recipeId,
+            initialVisibility: args.visibility,
+            returnToReview: args.returnToReview,
+          );
+        },
+      ),
+
+      GoRoute(
+        name: 'addRecipeReview',
+        path: addRecipeReview,
+        builder: (context, state) {
+          final args = state.extra as AddRecipeReviewArgs;
+          return AddRecipeReviewPage(recipeId: args.recipeId);
+        },
+      ),
+
+      GoRoute(
         name: 'explore',
         path: explore,
-        builder: (context, state) => const ExplorePage(),
+        builder: (context, state) {
+          final userEntity = user;
+          if (userEntity == null) {
+            return const ExplorePage();
+          }
+
+          return MainPage(
+            user: userEntity,
+            role: userEntity.role.name,
+            initialIndex: 1,
+          );
+        },
       ),
 
       GoRoute(
@@ -422,6 +496,15 @@ class AppRouter {
         builder: (context, state) {
           final args = state.extra as ExploreRecipeDetailArgs?;
           return ExploreRecipeDetailPage(recipeId: args?.recipeId ?? '');
+        },
+      ),
+
+      GoRoute(
+        name: 'exploreCreatorDetail',
+        path: exploreCreatorDetail,
+        builder: (context, state) {
+          final args = state.extra as ExploreCreatorDetailArgs?;
+          return ExploreCreatorDetailPage(creatorUid: args?.creatorUid ?? '');
         },
       ),
 
@@ -485,7 +568,20 @@ class AppRouter {
       GoRoute(
         name: 'library',
         path: library,
-        builder: (context, state) => const LibraryPage(),
+        builder: (context, state) => const LibraryPage(showAppBar: true),
+      ),
+
+      GoRoute(
+        name: 'libraryRecipeDetail',
+        path: libraryRecipeDetail,
+        builder: (context, state) {
+          final args = state.extra as LibraryRecipeDetailArgs?;
+          return ExploreRecipeDetailPage(
+            recipeId: args?.recipeId ?? '',
+            showLibraryActions: args?.isSelfPublished ?? false,
+            isPublished: args?.isPublished ?? true,
+          );
+        },
       ),
 
       GoRoute(

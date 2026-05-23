@@ -1,8 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
+import '../../../library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
+import '../../domain/usecases/add_recipe_comment_usecase.dart';
+import '../../domain/usecases/add_recipe_comment_reply_usecase.dart';
+import '../../domain/usecases/add_recipe_reply_to_reply_usecase.dart';
 import '../../domain/usecases/get_explore_recipe_detail_usecase.dart';
+import '../../domain/usecases/increment_recipe_view_count_usecase.dart';
+import '../../domain/usecases/submit_recipe_rating_usecase.dart';
+import '../../domain/usecases/toggle_recipe_comment_like_usecase.dart';
+import '../../domain/usecases/toggle_recipe_reply_like_usecase.dart';
+import '../../domain/usecases/toggle_creator_follow_usecase.dart';
+import '../../domain/usecases/update_recipe_visibility_usecase.dart';
+import '../../domain/usecases/watch_explore_recipe_detail_usecase.dart';
 
 enum ExploreRecipeDetailTab { recipe, nutrition, community }
 
@@ -10,32 +23,148 @@ enum ExploreRecipeMethodTab { ingredients, instructions }
 
 enum ExploreCommunityTab { ratings, comments }
 
+enum ExploreRatingStarFilter { all, one, two, three, four, five }
+
+enum ExploreCommunityDateFilter { all, latest, oldest }
+
 class ExploreRecipeDetailViewModel extends ChangeNotifier {
   final GetExploreRecipeDetailUseCase _getRecipeDetailUseCase;
+  final SubmitRecipeRatingUseCase _submitRecipeRatingUseCase;
+  final AddRecipeCommentUseCase _addRecipeCommentUseCase;
+  final IncrementRecipeViewCountUseCase _incrementRecipeViewCountUseCase;
+  final ToggleRecipeCommentLikeUseCase _toggleRecipeCommentLikeUseCase;
+  final AddRecipeCommentReplyUseCase _addRecipeCommentReplyUseCase;
+  final ToggleRecipeReplyLikeUseCase _toggleRecipeReplyLikeUseCase;
+  final AddRecipeReplyToReplyUseCase _addRecipeReplyToReplyUseCase;
+  final WatchExploreRecipeDetailUseCase _watchRecipeDetailUseCase;
+  final ToggleCreatorFollowUseCase _toggleCreatorFollowUseCase;
+  final UpdateRecipeVisibilityUseCase _updateRecipeVisibilityUseCase;
+  final ToggleLibraryRecipeFavouriteUseCase _toggleFavouriteUseCase;
   final String recipeId;
 
   ExploreRecipe? _recipe;
+  StreamSubscription<ExploreRecipe>? _recipeSubscription;
   ExploreRecipeDetailTab _selectedTab = ExploreRecipeDetailTab.recipe;
   ExploreRecipeMethodTab _selectedMethodTab =
       ExploreRecipeMethodTab.ingredients;
   ExploreCommunityTab _selectedCommunityTab = ExploreCommunityTab.ratings;
+  ExploreRatingStarFilter _ratingStarFilter = ExploreRatingStarFilter.all;
+  ExploreCommunityDateFilter _ratingDateFilter = ExploreCommunityDateFilter.all;
+  ExploreCommunityDateFilter _commentDateFilter =
+      ExploreCommunityDateFilter.all;
   bool _isLoading = true;
+  bool _isSubmittingCommunityAction = false;
+  bool _isUpdatingVisibility = false;
   bool _isDisposed = false;
   String? _errorMessage;
+  String? _communityActionErrorMessage;
 
   ExploreRecipeDetailViewModel({
     required this.recipeId,
     required GetExploreRecipeDetailUseCase getRecipeDetailUseCase,
-  }) : _getRecipeDetailUseCase = getRecipeDetailUseCase {
-    Future.microtask(loadRecipe);
+    required SubmitRecipeRatingUseCase submitRecipeRatingUseCase,
+    required AddRecipeCommentUseCase addRecipeCommentUseCase,
+    required IncrementRecipeViewCountUseCase incrementRecipeViewCountUseCase,
+    required ToggleRecipeCommentLikeUseCase toggleRecipeCommentLikeUseCase,
+    required AddRecipeCommentReplyUseCase addRecipeCommentReplyUseCase,
+    required ToggleRecipeReplyLikeUseCase toggleRecipeReplyLikeUseCase,
+    required AddRecipeReplyToReplyUseCase addRecipeReplyToReplyUseCase,
+    required WatchExploreRecipeDetailUseCase watchRecipeDetailUseCase,
+    required ToggleCreatorFollowUseCase toggleCreatorFollowUseCase,
+    required UpdateRecipeVisibilityUseCase updateRecipeVisibilityUseCase,
+    required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
+  }) : _getRecipeDetailUseCase = getRecipeDetailUseCase,
+       _submitRecipeRatingUseCase = submitRecipeRatingUseCase,
+       _addRecipeCommentUseCase = addRecipeCommentUseCase,
+       _incrementRecipeViewCountUseCase = incrementRecipeViewCountUseCase,
+       _toggleRecipeCommentLikeUseCase = toggleRecipeCommentLikeUseCase,
+       _addRecipeCommentReplyUseCase = addRecipeCommentReplyUseCase,
+       _toggleRecipeReplyLikeUseCase = toggleRecipeReplyLikeUseCase,
+       _addRecipeReplyToReplyUseCase = addRecipeReplyToReplyUseCase,
+       _watchRecipeDetailUseCase = watchRecipeDetailUseCase,
+       _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
+       _updateRecipeVisibilityUseCase = updateRecipeVisibilityUseCase,
+       _toggleFavouriteUseCase = toggleFavouriteUseCase {
+    Future.microtask(_openRecipe);
+    _watchRecipeDetail();
   }
 
   ExploreRecipe? get recipe => _recipe;
   ExploreRecipeDetailTab get selectedTab => _selectedTab;
   ExploreRecipeMethodTab get selectedMethodTab => _selectedMethodTab;
   ExploreCommunityTab get selectedCommunityTab => _selectedCommunityTab;
+  ExploreRatingStarFilter get ratingStarFilter => _ratingStarFilter;
+  ExploreCommunityDateFilter get ratingDateFilter => _ratingDateFilter;
+  ExploreCommunityDateFilter get commentDateFilter => _commentDateFilter;
   bool get isLoading => _isLoading;
+  bool get isSubmittingCommunityAction => _isSubmittingCommunityAction;
+  bool get isUpdatingVisibility => _isUpdatingVisibility;
   String? get errorMessage => _errorMessage;
+  String? get communityActionErrorMessage => _communityActionErrorMessage;
+
+  List<ExploreReview> get visibleReviews {
+    final source = _recipe?.community.reviews ?? const <ExploreReview>[];
+    Iterable<ExploreReview> reviews = source;
+    reviews = reviews.where((review) {
+      final roundedRating = review.rating.round();
+      return switch (_ratingStarFilter) {
+        ExploreRatingStarFilter.all => true,
+        ExploreRatingStarFilter.one => roundedRating == 1,
+        ExploreRatingStarFilter.two => roundedRating == 2,
+        ExploreRatingStarFilter.three => roundedRating == 3,
+        ExploreRatingStarFilter.four => roundedRating == 4,
+        ExploreRatingStarFilter.five => roundedRating == 5,
+      };
+    });
+    final sorted = reviews.toList();
+    if (_ratingDateFilter == ExploreCommunityDateFilter.latest) {
+      sorted.sort(
+        (first, second) => second.createdAt.compareTo(first.createdAt),
+      );
+    } else if (_ratingDateFilter == ExploreCommunityDateFilter.oldest) {
+      sorted.sort(
+        (first, second) => first.createdAt.compareTo(second.createdAt),
+      );
+    }
+    return sorted;
+  }
+
+  List<ExploreComment> get visibleComments {
+    final comments = [...?_recipe?.community.comments];
+    if (_commentDateFilter == ExploreCommunityDateFilter.latest) {
+      comments.sort(
+        (first, second) => second.createdAt.compareTo(first.createdAt),
+      );
+    } else if (_commentDateFilter == ExploreCommunityDateFilter.oldest) {
+      comments.sort(
+        (first, second) => first.createdAt.compareTo(second.createdAt),
+      );
+    }
+    return comments;
+  }
+
+  Future<void> _openRecipe() async {
+    await _incrementRecipeViewCountUseCase.execute(recipeId);
+    await loadRecipe();
+  }
+
+  void _watchRecipeDetail() {
+    _recipeSubscription = _watchRecipeDetailUseCase
+        .execute(recipeId)
+        .listen(
+          (recipe) {
+            _recipe = recipe;
+            _isLoading = false;
+            _errorMessage = null;
+            _notifyIfActive();
+          },
+          onError: (Object error) {
+            _errorMessage = error.toString();
+            _isLoading = false;
+            _notifyIfActive();
+          },
+        );
+  }
 
   Future<void> loadRecipe() async {
     _isLoading = _recipe == null;
@@ -74,6 +203,581 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  void updateRatingFilters({
+    required ExploreRatingStarFilter star,
+    required ExploreCommunityDateFilter date,
+  }) {
+    if (_ratingStarFilter == star && _ratingDateFilter == date) return;
+    _ratingStarFilter = star;
+    _ratingDateFilter = date;
+    _notifyIfActive();
+  }
+
+  void updateCommentDateFilter(ExploreCommunityDateFilter filter) {
+    if (_commentDateFilter == filter) return;
+    _commentDateFilter = filter;
+    _notifyIfActive();
+  }
+
+  Future<bool> submitRating(double rating) async {
+    if (_recipe?.isCreatedByCurrentUser == true) {
+      _communityActionErrorMessage = 'You cannot rate your own recipe.';
+      _notifyIfActive();
+      return false;
+    }
+
+    final previousRecipe = _recipe;
+    _applyOptimisticRating(rating);
+    _isSubmittingCommunityAction = true;
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _submitRecipeRatingUseCase.execute(
+      recipeId: recipeId,
+      rating: rating,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+
+    if (success) {
+      await loadRecipe();
+    } else {
+      _recipe = previousRecipe;
+    }
+
+    _isSubmittingCommunityAction = false;
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> addComment(String content) async {
+    final trimmedContent = content.trim();
+    if (trimmedContent.isEmpty) return false;
+
+    final previousRecipe = _recipe;
+    _applyOptimisticComment(trimmedContent);
+    _isSubmittingCommunityAction = true;
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _addRecipeCommentUseCase.execute(
+      recipeId: recipeId,
+      content: trimmedContent,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+
+    if (success) {
+      await loadRecipe();
+    } else {
+      _recipe = previousRecipe;
+    }
+
+    _isSubmittingCommunityAction = false;
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> toggleCommentLike(String commentId) async {
+    final previousRecipe = _recipe;
+    _applyOptimisticCommentLike(commentId);
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _toggleRecipeCommentLikeUseCase.execute(
+      recipeId: recipeId,
+      commentId: commentId,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+    if (success) {
+      await loadRecipe();
+    } else {
+      _recipe = previousRecipe;
+    }
+
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> toggleReplyLike(String replyPath) async {
+    final previousRecipe = _recipe;
+    _applyOptimisticReplyLike(replyPath);
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _toggleRecipeReplyLikeUseCase.execute(
+      replyPath: replyPath,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+    if (success) {
+      await loadRecipe();
+    } else {
+      _recipe = previousRecipe;
+    }
+
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> addCommentReply({
+    required String commentId,
+    required String content,
+  }) async {
+    final trimmedContent = content.trim();
+    if (trimmedContent.isEmpty) return false;
+
+    final previousRecipe = _recipe;
+    _applyOptimisticCommentReply(commentId: commentId, content: trimmedContent);
+    _isSubmittingCommunityAction = true;
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _addRecipeCommentReplyUseCase.execute(
+      recipeId: recipeId,
+      commentId: commentId,
+      content: trimmedContent,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+    if (success) {
+      await loadRecipe();
+    } else {
+      _recipe = previousRecipe;
+    }
+
+    _isSubmittingCommunityAction = false;
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> addReplyToReply({
+    required String replyPath,
+    required String content,
+  }) async {
+    final trimmedContent = content.trim();
+    if (trimmedContent.isEmpty) return false;
+
+    final previousRecipe = _recipe;
+    _applyOptimisticNestedReply(replyPath: replyPath, content: trimmedContent);
+    _isSubmittingCommunityAction = true;
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _addRecipeReplyToReplyUseCase.execute(
+      replyPath: replyPath,
+      content: trimmedContent,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+    if (success) {
+      await loadRecipe();
+    } else {
+      _recipe = previousRecipe;
+    }
+
+    _isSubmittingCommunityAction = false;
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> toggleCreatorFollow() async {
+    final recipe = _recipe;
+    if (recipe == null || recipe.isCreatedByCurrentUser) return false;
+
+    final shouldFollow = !recipe.isFollowingAuthor;
+    final previousRecipe = recipe;
+    _recipe = _copyRecipe(recipe, isFollowingAuthor: shouldFollow);
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _toggleCreatorFollowUseCase.execute(
+      creatorUid: recipe.creatorUid,
+      follow: shouldFollow,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+    if (!success) {
+      _recipe = previousRecipe;
+    } else {
+      await loadRecipe();
+    }
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> toggleFavourite() async {
+    final recipe = _recipe;
+    if (recipe == null) return false;
+
+    final nextFavourite = !recipe.isFavourite;
+    final previousRecipe = recipe;
+    _recipe = _copyRecipe(recipe, isFavourite: nextFavourite);
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _toggleFavouriteUseCase.execute(
+      recipeId: recipe.id,
+      isFavourite: nextFavourite,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+    if (!success) {
+      _recipe = previousRecipe;
+    }
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> updateVisibility({required bool isPublished}) async {
+    _isUpdatingVisibility = true;
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _updateRecipeVisibilityUseCase.execute(
+      recipeId: recipeId,
+      isPublished: isPublished,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+
+    if (success) {
+      await loadRecipe();
+    }
+
+    _isUpdatingVisibility = false;
+    _notifyIfActive();
+    return success;
+  }
+
+  void _applyOptimisticRating(double rating) {
+    final recipe = _recipe;
+    if (recipe == null) return;
+
+    final nextCount = recipe.ratingCount + 1;
+    final nextAverage =
+        ((recipe.rating * recipe.ratingCount) + rating) / nextCount;
+    final review = ExploreReview(
+      author: 'You',
+      avatarPath: '',
+      timeAgo: 'Just now',
+      createdAt: DateTime.now(),
+      rating: rating,
+    );
+    final reviews = [review, ...recipe.community.reviews];
+
+    _recipe = _copyRecipe(
+      recipe,
+      rating: nextAverage,
+      ratingCount: nextCount,
+      community: _copyCommunity(
+        recipe.community,
+        ratingBreakdown: _ratingBreakdown(reviews),
+        reviews: reviews,
+      ),
+    );
+  }
+
+  void _applyOptimisticComment(String content) {
+    final recipe = _recipe;
+    if (recipe == null) return;
+
+    final comment = ExploreComment(
+      id: 'local-comment-${DateTime.now().microsecondsSinceEpoch}',
+      author: 'You',
+      avatarPath: '',
+      timeAgo: 'Just now',
+      createdAt: DateTime.now(),
+      content: content,
+      likes: 0,
+      replies: const [],
+    );
+
+    _recipe = _copyRecipe(
+      recipe,
+      commentCount: recipe.commentCount + 1,
+      community: _copyCommunity(
+        recipe.community,
+        comments: [comment, ...recipe.community.comments],
+      ),
+    );
+  }
+
+  void _applyOptimisticCommentLike(String commentId) {
+    final recipe = _recipe;
+    if (recipe == null) return;
+
+    final comments = recipe.community.comments.map((comment) {
+      if (comment.id != commentId) return comment;
+      final nextLiked = !comment.isLiked;
+      return _copyComment(
+        comment,
+        isLiked: nextLiked,
+        likes: (comment.likes + (nextLiked ? 1 : -1)).clamp(0, 1 << 31).toInt(),
+      );
+    }).toList();
+
+    _recipe = _copyRecipe(
+      recipe,
+      community: _copyCommunity(recipe.community, comments: comments),
+    );
+  }
+
+  void _applyOptimisticReplyLike(String replyPath) {
+    final recipe = _recipe;
+    if (recipe == null) return;
+
+    final comments = recipe.community.comments.map((comment) {
+      return _copyComment(
+        comment,
+        replies: _updateReplyLikes(comment.replies, replyPath),
+      );
+    }).toList();
+
+    _recipe = _copyRecipe(
+      recipe,
+      community: _copyCommunity(recipe.community, comments: comments),
+    );
+  }
+
+  void _applyOptimisticCommentReply({
+    required String commentId,
+    required String content,
+  }) {
+    final recipe = _recipe;
+    if (recipe == null) return;
+
+    final reply = _localReply(content);
+    final comments = recipe.community.comments.map((comment) {
+      if (comment.id != commentId) return comment;
+      return _copyComment(comment, replies: [...comment.replies, reply]);
+    }).toList();
+
+    _recipe = _copyRecipe(
+      recipe,
+      community: _copyCommunity(recipe.community, comments: comments),
+    );
+  }
+
+  void _applyOptimisticNestedReply({
+    required String replyPath,
+    required String content,
+  }) {
+    final recipe = _recipe;
+    if (recipe == null) return;
+
+    final comments = recipe.community.comments.map((comment) {
+      return _copyComment(
+        comment,
+        replies: _addNestedReply(
+          comment.replies,
+          replyPath,
+          _localReply(content),
+        ),
+      );
+    }).toList();
+
+    _recipe = _copyRecipe(
+      recipe,
+      community: _copyCommunity(recipe.community, comments: comments),
+    );
+  }
+
+  List<ExploreCommentReply> _updateReplyLikes(
+    List<ExploreCommentReply> replies,
+    String replyPath,
+  ) {
+    return replies.map((reply) {
+      final childReplies = _updateReplyLikes(reply.replies, replyPath);
+      if (reply.documentPath != replyPath) {
+        return _copyReply(reply, replies: childReplies);
+      }
+      final nextLiked = !reply.isLiked;
+      return _copyReply(
+        reply,
+        replies: childReplies,
+        isLiked: nextLiked,
+        likes: (reply.likes + (nextLiked ? 1 : -1)).clamp(0, 1 << 31).toInt(),
+      );
+    }).toList();
+  }
+
+  List<ExploreCommentReply> _addNestedReply(
+    List<ExploreCommentReply> replies,
+    String replyPath,
+    ExploreCommentReply newReply,
+  ) {
+    return replies.map((reply) {
+      if (reply.documentPath == replyPath) {
+        return _copyReply(reply, replies: [...reply.replies, newReply]);
+      }
+      return _copyReply(
+        reply,
+        replies: _addNestedReply(reply.replies, replyPath, newReply),
+      );
+    }).toList();
+  }
+
+  ExploreCommentReply _localReply(String content) {
+    final id = 'local-reply-${DateTime.now().microsecondsSinceEpoch}';
+    return ExploreCommentReply(
+      id: id,
+      documentPath: id,
+      author: 'You',
+      avatarPath: '',
+      timeAgo: 'Just now',
+      createdAt: DateTime.now(),
+      content: content,
+      likes: 0,
+      replies: const [],
+    );
+  }
+
+  List<ExploreRatingBreakdown> _ratingBreakdown(List<ExploreReview> reviews) {
+    final counts = {for (var star = 1; star <= 5; star++) star: 0};
+    for (final review in reviews) {
+      final star = review.rating.round().clamp(1, 5);
+      counts[star] = (counts[star] ?? 0) + 1;
+    }
+    return List.generate(5, (index) {
+      final stars = 5 - index;
+      return ExploreRatingBreakdown(stars: stars, count: counts[stars] ?? 0);
+    });
+  }
+
+  ExploreRecipe _copyRecipe(
+    ExploreRecipe recipe, {
+    double? rating,
+    int? ratingCount,
+    int? commentCount,
+    bool? isFollowingAuthor,
+    bool? isFavourite,
+    ExploreCommunity? community,
+  }) {
+    return ExploreRecipe(
+      id: recipe.id,
+      creatorUid: recipe.creatorUid,
+      title: recipe.title,
+      author: recipe.author,
+      publishedAtLabel: recipe.publishedAtLabel,
+      authorAvatarPath: recipe.authorAvatarPath,
+      authorFollowerCount: recipe.authorFollowerCount,
+      imagePath: recipe.imagePath,
+      imagePaths: recipe.imagePaths,
+      description: recipe.description,
+      otherNames: recipe.otherNames,
+      category: recipe.category,
+      categoryIds: recipe.categoryIds,
+      customCategoryIds: recipe.customCategoryIds,
+      allergenInfo: recipe.allergenInfo,
+      totalTime: recipe.totalTime,
+      difficulty: recipe.difficulty,
+      rating: rating ?? recipe.rating,
+      ratingCount: ratingCount ?? recipe.ratingCount,
+      commentCount: commentCount ?? recipe.commentCount,
+      totalViews: recipe.totalViews,
+      publishedAt: recipe.publishedAt,
+      isFollowingAuthor: isFollowingAuthor ?? recipe.isFollowingAuthor,
+      isFavourite: isFavourite ?? recipe.isFavourite,
+      isCreatedByCurrentUser: recipe.isCreatedByCurrentUser,
+      ingredients: recipe.ingredients,
+      instructionSections: recipe.instructionSections,
+      nutrition: recipe.nutrition,
+      community: community ?? recipe.community,
+      relatedRecipes: recipe.relatedRecipes,
+    );
+  }
+
+  ExploreCommunity _copyCommunity(
+    ExploreCommunity community, {
+    List<ExploreRatingBreakdown>? ratingBreakdown,
+    List<ExploreReview>? reviews,
+    List<ExploreComment>? comments,
+  }) {
+    return ExploreCommunity(
+      authorBio: community.authorBio,
+      ratingBreakdown: ratingBreakdown ?? community.ratingBreakdown,
+      reviews: reviews ?? community.reviews,
+      comments: comments ?? community.comments,
+    );
+  }
+
+  ExploreComment _copyComment(
+    ExploreComment comment, {
+    int? likes,
+    bool? isLiked,
+    List<ExploreCommentReply>? replies,
+  }) {
+    return ExploreComment(
+      id: comment.id,
+      author: comment.author,
+      avatarPath: comment.avatarPath,
+      timeAgo: comment.timeAgo,
+      createdAt: comment.createdAt,
+      content: comment.content,
+      likes: likes ?? comment.likes,
+      isLiked: isLiked ?? comment.isLiked,
+      replies: replies ?? comment.replies,
+    );
+  }
+
+  ExploreCommentReply _copyReply(
+    ExploreCommentReply reply, {
+    int? likes,
+    bool? isLiked,
+    List<ExploreCommentReply>? replies,
+  }) {
+    return ExploreCommentReply(
+      id: reply.id,
+      documentPath: reply.documentPath,
+      author: reply.author,
+      avatarPath: reply.avatarPath,
+      timeAgo: reply.timeAgo,
+      createdAt: reply.createdAt,
+      content: reply.content,
+      likes: likes ?? reply.likes,
+      isLiked: isLiked ?? reply.isLiked,
+      replies: replies ?? reply.replies,
+    );
+  }
+
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
@@ -81,6 +785,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _isDisposed = true;
+    _recipeSubscription?.cancel();
     super.dispose();
   }
 }

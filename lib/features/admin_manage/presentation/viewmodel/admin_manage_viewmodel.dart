@@ -5,7 +5,6 @@ import '../../domain/usecases/delete_admin_manage_item_usecase.dart';
 import '../../domain/usecases/get_admin_manage_items_usecase.dart';
 import '../../domain/usecases/reorder_admin_manage_items_usecase.dart';
 import '../../domain/usecases/save_admin_manage_item_usecase.dart';
-import '../../domain/usecases/seed_admin_manage_defaults_usecase.dart';
 
 /// Category metadata for admin-managed selectable values.
 class AdminManageCategory {
@@ -16,7 +15,6 @@ class AdminManageCategory {
   final String tip;
   final String emptyMessage;
   final IconData icon;
-  final List<String> seedValues;
 
   const AdminManageCategory({
     required this.id,
@@ -26,7 +24,6 @@ class AdminManageCategory {
     required this.tip,
     required this.emptyMessage,
     required this.icon,
-    required this.seedValues,
   });
 }
 
@@ -36,7 +33,6 @@ class AdminManageViewModel extends ChangeNotifier {
   final SaveAdminManageItemUseCase _saveItemUseCase;
   final DeleteAdminManageItemUseCase _deleteItemUseCase;
   final ReorderAdminManageItemsUseCase _reorderItemsUseCase;
-  final SeedAdminManageDefaultsUseCase _seedDefaultsUseCase;
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -48,12 +44,10 @@ class AdminManageViewModel extends ChangeNotifier {
     required SaveAdminManageItemUseCase saveItemUseCase,
     required DeleteAdminManageItemUseCase deleteItemUseCase,
     required ReorderAdminManageItemsUseCase reorderItemsUseCase,
-    required SeedAdminManageDefaultsUseCase seedDefaultsUseCase,
   }) : _getItemsUseCase = getItemsUseCase,
        _saveItemUseCase = saveItemUseCase,
        _deleteItemUseCase = deleteItemUseCase,
-       _reorderItemsUseCase = reorderItemsUseCase,
-       _seedDefaultsUseCase = seedDefaultsUseCase {
+       _reorderItemsUseCase = reorderItemsUseCase {
     loadAll();
   }
 
@@ -68,7 +62,6 @@ class AdminManageViewModel extends ChangeNotifier {
           'Manage meal categories shown to user. You can activate or deactivate categories.',
       emptyMessage: 'No meal categories yet',
       icon: Icons.restaurant_menu,
-      seedValues: ['Breakfast', 'Lunch', 'Tea Time', 'Dinner'],
     ),
     AdminManageCategory(
       id: 'ingredient_categories',
@@ -80,7 +73,6 @@ class AdminManageViewModel extends ChangeNotifier {
           'Manage ingredient categories used when recipes are created and filtered.',
       emptyMessage: 'No ingredient categories yet',
       icon: Icons.kitchen,
-      seedValues: ['Dairy', 'Meat', 'Vegetables', 'Seafood'],
     ),
     AdminManageCategory(
       id: 'recipe_categories',
@@ -92,16 +84,6 @@ class AdminManageViewModel extends ChangeNotifier {
           'Manage recipe categories used when recipes are created, filtered and explored.',
       emptyMessage: 'No recipe categories yet',
       icon: Icons.public,
-      seedValues: [
-        'Italian',
-        'Chinese',
-        'Malay',
-        'Indian',
-        'Japanese',
-        'Korean',
-        'Thai',
-        'Western',
-      ],
     ),
   ];
 
@@ -115,7 +97,6 @@ class AdminManageViewModel extends ChangeNotifier {
           'These items are used as default options in the app. Users can still search and add more custom items.',
       emptyMessage: 'No meal preferences yet',
       icon: Icons.favorite,
-      seedValues: ['Vegetarian', 'High Protein', 'Low Carb', 'Halal'],
     ),
     AdminManageCategory(
       id: 'allergies',
@@ -125,7 +106,6 @@ class AdminManageViewModel extends ChangeNotifier {
       tip: 'These allergy defaults help users set profile preferences faster.',
       emptyMessage: 'No allergies yet',
       icon: Icons.health_and_safety,
-      seedValues: ['Dairy', 'Eggs', 'Peanuts', 'Seafood'],
     ),
     AdminManageCategory(
       id: 'dislikes',
@@ -135,7 +115,6 @@ class AdminManageViewModel extends ChangeNotifier {
       tip: 'These dislike defaults help users personalize meal suggestions.',
       emptyMessage: 'No dislikes yet',
       icon: Icons.thumb_down,
-      seedValues: ['Onion', 'Garlic', 'Spicy Food', 'Mushrooms'],
     ),
   ];
 
@@ -157,10 +136,21 @@ class AdminManageViewModel extends ChangeNotifier {
         ...preferenceCategories,
       ]) {
         final result = await _getItemsUseCase.execute(category.id);
-        result.fold(
-          (failure) => _errorMessage = failure.message,
-          (items) => _itemsByCategory[category.id] = items,
-        );
+        await result.fold((failure) async => _errorMessage = failure.message, (
+          items,
+        ) async {
+          final duplicateIds = _duplicateIds(items);
+          if (duplicateIds.isEmpty) {
+            _itemsByCategory[category.id] = items;
+            return;
+          }
+
+          await _deleteDuplicateItems(
+            categoryId: category.id,
+            duplicateIds: duplicateIds,
+          );
+          await _reloadCategory(category.id);
+        });
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -182,6 +172,11 @@ class AdminManageViewModel extends ChangeNotifier {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) {
       _errorMessage = 'Name cannot be empty';
+      notifyListeners();
+      return false;
+    }
+    if (_hasDuplicateName(categoryId: categoryId, id: id, name: trimmedName)) {
+      _errorMessage = 'This name already exists in this list';
       notifyListeners();
       return false;
     }
@@ -295,28 +290,6 @@ class AdminManageViewModel extends ChangeNotifier {
     return success;
   }
 
-  Future<void> seedDefaults(AdminManageCategory category) async {
-    if (itemsFor(category.id).isNotEmpty) return;
-
-    _isSaving = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final result = await _seedDefaultsUseCase.execute(
-        categoryId: category.id,
-        values: category.seedValues,
-      );
-      result.fold((failure) => _errorMessage = failure.message, (_) => null);
-      await _reloadCategory(category.id);
-    } catch (e) {
-      _errorMessage = e.toString();
-    }
-
-    _isSaving = false;
-    notifyListeners();
-  }
-
   Future<void> _reloadCategory(String categoryId) async {
     final result = await _getItemsUseCase.execute(categoryId);
     result.fold(
@@ -324,4 +297,47 @@ class AdminManageViewModel extends ChangeNotifier {
       (items) => _itemsByCategory[categoryId] = items,
     );
   }
+
+  bool _hasDuplicateName({
+    required String categoryId,
+    required String? id,
+    required String name,
+  }) {
+    final normalizedName = _normalizeName(name);
+    return itemsFor(categoryId).any(
+      (item) => item.id != id && _normalizeName(item.name) == normalizedName,
+    );
+  }
+
+  List<String> _duplicateIds(List<AdminManageItem> items) {
+    final seenNames = <String>{};
+    final duplicateIds = <String>[];
+
+    for (final item in items) {
+      final normalizedName = _normalizeName(item.name);
+      if (normalizedName.isEmpty) continue;
+      if (seenNames.contains(normalizedName)) {
+        duplicateIds.add(item.id);
+      } else {
+        seenNames.add(normalizedName);
+      }
+    }
+
+    return duplicateIds;
+  }
+
+  Future<void> _deleteDuplicateItems({
+    required String categoryId,
+    required List<String> duplicateIds,
+  }) async {
+    for (final id in duplicateIds) {
+      final result = await _deleteItemUseCase.execute(
+        categoryId: categoryId,
+        id: id,
+      );
+      result.fold((failure) => _errorMessage = failure.message, (_) => null);
+    }
+  }
+
+  String _normalizeName(String value) => value.trim().toLowerCase();
 }

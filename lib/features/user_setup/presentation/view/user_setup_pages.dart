@@ -23,6 +23,7 @@ class UserSetupDietPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return _UserSetupProvider(
       args: args,
+      optionCategoryIds: const ['meal_preferences'],
       child: _DietView(args: args),
     );
   }
@@ -37,6 +38,7 @@ class UserSetupAllergiesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return _UserSetupProvider(
       args: args,
+      optionCategoryIds: const ['allergies'],
       child: _AllergiesView(args: args),
     );
   }
@@ -51,6 +53,7 @@ class UserSetupDislikesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return _UserSetupProvider(
       args: args,
+      optionCategoryIds: const ['dislikes'],
       child: _DislikesView(args: args),
     );
   }
@@ -86,9 +89,14 @@ class UserSetupNotificationPage extends StatelessWidget {
 
 class _UserSetupProvider extends StatelessWidget {
   final UserSetupArgs args;
+  final List<String> optionCategoryIds;
   final Widget child;
 
-  const _UserSetupProvider({required this.args, required this.child});
+  const _UserSetupProvider({
+    required this.args,
+    this.optionCategoryIds = const [],
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +107,7 @@ class _UserSetupProvider extends StatelessWidget {
         searchFoodsUseCase: sl(),
         getPreferencesUseCase: sl(),
         savePreferencesUseCase: sl(),
-      )..load(),
+      )..load(optionCategoryIds: optionCategoryIds),
       child: child,
     );
   }

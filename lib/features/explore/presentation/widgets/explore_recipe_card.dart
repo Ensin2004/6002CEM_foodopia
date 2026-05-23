@@ -2,18 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
+import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../domain/entities/explore_recipe.dart';
 
 class ExploreRecipeCard extends StatelessWidget {
   final ExploreRecipe recipe;
   final VoidCallback onTap;
   final VoidCallback onComingSoonTap;
+  final VoidCallback onFavouriteTap;
+  final VoidCallback? onImageLongPress;
 
   const ExploreRecipeCard({
     super.key,
     required this.recipe,
     required this.onTap,
     required this.onComingSoonTap,
+    required this.onFavouriteTap,
+    this.onImageLongPress,
   });
 
   @override
@@ -37,39 +42,96 @@ class ExploreRecipeCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                height: 92,
-                width: double.infinity,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(8),
-                  ),
-                  child: ColoredBox(
-                    color: colors.surfaceContainerHighest,
-                    child: Image.asset(
-                      recipe.imagePath,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.contain,
+              Expanded(
+                flex: 5,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onLongPress: onImageLongPress,
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8),
+                          ),
+                          child: ColoredBox(
+                            color: colors.surfaceContainerHighest,
+                            child: AppRemoteOrAssetImage(
+                              imagePath: recipe.imagePath,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: _ImageIconButton(
+                        icon: recipe.isFavourite
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: recipe.isFavourite
+                            ? AppColors.favourite
+                            : Colors.white,
+                        onTap: onFavouriteTap,
+                      ),
+                    ),
+                    Positioned(
+                      left: 8,
+                      top: 8,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.88),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 11,
+                            vertical: 6,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.visibility,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                _compactCount(recipe.totalViews),
+                                style: textTheme.labelMedium?.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Expanded(
+                flex: 3,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(
-                        height: 34,
+                        height: 20,
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               child: Text(
                                 recipe.title,
-                                maxLines: 2,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: textTheme.labelLarge?.copyWith(
                                   color: colors.onSurface,
@@ -103,26 +165,32 @@ class ExploreRecipeCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       SizedBox(
-                        height: 28,
+                        height: 18,
                         child: Text(
                           recipe.description,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodySmall?.copyWith(
-                            height: 1.22,
-                          ),
+                          style: textTheme.bodySmall?.copyWith(height: 1.22),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 5),
                       SizedBox(
-                        height: 36,
+                        height: 34,
                         child: Row(
                           children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: colors.primary,
-                              backgroundImage: AssetImage(
-                                recipe.authorAvatarPath,
+                            Container(
+                              padding: const EdgeInsets.all(1.5),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.primary,
+                                  width: 1.4,
+                                ),
+                              ),
+                              child: AppRemoteOrAssetAvatar(
+                                radius: 16,
+                                backgroundColor: colors.primary,
+                                imagePath: recipe.authorAvatarPath,
                               ),
                             ),
                             const SizedBox(width: 7),
@@ -144,8 +212,9 @@ class ExploreRecipeCard extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: textTheme.bodySmall?.copyWith(
-                                      color: AppColors.textSecondary
-                                          .withValues(alpha: 0.72),
+                                      color: AppColors.textSecondary.withValues(
+                                        alpha: 0.72,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -155,18 +224,6 @@ class ExploreRecipeCard extends StatelessWidget {
                               icon: Icons.chat_bubble,
                               label: _compactCount(recipe.commentCount),
                               onTap: onComingSoonTap,
-                            ),
-                            const SizedBox(width: 5),
-                            InkResponse(
-                              onTap: onComingSoonTap,
-                              radius: 18,
-                              child: Icon(
-                                Icons.bookmark,
-                                size: 18,
-                                color: AppColors.textSecondary.withValues(
-                                  alpha: 0.55,
-                                ),
-                              ),
                             ),
                           ],
                         ),
@@ -188,6 +245,35 @@ class ExploreRecipeCard extends StatelessWidget {
       return '${compact.toStringAsFixed(compact >= 10 ? 0 : 1)}k';
     }
     return '$value';
+  }
+}
+
+class _ImageIconButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ImageIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.58),
+      shape: const CircleBorder(),
+      child: InkResponse(
+        onTap: onTap,
+        radius: 19,
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Icon(icon, size: 18, color: color),
+        ),
+      ),
+    );
   }
 }
 
@@ -214,14 +300,15 @@ class _CountWithIcon extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: context.text.bodySmall?.copyWith(
+            style: context.text.labelMedium?.copyWith(
               color: AppColors.textSecondary.withValues(alpha: 0.72),
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(width: 3),
+          const SizedBox(width: 4),
           Icon(
             icon,
-            size: 18,
+            size: 20,
             color: AppColors.textSecondary.withValues(alpha: 0.55),
           ),
         ],

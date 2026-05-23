@@ -7,6 +7,8 @@ import '../../domain/entities/user_setup_option.dart';
 class UserSetupRemoteDataSource {
   final FirebaseFirestore firestore;
   final FoodSearchService foodSearchService;
+  final Map<String, List<UserSetupOption>> _adminOptionsCache = {};
+  final Map<String, UserSetupPreferencesModel> _preferencesCache = {};
 
   UserSetupRemoteDataSource({
     required this.firestore,
@@ -14,11 +16,15 @@ class UserSetupRemoteDataSource {
   });
 
   Future<List<UserSetupOption>> getAdminOptions(String categoryId) async {
+    final cached = _adminOptionsCache[categoryId];
+    if (cached != null) return cached;
+
     final snapshot = await firestore
         .collection('app_config')
         .doc(categoryId)
         .collection('items')
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 8));
 
     final docs = snapshot.docs.toList()
       ..sort((first, second) {
@@ -29,7 +35,7 @@ class UserSetupRemoteDataSource {
         return left.compareTo(right);
       });
 
-    return docs
+    final options = docs
         .map((doc) {
           final data = doc.data();
           final isActive = data['isActive'] is bool
@@ -47,6 +53,8 @@ class UserSetupRemoteDataSource {
           return item.name.trim().isNotEmpty;
         })
         .toList();
+    _adminOptionsCache[categoryId] = options;
+    return options;
   }
 
   Future<List<UserSetupOption>> searchFoods(String query) async {
@@ -66,9 +74,16 @@ class UserSetupRemoteDataSource {
   }
 
   Future<UserSetupPreferencesModel> getPreferences(String uid) async {
-    final doc = await _preferencesDoc(uid).get();
+    final cached = _preferencesCache[uid];
+    if (cached != null) return cached;
+
+    final doc = await _preferencesDoc(
+      uid,
+    ).get().timeout(const Duration(seconds: 8));
     if (!doc.exists) return const UserSetupPreferencesModel();
-    return UserSetupPreferencesModel.fromFirestore(doc);
+    final preferences = UserSetupPreferencesModel.fromFirestore(doc);
+    _preferencesCache[uid] = preferences;
+    return preferences;
   }
 
   Future<bool> isSetupCompleted(String uid) async {
@@ -89,6 +104,7 @@ class UserSetupRemoteDataSource {
     await _preferencesDoc(
       uid,
     ).set(preferences.toFirestore(), SetOptions(merge: true));
+    _preferencesCache[uid] = preferences;
 
     await firestore.collection('users').doc(uid).set({
       'onboardingCompleted': preferences.isCompleted,
