@@ -14,7 +14,7 @@ import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../viewmodel/explore_creator_detail_viewmodel.dart';
 import '../widgets/explore_empty_state.dart';
-import '../widgets/explore_recipe_card.dart';
+import '../widgets/explore_recipe_grid.dart';
 
 class ExploreCreatorDetailPage extends StatelessWidget {
   final String creatorUid;
@@ -416,38 +416,17 @@ class _RecipeGrid extends StatelessWidget {
       );
     }
 
-    final width = MediaQuery.sizeOf(context).width;
-    final crossAxisCount = width >= 900
-        ? 4
-        : width >= 600
-        ? 3
-        : 2;
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      sliver: SliverGrid.builder(
-        itemCount: recipes.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          mainAxisExtent: width < 380 ? 258 : 282,
-        ),
-        itemBuilder: (context, index) {
-          final recipe = recipes[index];
-          return ExploreRecipeCard(
-            recipe: recipe,
-            onComingSoonTap: onComingSoonTap,
-            onFavouriteTap: () => onFavouriteTap(recipe.id),
-            onImageLongPress: () => onImageLongPress(recipe),
-            onTap: () {
-              context.push(
-                AppRouter.exploreRecipeDetail,
-                extra: ExploreRecipeDetailArgs(recipeId: recipe.id),
-              );
-            },
-          );
-        },
-      ),
+    return ExploreRecipeSliverGrid(
+      recipes: recipes,
+      onComingSoonTap: onComingSoonTap,
+      onFavouriteTap: onFavouriteTap,
+      onImageLongPress: onImageLongPress,
+      onRecipeTap: (recipe) {
+        context.push(
+          AppRouter.exploreRecipeDetail,
+          extra: ExploreRecipeDetailArgs(recipeId: recipe.id),
+        );
+      },
     );
   }
 }

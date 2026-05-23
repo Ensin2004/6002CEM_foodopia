@@ -170,7 +170,7 @@ class _MainPageViewState extends State<_MainPageView> {
         isAdmin: isAdmin,
         profileImageUrl: viewModel.profileImageUrl,
         onSettingsTap: viewModel.goToSettings,
-        onFavoritesTap: isAdmin ? null : viewModel.goToFavorites,
+        onStatisticsTap: isAdmin ? null : viewModel.goToStatistics,
         onNotificationsTap: isAdmin ? null : viewModel.goToNotifications,
       ),
       body: _buildBody(context, viewModel),
@@ -363,10 +363,10 @@ class _MainPageViewState extends State<_MainPageView> {
               viewModel.refreshProfile();
             });
         break;
-      case MainNavigationEvent.goToFavorites:
-        ScaffoldMessenger.of(context).showSnackBar(
-          /// Creates a snack bar instance.
-          const SnackBar(content: Text('Favorites - Coming Soon')),
+      case MainNavigationEvent.goToStatistics:
+        context.push(
+          AppRouter.statistics,
+          extra: StatisticsArgs(isAdmin: viewModel.isAdmin),
         );
         break;
       case MainNavigationEvent.goToNotifications:
@@ -382,7 +382,6 @@ class _MainPageViewState extends State<_MainPageView> {
         );
         break;
       case MainNavigationEvent.goToProfile:
-      case MainNavigationEvent.goToStatistics:
         break;
     }
   }
