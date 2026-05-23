@@ -5,25 +5,38 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class FcmNotificationService {
   static const MethodChannel _channel = MethodChannel('foodopia/notifications');
   static StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
   _notificationSubscription;
+  static StreamSubscription<String>? _tokenSubscription;
+  static StreamSubscription<RemoteMessage>? _messageSubscription;
+  static bool _isInitialized = false;
 
   static Future<void> initialize() async {
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    if (!_isInitialized) {
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
+      _isInitialized = true;
+    }
 
     final messaging = FirebaseMessaging.instance;
     await messaging.requestPermission(alert: true, badge: true, sound: true);
     await _saveCurrentToken();
 
-    messaging.onTokenRefresh.listen((token) async {
+    await _tokenSubscription?.cancel();
+    _tokenSubscription = messaging.onTokenRefresh.listen((token) async {
       await _saveToken(token);
     });
 
-    FirebaseMessaging.onMessage.listen(_showForegroundNotification);
+    await _messageSubscription?.cancel();
+    _messageSubscription = FirebaseMessaging.onMessage.listen(
+      _showForegroundNotification,
+    );
     _watchFirestoreNotifications();
   }
 
@@ -60,28 +73,39 @@ class FcmNotificationService {
     if (uid == null || uid.isEmpty) return;
 
     _notificationSubscription?.cancel();
-    final startedAt = Timestamp.now();
+    final startedAt = Timestamp.fromDate(
+      DateTime.now().subtract(const Duration(seconds: 10)),
+    );
     _notificationSubscription = FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('notifications')
         .where('isRead', isEqualTo: false)
         .where('createdAt', isGreaterThan: startedAt)
+        .orderBy('createdAt', descending: false)
         .snapshots()
-        .listen((snapshot) {
-          for (final change in snapshot.docChanges) {
-            if (change.type != DocumentChangeType.added) continue;
-            final data = change.doc.data() ?? const <String, dynamic>{};
-            final title = data['title']?.toString() ?? 'Foodopia';
-            final body =
-                data['message']?.toString() ?? 'You have a new notification.';
-            _showNativeNotification(
-              title: title,
-              body: body,
-              key: 'firestore_${change.doc.id}',
+        .listen(
+          (snapshot) {
+            for (final change in snapshot.docChanges) {
+              if (change.type != DocumentChangeType.added) continue;
+              final data = change.doc.data() ?? const <String, dynamic>{};
+              if (data['createdAt'] == null) continue;
+              final title = data['title']?.toString() ?? 'Foodopia';
+              final body =
+                  data['message']?.toString() ?? 'You have a new notification.';
+              _showNativeNotification(
+                title: title,
+                body: body,
+                key: 'firestore_${change.doc.id}',
+              );
+            }
+          },
+          onError: (Object error) {
+            debugPrint(
+              '[NotificationWatcher] Firestore listener error: $error',
             );
-          }
-        });
+          },
+        );
   }
 
   static Future<void> _showNativeNotification({
