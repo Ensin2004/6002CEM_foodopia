@@ -41,4 +41,9 @@ abstract class AddRecipeRepository {
     required String recipeId,
     required String visibility,
   });
+
+  Future<Either<Failure, void>> completeRecipe({
+    required String recipeId,
+    required String mode,
+  });
 }

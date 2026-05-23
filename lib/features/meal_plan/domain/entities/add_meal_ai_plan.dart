@@ -56,8 +56,14 @@ class AddMealAiRecipe {
   final String difficultyLabel;
   final String servingLabel;
   final String imagePath;
+  final String? imageBase64;
   final String description;
   final List<String> reasons;
+  final List<AddMealAiIngredient> ingredients;
+  final List<String> instructions;
+  final int calories;
+  final String imagePrompt;
+  final String categoryName;
 
   const AddMealAiRecipe({
     required this.id,
@@ -66,7 +72,60 @@ class AddMealAiRecipe {
     required this.difficultyLabel,
     required this.servingLabel,
     required this.imagePath,
+    this.imageBase64,
     required this.description,
     required this.reasons,
+    this.ingredients = const [],
+    this.instructions = const [],
+    this.calories = 0,
+    this.imagePrompt = '',
+    this.categoryName = '',
+  });
+}
+
+class AddMealAiIngredient {
+  final String name;
+  final double amount;
+  final String unit;
+
+  const AddMealAiIngredient({
+    required this.name,
+    required this.amount,
+    required this.unit,
+  });
+}
+
+class AddMealCategoryOption {
+  final String id;
+  final String name;
+
+  const AddMealCategoryOption({required this.id, required this.name});
+}
+
+class AddMealAiGenerationRequest {
+  final DateTime planningDate;
+  final String mealType;
+  final AddMealWeather weather;
+  final AddMealPreferenceSnapshot preferences;
+  final List<String> ingredientsToInclude;
+  final List<String> ingredientsToAvoid;
+  final List<String> dishIncludes;
+  final List<String> dishAvoids;
+  final String cookingTime;
+  final String difficulty;
+  final String servingSize;
+
+  const AddMealAiGenerationRequest({
+    required this.planningDate,
+    required this.mealType,
+    required this.weather,
+    required this.preferences,
+    required this.ingredientsToInclude,
+    required this.ingredientsToAvoid,
+    required this.dishIncludes,
+    required this.dishAvoids,
+    required this.cookingTime,
+    required this.difficulty,
+    required this.servingSize,
   });
 }

@@ -232,4 +232,21 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
       );
     }
   }
+
+  @override
+  Future<Either<Failure, void>> completeRecipe({
+    required String recipeId,
+    required String mode,
+  }) async {
+    if (recipeId.trim().isEmpty) {
+      return Left(ValidationFailure(message: 'Recipe id is missing.'));
+    }
+
+    try {
+      await remoteDataSource.completeRecipe(recipeId: recipeId, mode: mode);
+      return const Right(null);
+    } catch (error) {
+      return Left(ServerFailure(message: 'Unable to complete recipe: $error'));
+    }
+  }
 }
