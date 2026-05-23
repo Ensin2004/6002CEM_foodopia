@@ -30,10 +30,12 @@ class LibraryViewModel extends ChangeNotifier {
     required GetLibraryRecipesUseCase getRecipesUseCase,
     required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
     required UpdateLibraryProfileUseCase updateProfileUseCase,
+    LibraryRecipeTab initialTab = LibraryRecipeTab.public,
   }) : _getProfileUseCase = getProfileUseCase,
        _getRecipesUseCase = getRecipesUseCase,
        _toggleFavouriteUseCase = toggleFavouriteUseCase,
-       _updateProfileUseCase = updateProfileUseCase {
+       _updateProfileUseCase = updateProfileUseCase,
+       _selectedTab = initialTab {
     Future.microtask(loadLibrary);
   }
 

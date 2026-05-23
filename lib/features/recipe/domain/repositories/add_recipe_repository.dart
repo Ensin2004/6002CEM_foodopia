@@ -41,4 +41,6 @@ abstract class AddRecipeRepository {
     required String recipeId,
     required String visibility,
   });
+
+  Future<Either<Failure, void>> deleteRecipe(String recipeId);
 }

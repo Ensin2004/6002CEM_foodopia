@@ -22,19 +22,35 @@ import '../widgets/library_recipe_card.dart';
 class LibraryPage extends StatelessWidget {
   final bool showAppBar;
   final VoidCallback? onExploreNow;
+  final String? focusedRecipeId;
+  final bool? focusedRecipeIsPublished;
 
-  const LibraryPage({super.key, this.showAppBar = false, this.onExploreNow});
+  const LibraryPage({
+    super.key,
+    this.showAppBar = false,
+    this.onExploreNow,
+    this.focusedRecipeId,
+    this.focusedRecipeIsPublished,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final initialTab = focusedRecipeIsPublished == false
+        ? LibraryRecipeTab.private
+        : LibraryRecipeTab.public;
     final page = ChangeNotifierProvider(
       create: (_) => LibraryViewModel(
         getProfileUseCase: sl(),
         getRecipesUseCase: sl(),
         toggleFavouriteUseCase: sl(),
         updateProfileUseCase: sl(),
+        initialTab: initialTab,
       ),
-      child: _LibraryPageView(onExploreNow: onExploreNow),
+      child: _LibraryPageView(
+        onExploreNow: onExploreNow,
+        focusedRecipeId: focusedRecipeId,
+        initialTab: initialTab,
+      ),
     );
 
     if (!showAppBar) return page;
@@ -49,8 +65,14 @@ class LibraryPage extends StatelessWidget {
 
 class _LibraryPageView extends StatefulWidget {
   final VoidCallback? onExploreNow;
+  final String? focusedRecipeId;
+  final LibraryRecipeTab initialTab;
 
-  const _LibraryPageView({this.onExploreNow});
+  const _LibraryPageView({
+    this.onExploreNow,
+    this.focusedRecipeId,
+    required this.initialTab,
+  });
 
   @override
   State<_LibraryPageView> createState() => _LibraryPageViewState();
@@ -59,19 +81,46 @@ class _LibraryPageView extends StatefulWidget {
 class _LibraryPageViewState extends State<_LibraryPageView>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  String? _focusedRecipeId;
 
   @override
   void initState() {
     super.initState();
+    _focusedRecipeId = widget.focusedRecipeId;
     _tabController = TabController(
       length: LibraryRecipeTab.values.length,
       vsync: this,
+      initialIndex: LibraryRecipeTab.values.indexOf(widget.initialTab),
     );
     _tabController.addListener(_handleTabChanged);
   }
 
+  @override
+  void didUpdateWidget(covariant _LibraryPageView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final focusChanged = oldWidget.focusedRecipeId != widget.focusedRecipeId;
+    final tabChanged = oldWidget.initialTab != widget.initialTab;
+    if (!focusChanged && !tabChanged) return;
+
+    _focusedRecipeId = widget.focusedRecipeId;
+    final nextIndex = LibraryRecipeTab.values.indexOf(widget.initialTab);
+    if (_tabController.index != nextIndex) {
+      _tabController.animateTo(nextIndex);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final viewModel = context.read<LibraryViewModel>();
+      viewModel.selectTab(widget.initialTab);
+      viewModel.loadLibrary();
+    });
+  }
+
   void _handleTabChanged() {
     if (_tabController.indexIsChanging) return;
+    if (_focusedRecipeId != null) {
+      setState(() => _focusedRecipeId = null);
+    }
     context.read<LibraryViewModel>().selectTab(
       LibraryRecipeTab.values[_tabController.index],
     );
@@ -142,6 +191,7 @@ class _LibraryPageViewState extends State<_LibraryPageView>
       onComingSoonTap: _showComingSoonMessage,
       onEditProfileTap: _showEditProfileSheet,
       onFavouriteTap: _toggleFavourite,
+      focusedRecipeId: _focusedRecipeId,
     );
   }
 }
@@ -153,6 +203,7 @@ class _LibraryContent extends StatelessWidget {
   final VoidCallback onComingSoonTap;
   final VoidCallback onEditProfileTap;
   final ValueChanged<String> onFavouriteTap;
+  final String? focusedRecipeId;
 
   const _LibraryContent({
     required this.viewModel,
@@ -161,6 +212,7 @@ class _LibraryContent extends StatelessWidget {
     required this.onComingSoonTap,
     required this.onEditProfileTap,
     required this.onFavouriteTap,
+    this.focusedRecipeId,
   });
 
   @override
@@ -188,7 +240,7 @@ class _LibraryContent extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final recipes = viewModel.visibleRecipes;
+    final recipes = _focusedFirst(viewModel.visibleRecipes);
 
     return SafeArea(
       top: false,
@@ -225,6 +277,7 @@ class _LibraryContent extends StatelessWidget {
                   final recipe = recipes[index];
                   return LibraryRecipeCard(
                     recipe: recipe,
+                    isHighlighted: recipe.id == focusedRecipeId,
                     onComingSoonTap: onComingSoonTap,
                     onFavouriteTap: () => onFavouriteTap(recipe.id),
                     onTap: () async {
@@ -246,6 +299,20 @@ class _LibraryContent extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  List<LibraryRecipe> _focusedFirst(List<LibraryRecipe> recipes) {
+    final focusedId = focusedRecipeId;
+    if (focusedId == null || focusedId.isEmpty) return recipes;
+
+    final focusedIndex = recipes.indexWhere((recipe) => recipe.id == focusedId);
+    if (focusedIndex <= 0) return recipes;
+
+    return [
+      recipes[focusedIndex],
+      ...recipes.take(focusedIndex),
+      ...recipes.skip(focusedIndex + 1),
+    ];
   }
 }
 

@@ -36,6 +36,7 @@ class AddRecipeReviewPage extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => AddRecipeReviewViewModel(
             getReviewUseCase: sl<GetAddRecipeReviewUseCase>(),
+            deleteRecipeUseCase: sl(),
           )..loadReview(recipeId),
         ),
         ChangeNotifierProvider(
@@ -96,7 +97,8 @@ class _AddRecipeReviewView extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        visibilityViewModel.errorMessage ?? "Unable to update visibility.",
+                        visibilityViewModel.errorMessage ??
+                            "Unable to update visibility.",
                       ),
                     ),
                   );
@@ -135,7 +137,23 @@ class _AddRecipeReviewView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Label(text: "Review"),
+                  Row(
+                    children: [
+                      Expanded(child: Label(text: "Review")),
+                      IconButton(
+                        tooltip: "Delete recipe",
+                        onPressed: viewModel.isDeleting
+                            ? null
+                            : () => _confirmDeleteRecipe(
+                                context,
+                                viewModel,
+                                review,
+                              ),
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        color: AppColors.error,
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     "Review your recipe before saving",
@@ -244,7 +262,9 @@ class _AddRecipeReviewView extends StatelessWidget {
                       AppRouter.addRecipeIngredients,
                       extra: AddRecipeIngredientsArgs(
                         recipeId: recipeId,
-                        visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+                        visibility: context
+                            .read<AddRecipeVisibilityViewModel>()
+                            .visibility,
                         returnToReview: true,
                       ),
                     ),
@@ -262,7 +282,9 @@ class _AddRecipeReviewView extends StatelessWidget {
                       AppRouter.addRecipeInstructions,
                       extra: AddRecipeInstructionsArgs(
                         recipeId: recipeId,
-                        visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+                        visibility: context
+                            .read<AddRecipeVisibilityViewModel>()
+                            .visibility,
                         returnToReview: true,
                       ),
                     ),
@@ -282,8 +304,26 @@ class _AddRecipeReviewView extends StatelessWidget {
               child: PrimaryButton(
                 text: "Save",
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Recipe saved.")),
+                  final visibility = context
+                      .read<AddRecipeVisibilityViewModel>()
+                      .visibility;
+
+                  context.go(
+                    Uri(
+                      path: AppRouter.home,
+                      queryParameters: {
+                        'tab': '4',
+                        'focusedRecipeId': recipeId,
+                        'focusedRecipeIsPublished': '${visibility == "public"}',
+                        'createdAt': DateTime.now().microsecondsSinceEpoch
+                            .toString(),
+                      },
+                    ).toString(),
+                    extra: HomeArgs(
+                      initialTabIndex: 4,
+                      focusedRecipeId: recipeId,
+                      focusedRecipeIsPublished: visibility == "public",
+                    ),
                   );
                 },
               ),
@@ -294,14 +334,82 @@ class _AddRecipeReviewView extends StatelessWidget {
     );
   }
 
+  Future<void> _confirmDeleteRecipe(
+    BuildContext context,
+    AddRecipeReviewViewModel viewModel,
+    AddRecipeReview review,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text("Delete recipe?"),
+          content: Text(
+            'This will permanently delete "${review.recipeName}" from your library.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text("Delete"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const LoadingDialog(message: "Deleting recipe..."),
+    );
+
+    final success = await viewModel.deleteRecipe(review.recipeId);
+
+    if (!context.mounted) return;
+    rootNavigator.pop();
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(viewModel.errorMessage ?? "Unable to delete recipe."),
+        ),
+      );
+      return;
+    }
+
+    context.go(
+      Uri(
+        path: AppRouter.home,
+        queryParameters: {
+          'tab': '4',
+          'deletedAt': DateTime.now().microsecondsSinceEpoch.toString(),
+        },
+      ).toString(),
+      extra: HomeArgs(
+        initialTabIndex: 4,
+        libraryRefreshToken: DateTime.now().microsecondsSinceEpoch.toString(),
+      ),
+    );
+  }
+
   // Instruction Widget Helper
   List<Widget> _instructionsWidgets(AddRecipeReview review) {
     if (!review.instructionUseSection) {
       return review.instructions
-          .map((instruction) => ReviewInstructionItem(
+          .map(
+            (instruction) => ReviewInstructionItem(
               instruction: instruction,
               useSection: review.instructionUseSection,
-          )).toList();
+            ),
+          )
+          .toList();
     }
 
     final grouped = <int, List<AddRecipeReviewInstruction>>{};
@@ -330,10 +438,12 @@ class _AddRecipeReviewView extends StatelessWidget {
             ),
           ),
         ),
-        ...entry.value.map((step) => ReviewInstructionItem(
+        ...entry.value.map(
+          (step) => ReviewInstructionItem(
             instruction: step,
             useSection: review.instructionUseSection,
-        )),
+          ),
+        ),
       ];
     }).toList();
   }

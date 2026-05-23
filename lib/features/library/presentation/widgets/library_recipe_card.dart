@@ -9,6 +9,7 @@ class LibraryRecipeCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onComingSoonTap;
   final VoidCallback onFavouriteTap;
+  final bool isHighlighted;
 
   const LibraryRecipeCard({
     super.key,
@@ -16,6 +17,7 @@ class LibraryRecipeCard extends StatelessWidget {
     required this.onTap,
     required this.onComingSoonTap,
     required this.onFavouriteTap,
+    this.isHighlighted = false,
   });
 
   @override
@@ -25,131 +27,142 @@ class LibraryRecipeCard extends StatelessWidget {
 
     return Material(
       color: colors.surface,
-      elevation: 4,
-      shadowColor: Colors.black.withValues(alpha: 0.08),
+      elevation: isHighlighted ? 8 : 4,
+      shadowColor: isHighlighted
+          ? colors.primary.withValues(alpha: 0.24)
+          : Colors.black.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 5,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ColoredBox(
-                      color: colors.surfaceContainerHighest,
-                      child: _RecipeImage(path: recipe.imagePath),
-                    ),
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: _ViewsBadge(count: recipe.totalViews),
-                    ),
-                    Positioned(
-                      left: 8,
-                      bottom: 8,
-                      child: _StatusBadge(recipe: recipe),
-                    ),
-                  ],
-                ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: isHighlighted ? colors.primary : Colors.transparent,
+                width: 2,
               ),
-              Expanded(
-                flex: 4,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              recipe.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: textTheme.titleMedium?.copyWith(
-                                height: 1.15,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          _RatingLabel(recipe: recipe),
-                        ],
+                      ColoredBox(
+                        color: colors.surfaceContainerHighest,
+                        child: _RecipeImage(path: recipe.imagePath),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        recipe.description,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.bodySmall?.copyWith(height: 1.35),
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: _ViewsBadge(count: recipe.totalViews),
                       ),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundColor: colors.primary,
-                            backgroundImage: _imageProvider(
-                              recipe.authorAvatarPath,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  recipe.author,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                Text(
-                                  recipe.publishedAtLabel,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                          _CountWithIcon(
-                            icon: Icons.chat_bubble,
-                            label: _compactCount(recipe.commentCount),
-                            onTap: onComingSoonTap,
-                          ),
-                          const SizedBox(width: 6),
-                          InkResponse(
-                            onTap: onFavouriteTap,
-                            radius: 18,
-                            child: Icon(
-                              recipe.isFollowingAuthor
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              color: recipe.isFollowingAuthor
-                                  ? AppColors.favourite
-                                  : AppColors.textSecondary,
-                              size: 22,
-                            ),
-                          ),
-                        ],
+                      Positioned(
+                        left: 8,
+                        bottom: 8,
+                        child: _StatusBadge(recipe: recipe),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+                Expanded(
+                  flex: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                recipe.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: textTheme.titleMedium?.copyWith(
+                                  height: 1.15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            _RatingLabel(recipe: recipe),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          recipe.description,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall?.copyWith(height: 1.35),
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: colors.primary,
+                              backgroundImage: _imageProvider(
+                                recipe.authorAvatarPath,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    recipe.author,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    recipe.publishedAtLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            _CountWithIcon(
+                              icon: Icons.chat_bubble,
+                              label: _compactCount(recipe.commentCount),
+                              onTap: onComingSoonTap,
+                            ),
+                            const SizedBox(width: 6),
+                            InkResponse(
+                              onTap: onFavouriteTap,
+                              radius: 18,
+                              child: Icon(
+                                recipe.isFollowingAuthor
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: recipe.isFollowingAuthor
+                                    ? AppColors.favourite
+                                    : AppColors.textSecondary,
+                                size: 22,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

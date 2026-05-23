@@ -179,6 +179,12 @@ class AppRouter {
     return null;
   }
 
+  static bool? _boolQuery(String? value) {
+    if (value == 'true') return true;
+    if (value == 'false') return false;
+    return null;
+  }
+
   /// Handles the build routes operation.
   static List<GoRoute> _buildRoutes(UserEntity? user) {
     return [
@@ -300,6 +306,20 @@ class AppRouter {
         path: home,
         builder: (context, state) {
           final args = state.extra as HomeArgs?;
+          final tabIndex =
+              int.tryParse(state.uri.queryParameters['tab'] ?? '') ??
+              args?.initialTabIndex ??
+              0;
+          final focusedRecipeId =
+              args?.focusedRecipeId ??
+              state.uri.queryParameters['focusedRecipeId'];
+          final focusedRecipeIsPublished =
+              args?.focusedRecipeIsPublished ??
+              _boolQuery(state.uri.queryParameters['focusedRecipeIsPublished']);
+          final libraryRefreshToken =
+              args?.libraryRefreshToken ??
+              state.uri.queryParameters['createdAt'] ??
+              state.uri.queryParameters['deletedAt'];
           // Handles null user gracefully
           final userEntity = args?.user ?? user;
           if (userEntity == null) {
@@ -313,8 +333,11 @@ class AppRouter {
           /// Handles the main page operation.
           return MainPage(
             user: userEntity,
-            role: args?.role ?? 'user',
-            initialIndex: args?.initialTabIndex ?? 0,
+            role: args?.role ?? userEntity.role.name,
+            initialIndex: tabIndex,
+            focusedRecipeId: focusedRecipeId,
+            focusedRecipeIsPublished: focusedRecipeIsPublished,
+            libraryRefreshToken: libraryRefreshToken,
           );
         },
       ),
@@ -568,7 +591,14 @@ class AppRouter {
       GoRoute(
         name: 'library',
         path: library,
-        builder: (context, state) => const LibraryPage(showAppBar: true),
+        builder: (context, state) {
+          final args = state.extra as LibraryArgs?;
+          return LibraryPage(
+            showAppBar: true,
+            focusedRecipeId: args?.focusedRecipeId,
+            focusedRecipeIsPublished: args?.focusedRecipeIsPublished,
+          );
+        },
       ),
 
       GoRoute(

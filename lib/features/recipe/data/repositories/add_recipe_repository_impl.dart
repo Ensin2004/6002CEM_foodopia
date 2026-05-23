@@ -232,4 +232,18 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
       );
     }
   }
+
+  @override
+  Future<Either<Failure, void>> deleteRecipe(String recipeId) async {
+    if (recipeId.trim().isEmpty) {
+      return Left(ValidationFailure(message: 'Recipe id is missing.'));
+    }
+
+    try {
+      await remoteDataSource.deleteRecipe(recipeId);
+      return const Right(null);
+    } catch (error) {
+      return Left(ServerFailure(message: 'Unable to delete recipe: $error'));
+    }
+  }
 }

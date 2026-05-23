@@ -432,6 +432,72 @@ class AddRecipeRemoteDataSource {
     });
   }
 
+  Future<void> deleteRecipe(String recipeId) async {
+    final uid = auth.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'not-authenticated',
+        message: 'User is not authenticated.',
+      );
+    }
+
+    final recipeRef = firestore.collection('recipes').doc(recipeId);
+    final snapshot = await recipeRef.get();
+    if (!snapshot.exists) {
+      throw StateError('Recipe not found');
+    }
+
+    final data = snapshot.data() ?? {};
+    final creatorUid = data['creatorUid']?.toString().trim() ?? '';
+    if (creatorUid != uid) {
+      throw StateError('Only the recipe creator can delete this recipe.');
+    }
+
+    await _deleteCollection(recipeRef.collection('ingredients'));
+    await _deleteCollection(recipeRef.collection('instructions'));
+    await _deleteCollection(recipeRef.collection('ratings'));
+    await _deleteComments(recipeRef.collection('comments'));
+    await recipeRef.delete();
+  }
+
+  Future<void> _deleteComments(
+    CollectionReference<Map<String, dynamic>> comments,
+  ) async {
+    final snapshot = await comments.get();
+    for (final comment in snapshot.docs) {
+      await _deleteCollection(comment.reference.collection('likedBy'));
+      await _deleteReplies(comment.reference.collection('replies'));
+      await comment.reference.delete();
+    }
+  }
+
+  Future<void> _deleteReplies(
+    CollectionReference<Map<String, dynamic>> replies,
+  ) async {
+    final snapshot = await replies.get();
+    for (final reply in snapshot.docs) {
+      await _deleteCollection(reply.reference.collection('likedBy'));
+      await _deleteReplies(reply.reference.collection('replies'));
+      await reply.reference.delete();
+    }
+  }
+
+  Future<void> _deleteCollection(
+    CollectionReference<Map<String, dynamic>> collection,
+  ) async {
+    const batchSize = 400;
+    while (true) {
+      final snapshot = await collection.limit(batchSize).get();
+      if (snapshot.docs.isEmpty) return;
+
+      final batch = firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+  }
+
   Future<List<String>> _resolveOptionNames({
     required List<String> optionIds,
     required String configId,

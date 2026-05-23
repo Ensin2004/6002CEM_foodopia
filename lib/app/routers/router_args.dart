@@ -38,6 +38,14 @@ class LibraryRecipeDetailArgs {
   });
 }
 
+/// Typed arguments for library route.
+class LibraryArgs {
+  final String? focusedRecipeId;
+  final bool? focusedRecipeIsPublished;
+
+  const LibraryArgs({this.focusedRecipeId, this.focusedRecipeIsPublished});
+}
+
 /// Typed arguments for explore creator detail route.
 class ExploreCreatorDetailArgs {
   final String creatorUid;
@@ -140,15 +148,21 @@ class StatisticsDetailArgs {
 
 /// Typed arguments for user_home route
 class HomeArgs {
-  final UserEntity user;
-  final String role;
+  final UserEntity? user;
+  final String? role;
   final int initialTabIndex;
+  final String? focusedRecipeId;
+  final bool? focusedRecipeIsPublished;
+  final String? libraryRefreshToken;
 
   /// Creates a user_home args instance.
   const HomeArgs({
-    required this.user,
-    required this.role,
+    this.user,
+    this.role,
     this.initialTabIndex = 0,
+    this.focusedRecipeId,
+    this.focusedRecipeIsPublished,
+    this.libraryRefreshToken,
   });
 }
 
