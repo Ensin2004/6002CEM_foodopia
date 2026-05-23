@@ -498,6 +498,17 @@ class AddRecipeRemoteDataSource {
     }
   }
 
+  Future<void> completeRecipe({
+    required String recipeId,
+    required String mode,
+  }) async {
+    await firestore.collection('recipes').doc(recipeId).update({
+      'mode': mode,
+      'status': 'saved',
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<List<String>> _resolveOptionNames({
     required List<String> optionIds,
     required String configId,

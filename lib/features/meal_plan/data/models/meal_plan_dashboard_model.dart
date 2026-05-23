@@ -104,6 +104,16 @@ class MealPlanDashboardModel extends MealPlanDashboard {
           subtitle: 'Recipes you can make in no time.',
           imagePath: 'assets/images/meal3.png',
         ),
+        MealPlanQuickInspiration(
+          title: 'Rainy Day Comfort',
+          subtitle: 'Warm bowls and cozy meal ideas.',
+          imagePath: 'assets/images/meal1.png',
+        ),
+        MealPlanQuickInspiration(
+          title: 'High Protein Picks',
+          subtitle: 'Filling meals with simple prep.',
+          imagePath: 'assets/images/meal2.png',
+        ),
       ],
       groceryLists: [
         GroceryListSummary(

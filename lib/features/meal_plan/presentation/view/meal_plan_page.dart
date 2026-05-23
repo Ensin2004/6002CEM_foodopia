@@ -8,8 +8,10 @@ import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/usecases/get_meal_plan_dashboard_usecase.dart';
+import '../../domain/usecases/get_meal_plan_inspiration_options_usecase.dart';
 import '../../domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../domain/usecases/get_meal_plan_weather_usecase.dart';
+import '../../domain/usecases/search_meal_plan_ingredients_usecase.dart';
 import '../viewmodel/meal_plan_viewmodel.dart';
 import '../widgets/grocery_list/grocery_list_tab_main_view.dart';
 import '../widgets/inspiration/inspiration_tab_main_view.dart';
@@ -29,6 +31,9 @@ class MealPlanPage extends StatelessWidget {
         getDashboardUseCase: sl<GetMealPlanDashboardUseCase>(),
         getWeatherUseCase: sl<GetMealPlanWeatherUseCase>(),
         getPreferencesUseCase: sl<GetMealPlanPreferencesUseCase>(),
+        searchIngredientsUseCase: sl<SearchMealPlanIngredientsUseCase>(),
+        getInspirationOptionsUseCase:
+            sl<GetMealPlanInspirationOptionsUseCase>(),
       ),
       child: _MealPlanView(initialTabIndex: initialTabIndex),
     );
