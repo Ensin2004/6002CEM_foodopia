@@ -76,6 +76,16 @@ import '../../features/meal_plan/domain/usecases/get_manage_grocery_list_detail_
 import '../../features/meal_plan/domain/usecases/get_meal_plan_dashboard_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_weather_usecase.dart';
+import '../../features/notifications/data/datasources/notification_local_datasource.dart';
+import '../../features/notifications/data/repositories/notification_repository_impl.dart';
+import '../../features/notifications/domain/repositories/notification_repository.dart';
+import '../../features/notifications/domain/usecases/get_notification_preferences_usecase.dart';
+import '../../features/notifications/domain/usecases/get_notifications_usecase.dart';
+import '../../features/notifications/domain/usecases/mark_all_notifications_as_read_usecase.dart';
+import '../../features/notifications/domain/usecases/mark_notification_as_read_usecase.dart';
+import '../../features/notifications/domain/usecases/schedule_plan_reminder_usecase.dart';
+import '../../features/notifications/domain/usecases/update_notification_preference_usecase.dart';
+import '../../features/statistics/data/datasources/statistics_local_datasource.dart';
 import '../../features/recipe/data/datasources/add_recipe_remote_datasource.dart';
 import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart';
 import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
@@ -91,6 +101,19 @@ import '../../features/recipe/domain/usecases/update_add_recipe_visibility_useca
 import '../../features/statistics/data/datasources/statistics_mock_datasource.dart';
 import '../../features/statistics/data/repositories/statistics_repository_impl.dart';
 import '../../features/statistics/domain/repositories/statistics_repository.dart';
+import '../../features/statistics/domain/usecases/get_admin_dietary_preference_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_meal_analytic_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_post_analytic_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_calories_intake_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_calories_posted_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_difficulty_meal_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_food_analytic_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_meal_plan_method_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_meal_planned_time_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_most_cooked_recipe_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_post_analytic_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_post_difficulty_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_posted_meal_time_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_statistics_dashboard_usecase.dart';
 import '../../features/user_home/data/datasources/user_home_mock_datasource.dart';
 import '../../features/user_home/data/datasources/user_home_weather_datasource.dart';
@@ -239,6 +262,7 @@ Future<void> initDependencies() async {
   _initRecipeFeature();
   _initStatisticsFeature();
   _initExploreFeature();
+  _initNotificationsFeature();
   _initLibraryFeature();
 
   // Add new features here as the app grows
@@ -268,13 +292,28 @@ void _initRecipeFeature() {
 }
 
 void _initStatisticsFeature() {
-  sl.registerLazySingleton(() => StatisticsMockDataSource());
+  sl.registerLazySingleton(() => StatisticsLocalDataSource());
 
   sl.registerLazySingleton<StatisticsRepository>(
-    () => StatisticsRepositoryImpl(mockDataSource: sl()),
+    () => StatisticsRepositoryImpl(localDataSource: sl()),
   );
 
   sl.registerLazySingleton(() => GetStatisticsDashboardUseCase(sl()));
+  sl.registerLazySingleton(() => GetMealPlannedTimeStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetFoodAnalyticStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetCaloriesIntakeStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetDifficultyMealStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetMealPlanMethodStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetPostAnalyticStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetCaloriesPostedStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetPostedMealTimeStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetMostCookedRecipeStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetPostDifficultyStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAdminMealAnalyticStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAdminPostAnalyticStatisticsUseCase(sl()));
+  sl.registerLazySingleton(
+    () => GetAdminDietaryPreferenceStatisticsUseCase(sl()),
+  );
 }
 
 void _initExploreFeature() {
@@ -316,6 +355,21 @@ void _initLibraryFeature() {
   sl.registerLazySingleton(() => GetLibraryRecipeDetailUseCase(sl()));
   sl.registerLazySingleton(() => ToggleLibraryRecipeFavouriteUseCase(sl()));
   sl.registerLazySingleton(() => UpdateLibraryProfileUseCase(sl()));
+}
+
+void _initNotificationsFeature() {
+  sl.registerLazySingleton(() => NotificationLocalDataSource());
+
+  sl.registerLazySingleton<NotificationRepository>(
+    () => NotificationRepositoryImpl(localDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetNotificationsUseCase(sl()));
+  sl.registerLazySingleton(() => GetNotificationPreferencesUseCase(sl()));
+  sl.registerLazySingleton(() => MarkNotificationAsReadUseCase(sl()));
+  sl.registerLazySingleton(() => MarkAllNotificationsAsReadUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateNotificationPreferenceUseCase(sl()));
+  sl.registerLazySingleton(() => SchedulePlanReminderUseCase(sl()));
 }
 
 void _initMealPlanFeature() {
