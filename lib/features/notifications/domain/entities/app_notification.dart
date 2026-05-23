@@ -1,4 +1,11 @@
-enum AppNotificationType { newFollower, newRating, planReminder }
+enum AppNotificationType {
+  newFollower,
+  newRating,
+  newComment,
+  newRecipe,
+  newReply,
+  planReminder,
+}
 
 class AppNotification {
   final String id;

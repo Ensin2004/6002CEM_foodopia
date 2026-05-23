@@ -77,6 +77,7 @@ import '../../features/meal_plan/domain/usecases/get_meal_plan_dashboard_usecase
 import '../../features/meal_plan/domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_weather_usecase.dart';
 import '../../features/notifications/data/datasources/notification_local_datasource.dart';
+import '../../features/notifications/data/datasources/notification_remote_datasource.dart';
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
 import '../../features/notifications/domain/repositories/notification_repository.dart';
 import '../../features/notifications/domain/usecases/get_notification_preferences_usecase.dart';
@@ -86,6 +87,7 @@ import '../../features/notifications/domain/usecases/mark_notification_as_read_u
 import '../../features/notifications/domain/usecases/schedule_plan_reminder_usecase.dart';
 import '../../features/notifications/domain/usecases/update_notification_preference_usecase.dart';
 import '../../features/statistics/data/datasources/statistics_local_datasource.dart';
+import '../../features/statistics/data/datasources/statistics_remote_datasource.dart';
 import '../../features/recipe/data/datasources/add_recipe_remote_datasource.dart';
 import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart';
 import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
@@ -113,6 +115,7 @@ import '../../features/statistics/domain/usecases/get_most_cooked_recipe_statist
 import '../../features/statistics/domain/usecases/get_post_analytic_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_post_difficulty_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_posted_meal_time_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_recipe_performance_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_statistics_dashboard_usecase.dart';
 import '../../features/user_home/data/datasources/user_home_mock_datasource.dart';
 import '../../features/user_home/data/datasources/user_home_weather_datasource.dart';
@@ -292,9 +295,13 @@ void _initRecipeFeature() {
 
 void _initStatisticsFeature() {
   sl.registerLazySingleton(() => StatisticsLocalDataSource());
+  sl.registerLazySingleton(
+    () => StatisticsRemoteDataSource(firestore: sl(), auth: sl()),
+  );
 
   sl.registerLazySingleton<StatisticsRepository>(
-    () => StatisticsRepositoryImpl(localDataSource: sl()),
+    () =>
+        StatisticsRepositoryImpl(localDataSource: sl(), remoteDataSource: sl()),
   );
 
   sl.registerLazySingleton(() => GetStatisticsDashboardUseCase(sl()));
@@ -306,6 +313,7 @@ void _initStatisticsFeature() {
   sl.registerLazySingleton(() => GetPostAnalyticStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetCaloriesPostedStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetPostedMealTimeStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetRecipePerformanceStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetMostCookedRecipeStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetPostDifficultyStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetAdminMealAnalyticStatisticsUseCase(sl()));
@@ -358,9 +366,15 @@ void _initLibraryFeature() {
 
 void _initNotificationsFeature() {
   sl.registerLazySingleton(() => NotificationLocalDataSource());
+  sl.registerLazySingleton(
+    () => NotificationRemoteDataSource(firestore: sl(), auth: sl()),
+  );
 
   sl.registerLazySingleton<NotificationRepository>(
-    () => NotificationRepositoryImpl(localDataSource: sl()),
+    () => NotificationRepositoryImpl(
+      localDataSource: sl(),
+      remoteDataSource: sl(),
+    ),
   );
 
   sl.registerLazySingleton(() => GetNotificationsUseCase(sl()));

@@ -322,7 +322,7 @@ class _PostRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _FoodIcon(icon: post.icon),
+          _FoodIcon(icon: post.icon, imageUrl: post.imageUrl),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -507,8 +507,9 @@ class _SectionCard extends StatelessWidget {
 
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
+  final String? imageUrl;
 
-  const _FoodIcon({required this.icon});
+  const _FoodIcon({required this.icon, this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -521,7 +522,18 @@ class _FoodIcon extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: const Color(0xFFD7C98D)),
       ),
-      child: Icon(icon, color: const Color(0xFF6D642C), size: 18),
+      child: imageUrl?.isNotEmpty == true
+          ? ClipOval(
+              child: Image.network(
+                imageUrl!,
+                width: 32,
+                height: 32,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    Icon(icon, color: const Color(0xFF6D642C), size: 18),
+              ),
+            )
+          : Icon(icon, color: const Color(0xFF6D642C), size: 18),
     );
   }
 }

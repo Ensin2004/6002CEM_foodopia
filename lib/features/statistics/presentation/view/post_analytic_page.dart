@@ -132,17 +132,21 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
                 controller: _pageController,
                 onPageChanged: viewModel.selectPage,
                 children: [
-                  _RatedPostPage(
-                    posts: viewModel.sortedPosts,
-                    sortOrder: viewModel.sortOrder,
-                    onSortChanged: viewModel.setSortOrder,
+                  SingleChildScrollView(
+                    child: _RatedPostPage(
+                      posts: viewModel.sortedPosts,
+                      sortOrder: viewModel.sortOrder,
+                      onSortChanged: viewModel.setSortOrder,
+                    ),
                   ),
-                  _CategoryRatingPage(
-                    categories: viewModel.sortedCategories,
-                    sortOrder: viewModel.sortOrder,
-                    expandedIndex: viewModel.expandedCategoryIndex,
-                    onSortChanged: viewModel.setSortOrder,
-                    onToggle: viewModel.toggleCategory,
+                  SingleChildScrollView(
+                    child: _CategoryRatingPage(
+                      categories: viewModel.sortedCategories,
+                      sortOrder: viewModel.sortOrder,
+                      expandedIndex: viewModel.expandedCategoryIndex,
+                      onSortChanged: viewModel.setSortOrder,
+                      onToggle: viewModel.toggleCategory,
+                    ),
                   ),
                 ],
               ),
@@ -178,6 +182,7 @@ class _RatedPostPage extends StatelessWidget {
               value: post.rating.round(),
               icon: post.icon,
               color: const Color(0xFF21AEEA),
+              imageUrl: post.imageUrl,
             ),
           )
           .toList(),
@@ -218,6 +223,7 @@ class _CategoryRatingPage extends StatelessWidget {
               value: category.averageRating.round(),
               icon: category.icon,
               color: const Color(0xFF21AEEA),
+              markerText: category.name,
             ),
           )
           .toList(),
@@ -395,7 +401,7 @@ class _CategorySection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
             child: Row(
               children: [
-                _FoodIcon(icon: category.icon),
+                _FoodIcon(icon: category.icon, label: category.name),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -458,7 +464,7 @@ class _PostRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         children: [
-          _FoodIcon(icon: post.icon),
+          _FoodIcon(icon: post.icon, imageUrl: post.imageUrl),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -740,8 +746,10 @@ class _PageDots extends StatelessWidget {
 
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
+  final String? imageUrl;
+  final String? label;
 
-  const _FoodIcon({required this.icon});
+  const _FoodIcon({required this.icon, this.imageUrl, this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -754,8 +762,57 @@ class _FoodIcon extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: const Color(0xFFD7C98D)),
       ),
-      child: Icon(icon, size: 18, color: const Color(0xFF6D642C)),
+      child: _buildContent(context),
     );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    if (imageUrl?.isNotEmpty == true) {
+      return ClipOval(
+        child: Image.network(
+          imageUrl!,
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              Icon(icon, size: 18, color: const Color(0xFF6D642C)),
+        ),
+      );
+    }
+
+    final text = _circleText(label);
+    if (text.isNotEmpty) {
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          maxLines: 1,
+          style: context.text.bodySmall?.copyWith(
+            color: const Color(0xFF6D642C),
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      );
+    }
+
+    return Icon(icon, size: 18, color: const Color(0xFF6D642C));
+  }
+
+  String _circleText(String? value) {
+    final words = value
+        ?.trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+    if (words == null || words.isEmpty) return '';
+    if (words.length == 1) {
+      final word = words.first;
+      return word.length <= 2
+          ? word.toUpperCase()
+          : word.substring(0, 2).toUpperCase();
+    }
+    return words.take(2).map((word) => word[0].toUpperCase()).join();
   }
 }
 

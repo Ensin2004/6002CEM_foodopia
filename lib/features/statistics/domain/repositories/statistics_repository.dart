@@ -12,6 +12,7 @@ import '../entities/most_cooked_recipe_statistics.dart';
 import '../entities/post_analytic_statistics.dart';
 import '../entities/post_difficulty_statistics.dart';
 import '../entities/posted_meal_time_statistics.dart';
+import '../entities/recipe_performance_statistics.dart';
 import '../entities/statistics_dashboard.dart';
 
 abstract class StatisticsRepository {
@@ -58,6 +59,8 @@ abstract class StatisticsRepository {
     DateTime? startDate,
     DateTime? endDate,
   });
+
+  Future<Either<Failure, RecipePerformanceStatistics>> getRecipePerformance();
 
   Future<Either<Failure, MostCookedRecipeStatistics>> getMostCookedRecipes({
     DateTime? startDate,

@@ -12,19 +12,37 @@ import '../../domain/entities/most_cooked_recipe_statistics.dart';
 import '../../domain/entities/post_analytic_statistics.dart';
 import '../../domain/entities/post_difficulty_statistics.dart';
 import '../../domain/entities/posted_meal_time_statistics.dart';
+import '../../domain/entities/recipe_performance_statistics.dart';
 import '../../domain/entities/statistics_dashboard.dart';
 import '../../domain/repositories/statistics_repository.dart';
 import '../datasources/statistics_local_datasource.dart';
+import '../datasources/statistics_remote_datasource.dart';
+import '../models/statistics_dashboard_model.dart';
 
 class StatisticsRepositoryImpl implements StatisticsRepository {
   final StatisticsLocalDataSource localDataSource;
+  final StatisticsRemoteDataSource remoteDataSource;
 
-  const StatisticsRepositoryImpl({required this.localDataSource});
+  const StatisticsRepositoryImpl({
+    required this.localDataSource,
+    required this.remoteDataSource,
+  });
 
   @override
   Future<Either<Failure, StatisticsDashboard>> getUserStatistics() async {
     try {
-      return Right(await localDataSource.getUserStatistics());
+      final localDashboard = await localDataSource.getUserStatistics();
+      final communityHeroSlides = await remoteDataSource
+          .getUserCommunityHeroSlides();
+
+      return Right(
+        StatisticsDashboardModel(
+          heroSlides: localDashboard.heroSlides,
+          communityHeroSlides: communityHeroSlides,
+          menuItems: localDashboard.menuItems,
+          communityMenuItems: localDashboard.communityMenuItems,
+        ),
+      );
     } catch (_) {
       return Left(ServerFailure(message: 'Unable to load statistics'));
     }
@@ -131,7 +149,7 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }) async {
     try {
       return Right(
-        await localDataSource.getPostAnalytic(
+        await remoteDataSource.getUserPostAnalytic(
           startDate: startDate,
           endDate: endDate,
         ),
@@ -176,6 +194,16 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   @override
+  Future<Either<Failure, RecipePerformanceStatistics>>
+  getRecipePerformance() async {
+    try {
+      return Right(await remoteDataSource.getUserRecipePerformance());
+    } catch (_) {
+      return Left(ServerFailure(message: 'Unable to load recipe performance'));
+    }
+  }
+
+  @override
   Future<Either<Failure, MostCookedRecipeStatistics>> getMostCookedRecipes({
     DateTime? startDate,
     DateTime? endDate,
@@ -199,7 +227,7 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }) async {
     try {
       return Right(
-        await localDataSource.getPostDifficulty(
+        await remoteDataSource.getUserPostDifficulty(
           startDate: startDate,
           endDate: endDate,
         ),

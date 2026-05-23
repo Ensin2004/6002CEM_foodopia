@@ -53,6 +53,15 @@ class _UserStatisticsViewState extends State<UserStatisticsView> {
     final selectedMenuItems = viewModel.selectedAudienceIndex == 0
         ? dashboard.menuItems
         : dashboard.communityMenuItems;
+    final selectedHeroSlides = viewModel.selectedAudienceIndex == 1
+        ? (dashboard.communityHeroSlides.isNotEmpty
+              ? dashboard.communityHeroSlides
+              : _emptyCommunityHeroSlides)
+        : dashboard.heroSlides;
+    final selectedHeroIndex = viewModel.selectedHeroIndex.clamp(
+      0,
+      selectedHeroSlides.length - 1,
+    );
 
     return SafeArea(
       top: false,
@@ -72,8 +81,8 @@ class _UserStatisticsViewState extends State<UserStatisticsView> {
                 children: [
                   _StatisticsHeroPager(
                     controller: _heroController,
-                    slides: dashboard.heroSlides,
-                    selectedIndex: viewModel.selectedHeroIndex,
+                    slides: selectedHeroSlides,
+                    selectedIndex: selectedHeroIndex,
                     onPageChanged: viewModel.selectHero,
                   ),
                   const SizedBox(height: 18),
@@ -203,6 +212,11 @@ class _OverviewSlide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCommunitySlide = slide.title.startsWith('Community');
+    if (isCommunitySlide) {
+      return _CommunityOverviewSlide(slide: slide);
+    }
+
     final topMetrics = slide.metrics.take(2).toList();
     final streakMetrics = slide.metrics.skip(2).take(2).toList();
 
@@ -254,6 +268,108 @@ class _OverviewSlide extends StatelessWidget {
     );
   }
 }
+
+class _CommunityOverviewSlide extends StatelessWidget {
+  final StatisticsHeroSlide slide;
+
+  const _CommunityOverviewSlide({required this.slide});
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = slide.metrics.take(4).toList();
+
+    return Column(
+      children: [
+        Expanded(child: _CommunityMetricRow(metrics: metrics.take(2).toList())),
+        const SizedBox(height: AppSpacing.sm),
+        Expanded(child: _CommunityMetricRow(metrics: metrics.skip(2).toList())),
+      ],
+    );
+  }
+}
+
+class _CommunityMetricRow extends StatelessWidget {
+  final List<StatisticsMetric> metrics;
+
+  const _CommunityMetricRow({required this.metrics});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: metrics
+          .map(
+            (metric) => Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                child: _MetricTile(
+                  metric: metric,
+                  valueColor: AppColors.primary,
+                  labelColor: AppColors.primary,
+                  valueFontSize: 18,
+                  labelFontSize: 11,
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+final _emptyCommunityHeroSlides = [
+  const StatisticsHeroSlide(
+    title: 'Community Posts',
+    type: StatisticsHeroSlideType.overview,
+    metrics: [
+      StatisticsMetric(
+        label: 'Total Post',
+        value: '0',
+        tone: StatisticsMetricTone.positive,
+      ),
+      StatisticsMetric(
+        label: 'Total Rating',
+        value: '0',
+        tone: StatisticsMetricTone.positive,
+      ),
+      StatisticsMetric(
+        label: 'Average Rating',
+        value: '0.0',
+        tone: StatisticsMetricTone.positive,
+      ),
+      StatisticsMetric(
+        label: 'Comments',
+        value: '0',
+        tone: StatisticsMetricTone.positive,
+      ),
+    ],
+  ),
+  const StatisticsHeroSlide(
+    title: 'Community Engagement',
+    type: StatisticsHeroSlideType.overview,
+    metrics: [
+      StatisticsMetric(
+        label: 'Total Views',
+        value: '0',
+        tone: StatisticsMetricTone.positive,
+      ),
+      StatisticsMetric(
+        label: 'Shared Recipe',
+        value: '0',
+        tone: StatisticsMetricTone.positive,
+      ),
+      StatisticsMetric(
+        label: 'Top Rated',
+        value: '-',
+        tone: StatisticsMetricTone.positive,
+      ),
+      StatisticsMetric(
+        label: 'Most Rated',
+        value: '-',
+        tone: StatisticsMetricTone.positive,
+      ),
+    ],
+  ),
+];
 
 class _AppUsageSlide extends StatelessWidget {
   final StatisticsHeroSlide slide;
@@ -673,8 +789,8 @@ class _StatisticsMenu extends StatelessWidget {
       return;
     }
 
-    if (item.title == 'Most Posted Meal Time') {
-      context.push(AppRouter.postedMealTime);
+    if (item.title == 'Recipe Performance') {
+      context.push(AppRouter.recipePerformance);
       return;
     }
 

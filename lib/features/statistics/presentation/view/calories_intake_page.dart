@@ -238,10 +238,7 @@ class _CaloriesChartCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chartWidth = (MediaQuery.sizeOf(context).width - 48).clamp(
-      280.0,
-      340.0,
-    );
+    final formatter = DateFormat('MMM d');
 
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -258,7 +255,7 @@ class _CaloriesChartCard extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'Daily Calories Intake',
+            'Calories Intake Vs Day',
             style: context.text.bodyMedium?.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w800,
@@ -266,21 +263,33 @@ class _CaloriesChartCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Center(
-            child: SizedBox(
-              width: chartWidth,
-              child: StatisticsLineChart(
-                height: chartWidth * 0.72,
-                points: statistics.dailyIntakes
-                    .map(
-                      (day) => StatisticsLineChartPoint(
-                        label: day.weekdayLabel,
-                        value: viewModel.convertCalories(day.totalCaloriesKcal),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final chartWidth = (statistics.dailyIntakes.length * 52.0).clamp(
+                constraints.maxWidth,
+                double.infinity,
+              );
+
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: chartWidth,
+                  child: StatisticsLineChart(
+                    height: 220,
+                    points: statistics.dailyIntakes
+                        .map(
+                          (day) => StatisticsLineChartPoint(
+                            label: formatter.format(day.date),
+                            value: viewModel.convertCalories(
+                              day.totalCaloriesKcal,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

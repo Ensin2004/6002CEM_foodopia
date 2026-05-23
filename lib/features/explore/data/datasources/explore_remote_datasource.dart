@@ -649,6 +649,9 @@ class ExploreRemoteDataSource {
     final uid = _requiredUid();
     final recipeRef = firestore.collection('recipes').doc(recipeId);
     final ratingRef = recipeRef.collection('ratings').doc(uid);
+    String ownerUid = '';
+    String recipeTitle = 'your recipe';
+    var isNewRating = false;
 
     await firestore.runTransaction((transaction) async {
       final recipeSnapshot = await transaction.get(recipeRef);
@@ -658,11 +661,14 @@ class ExploreRemoteDataSource {
 
       final ratingSnapshot = await transaction.get(ratingRef);
       final recipeData = recipeSnapshot.data() ?? {};
+      ownerUid = _recipeCreatorUid(recipeData);
+      recipeTitle = _stringValue(recipeData['name'], fallback: 'your recipe');
       final currentCount = _intValue(recipeData['ratingCount']);
       final currentAverage = _doubleValue(recipeData['averageRating']);
       final currentTotal = currentAverage * currentCount;
 
       final hasExistingRating = ratingSnapshot.exists;
+      isNewRating = !hasExistingRating;
       final ratingData = ratingSnapshot.data();
       final oldRating = hasExistingRating && ratingData != null
           ? _doubleValue(ratingData['rating'])
@@ -686,6 +692,16 @@ class ExploreRemoteDataSource {
         'ratingCount': nextCount,
       });
     });
+
+    if (isNewRating) {
+      await _notifyUser(
+        receiverUid: ownerUid,
+        type: 'newRating',
+        title: 'New Rating',
+        message:
+            '${await _currentUserName()} rated $recipeTitle ${rating.toStringAsFixed(1)} stars.',
+      );
+    }
   }
 
   Future<void> addComment({
@@ -695,12 +711,17 @@ class ExploreRemoteDataSource {
     final uid = _requiredUid();
     final recipeRef = firestore.collection('recipes').doc(recipeId);
     final commentRef = recipeRef.collection('comments').doc();
+    String ownerUid = '';
+    String recipeTitle = 'your recipe';
 
     await firestore.runTransaction((transaction) async {
       final recipeSnapshot = await transaction.get(recipeRef);
       if (!recipeSnapshot.exists) {
         throw StateError('Recipe not found');
       }
+      final recipeData = recipeSnapshot.data() ?? {};
+      ownerUid = _recipeCreatorUid(recipeData);
+      recipeTitle = _stringValue(recipeData['name'], fallback: 'your recipe');
 
       transaction.set(commentRef, {
         'userId': uid,
@@ -710,6 +731,14 @@ class ExploreRemoteDataSource {
       });
       transaction.update(recipeRef, {'commentCount': FieldValue.increment(1)});
     });
+
+    await _notifyUser(
+      receiverUid: ownerUid,
+      type: 'newComment',
+      title: 'New Comment',
+      message:
+          '${await _currentUserName()} commented on $recipeTitle: ${_shortText(content)}',
+    );
   }
 
   Future<void> incrementViewCount(String recipeId) async {
@@ -760,12 +789,22 @@ class ExploreRemoteDataSource {
         .collection('comments')
         .doc(commentId);
     final replyRef = commentRef.collection('replies').doc();
+    String commentOwnerUid = '';
+    String recipeTitle = 'your recipe';
 
     await firestore.runTransaction((transaction) async {
       final commentSnapshot = await transaction.get(commentRef);
       if (!commentSnapshot.exists) {
         throw StateError('Comment not found');
       }
+      final recipeSnapshot = await transaction.get(
+        firestore.collection('recipes').doc(recipeId),
+      );
+      commentOwnerUid = _stringValue(commentSnapshot.data()?['userId']);
+      recipeTitle = _stringValue(
+        recipeSnapshot.data()?['name'],
+        fallback: 'your recipe',
+      );
       transaction.set(replyRef, {
         'userId': uid,
         'content': content.trim(),
@@ -774,6 +813,14 @@ class ExploreRemoteDataSource {
       });
       transaction.update(commentRef, {'replyCount': FieldValue.increment(1)});
     });
+
+    await _notifyUser(
+      receiverUid: commentOwnerUid,
+      type: 'newReply',
+      title: 'New Reply',
+      message:
+          '${await _currentUserName()} replied on $recipeTitle: ${_shortText(content)}',
+    );
   }
 
   Future<void> toggleReplyLike({required String replyPath}) async {
@@ -807,12 +854,16 @@ class ExploreRemoteDataSource {
     final uid = _requiredUid();
     final replyRef = firestore.doc(replyPath);
     final nestedReplyRef = replyRef.collection('replies').doc();
+    String replyOwnerUid = '';
+    String recipeTitle = 'your comment';
 
     await firestore.runTransaction((transaction) async {
       final replySnapshot = await transaction.get(replyRef);
       if (!replySnapshot.exists) {
         throw StateError('Reply not found');
       }
+      replyOwnerUid = _stringValue(replySnapshot.data()?['userId']);
+      recipeTitle = await _recipeTitleFromReplyPath(replyPath);
       transaction.set(nestedReplyRef, {
         'userId': uid,
         'content': content.trim(),
@@ -821,6 +872,14 @@ class ExploreRemoteDataSource {
       });
       transaction.update(replyRef, {'replyCount': FieldValue.increment(1)});
     });
+
+    await _notifyUser(
+      receiverUid: replyOwnerUid,
+      type: 'newReply',
+      title: 'New Reply',
+      message:
+          '${await _currentUserName()} replied on $recipeTitle: ${_shortText(content)}',
+    );
   }
 
   Future<void> toggleCreatorFollow({
@@ -854,6 +913,15 @@ class ExploreRemoteDataSource {
         }, SetOptions(merge: true));
       }
     });
+
+    if (follow) {
+      await _notifyUser(
+        receiverUid: creatorUid,
+        type: 'newFollower',
+        title: 'New Follower',
+        message: '${await _currentUserName()} follows you.',
+      );
+    }
   }
 
   Future<void> updateRecipeVisibility({
@@ -862,6 +930,8 @@ class ExploreRemoteDataSource {
   }) async {
     final uid = _requiredUid();
     final recipeRef = firestore.collection('recipes').doc(recipeId);
+    var shouldNotifyFollowers = false;
+    var recipeTitle = 'a new recipe';
 
     await firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(recipeRef);
@@ -870,6 +940,9 @@ class ExploreRemoteDataSource {
       }
 
       final data = snapshot.data() ?? {};
+      shouldNotifyFollowers =
+          isPublished && _stringValue(data['visibility']) != 'public';
+      recipeTitle = _stringValue(data['name'], fallback: 'a new recipe');
       final creatorUid = _stringValue(data['creatorId']).isNotEmpty
           ? _stringValue(data['creatorId'])
           : _stringValue(data['creatorUid']);
@@ -882,6 +955,13 @@ class ExploreRemoteDataSource {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     });
+
+    if (shouldNotifyFollowers) {
+      await _notifyFollowersOfNewRecipe(
+        recipeOwnerUid: uid,
+        recipeTitle: recipeTitle,
+      );
+    }
   }
 
   String _requiredUid() {
@@ -893,6 +973,94 @@ class ExploreRemoteDataSource {
       );
     }
     return uid;
+  }
+
+  Future<void> _notifyUser({
+    required String receiverUid,
+    required String type,
+    required String title,
+    required String message,
+  }) async {
+    final senderUid = auth.currentUser?.uid ?? '';
+    if (receiverUid.isEmpty || senderUid.isEmpty || receiverUid == senderUid) {
+      return;
+    }
+
+    try {
+      await firestore
+          .collection('users')
+          .doc(receiverUid)
+          .collection('notifications')
+          .add({
+            'type': type,
+            'title': title,
+            'message': message,
+            'isRead': false,
+            'senderUid': senderUid,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+    } on FirebaseException {
+      // Notification writes are best-effort; the original action already
+      // succeeded and should not be rolled back by notification rules.
+    }
+  }
+
+  Future<String> _currentUserName() async {
+    final uid = auth.currentUser?.uid ?? '';
+    if (uid.isEmpty) return 'Someone';
+    final doc = await firestore.collection('users').doc(uid).get();
+    return _stringValue(doc.data()?['name'], fallback: 'Someone');
+  }
+
+  String _recipeCreatorUid(Map<String, dynamic> data) {
+    final creatorId = _stringValue(data['creatorId']);
+    if (creatorId.isNotEmpty) return creatorId;
+    return _stringValue(data['creatorUid']);
+  }
+
+  String _shortText(String value) {
+    final text = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (text.length <= 70) return text;
+    return '${text.substring(0, 67)}...';
+  }
+
+  Future<String> _recipeTitleFromReplyPath(String replyPath) async {
+    final parts = replyPath.split('/');
+    final recipeIndex = parts.indexOf('recipes');
+    if (recipeIndex < 0 || recipeIndex + 1 >= parts.length) {
+      return 'your comment';
+    }
+    final recipeId = parts[recipeIndex + 1];
+    final doc = await firestore.collection('recipes').doc(recipeId).get();
+    return _stringValue(doc.data()?['name'], fallback: 'your comment');
+  }
+
+  Future<void> _notifyFollowersOfNewRecipe({
+    required String recipeOwnerUid,
+    required String recipeTitle,
+  }) async {
+    if (recipeOwnerUid.isEmpty) return;
+    try {
+      final creatorName = await _currentUserName();
+      final followerSnapshot = await firestore
+          .collectionGroup('followingCreators')
+          .where('creatorUid', isEqualTo: recipeOwnerUid)
+          .get();
+
+      for (final doc in followerSnapshot.docs) {
+        final userDocRef = doc.reference.parent.parent;
+        final followerUid = userDocRef?.id ?? '';
+        if (followerUid.isEmpty || followerUid == recipeOwnerUid) continue;
+        await _notifyUser(
+          receiverUid: followerUid,
+          type: 'newRecipe',
+          title: 'New Recipe',
+          message: '$creatorName posted $recipeTitle.',
+        );
+      }
+    } on FirebaseException {
+      // Best-effort notification fan-out.
+    }
   }
 
   String _dateLabel(DateTime date) {

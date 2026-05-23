@@ -426,10 +426,62 @@ class AddRecipeRemoteDataSource {
     required String recipeId,
     required String visibility,
   }) async {
-    await firestore.collection('recipes').doc(recipeId).update({
+    final recipeRef = firestore.collection('recipes').doc(recipeId);
+    final snapshot = await recipeRef.get();
+    final previousVisibility = snapshot.data()?['visibility']?.toString();
+
+    await recipeRef.update({
       'visibility': visibility,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    if (visibility == 'public' && previousVisibility != 'public') {
+      final data = snapshot.data() ?? const <String, dynamic>{};
+      await _notifyFollowersOfNewRecipe(
+        recipeOwnerUid: auth.currentUser?.uid ?? '',
+        recipeTitle: data['name']?.toString() ?? 'a new recipe',
+      );
+    }
+  }
+
+  Future<void> _notifyFollowersOfNewRecipe({
+    required String recipeOwnerUid,
+    required String recipeTitle,
+  }) async {
+    if (recipeOwnerUid.isEmpty) return;
+    try {
+      final creatorName = await _currentUserName(recipeOwnerUid);
+      final followerSnapshot = await firestore
+          .collectionGroup('followingCreators')
+          .where('creatorUid', isEqualTo: recipeOwnerUid)
+          .get();
+
+      for (final doc in followerSnapshot.docs) {
+        final userDocRef = doc.reference.parent.parent;
+        final followerUid = userDocRef?.id ?? '';
+        if (followerUid.isEmpty || followerUid == recipeOwnerUid) continue;
+        await firestore
+            .collection('users')
+            .doc(followerUid)
+            .collection('notifications')
+            .add({
+              'type': 'newRecipe',
+              'title': 'New Recipe',
+              'message': '$creatorName posted $recipeTitle.',
+              'isRead': false,
+              'senderUid': recipeOwnerUid,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+      }
+    } on FirebaseException {
+      // Best-effort notification fan-out.
+    }
+  }
+
+  Future<String> _currentUserName(String uid) async {
+    final doc = await firestore.collection('users').doc(uid).get();
+    final name = doc.data()?['name']?.toString().trim() ?? '';
+    return name.isEmpty ? 'Someone' : name;
   }
 
   Future<List<String>> _resolveOptionNames({

@@ -97,7 +97,7 @@ class StatisticsLocalDataSource {
       communityMenuItems: [
         StatisticsMenuItem(title: 'Post Analytic'),
         StatisticsMenuItem(title: 'Most Calories Posted Meal'),
-        StatisticsMenuItem(title: 'Most Posted Meal Time'),
+        StatisticsMenuItem(title: 'Recipe Performance'),
         StatisticsMenuItem(title: 'Most Cooked Recipe By Others'),
         StatisticsMenuItem(title: 'Difficulty Posted'),
       ],
@@ -1657,7 +1657,7 @@ class StatisticsLocalDataSource {
           ],
         ),
         AdminAnalyticSection(
-          title: 'Most Posted Meal Time',
+          title: 'Recipe Performance',
           summaryTitle: 'Total Post',
           summaryValue: '333',
           highlightTitle: 'Top Time',

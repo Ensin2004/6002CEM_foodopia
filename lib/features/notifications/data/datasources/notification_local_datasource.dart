@@ -43,6 +43,24 @@ class NotificationLocalDataSource {
             enabled: false,
           ),
           NotificationPreference(
+            id: 'new_comment_notification',
+            title: 'New Comment Notification',
+            description: 'Receive a notification when your recipe has comment',
+            enabled: false,
+          ),
+          NotificationPreference(
+            id: 'new_recipe_notification',
+            title: 'New Recipe Notification',
+            description: 'Receive a notification when followed creator posts',
+            enabled: false,
+          ),
+          NotificationPreference(
+            id: 'new_reply_notification',
+            title: 'New Reply Notification',
+            description: 'Receive a notification when someone replies you',
+            enabled: false,
+          ),
+          NotificationPreference(
             id: 'plan_reminder_notification',
             title: 'Plan reminder',
             description:

@@ -224,10 +224,12 @@ class AdminAnalyticSectionPager extends StatelessWidget {
             itemCount: sections.length,
             onPageChanged: onPageChanged,
             itemBuilder: (context, index) {
-              return AdminAnalyticSectionCard(
-                section: sections[index].sorted(sortOrder),
-                sortOrder: sortOrder,
-                onSortChanged: onSortChanged,
+              return SingleChildScrollView(
+                child: AdminAnalyticSectionCard(
+                  section: sections[index].sorted(sortOrder),
+                  sortOrder: sortOrder,
+                  onSortChanged: onSortChanged,
+                ),
               );
             },
           ),
