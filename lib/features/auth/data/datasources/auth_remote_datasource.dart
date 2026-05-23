@@ -58,6 +58,14 @@ class AuthRemoteDataSource {
     return await _fcm.getToken();
   }
 
+  Future<void> saveFcmToken(String uid) async {
+    final token = await getFCMToken();
+    if (token == null || token.isEmpty) return;
+    await _firestore.collection('users').doc(uid).set({
+      'fcmTokens': FieldValue.arrayUnion([token]),
+    }, SetOptions(merge: true));
+  }
+
   /// Runs the save user to firestore operation.
   Future<void> saveUserToFirestore({
     required String uid,

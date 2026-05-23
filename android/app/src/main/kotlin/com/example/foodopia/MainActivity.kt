@@ -17,6 +17,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val channelName = "foodopia/notifications"
     private val notificationChannelId = "foodopia_reminders_v2"
+    private val socialNotificationChannelId = "foodopia_social_notifications"
     private val notificationPrefsName = "foodopia_native_notifications"
     private val scheduledIdsKey = "scheduled_notification_ids"
     private val suppressAllKey = "suppress_all_demo_notifications"
@@ -76,6 +77,15 @@ class MainActivity : FlutterActivity() {
         }
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(channel)
+        val socialChannel = NotificationChannel(
+            socialNotificationChannelId,
+            "Foodopia notifications",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Follower, rating, comment, reply, and recipe notifications"
+            enableVibration(true)
+        }
+        manager.createNotificationChannel(socialChannel)
     }
 
     private fun scheduleNotification(

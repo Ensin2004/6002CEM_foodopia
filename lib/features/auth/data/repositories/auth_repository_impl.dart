@@ -35,6 +35,7 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final userDoc = await remoteDataSource.getUserFromFirestore(user.uid);
+      await remoteDataSource.saveFcmToken(user.uid);
       final userEntity = UserModel.fromFirebase(user, userDoc);
 
       return Right(userEntity);
