@@ -17,7 +17,6 @@ enum MainNavigationEvent {
   goToProfile,
   goToNotifications,
   goToStatistics,
-  goToFavorites,
   goToAddRecipe,
 }
 
