@@ -11,17 +11,17 @@ abstract class MealPlanRepository {
   Future<Either<Failure, MealPlanDashboard>> getDashboard();
   Future<Either<Failure, MealPlanWeather>> getTodayWeather();
   Future<Either<Failure, MealPlanPreferenceSummary>> getPreferences(String uid);
-  Future<Either<Failure, AddGroceryListPlan>> getAddGroceryListPlan();
-  Future<Either<Failure, AddMealAiPlan>> getAddMealAiPlan({
-    required String userId,
-    required String mealType,
-  });
   Future<Either<Failure, List<MealPlanPreferenceOption>>>
   getInspirationPreferenceOptions(String categoryId);
   Future<Either<Failure, List<MealPlanInspirationIngredient>>>
   getDefaultInspirationIngredients();
   Future<Either<Failure, List<MealPlanInspirationIngredient>>>
   searchInspirationIngredients(String query);
+  Future<Either<Failure, AddGroceryListPlan>> getAddGroceryListPlan();
+  Future<Either<Failure, AddMealAiPlan>> getAddMealAiPlan({
+    required String userId,
+    required String mealType,
+  });
   Future<Either<Failure, List<AddMealCategoryOption>>> getMealCategories();
   Future<Either<Failure, List<AddMealAiRecipe>>> generateAiMealIdeas(
     AddMealAiGenerationRequest request,

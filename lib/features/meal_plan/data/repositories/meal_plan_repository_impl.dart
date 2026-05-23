@@ -58,6 +58,41 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
   }
 
   @override
+  Future<Either<Failure, List<MealPlanPreferenceOption>>>
+  getInspirationPreferenceOptions(String categoryId) async {
+    try {
+      final options = await inspirationDataSource.getPreferenceOptions(
+        categoryId,
+      );
+      return Right(options);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<MealPlanInspirationIngredient>>>
+  getDefaultInspirationIngredients() async {
+    try {
+      final ingredients = await inspirationDataSource.getDefaultIngredients();
+      return Right(ingredients);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<MealPlanInspirationIngredient>>>
+  searchInspirationIngredients(String query) async {
+    try {
+      final ingredients = await inspirationDataSource.searchIngredients(query);
+      return Right(ingredients);
+    } catch (e) {
+      return Left(NetworkFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, AddGroceryListPlan>> getAddGroceryListPlan() async {
     try {
       final plan = await mockDataSource.getAddGroceryListPlan();
@@ -89,41 +124,6 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
   }
 
   @override
-  Future<Either<Failure, List<MealPlanPreferenceOption>>>
-  getInspirationPreferenceOptions(String categoryId) async {
-    try {
-      final options = await inspirationDataSource.getPreferenceOptions(
-        categoryId,
-      );
-      return Right(options);
-    } catch (e) {
-      return Left(ServerFailure(message: e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<MealPlanInspirationIngredient>>>
-  getDefaultInspirationIngredients() async {
-    try {
-      final ingredients = await inspirationDataSource.getDefaultIngredients();
-      return Right(ingredients);
-    } catch (e) {
-      return Left(ServerFailure(message: e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<MealPlanInspirationIngredient>>>
-  searchInspirationIngredients(String query) async {
-    try {
-      final ingredients = await inspirationDataSource.searchIngredients(query);
-      return Right(ingredients);
-    } catch (e) {
-      return Left(ServerFailure(message: e.toString()));
-    }
-  }
-
-  @override
   Future<Either<Failure, List<AddMealCategoryOption>>>
   getMealCategories() async {
     try {
@@ -139,8 +139,8 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
     AddMealAiGenerationRequest request,
   ) async {
     try {
-      final recipes = await inspirationDataSource.generateAiMealIdeas(request);
-      return Right(recipes);
+      final ideas = await inspirationDataSource.generateAiMealIdeas(request);
+      return Right(ideas);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

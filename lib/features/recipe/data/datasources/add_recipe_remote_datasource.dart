@@ -437,7 +437,8 @@ class AddRecipeRemoteDataSource {
     required String mode,
   }) async {
     await firestore.collection('recipes').doc(recipeId).update({
-      'status': mode,
+      'mode': mode,
+      'status': 'saved',
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }

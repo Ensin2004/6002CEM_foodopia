@@ -22,6 +22,34 @@ class AddMealAiPlan {
   });
 }
 
+class AddMealAiGenerationRequest {
+  final DateTime planningDate;
+  final String mealType;
+  final AddMealWeather weather;
+  final AddMealPreferenceSnapshot preferences;
+  final List<String> ingredientsToInclude;
+  final List<String> ingredientsToAvoid;
+  final List<String> dishIncludes;
+  final List<String> dishAvoids;
+  final int cookingTime;
+  final String difficulty;
+  final String servingSize;
+
+  const AddMealAiGenerationRequest({
+    required this.planningDate,
+    required this.mealType,
+    required this.weather,
+    required this.preferences,
+    required this.ingredientsToInclude,
+    required this.ingredientsToAvoid,
+    required this.dishIncludes,
+    required this.dishAvoids,
+    required this.cookingTime,
+    required this.difficulty,
+    required this.servingSize,
+  });
+}
+
 class AddMealWeather {
   final int temperature;
   final String condition;
@@ -100,32 +128,4 @@ class AddMealCategoryOption {
   final String name;
 
   const AddMealCategoryOption({required this.id, required this.name});
-}
-
-class AddMealAiGenerationRequest {
-  final DateTime planningDate;
-  final String mealType;
-  final AddMealWeather weather;
-  final AddMealPreferenceSnapshot preferences;
-  final List<String> ingredientsToInclude;
-  final List<String> ingredientsToAvoid;
-  final List<String> dishIncludes;
-  final List<String> dishAvoids;
-  final String cookingTime;
-  final String difficulty;
-  final String servingSize;
-
-  const AddMealAiGenerationRequest({
-    required this.planningDate,
-    required this.mealType,
-    required this.weather,
-    required this.preferences,
-    required this.ingredientsToInclude,
-    required this.ingredientsToAvoid,
-    required this.dishIncludes,
-    required this.dishAvoids,
-    required this.cookingTime,
-    required this.difficulty,
-    required this.servingSize,
-  });
 }

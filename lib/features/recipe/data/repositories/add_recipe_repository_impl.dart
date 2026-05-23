@@ -63,7 +63,9 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
 
   @override
   Future<Either<Failure, String>> saveBasicInfo(AddRecipeBasicInfo info) async {
-    if (info.mediaFiles.isEmpty && info.existingMediaUrls.isEmpty) {
+    if (info.mediaFiles.isEmpty &&
+        info.existingMediaUrls.isEmpty &&
+        !info.isAiGenerated) {
       return Left(ValidationFailure(message: 'Please upload a recipe image.'));
     }
     if (info.recipeName.trim().isEmpty) {

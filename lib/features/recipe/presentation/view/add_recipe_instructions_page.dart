@@ -14,7 +14,10 @@ import '../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
+import '../../domain/entities/add_recipe_basic_info.dart';
+import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
+import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../viewmodel/add_recipe_instructions_viewmodel.dart';
@@ -29,12 +32,22 @@ class AddRecipeInstructionsPage extends StatelessWidget {
   final String recipeId;
   final String initialVisibility;
   final bool returnToReview;
+  final AddMealAiRecipe? initialAiRecipe;
+  final AddMealAiGenerationRequest? initialAiRequest;
+  final String? userId;
+  final AddRecipeBasicInfo? aiDraftBasicInfo;
+  final List<AddRecipeIngredient> aiDraftIngredients;
 
   const AddRecipeInstructionsPage({
     super.key,
     required this.recipeId,
     this.initialVisibility = "private",
     this.returnToReview = false,
+    this.initialAiRecipe,
+    this.initialAiRequest,
+    this.userId,
+    this.aiDraftBasicInfo,
+    this.aiDraftIngredients = const [],
   });
 
   @override
@@ -57,6 +70,11 @@ class AddRecipeInstructionsPage extends StatelessWidget {
       child: _AddRecipeInstructionsView(
         recipeId: recipeId,
         returnToReview: returnToReview,
+        initialAiRecipe: initialAiRecipe,
+        initialAiRequest: initialAiRequest,
+        userId: userId,
+        aiDraftBasicInfo: aiDraftBasicInfo,
+        aiDraftIngredients: aiDraftIngredients,
       ),
     );
   }
@@ -65,19 +83,31 @@ class AddRecipeInstructionsPage extends StatelessWidget {
 class _AddRecipeInstructionsView extends StatefulWidget {
   final String recipeId;
   final bool returnToReview;
+  final AddMealAiRecipe? initialAiRecipe;
+  final AddMealAiGenerationRequest? initialAiRequest;
+  final String? userId;
+  final AddRecipeBasicInfo? aiDraftBasicInfo;
+  final List<AddRecipeIngredient> aiDraftIngredients;
 
   const _AddRecipeInstructionsView({
     required this.recipeId,
     required this.returnToReview,
+    this.initialAiRecipe,
+    this.initialAiRequest,
+    this.userId,
+    this.aiDraftBasicInfo,
+    this.aiDraftIngredients = const [],
   });
 
   @override
-  State<_AddRecipeInstructionsView> createState() => _AddRecipeInstructionsViewState();
+  State<_AddRecipeInstructionsView> createState() =>
+      _AddRecipeInstructionsViewState();
 }
 
-class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> {
+class _AddRecipeInstructionsViewState
+    extends State<_AddRecipeInstructionsView> {
   final ImagePicker _imagePicker = ImagePicker();
-  final List<InstructionStepState> _steps = [InstructionStepState()];
+  late final List<InstructionStepState> _steps;
   final List<InstructionSectionState> _sections = [InstructionSectionState()];
   bool _useSections = false;
   String? _seededRecipeId;
@@ -86,6 +116,10 @@ class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> 
   @override
   void initState() {
     super.initState();
+    final aiInstructions = widget.initialAiRecipe?.instructions ?? const [];
+    _steps = aiInstructions.isEmpty
+        ? [InstructionStepState()]
+        : aiInstructions.map(InstructionStepState.fromDescription).toList();
     for (final step in _steps) {
       step.addListener(_refreshFormState);
     }
@@ -116,7 +150,8 @@ class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> 
       return const LoadingDialog();
     }
 
-    if (viewModel.existingReview == null &&
+    if (widget.initialAiRecipe == null &&
+        viewModel.existingReview == null &&
         _requestedRecipeId != widget.recipeId) {
       _requestedRecipeId = widget.recipeId;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -137,7 +172,9 @@ class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> 
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
       appBar: CustomAppBar(
-        title: "New Recipe",
+        title: widget.initialAiRecipe == null
+            ? "New Recipe"
+            : "Customize AI Recipe",
         actions: [
           Consumer<AddRecipeVisibilityViewModel>(
             builder: (context, visibilityViewModel, _) {
@@ -153,7 +190,8 @@ class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        visibilityViewModel.errorMessage ?? "Unable to update visibility.",
+                        visibilityViewModel.errorMessage ??
+                            "Unable to update visibility.",
                       ),
                     ),
                   );
@@ -259,7 +297,11 @@ class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> 
                 AppSpacing.lg,
               ),
               child: PrimaryButton(
-                text: widget.returnToReview ? "Save & Review" : "Save & Continue",
+                text: widget.initialAiRecipe != null
+                    ? "Next"
+                    : widget.returnToReview
+                    ? "Save & Review"
+                    : "Save & Continue",
                 isLoading: viewModel.isSaving,
                 onPressed: viewModel.isSaving || !_canSave
                     ? null
@@ -364,6 +406,23 @@ class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> 
     BuildContext context,
     AddRecipeInstructionsViewModel viewModel,
   ) async {
+    if (widget.initialAiRecipe != null) {
+      context.push(
+        AppRouter.addRecipeReview,
+        extra: AddRecipeReviewArgs(
+          recipeId: widget.recipeId,
+          aiRecipe: widget.initialAiRecipe,
+          aiRequest: widget.initialAiRequest,
+          userId: widget.userId,
+          aiDraftBasicInfo: widget.aiDraftBasicInfo,
+          aiDraftIngredients: widget.aiDraftIngredients,
+          aiDraftInstructions: _completedInstructions,
+          aiDraftUseSections: _useSections,
+        ),
+      );
+      return;
+    }
+
     final success = await viewModel.saveInstructions(
       recipeId: widget.recipeId,
       useSections: _useSections,
@@ -389,14 +448,24 @@ class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> 
     if (widget.returnToReview) {
       context.pushReplacement(
         AppRouter.addRecipeReview,
-        extra: AddRecipeReviewArgs(recipeId: widget.recipeId),
+        extra: AddRecipeReviewArgs(
+          recipeId: widget.recipeId,
+          aiRecipe: widget.initialAiRecipe,
+          aiRequest: widget.initialAiRequest,
+          userId: widget.userId,
+        ),
       );
       return;
     }
 
     context.push(
       AppRouter.addRecipeReview,
-      extra: AddRecipeReviewArgs(recipeId: widget.recipeId),
+      extra: AddRecipeReviewArgs(
+        recipeId: widget.recipeId,
+        aiRecipe: widget.initialAiRecipe,
+        aiRequest: widget.initialAiRequest,
+        userId: widget.userId,
+      ),
     );
   }
 
@@ -516,7 +585,8 @@ class _AddRecipeInstructionsViewState extends State<_AddRecipeInstructionsView> 
             step.dispose();
           }
           section.steps.clear();
-          section.titleController.text = entry.value.first.sectionTitle?.toString() ?? "";
+          section.titleController.text =
+              entry.value.first.sectionTitle?.toString() ?? "";
           for (final item in entry.value) {
             final step = InstructionStepState();
             step.descriptionController.text = item.description.toString();
@@ -549,9 +619,18 @@ class InstructionStepState {
   File? imageFile;
   String? existingImageUrl;
 
+  InstructionStepState();
+
+  factory InstructionStepState.fromDescription(String description) {
+    final step = InstructionStepState();
+    step.descriptionController.text = description;
+    return step;
+  }
+
   bool get isComplete => descriptionController.text.trim().isNotEmpty;
 
-  bool get isPartial => (imageFile != null || existingImageUrl != null) && !isComplete;
+  bool get isPartial =>
+      (imageFile != null || existingImageUrl != null) && !isComplete;
 
   void addListener(VoidCallback listener) {
     _listeners.add(listener);

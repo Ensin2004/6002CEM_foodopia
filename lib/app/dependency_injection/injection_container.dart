@@ -31,8 +31,8 @@ import 'package:http/http.dart' as http;
 // Core
 import '../../core/services/network_info.dart';
 import '../../core/services/food_search_service.dart';
-import '../../core/services/open_meteo_weather_service.dart';
 import '../../core/services/openai_meal_idea_service.dart';
+import '../../core/services/open_meteo_weather_service.dart';
 
 // Auth Feature - Data Layer
 import '../../features/admin_home/data/datasources/admin_home_mock_datasource.dart';
@@ -74,8 +74,8 @@ import '../../features/meal_plan/data/repositories/meal_plan_repository_impl.dar
 import '../../features/meal_plan/domain/repositories/meal_plan_repository.dart';
 import '../../features/meal_plan/domain/usecases/get_add_grocery_list_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_add_meal_ai_plan_usecase.dart';
-import '../../features/meal_plan/domain/usecases/get_manage_grocery_list_detail_usecase.dart';
 import '../../features/meal_plan/domain/usecases/generate_ai_meal_ideas_usecase.dart';
+import '../../features/meal_plan/domain/usecases/get_manage_grocery_list_detail_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_categories_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_default_ingredients_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_dashboard_usecase.dart';
@@ -87,11 +87,11 @@ import '../../features/meal_plan/domain/usecases/search_meal_plan_ingredients_us
 import '../../features/recipe/data/datasources/add_recipe_remote_datasource.dart';
 import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart';
 import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
+import '../../features/recipe/domain/usecases/complete_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_setup_usecase.dart';
-import '../../features/recipe/domain/usecases/complete_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_instructions_usecase.dart';
@@ -356,15 +356,15 @@ void _initMealPlanFeature() {
   sl.registerLazySingleton(() => GetMealPlanDashboardUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlanWeatherUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlanPreferencesUseCase(sl()));
-  sl.registerLazySingleton(() => GetAddGroceryListPlanUseCase(sl()));
-  sl.registerLazySingleton(() => GetAddMealAiPlanUseCase(sl()));
-  sl.registerLazySingleton(() => GetManageGroceryListDetailUseCase(sl()));
-  sl.registerLazySingleton(() => GetMealPlanInspirationOptionsUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlanDefaultIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => SearchMealPlanIngredientsUseCase(sl()));
-  sl.registerLazySingleton(() => GetMealCategoriesUseCase(sl()));
+  sl.registerLazySingleton(() => GetMealPlanInspirationOptionsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAddGroceryListPlanUseCase(sl()));
+  sl.registerLazySingleton(() => GetAddMealAiPlanUseCase(sl()));
   sl.registerLazySingleton(() => GenerateAiMealIdeasUseCase(sl()));
+  sl.registerLazySingleton(() => GetMealCategoriesUseCase(sl()));
   sl.registerLazySingleton(() => SaveAiMealPlanUseCase(sl()));
+  sl.registerLazySingleton(() => GetManageGroceryListDetailUseCase(sl()));
 }
 
 void _initUserSetupFeature() {
@@ -446,8 +446,8 @@ Future<void> _initExternal() async {
   ); // Push notifications
   sl.registerLazySingleton(() => http.Client());
   sl.registerLazySingleton(() => FoodSearchService(client: sl()));
-  sl.registerLazySingleton(() => OpenMeteoWeatherService(client: sl()));
   sl.registerLazySingleton(() => OpenAiMealIdeaService(client: sl()));
+  sl.registerLazySingleton(() => OpenMeteoWeatherService(client: sl()));
 
   // --------------------------------------------------------------------------
   // CONNECTIVITY
