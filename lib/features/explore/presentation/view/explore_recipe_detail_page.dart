@@ -96,6 +96,16 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
+  void _openRecipeReview(ExploreRecipeDetailViewModel viewModel) {
+    final recipeId = viewModel.recipe?.id;
+    if (recipeId == null || recipeId.isEmpty) return;
+
+    context.push(
+      AppRouter.addRecipeReview,
+      extra: AddRecipeReviewArgs(recipeId: recipeId),
+    );
+  }
+
   Future<void> _toggleFavourite(ExploreRecipeDetailViewModel viewModel) async {
     final success = await viewModel.toggleFavourite();
     if (!mounted) return;
@@ -221,6 +231,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         onComingSoonTap: _showComingSoonMessage,
         showLibraryActions: widget.showLibraryActions,
         isPublished: _isPublished,
+        onEditTap: () => _openRecipeReview(viewModel),
         onVisibilityTap: () => _confirmVisibilityChange(viewModel),
       ),
     );
@@ -231,6 +242,7 @@ class _DetailBody extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final TabController tabController;
   final VoidCallback onComingSoonTap;
+  final VoidCallback onEditTap;
   final VoidCallback onVisibilityTap;
   final bool showLibraryActions;
   final bool isPublished;
@@ -239,6 +251,7 @@ class _DetailBody extends StatelessWidget {
     required this.viewModel,
     required this.tabController,
     required this.onComingSoonTap,
+    required this.onEditTap,
     required this.onVisibilityTap,
     required this.showLibraryActions,
     required this.isPublished,
@@ -273,7 +286,7 @@ class _DetailBody extends StatelessWidget {
           recipe: recipe,
           showLibraryActions: showLibraryActions,
           isPublished: isPublished,
-          onEditTap: onComingSoonTap,
+          onEditTap: onEditTap,
           onVisibilityTap: onVisibilityTap,
         ),
         Padding(
