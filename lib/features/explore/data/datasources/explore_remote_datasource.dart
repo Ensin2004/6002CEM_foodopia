@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../../../core/services/fcm_sender.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../models/explore_recipe_model.dart';
 
@@ -987,7 +988,7 @@ class ExploreRemoteDataSource {
     }
 
     try {
-      await firestore
+      final notificationRef = await firestore
           .collection('users')
           .doc(receiverUid)
           .collection('notifications')
@@ -999,9 +1000,52 @@ class ExploreRemoteDataSource {
             'senderUid': senderUid,
             'createdAt': FieldValue.serverTimestamp(),
           });
+      await _sendPushToUser(
+        receiverUid: receiverUid,
+        title: title,
+        message: message,
+        data: {
+          'type': type,
+          'notificationId': notificationRef.id,
+          'senderUid': senderUid,
+        },
+      );
     } on FirebaseException {
       // Notification writes are best-effort; the original action already
       // succeeded and should not be rolled back by notification rules.
+    }
+  }
+
+  Future<void> _sendPushToUser({
+    required String receiverUid,
+    required String title,
+    required String message,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final userDoc = await firestore
+          .collection('users')
+          .doc(receiverUid)
+          .get();
+      final rawTokens = userDoc.data()?['fcmTokens'];
+      final tokens = rawTokens is Iterable
+          ? rawTokens
+                .map((token) => token?.toString().trim() ?? '')
+                .where((token) => token.isNotEmpty)
+                .toSet()
+          : <String>{};
+
+      for (final token in tokens) {
+        await FcmSender.instance.sendToToken(
+          deviceToken: token,
+          title: title,
+          body: message,
+          data: data,
+        );
+      }
+    } catch (_) {
+      // Push sending is best-effort; the Firestore notification is the source
+      // of truth for the notification list.
     }
   }
 

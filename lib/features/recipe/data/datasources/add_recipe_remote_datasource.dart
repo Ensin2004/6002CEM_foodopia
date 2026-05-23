@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/services/cloudinary_service.dart';
+import '../../../../core/services/fcm_sender.dart';
 import '../../../../core/services/food_search_service.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_food_search_result.dart';
@@ -460,7 +461,7 @@ class AddRecipeRemoteDataSource {
         final userDocRef = doc.reference.parent.parent;
         final followerUid = userDocRef?.id ?? '';
         if (followerUid.isEmpty || followerUid == recipeOwnerUid) continue;
-        await firestore
+        final notificationRef = await firestore
             .collection('users')
             .doc(followerUid)
             .collection('notifications')
@@ -472,9 +473,51 @@ class AddRecipeRemoteDataSource {
               'senderUid': recipeOwnerUid,
               'createdAt': FieldValue.serverTimestamp(),
             });
+        await _sendPushToUser(
+          receiverUid: followerUid,
+          title: 'New Recipe',
+          message: '$creatorName posted $recipeTitle.',
+          data: {
+            'type': 'newRecipe',
+            'notificationId': notificationRef.id,
+            'senderUid': recipeOwnerUid,
+          },
+        );
       }
     } on FirebaseException {
       // Best-effort notification fan-out.
+    }
+  }
+
+  Future<void> _sendPushToUser({
+    required String receiverUid,
+    required String title,
+    required String message,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final userDoc = await firestore
+          .collection('users')
+          .doc(receiverUid)
+          .get();
+      final rawTokens = userDoc.data()?['fcmTokens'];
+      final tokens = rawTokens is Iterable
+          ? rawTokens
+                .map((token) => token?.toString().trim() ?? '')
+                .where((token) => token.isNotEmpty)
+                .toSet()
+          : <String>{};
+
+      for (final token in tokens) {
+        await FcmSender.instance.sendToToken(
+          deviceToken: token,
+          title: title,
+          body: message,
+          data: data,
+        );
+      }
+    } catch (_) {
+      // Push sending is best-effort; the Firestore notification remains saved.
     }
   }
 

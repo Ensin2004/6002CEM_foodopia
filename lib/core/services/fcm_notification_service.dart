@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,6 +13,7 @@ class FcmNotificationService {
   _notificationSubscription;
   static StreamSubscription<String>? _tokenSubscription;
   static StreamSubscription<RemoteMessage>? _messageSubscription;
+  static final Set<String> _shownNotificationKeys = <String>{};
   static bool _isInitialized = false;
 
   static Future<void> initialize() async {
@@ -88,6 +88,7 @@ class FcmNotificationService {
           (snapshot) {
             for (final change in snapshot.docChanges) {
               if (change.type != DocumentChangeType.added) continue;
+              if (!_shownNotificationKeys.add(change.doc.id)) continue;
               final data = change.doc.data() ?? const <String, dynamic>{};
               if (data['createdAt'] == null) continue;
               final title = data['title']?.toString() ?? 'Foodopia';
@@ -115,15 +116,17 @@ class FcmNotificationService {
   }) async {
     try {
       await _channel.invokeMethod<bool>('requestPermission');
-      await _channel.invokeMethod<void>('scheduleNotification', {
-        'id': Random().nextInt(1 << 31),
-        'notificationKey': key,
+      final shown = await _channel.invokeMethod<bool>('showNotificationNow', {
+        'id': key.hashCode & 0x7fffffff,
         'title': title,
         'message': body,
-        'scheduledAt': DateTime.now()
-            .add(const Duration(seconds: 1))
-            .millisecondsSinceEpoch,
+        'channelId': 'foodopia_social_notifications',
       });
+      if (shown == false) {
+        debugPrint(
+          '[NotificationWatcher] Android notification permission is not granted.',
+        );
+      }
     } on PlatformException {
       // FCM notification still exists in the in-app notification list.
     } on MissingPluginException {
