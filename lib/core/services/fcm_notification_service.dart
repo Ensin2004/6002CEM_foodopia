@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,8 @@ import 'package:flutter/services.dart';
 
 class FcmNotificationService {
   static const MethodChannel _channel = MethodChannel('foodopia/notifications');
+  static StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  _notificationSubscription;
 
   static Future<void> initialize() async {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -21,6 +24,7 @@ class FcmNotificationService {
     });
 
     FirebaseMessaging.onMessage.listen(_showForegroundNotification);
+    _watchFirestoreNotifications();
   }
 
   static Future<void> _saveCurrentToken() async {
@@ -44,11 +48,52 @@ class FcmNotificationService {
     final body = message.notification?.body ?? message.data['body']?.toString();
     if (title == null || body == null) return;
 
+    await _showNativeNotification(
+      title: title,
+      body: body,
+      key: 'fcm_${message.messageId ?? DateTime.now()}',
+    );
+  }
+
+  static void _watchFirestoreNotifications() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+
+    _notificationSubscription?.cancel();
+    final startedAt = Timestamp.now();
+    _notificationSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .where('isRead', isEqualTo: false)
+        .where('createdAt', isGreaterThan: startedAt)
+        .snapshots()
+        .listen((snapshot) {
+          for (final change in snapshot.docChanges) {
+            if (change.type != DocumentChangeType.added) continue;
+            final data = change.doc.data() ?? const <String, dynamic>{};
+            final title = data['title']?.toString() ?? 'Foodopia';
+            final body =
+                data['message']?.toString() ?? 'You have a new notification.';
+            _showNativeNotification(
+              title: title,
+              body: body,
+              key: 'firestore_${change.doc.id}',
+            );
+          }
+        });
+  }
+
+  static Future<void> _showNativeNotification({
+    required String title,
+    required String body,
+    required String key,
+  }) async {
     try {
       await _channel.invokeMethod<bool>('requestPermission');
       await _channel.invokeMethod<void>('scheduleNotification', {
         'id': Random().nextInt(1 << 31),
-        'notificationKey': 'fcm_${message.messageId ?? DateTime.now()}',
+        'notificationKey': key,
         'title': title,
         'message': body,
         'scheduledAt': DateTime.now()
