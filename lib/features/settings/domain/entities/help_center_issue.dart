@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 /// Help Center Issue Entity
 class HelpCenterIssue {
   final String id;
@@ -21,6 +19,7 @@ class HelpCenterIssue {
 
   /// Handles the is replied operation.
   bool get isReplied => replied;
+
   /// Handles the is pending operation.
   bool get isPending => !replied;
 

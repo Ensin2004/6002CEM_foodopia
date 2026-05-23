@@ -17,8 +17,12 @@ class MainViewModel extends ChangeNotifier {
   bool _isDisposed = false;
 
   /// Creates a main view model instance.
-  MainViewModel({required this.user, required MainRepository repository})
-    : _repository = repository {
+  MainViewModel({
+    required this.user,
+    required MainRepository repository,
+    int initialIndex = 0,
+  }) : _repository = repository,
+       _selectedIndex = initialIndex {
     _loadUserProfile();
     _updateLastLogin();
   }
@@ -85,9 +89,9 @@ class MainViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
-  /// Handles the go to favorites operation.
-  void goToFavorites() {
-    _navigationEvent = MainNavigationEvent.goToFavorites;
+  /// Handles the go to statistics operation.
+  void goToStatistics() {
+    _navigationEvent = MainNavigationEvent.goToStatistics;
     _notifyIfActive();
   }
 

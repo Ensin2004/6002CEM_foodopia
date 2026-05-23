@@ -5,6 +5,7 @@ class AddRecipeInstruction {
   final String? sectionTitle;
   final int stepIndex;
   final File? stepImageFile;
+  final String? existingStepImageUrl;
   final String description;
 
   const AddRecipeInstruction({
@@ -12,6 +13,7 @@ class AddRecipeInstruction {
     required this.sectionTitle,
     required this.stepIndex,
     this.stepImageFile,
+    this.existingStepImageUrl,
     required this.description,
   });
 }

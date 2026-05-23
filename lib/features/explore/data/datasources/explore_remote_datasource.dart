@@ -69,6 +69,14 @@ class ExploreRemoteDataSource {
                 .snapshots()
                 .listen((_) => emitRecipes()),
           );
+          subscriptions.add(
+            firestore
+                .collection('users')
+                .doc(uid)
+                .collection('saved_recipes')
+                .snapshots()
+                .listen((_) => emitRecipes()),
+          );
         }
       },
       onCancel: () async {
@@ -131,6 +139,14 @@ class ExploreRemoteDataSource {
                 .collection('users')
                 .doc(uid)
                 .collection('followingCreators')
+                .snapshots()
+                .listen((_) => emitRecipe()),
+          );
+          subscriptions.add(
+            firestore
+                .collection('users')
+                .doc(uid)
+                .collection('saved_recipes')
                 .snapshots()
                 .listen((_) => emitRecipe()),
           );
@@ -234,6 +250,7 @@ class ExploreRemoteDataSource {
     final isCurrentUserCreator =
         creatorUid.isNotEmpty && creatorUid == currentUid;
     final isFollowingAuthor = await _isFollowingCreator(creatorUid);
+    final isFavourite = await _isFavouriteRecipe(doc.id);
     final creator = await _getCreator(creatorUid);
     final categoryIds = _stringList(data['categoryIds']);
     final customCategoryIds = _stringList(data['customCategoryIds']);
@@ -303,6 +320,7 @@ class ExploreRemoteDataSource {
       totalViews: _intValue(data['totalViews']),
       publishedAt: publishedAt,
       isFollowingAuthor: isFollowingAuthor,
+      isFavourite: isFavourite,
       isCreatedByCurrentUser: isCurrentUserCreator,
       ingredients: ingredients,
       instructionSections: instructions,
@@ -351,7 +369,7 @@ class ExploreRemoteDataSource {
           return secondDate.compareTo(firstDate);
         });
 
-    return docs.take(3).map((doc) {
+    return docs.take(4).map((doc) {
       final data = doc.data();
       final media = _stringList(data['media']);
       return ExploreRecipeSummary(
@@ -396,6 +414,18 @@ class ExploreRemoteDataSource {
     return doc.exists;
   }
 
+  Future<bool> _isFavouriteRecipe(String recipeId) async {
+    final uid = auth.currentUser?.uid ?? '';
+    if (uid.isEmpty || recipeId.isEmpty) return false;
+    final doc = await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('saved_recipes')
+        .doc(recipeId)
+        .get();
+    return doc.exists;
+  }
+
   Future<List<String>> _resolveOptionNames({
     required String configId,
     required List<String> ids,
@@ -432,25 +462,55 @@ class ExploreRemoteDataSource {
   ) async {
     final snapshot = await recipe.collection('ingredients').get();
 
-    return snapshot.docs.map((doc) {
-      final data = doc.data();
-      final amount = _doubleValue(data['amount']);
-      final unit = _stringValue(data['unitId']).isNotEmpty
-          ? _stringValue(data['unitId'])
-          : _stringValue(data['customUnitId']);
+    return Future.wait(
+      snapshot.docs.map((doc) async {
+        final data = doc.data();
+        final amount = _doubleValue(data['amount']);
+        final unit = await _resolveIngredientUnitName(
+          customUnitId: _stringValue(data['customUnitId']),
+          unitId: _stringValue(data['unitId']),
+        );
 
-      return ExploreIngredient(
-        name: _stringValue(data['name'], fallback: 'Ingredient'),
-        amount: '${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 1)} $unit'
-            .trim(),
-        calories: '',
-        imagePath: _stringValue(
-          data['image'],
-          fallback: 'assets/images/meal1.png',
-        ),
-        nutritionPercent: 0,
-      );
-    }).toList();
+        return ExploreIngredient(
+          name: _stringValue(data['name'], fallback: 'Ingredient'),
+          amount: '${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 1)} $unit'
+              .trim(),
+          calories: '',
+          imagePath: _stringValue(
+            data['image'],
+            fallback: 'assets/images/meal1.png',
+          ),
+          nutritionPercent: 0,
+        );
+      }).toList(),
+    );
+  }
+
+  Future<String> _resolveIngredientUnitName({
+    required String customUnitId,
+    required String unitId,
+  }) async {
+    if (customUnitId.isNotEmpty) {
+      final doc = await firestore
+          .collection('custom')
+          .doc('custom_units')
+          .collection('items')
+          .doc(customUnitId)
+          .get();
+      return _stringValue(doc.data()?['name'], fallback: customUnitId);
+    }
+
+    if (unitId.isNotEmpty) {
+      final doc = await firestore
+          .collection('app_config')
+          .doc('ingredient_units')
+          .collection('items')
+          .doc(unitId)
+          .get();
+      return _stringValue(doc.data()?['name'], fallback: unitId);
+    }
+
+    return '';
   }
 
   Future<List<ExploreInstructionSection>> _getInstructionSections(
@@ -823,6 +883,34 @@ class ExploreRemoteDataSource {
           'followerCount': FieldValue.increment(-1),
         }, SetOptions(merge: true));
       }
+    });
+  }
+
+  Future<void> updateRecipeVisibility({
+    required String recipeId,
+    required bool isPublished,
+  }) async {
+    final uid = _requiredUid();
+    final recipeRef = firestore.collection('recipes').doc(recipeId);
+
+    await firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(recipeRef);
+      if (!snapshot.exists) {
+        throw StateError('Recipe not found');
+      }
+
+      final data = snapshot.data() ?? {};
+      final creatorUid = _stringValue(data['creatorId']).isNotEmpty
+          ? _stringValue(data['creatorId'])
+          : _stringValue(data['creatorUid']);
+      if (creatorUid != uid) {
+        throw StateError('Only the recipe creator can change visibility.');
+      }
+
+      transaction.update(recipeRef, {
+        'visibility': isPublished ? 'public' : 'private',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 

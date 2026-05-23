@@ -26,6 +26,15 @@ class EnvConfig {
     'CLOUDINARY_INSTRUCTION_UPLOAD_PRESET',
   );
   static const String usdaApiKey = String.fromEnvironment('USDA_API_KEY');
+  static const String openAiApiKey = String.fromEnvironment('OPENAI_API_KEY');
+  static const String openAiRecipeModel = String.fromEnvironment(
+    'OPENAI_RECIPE_MODEL',
+    defaultValue: 'gpt-5-mini',
+  );
+  static const String openAiImageModel = String.fromEnvironment(
+    'OPENAI_IMAGE_MODEL',
+    defaultValue: 'gpt-image-1-mini',
+  );
 
   // Firebase Configuration (already in the google-services.json)
   // No need to duplicate here

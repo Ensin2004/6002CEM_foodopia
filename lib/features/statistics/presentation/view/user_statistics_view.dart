@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../app/routers/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
@@ -48,6 +50,9 @@ class _UserStatisticsViewState extends State<UserStatisticsView> {
         onRetry: viewModel.loadStatistics,
       );
     }
+    final selectedMenuItems = viewModel.selectedAudienceIndex == 0
+        ? dashboard.menuItems
+        : dashboard.communityMenuItems;
 
     return SafeArea(
       top: false,
@@ -81,7 +86,7 @@ class _UserStatisticsViewState extends State<UserStatisticsView> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  _StatisticsMenu(items: dashboard.menuItems),
+                  _StatisticsMenu(items: selectedMenuItems),
                 ],
               ),
             ),
@@ -111,7 +116,7 @@ class _StatisticsHeroPager extends StatelessWidget {
     final textScale = MediaQuery.textScalerOf(
       context,
     ).scale(1).clamp(1.0, 1.25);
-    final cardHeight = (width < 360 ? 168.0 : 176.0) * textScale;
+    final cardHeight = (width < 360 ? 178.0 : 188.0) * textScale;
 
     return Column(
       children: [
@@ -300,7 +305,8 @@ class _AchievementSlide extends StatelessWidget {
 
     return Column(
       children: [
-        Expanded(
+        SizedBox(
+          height: 68,
           child: Row(
             children: smallMetrics
                 .map(
@@ -309,17 +315,32 @@ class _AchievementSlide extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.xs,
                       ),
-                      child: _MetricTile(metric: metric),
+                      child: _MetricTile(
+                        metric: metric,
+                        valueColor: AppColors.textSecondary,
+                        labelColor: AppColors.primary,
+                        valueFontSize: 18,
+                        labelFontSize: 12,
+                      ),
                     ),
                   ),
                 )
                 .toList(),
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: 10),
         SizedBox(
-          height: 48,
-          child: _MetricTile(metric: wideMetric, horizontalValue: true),
+          height: 58,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+            child: _MetricTile(
+              metric: wideMetric,
+              valueColor: AppColors.textSecondary,
+              labelColor: AppColors.primary,
+              valueFontSize: 16,
+              labelFontSize: 12,
+            ),
+          ),
         ),
       ],
     );
@@ -329,17 +350,27 @@ class _AchievementSlide extends StatelessWidget {
 class _MetricTile extends StatelessWidget {
   final StatisticsMetric metric;
   final bool largeValue;
-  final bool horizontalValue;
+  final Color? valueColor;
+  final Color? labelColor;
+  final double? valueFontSize;
+  final double? labelFontSize;
 
   const _MetricTile({
     required this.metric,
     this.largeValue = false,
-    this.horizontalValue = false,
+    this.valueColor,
+    this.labelColor,
+    this.valueFontSize,
+    this.labelFontSize,
   });
 
   @override
   Widget build(BuildContext context) {
     final toneColor = _toneColor(metric.tone);
+    final resolvedValueColor =
+        valueColor ?? (largeValue ? toneColor : AppColors.textSecondary);
+    final resolvedLabelColor = labelColor ?? toneColor;
+    final resolvedValueFontSize = valueFontSize ?? (largeValue ? 24 : 14);
 
     return Container(
       alignment: Alignment.center,
@@ -358,27 +389,22 @@ class _MetricTile extends StatelessWidget {
       ),
       child: FittedBox(
         fit: BoxFit.scaleDown,
-        child: horizontalValue
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _MetricValue(metric: metric, color: toneColor),
-                  const SizedBox(width: AppSpacing.sm),
-                  _MetricLabel(metric: metric, color: AppColors.primary),
-                ],
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _MetricValue(
-                    metric: metric,
-                    color: largeValue ? toneColor : AppColors.textSecondary,
-                    fontSize: largeValue ? 24 : 14,
-                  ),
-                  const SizedBox(height: 2),
-                  _MetricLabel(metric: metric, color: toneColor),
-                ],
-              ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _MetricValue(
+              metric: metric,
+              color: resolvedValueColor,
+              fontSize: resolvedValueFontSize,
+            ),
+            const SizedBox(height: 5),
+            _MetricLabel(
+              metric: metric,
+              color: resolvedLabelColor,
+              fontSize: labelFontSize,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -423,8 +449,13 @@ class _MetricValue extends StatelessWidget {
 class _MetricLabel extends StatelessWidget {
   final StatisticsMetric metric;
   final Color color;
+  final double? fontSize;
 
-  const _MetricLabel({required this.metric, required this.color});
+  const _MetricLabel({
+    required this.metric,
+    required this.color,
+    this.fontSize,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -435,7 +466,7 @@ class _MetricLabel extends StatelessWidget {
       textAlign: TextAlign.center,
       style: context.text.bodySmall?.copyWith(
         color: color,
-        fontSize: 10,
+        fontSize: fontSize ?? 10,
         fontWeight: FontWeight.w500,
         height: 1.12,
       ),
@@ -573,7 +604,7 @@ class _StatisticsMenu extends StatelessWidget {
       children: items
           .map(
             (item) => InkWell(
-              onTap: () {},
+              onTap: () => _handleTap(context, item),
               borderRadius: BorderRadius.circular(8),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 9),
@@ -604,6 +635,57 @@ class _StatisticsMenu extends StatelessWidget {
           )
           .toList(),
     );
+  }
+
+  void _handleTap(BuildContext context, StatisticsMenuItem item) {
+    if (item.title == 'Food Analytic') {
+      context.push(AppRouter.foodAnalytic);
+      return;
+    }
+
+    if (item.title == 'Meal Planned Time') {
+      context.push(AppRouter.mealPlannedTime);
+      return;
+    }
+
+    if (item.title == 'Calories Intake') {
+      context.push(AppRouter.caloriesIntake);
+      return;
+    }
+
+    if (item.title == 'Difficulty') {
+      context.push(AppRouter.difficultyMeals);
+      return;
+    }
+
+    if (item.title == 'Method For Creating Plan') {
+      context.push(AppRouter.mealPlanMethods);
+      return;
+    }
+
+    if (item.title == 'Post Analytic') {
+      context.push(AppRouter.postAnalytic);
+      return;
+    }
+
+    if (item.title == 'Most Calories Posted Meal') {
+      context.push(AppRouter.caloriesPosted);
+      return;
+    }
+
+    if (item.title == 'Most Posted Meal Time') {
+      context.push(AppRouter.postedMealTime);
+      return;
+    }
+
+    if (item.title == 'Most Cooked Recipe By Others') {
+      context.push(AppRouter.mostCookedRecipes);
+      return;
+    }
+
+    if (item.title == 'Difficulty Posted') {
+      context.push(AppRouter.postDifficulty);
+    }
   }
 }
 

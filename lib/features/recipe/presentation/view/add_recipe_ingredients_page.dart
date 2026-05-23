@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:foodopia/features/recipe/presentation/widgets/input_ingredient_field.dart';
+import 'package:foodopia/features/recipe/presentation/widgets/ingredients/input_ingredient_field.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -16,40 +16,90 @@ import '../../../../core/widgets/buttons/secondary_button.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
+import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
+import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
+import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_ingredients_viewmodel.dart';
-import '../widgets/ingredient_name_picker_sheet.dart';
-import '../widgets/ingredient_unit_picker_sheet.dart';
-import '../widgets/input_label.dart';
+import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/ingredients/ingredient_name_picker_sheet.dart';
+import '../widgets/ingredients/ingredient_unit_picker_sheet.dart';
+import '../widgets/label.dart';
+import '../widgets/recipe_visibility_action_button.dart';
 
 class AddRecipeIngredientsPage extends StatelessWidget {
   final String recipeId;
+  final String initialVisibility;
+  final bool returnToReview;
+  final AddMealAiRecipe? initialAiRecipe;
+  final AddMealAiGenerationRequest? initialAiRequest;
+  final String? userId;
+  final AddRecipeBasicInfo? aiDraftBasicInfo;
 
-  const AddRecipeIngredientsPage({super.key, required this.recipeId});
+  const AddRecipeIngredientsPage({
+    super.key,
+    required this.recipeId,
+    this.initialVisibility = "private",
+    this.returnToReview = false,
+    this.initialAiRecipe,
+    this.initialAiRequest,
+    this.userId,
+    this.aiDraftBasicInfo,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AddRecipeIngredientsViewModel(
-        getIngredientUnitsUseCase: sl<GetAddRecipeIngredientUnitsUseCase>(),
-        searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
-        getFoodNutrientsUseCase: sl<GetAddRecipeFoodNutrientsUseCase>(),
-        saveIngredientsUseCase: sl<SaveAddRecipeIngredientsUseCase>(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AddRecipeIngredientsViewModel(
+            getIngredientUnitsUseCase: sl<GetAddRecipeIngredientUnitsUseCase>(),
+            searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
+            getFoodNutrientsUseCase: sl<GetAddRecipeFoodNutrientsUseCase>(),
+            saveIngredientsUseCase: sl<SaveAddRecipeIngredientsUseCase>(),
+            getReviewUseCase: sl<GetAddRecipeReviewUseCase>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AddRecipeVisibilityViewModel(
+            updateVisibilityUseCase: sl(),
+            visibility: initialVisibility,
+          ),
+        ),
+      ],
+      child: _AddRecipeIngredientsView(
+        recipeId: recipeId,
+        returnToReview: returnToReview,
+        initialAiRecipe: initialAiRecipe,
+        initialAiRequest: initialAiRequest,
+        userId: userId,
+        aiDraftBasicInfo: aiDraftBasicInfo,
       ),
-      child: _AddRecipeIngredientsView(recipeId: recipeId),
     );
   }
 }
 
 class _AddRecipeIngredientsView extends StatefulWidget {
   final String recipeId;
+  final bool returnToReview;
+  final AddMealAiRecipe? initialAiRecipe;
+  final AddMealAiGenerationRequest? initialAiRequest;
+  final String? userId;
+  final AddRecipeBasicInfo? aiDraftBasicInfo;
 
-  const _AddRecipeIngredientsView({required this.recipeId});
+  const _AddRecipeIngredientsView({
+    required this.recipeId,
+    required this.returnToReview,
+    this.initialAiRecipe,
+    this.initialAiRequest,
+    this.userId,
+    this.aiDraftBasicInfo,
+  });
 
   @override
   State<_AddRecipeIngredientsView> createState() =>
@@ -58,11 +108,17 @@ class _AddRecipeIngredientsView extends StatefulWidget {
 
 class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
   final ImagePicker _imagePicker = ImagePicker();
-  final List<IngredientRowState> _rows = [IngredientRowState()];
+  late final List<IngredientRowState> _rows;
+  String? _seededRecipeId;
+  String? _requestedRecipeId;
 
   @override
   void initState() {
     super.initState();
+    final aiIngredients = widget.initialAiRecipe?.ingredients ?? const [];
+    _rows = aiIngredients.isEmpty
+        ? [IngredientRowState()]
+        : aiIngredients.map(IngredientRowState.fromAiIngredient).toList();
     for (final row in _rows) {
       row.addListener(_refreshFormState);
     }
@@ -83,10 +139,61 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
         ? 48.0
         : AppSpacing.lg;
 
+    if (viewModel.isLoadingUnits) {
+      return const LoadingDialog();
+    }
+
+    if (widget.initialAiRecipe == null &&
+        viewModel.existingReview == null &&
+        _requestedRecipeId != widget.recipeId) {
+      _requestedRecipeId = widget.recipeId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<AddRecipeIngredientsViewModel>().loadExistingRecipe(
+          widget.recipeId,
+        );
+      });
+      return const LoadingDialog();
+    }
+
+    final existingReview = viewModel.existingReview;
+    if (existingReview != null && _seededRecipeId != existingReview.recipeId) {
+      _seedFromReview(viewModel);
+    }
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
-      appBar: const CustomAppBar(title: "New Recipe"),
+      appBar: CustomAppBar(
+        title: widget.initialAiRecipe == null
+            ? "New Recipe"
+            : "Customize AI Recipe",
+        actions: [
+          Consumer<AddRecipeVisibilityViewModel>(
+            builder: (context, visibilityViewModel, _) {
+              return RecipeVisibilityActionButton(
+                visibility: visibilityViewModel.visibility,
+                isSaving: visibilityViewModel.isSaving,
+                onChanged: (value) async {
+                  final success = await visibilityViewModel.updateVisibility(
+                    recipeId: widget.recipeId,
+                    value: value,
+                  );
+                  if (!context.mounted || success) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        visibilityViewModel.errorMessage ??
+                            "Unable to update visibility.",
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,7 +224,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InputLabel(text: "Ingredients", isRequired: true),
+                  Label(text: "Ingredients", isRequired: true),
                   const SizedBox(height: 2),
                   Text(
                     "Add all the ingredients for your recipe",
@@ -184,7 +291,11 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
                 AppSpacing.lg,
               ),
               child: PrimaryButton(
-                text: "Next",
+                text: widget.initialAiRecipe != null
+                    ? "Next"
+                    : widget.returnToReview
+                    ? "Save & Review"
+                    : "Save & Continue",
                 isLoading: viewModel.isSaving,
                 onPressed: viewModel.isSaving || !_canSave
                     ? null
@@ -304,6 +415,22 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     BuildContext context,
     AddRecipeIngredientsViewModel viewModel,
   ) async {
+    if (widget.initialAiRecipe != null) {
+      context.push(
+        AppRouter.addRecipeInstructions,
+        extra: AddRecipeInstructionsArgs(
+          recipeId: widget.recipeId,
+          visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+          aiRecipe: widget.initialAiRecipe,
+          aiRequest: widget.initialAiRequest,
+          userId: widget.userId,
+          aiDraftBasicInfo: widget.aiDraftBasicInfo,
+          aiDraftIngredients: _completedIngredients,
+        ),
+      );
+      return;
+    }
+
     final success = await viewModel.saveIngredients(
       recipeId: widget.recipeId,
       ingredients: _completedIngredients,
@@ -325,9 +452,23 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       context,
     ).showSnackBar(const SnackBar(content: Text("Recipe ingredients saved.")));
 
+    if (widget.returnToReview) {
+      context.pushReplacement(
+        AppRouter.addRecipeReview,
+        extra: AddRecipeReviewArgs(recipeId: widget.recipeId),
+      );
+      return;
+    }
+
     context.push(
       AppRouter.addRecipeInstructions,
-      extra: AddRecipeInstructionsArgs(recipeId: widget.recipeId),
+      extra: AddRecipeInstructionsArgs(
+        recipeId: widget.recipeId,
+        visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+        aiRecipe: widget.initialAiRecipe,
+        aiRequest: widget.initialAiRequest,
+        userId: widget.userId,
+      ),
     );
   }
 
@@ -338,6 +479,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
           (row) => AddRecipeIngredient(
             name: row.nameController.text.trim(),
             imageFile: row.imageFile,
+            existingImageUrl: row.existingImageUrl,
             amount: double.parse(row.amountController.text.trim()),
             unitId: row.isCustomUnit ? "" : row.unitId,
             customUnit: row.isCustomUnit ? row.unitName : "",
@@ -358,6 +500,63 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     if (!mounted) return;
     setState(() {});
   }
+
+  // Review Helper
+  void _seedFromReview(AddRecipeIngredientsViewModel viewModel) {
+    final review = viewModel.existingReview;
+    if (review == null) return;
+
+    for (final row in _rows) {
+      row.dispose();
+    }
+    _rows
+      ..clear()
+      ..addAll(
+        (review.ingredients.isEmpty ? [null] : review.ingredients).map((item) {
+          final row = IngredientRowState();
+          if (item != null) {
+            row.nameController.text = item.name;
+            row.amountController.text = item.amount;
+            row.existingImageUrl = item.image.trim().isEmpty
+                ? null
+                : item.image;
+            final unit = _unitByName(viewModel.units, item.unit);
+            if (unit == null) {
+              row.unitName = item.unit;
+              row.isCustomUnit = item.unit.trim().isNotEmpty;
+            } else {
+              row.unitId = unit.id;
+              row.unitName = unit.name;
+              row.isCustomUnit = false;
+            }
+            row.usdaId = item.usdaId;
+            row.usdaNutrients = item.nutrients;
+          }
+          row.addListener(_refreshFormState);
+          return row;
+        }),
+      );
+
+    _seededRecipeId = review.recipeId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AddRecipeVisibilityViewModel>().seedVisibility(
+        review.visibility,
+      );
+    });
+  }
+
+  AddRecipeIngredientUnit? _unitByName(
+    List<AddRecipeIngredientUnit> units,
+    String name,
+  ) {
+    for (final unit in units) {
+      if (unit.name.toLowerCase() == name.toLowerCase()) {
+        return unit;
+      }
+    }
+    return null;
+  }
 }
 
 // Ingredient Row State Class
@@ -367,11 +566,23 @@ class IngredientRowState {
   final TextEditingController amountController = TextEditingController();
   final List<VoidCallback> _listeners = [];
   File? imageFile;
+  String? existingImageUrl;
   String unitId = "";
   String unitName = "";
   bool isCustomUnit = false;
   int? usdaId;
   Map<String, dynamic>? usdaNutrients;
+
+  IngredientRowState();
+
+  factory IngredientRowState.fromAiIngredient(AddMealAiIngredient ingredient) {
+    final row = IngredientRowState();
+    row.nameController.text = ingredient.name;
+    row.amountController.text = ingredient.amount.toString();
+    row.unitName = ingredient.unit;
+    row.isCustomUnit = true;
+    return row;
+  }
 
   String get unitDisplayName => unitName;
 
@@ -388,7 +599,8 @@ class IngredientRowState {
         nameController.text.trim().isNotEmpty ||
         amountController.text.trim().isNotEmpty ||
         unitValueForSave.trim().isNotEmpty ||
-        imageFile != null;
+        imageFile != null ||
+        existingImageUrl != null;
     return hasContent && !isComplete;
   }
 
@@ -402,6 +614,7 @@ class IngredientRowState {
     nameController.clear();
     amountController.clear();
     imageFile = null;
+    existingImageUrl = null;
     unitId = "";
     unitName = "";
     isCustomUnit = false;

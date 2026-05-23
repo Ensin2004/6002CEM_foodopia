@@ -50,4 +50,9 @@ abstract class ExploreRepository {
     required String creatorUid,
     required bool follow,
   });
+
+  Future<Either<Failure, void>> updateRecipeVisibility({
+    required String recipeId,
+    required bool isPublished,
+  });
 }

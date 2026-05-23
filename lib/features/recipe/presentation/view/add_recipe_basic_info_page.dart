@@ -1,7 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:foodopia/features/recipe/presentation/widgets/input_option_field.dart';
+import 'package:foodopia/features/recipe/presentation/widgets/basic_info/input_option_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -17,36 +18,80 @@ import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_option.dart';
+import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
+import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_basic_info_viewmodel.dart';
-import '../widgets/add_more_button_small.dart';
-import '../widgets/recipe_difficulty_picker.dart';
-import '../widgets/recipe_image_edit_sheet.dart';
-import '../widgets/recipe_image_picker.dart';
-import '../widgets/input_label.dart';
-import '../widgets/input_text_field.dart';
-import '../widgets/recipe_option_picker_sheet.dart';
+import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/basic_info/add_more_button_small.dart';
+import '../widgets/recipe_visibility_action_button.dart';
+import '../widgets/basic_info/recipe_difficulty_picker.dart';
+import '../widgets/basic_info/recipe_image_edit_sheet.dart';
+import '../widgets/basic_info/recipe_image_picker.dart';
+import '../widgets/label.dart';
+import '../widgets/basic_info/input_text_field.dart';
+import '../widgets/basic_info/recipe_option_picker_sheet.dart';
 
 class AddRecipeBasicInfoPage extends StatelessWidget {
-  const AddRecipeBasicInfoPage({super.key});
+  final String? recipeId;
+  final bool returnToReview;
+  final AddMealAiRecipe? initialAiRecipe;
+  final AddMealAiGenerationRequest? initialAiRequest;
+  final String? userId;
+
+  const AddRecipeBasicInfoPage({
+    super.key,
+    this.recipeId,
+    this.returnToReview = false,
+    this.initialAiRecipe,
+    this.initialAiRequest,
+    this.userId,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AddRecipeBasicInfoViewModel(
-        getSetupUseCase: sl<GetAddRecipeSetupUseCase>(),
-        searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
-        saveBasicInfoUseCase: sl<SaveAddRecipeBasicInfoUseCase>(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AddRecipeBasicInfoViewModel(
+            getSetupUseCase: sl<GetAddRecipeSetupUseCase>(),
+            searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
+            saveBasicInfoUseCase: sl<SaveAddRecipeBasicInfoUseCase>(),
+            getReviewUseCase: sl<GetAddRecipeReviewUseCase>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) =>
+              AddRecipeVisibilityViewModel(updateVisibilityUseCase: sl()),
+        ),
+      ],
+      child: _AddRecipeBasicInfoView(
+        recipeId: recipeId,
+        returnToReview: returnToReview,
+        initialAiRecipe: initialAiRecipe,
+        initialAiRequest: initialAiRequest,
+        userId: userId,
       ),
-      child: const _AddRecipeBasicInfoView(),
     );
   }
 }
 
 class _AddRecipeBasicInfoView extends StatefulWidget {
-  const _AddRecipeBasicInfoView();
+  final String? recipeId;
+  final bool returnToReview;
+  final AddMealAiRecipe? initialAiRecipe;
+  final AddMealAiGenerationRequest? initialAiRequest;
+  final String? userId;
+
+  const _AddRecipeBasicInfoView({
+    this.recipeId,
+    required this.returnToReview,
+    this.initialAiRecipe,
+    this.initialAiRequest,
+    this.userId,
+  });
 
   @override
   State<_AddRecipeBasicInfoView> createState() =>
@@ -56,6 +101,7 @@ class _AddRecipeBasicInfoView extends StatefulWidget {
 class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   final ImagePicker _imagePicker = ImagePicker();
   final List<File> _images = [];
+  final List<String> _existingImageUrls = [];
   final TextEditingController _recipeNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _prepTimeController = TextEditingController();
@@ -69,10 +115,24 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   List<String> _customCategories = [];
   List<String> _selectedAllergenIds = [];
   List<String> _customAllergens = [];
+  String? _seededRecipeId;
+  String? _requestedRecipeId;
 
   @override
   void initState() {
     super.initState();
+    final recipe = widget.initialAiRecipe;
+    if (recipe != null) {
+      _recipeNameController.text = recipe.title;
+      _descriptionController.text = recipe.description;
+      _prepTimeController.text =
+          RegExp(r'\d+').firstMatch(recipe.durationLabel)?.group(0) ?? '30';
+      _servingsController.text =
+          RegExp(r'\d+').firstMatch(recipe.servingLabel)?.group(0) ?? '1';
+      _customCategories = [
+        recipe.categoryName.trim(),
+      ].where((value) => value.isNotEmpty).toList();
+    }
     _recipeNameController.addListener(_refreshRequiredState);
     _descriptionController.addListener(_refreshRequiredState);
     _prepTimeController.addListener(_refreshRequiredState);
@@ -108,11 +168,56 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     if (setup == null) {
       return _RecipeErrorState(message: viewModel.errorMessage);
     }
+    final aiRecipe = widget.initialAiRecipe;
+    if (aiRecipe != null && viewModel.difficultyLevel == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        viewModel.selectDifficulty(_difficultyLevelFor(aiRecipe));
+      });
+    }
+
+    final recipeId = widget.recipeId;
+    if (recipeId != null &&
+        recipeId.trim().isNotEmpty &&
+        viewModel.existingReview == null &&
+        _requestedRecipeId != recipeId) {
+      _requestedRecipeId = recipeId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<AddRecipeBasicInfoViewModel>().loadExistingRecipe(
+          recipeId,
+        );
+      });
+      return const LoadingDialog();
+    }
+
+    final existingReview = viewModel.existingReview;
+    if (existingReview != null && _seededRecipeId != existingReview.recipeId) {
+      _seedFromReview(viewModel, setup.categories, setup.allergens);
+    }
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
-      appBar: CustomAppBar(title: "New Recipe"),
+      appBar: CustomAppBar(
+        title: widget.initialAiRecipe == null
+            ? "New Recipe"
+            : "Customize AI Recipe",
+        actions: [
+          Consumer<AddRecipeVisibilityViewModel>(
+            builder: (context, visibilityViewModel, _) {
+              return RecipeVisibilityActionButton(
+                visibility: visibilityViewModel.visibility,
+                isSaving: visibilityViewModel.isSaving,
+                onChanged: (value) => visibilityViewModel.updateVisibility(
+                  recipeId: widget.recipeId ?? "",
+                  value: value,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -145,17 +250,26 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
 
                 children: [
                   // Recipe Image
-                  InputLabel(text: "Recipe Image", isRequired: true),
+                  Label(text: "Recipe Image", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
-                  RecipeImagePicker(
-                    images: _images,
-                    onPick: _pickImages,
-                    onEdit: _showSelectedMediaSheet,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
+                  if (_images.isEmpty &&
+                      _existingImageUrls.isEmpty &&
+                      widget.initialAiRecipe?.imageBase64?.isNotEmpty == true)
+                    _AiRecipeImagePreview(
+                      imageBase64: widget.initialAiRecipe!.imageBase64!,
+                      onReplace: _pickImages,
+                    )
+                  else
+                    RecipeImagePicker(
+                      images: _images,
+                      existingImageUrls: _existingImageUrls,
+                      onPick: _pickImages,
+                      onEdit: _showSelectedMediaSheet,
+                    ),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // Recipe Name
-                  InputLabel(text: "Recipe Name", isRequired: true),
+                  Label(text: "Recipe Name", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   InputTextField(
                     controller: _recipeNameController,
@@ -165,7 +279,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Recipe Description
-                  InputLabel(text: "Recipe Description", isRequired: true),
+                  Label(text: "Recipe Description", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   InputTextField(
                     controller: _descriptionController,
@@ -177,7 +291,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Other Name
-                  InputLabel(text: "Other Name"),
+                  Label(text: "Other Name"),
                   const SizedBox(height: AppSpacing.sm),
                   ..._otherNameControllers.asMap().entries.map((entry) {
                     return Padding(
@@ -199,7 +313,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Category
-                  InputLabel(text: "Category", isRequired: true),
+                  Label(text: "Category", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   InputOptionField(
                     placeholder: "Select categories",
@@ -217,7 +331,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Preparation Time
-                  InputLabel(text: "Preparation Time", isRequired: true),
+                  Label(text: "Preparation Time", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   InputTextField(
                     controller: _prepTimeController,
@@ -229,13 +343,13 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Difficulty Level
-                  InputLabel(text: "Difficulty Level", isRequired: true),
+                  Label(text: "Difficulty Level", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   RecipeDifficultyPicker(levels: setup.difficultyLevels),
                   const SizedBox(height: AppSpacing.lg),
 
                   // Servings
-                  InputLabel(text: "Servings", isRequired: true),
+                  Label(text: "Servings", isRequired: true),
                   const SizedBox(height: AppSpacing.sm),
                   InputTextField(
                     controller: _servingsController,
@@ -247,7 +361,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Allergen Info
-                  InputLabel(text: "Allergen Info"),
+                  Label(text: "Allergen Info"),
                   const SizedBox(height: AppSpacing.sm),
                   InputOptionField(
                     placeholder: "Select allergens",
@@ -280,7 +394,11 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                 AppSpacing.lg,
               ),
               child: PrimaryButton(
-                text: "Next",
+                text: widget.initialAiRecipe != null
+                    ? "Next"
+                    : widget.returnToReview
+                    ? "Save & Review"
+                    : "Save & Continue",
                 isLoading: viewModel.isSaving,
                 onPressed:
                     viewModel.isSaving || !_isBasicInfoComplete(viewModel)
@@ -296,7 +414,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
 
   // Image Picker Helper
   Future<void> _pickImages() async {
-    final remainingSlots = 10 - _images.length;
+    final remainingSlots = 10 - _images.length - _existingImageUrls.length;
     if (remainingSlots <= 0) return;
 
     final pickedImages = await _imagePicker.pickMultiImage();
@@ -310,7 +428,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   }
 
   Future<void> _showSelectedMediaSheet() async {
-    if (_images.isEmpty) {
+    if (_images.isEmpty && _existingImageUrls.isEmpty) {
       await _pickImages();
       return;
     }
@@ -327,10 +445,18 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
           builder: (context, setSheetState) {
             return RecipeImageEditSheet(
               images: _images,
+              existingImageUrls: _existingImageUrls,
+              onRemoveExisting: (index) {
+                setState(() => _existingImageUrls.removeAt(index));
+                setSheetState(() {});
+                if (_images.isEmpty && _existingImageUrls.isEmpty) {
+                  Navigator.of(sheetContext).pop();
+                }
+              },
               onRemove: (index) {
                 setState(() => _images.removeAt(index));
                 setSheetState(() {});
-                if (_images.isEmpty) {
+                if (_images.isEmpty && _existingImageUrls.isEmpty) {
                   Navigator.of(sheetContext).pop();
                 }
               },
@@ -468,7 +594,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     AddRecipeBasicInfoViewModel viewModel,
   ) async {
     final info = AddRecipeBasicInfo(
+      recipeId: widget.recipeId,
       mediaFiles: List<File>.unmodifiable(_images),
+      existingMediaUrls: List<String>.unmodifiable(_existingImageUrls),
       recipeName: _recipeNameController.text.trim(),
       description: _descriptionController.text.trim(),
       otherNames: _nonEmptyControllerValues(_otherNameControllers),
@@ -479,7 +607,24 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       servings: int.tryParse(_servingsController.text.trim()) ?? 0,
       allergenIds: List<String>.unmodifiable(_selectedAllergenIds),
       customAllergens: List<String>.unmodifiable(_customAllergens),
+      visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+      isAiGenerated: widget.initialAiRecipe != null,
     );
+
+    if (widget.initialAiRecipe != null) {
+      context.push(
+        AppRouter.addRecipeIngredients,
+        extra: AddRecipeIngredientsArgs(
+          recipeId: widget.recipeId ?? '',
+          visibility: info.visibility,
+          aiRecipe: widget.initialAiRecipe,
+          aiRequest: widget.initialAiRequest,
+          userId: widget.userId,
+          aiDraftBasicInfo: info,
+        ),
+      );
+      return;
+    }
 
     final success = await viewModel.saveBasicInfo(info);
 
@@ -497,9 +642,23 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       context,
     ).showSnackBar(const SnackBar(content: Text("Recipe basic info saved.")));
 
+    if (widget.returnToReview) {
+      context.pushReplacement(
+        AppRouter.addRecipeReview,
+        extra: AddRecipeReviewArgs(recipeId: viewModel.savedRecipeId!),
+      );
+      return;
+    }
+
     context.push(
       AppRouter.addRecipeIngredients,
-      extra: AddRecipeIngredientsArgs(recipeId: viewModel.savedRecipeId!),
+      extra: AddRecipeIngredientsArgs(
+        recipeId: viewModel.savedRecipeId!,
+        visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+        aiRecipe: widget.initialAiRecipe,
+        aiRequest: widget.initialAiRequest,
+        userId: widget.userId,
+      ),
     );
   }
 
@@ -511,7 +670,11 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   }
 
   bool _isBasicInfoComplete(AddRecipeBasicInfoViewModel viewModel) {
-    return _images.isNotEmpty &&
+    final hasImage =
+        _images.isNotEmpty ||
+        _existingImageUrls.isNotEmpty ||
+        widget.initialAiRecipe != null;
+    return hasImage &&
         _recipeNameController.text.trim().isNotEmpty &&
         _descriptionController.text.trim().isNotEmpty &&
         (_selectedCategoryIds.isNotEmpty || _customCategories.isNotEmpty) &&
@@ -521,9 +684,144 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         (int.tryParse(_servingsController.text.trim()) ?? 0) > 0;
   }
 
+  int _difficultyLevelFor(AddMealAiRecipe recipe) {
+    final label = recipe.difficultyLabel.toLowerCase();
+    if (label.contains('easy') || label.contains('beginner')) return 2;
+    if (label.contains('medium') || label.contains('intermediate')) return 3;
+    if (label.contains('hard') || label.contains('advanced')) return 4;
+    return 1;
+  }
+
   void _refreshRequiredState() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  // Review Helper
+  void _seedFromReview(
+    AddRecipeBasicInfoViewModel viewModel,
+    List<AddRecipeOption> categories,
+    List<AddRecipeOption> allergens,
+  ) {
+    final review = viewModel.existingReview;
+    if (review == null) return;
+
+    _existingImageUrls
+      ..clear()
+      ..addAll(review.media.where((url) => url.trim().isNotEmpty));
+    _recipeNameController.text = review.recipeName;
+    _descriptionController.text = review.description;
+    _prepTimeController.text = review.preparationMinutes.toString();
+    _servingsController.text = review.servings.toString();
+
+    for (final controller in _otherNameControllers) {
+      controller.dispose();
+    }
+    _otherNameControllers
+      ..clear()
+      ..addAll(
+        (review.otherNames.isEmpty ? [""] : review.otherNames).map(
+          (name) => TextEditingController(text: name),
+        ),
+      );
+    for (final controller in _otherNameControllers) {
+      controller.addListener(_refreshRequiredState);
+    }
+
+    final categorySelection = _splitSavedOptions(
+      savedNames: review.categories,
+      options: categories,
+    );
+    _selectedCategoryIds = categorySelection.optionIds;
+    _customCategories = categorySelection.customNames;
+
+    final allergenSelection = _splitSavedOptions(
+      savedNames: review.allergens,
+      options: allergens,
+    );
+    _selectedAllergenIds = allergenSelection.optionIds;
+    _customAllergens = allergenSelection.customNames;
+
+    _seededRecipeId = review.recipeId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AddRecipeVisibilityViewModel>().seedVisibility(
+        review.visibility,
+      );
+    });
+  }
+
+  _SavedRecipeOption _splitSavedOptions({
+    required List<String> savedNames,
+    required List<AddRecipeOption> options,
+  }) {
+    final optionIds = <String>[];
+    final customNames = <String>[];
+
+    for (final name in savedNames) {
+      final match = options.where(
+        (option) => option.name.toLowerCase() == name.toLowerCase(),
+      );
+      if (match.isNotEmpty) {
+        optionIds.add(match.first.id);
+      } else if (name.trim().isNotEmpty) {
+        customNames.add(name);
+      }
+    }
+
+    return _SavedRecipeOption(optionIds: optionIds, customNames: customNames);
+  }
+}
+
+// Saved Recipe Option Class
+class _SavedRecipeOption {
+  final List<String> optionIds;
+  final List<String> customNames;
+
+  const _SavedRecipeOption({
+    required this.optionIds,
+    required this.customNames,
+  });
+}
+
+class _AiRecipeImagePreview extends StatelessWidget {
+  final String imageBase64;
+  final VoidCallback onReplace;
+
+  const _AiRecipeImagePreview({
+    required this.imageBase64,
+    required this.onReplace,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Stack(
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Image.memory(
+              base64Decode(imageBase64),
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Image.asset(
+                "assets/images/empty_page.png",
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          Positioned(
+            right: AppSpacing.sm,
+            bottom: AppSpacing.sm,
+            child: FilledButton.icon(
+              onPressed: onReplace,
+              icon: const Icon(Icons.photo_library_outlined, size: 18),
+              label: const Text('Replace'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

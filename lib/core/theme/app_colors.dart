@@ -17,5 +17,6 @@ class AppColors {
 
   // UI states
   static const Color error = Color(0xFFE53935);
+  static const Color favourite = Color(0xFFE91E63);
   static const Color border = Color(0xFFE0E0E0);
 }

@@ -24,6 +24,7 @@ class ExploreRecipe {
   final int totalViews;
   final DateTime publishedAt;
   final bool isFollowingAuthor;
+  final bool isFavourite;
   final bool isCreatedByCurrentUser;
   final List<ExploreIngredient> ingredients;
   final List<ExploreInstructionSection> instructionSections;
@@ -55,6 +56,7 @@ class ExploreRecipe {
     required this.totalViews,
     required this.publishedAt,
     required this.isFollowingAuthor,
+    this.isFavourite = false,
     required this.isCreatedByCurrentUser,
     required this.ingredients,
     required this.instructionSections,

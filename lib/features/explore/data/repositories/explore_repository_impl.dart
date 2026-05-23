@@ -221,4 +221,24 @@ class ExploreRepositoryImpl implements ExploreRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> updateRecipeVisibility({
+    required String recipeId,
+    required bool isPublished,
+  }) async {
+    if (recipeId.trim().isEmpty) {
+      return Left(ValidationFailure(message: 'Recipe id is missing.'));
+    }
+
+    try {
+      await remoteDataSource.updateRecipeVisibility(
+        recipeId: recipeId,
+        isPublished: isPublished,
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 }

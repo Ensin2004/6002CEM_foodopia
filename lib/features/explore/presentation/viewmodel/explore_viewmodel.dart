@@ -7,9 +7,9 @@ import '../../domain/entities/explore_recipe.dart';
 import '../../domain/usecases/get_explore_recipes_usecase.dart';
 import '../../domain/usecases/toggle_creator_follow_usecase.dart';
 import '../../domain/usecases/watch_explore_recipes_usecase.dart';
+import '../../../library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
 
 enum ExploreSortOption {
-  none,
   alphabetAZ,
   alphabetZA,
   newest,
@@ -20,7 +20,7 @@ enum ExploreSortOption {
   viewsLowHigh,
 }
 
-enum ExploreRatingFilter { all, one, two, three, four, five }
+enum ExploreRatingFilter { all, oneToTwo, twoToThree, threeToFour, fourToFive }
 
 enum ExploreCommentsFilter { all, under100, over100, between500And1000 }
 
@@ -30,11 +30,12 @@ class ExploreViewModel extends ChangeNotifier {
   final GetExploreRecipesUseCase _getRecipesUseCase;
   final WatchExploreRecipesUseCase _watchRecipesUseCase;
   final ToggleCreatorFollowUseCase _toggleCreatorFollowUseCase;
+  final ToggleLibraryRecipeFavouriteUseCase _toggleFavouriteUseCase;
 
   List<ExploreRecipe> _recipes = const [];
   StreamSubscription<List<ExploreRecipe>>? _recipesSubscription;
   ExploreRecipeTab _selectedTab = ExploreRecipeTab.all;
-  ExploreSortOption _sortOption = ExploreSortOption.none;
+  Set<ExploreSortOption> _sortOptions = const {ExploreSortOption.alphabetAZ};
   ExploreRatingFilter _ratingFilter = ExploreRatingFilter.all;
   ExploreCommentsFilter _commentsFilter = ExploreCommentsFilter.all;
   ExploreViewsFilter _viewsFilter = ExploreViewsFilter.all;
@@ -48,16 +49,18 @@ class ExploreViewModel extends ChangeNotifier {
     required GetExploreRecipesUseCase getRecipesUseCase,
     required WatchExploreRecipesUseCase watchRecipesUseCase,
     required ToggleCreatorFollowUseCase toggleCreatorFollowUseCase,
+    required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
   }) : _getRecipesUseCase = getRecipesUseCase,
        _watchRecipesUseCase = watchRecipesUseCase,
-       _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase {
+       _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
+       _toggleFavouriteUseCase = toggleFavouriteUseCase {
     Future.microtask(loadRecipes);
     _watchRecipes();
   }
 
   List<ExploreRecipe> get recipes => _recipes;
   ExploreRecipeTab get selectedTab => _selectedTab;
-  ExploreSortOption get sortOption => _sortOption;
+  Set<ExploreSortOption> get sortOptions => _sortOptions;
   ExploreRatingFilter get ratingFilter => _ratingFilter;
   ExploreCommentsFilter get commentsFilter => _commentsFilter;
   ExploreViewsFilter get viewsFilter => _viewsFilter;
@@ -111,14 +114,7 @@ class ExploreViewModel extends ChangeNotifier {
       });
     }
 
-    final sorted = results.toList();
-    if (_selectedTab == ExploreRecipeTab.popular) {
-      sorted.sort(
-        (first, second) => second.totalViews.compareTo(first.totalViews),
-      );
-    } else {
-      sorted.sort(_compareRecipes);
-    }
+    final sorted = results.toList()..sort(_compareRecipes);
     return sorted;
   }
 
@@ -222,9 +218,12 @@ class ExploreViewModel extends ChangeNotifier {
     );
   }
 
-  void updateSortOption(ExploreSortOption option) {
-    if (_sortOption == option) return;
-    _sortOption = option;
+  void updateSortOptions(Set<ExploreSortOption> options) {
+    final nextOptions = options.isEmpty
+        ? const {ExploreSortOption.alphabetAZ}
+        : Set<ExploreSortOption>.unmodifiable(options);
+    if (setEquals(_sortOptions, nextOptions)) return;
+    _sortOptions = nextOptions;
     _notifyIfActive();
   }
 
@@ -278,15 +277,46 @@ class ExploreViewModel extends ChangeNotifier {
     return success;
   }
 
+  Future<bool> toggleFavourite(String recipeId) async {
+    final recipeIndex = _recipes.indexWhere((recipe) => recipe.id == recipeId);
+    if (recipeIndex == -1) return false;
+    final recipe = _recipes[recipeIndex];
+
+    final nextFavourite = !recipe.isFavourite;
+    final previousRecipes = _recipes;
+    _recipes = _recipes.map((recipe) {
+      if (recipe.id != recipeId) return recipe;
+      return _copyRecipe(recipe, isFavourite: nextFavourite);
+    }).toList();
+    _errorMessage = null;
+    _notifyIfActive();
+
+    final result = await _toggleFavouriteUseCase.execute(
+      recipeId: recipeId,
+      isFavourite: nextFavourite,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _errorMessage = failure.message;
+    });
+    if (!success) {
+      _recipes = previousRecipes;
+      _notifyIfActive();
+    }
+    return success;
+  }
+
   bool _matchesFilters(ExploreRecipe recipe) {
-    final roundedRating = recipe.rating.round();
     final ratingMatches = switch (_ratingFilter) {
       ExploreRatingFilter.all => true,
-      ExploreRatingFilter.one => roundedRating == 1,
-      ExploreRatingFilter.two => roundedRating == 2,
-      ExploreRatingFilter.three => roundedRating == 3,
-      ExploreRatingFilter.four => roundedRating == 4,
-      ExploreRatingFilter.five => roundedRating == 5,
+      ExploreRatingFilter.oneToTwo => recipe.rating >= 1 && recipe.rating < 2,
+      ExploreRatingFilter.twoToThree => recipe.rating >= 2 && recipe.rating < 3,
+      ExploreRatingFilter.threeToFour =>
+        recipe.rating >= 3 && recipe.rating < 4,
+      ExploreRatingFilter.fourToFive =>
+        recipe.rating >= 4 && recipe.rating <= 5,
     };
     final commentsMatches = switch (_commentsFilter) {
       ExploreCommentsFilter.all => true,
@@ -306,30 +336,49 @@ class ExploreViewModel extends ChangeNotifier {
   }
 
   int _compareRecipes(ExploreRecipe first, ExploreRecipe second) {
-    return switch (_sortOption) {
-      ExploreSortOption.none => 0,
-      ExploreSortOption.alphabetAZ => first.title.toLowerCase().compareTo(
-        second.title.toLowerCase(),
-      ),
-      ExploreSortOption.alphabetZA => second.title.toLowerCase().compareTo(
-        first.title.toLowerCase(),
-      ),
-      ExploreSortOption.newest => second.publishedAt.compareTo(
-        first.publishedAt,
-      ),
-      ExploreSortOption.oldest => first.publishedAt.compareTo(
-        second.publishedAt,
-      ),
-      ExploreSortOption.ratingHighLow => second.rating.compareTo(first.rating),
-      ExploreSortOption.ratingLowHigh => first.rating.compareTo(second.rating),
-      ExploreSortOption.viewsHighLow => second.totalViews.compareTo(
-        first.totalViews,
-      ),
-      ExploreSortOption.viewsLowHigh => first.totalViews.compareTo(
-        second.totalViews,
-      ),
-    };
+    for (final option in _sortPriority) {
+      if (!_sortOptions.contains(option)) continue;
+      final comparison = switch (option) {
+        ExploreSortOption.alphabetAZ => first.title.toLowerCase().compareTo(
+          second.title.toLowerCase(),
+        ),
+        ExploreSortOption.alphabetZA => second.title.toLowerCase().compareTo(
+          first.title.toLowerCase(),
+        ),
+        ExploreSortOption.newest => second.publishedAt.compareTo(
+          first.publishedAt,
+        ),
+        ExploreSortOption.oldest => first.publishedAt.compareTo(
+          second.publishedAt,
+        ),
+        ExploreSortOption.ratingHighLow => second.rating.compareTo(
+          first.rating,
+        ),
+        ExploreSortOption.ratingLowHigh => first.rating.compareTo(
+          second.rating,
+        ),
+        ExploreSortOption.viewsHighLow => second.totalViews.compareTo(
+          first.totalViews,
+        ),
+        ExploreSortOption.viewsLowHigh => first.totalViews.compareTo(
+          second.totalViews,
+        ),
+      };
+      if (comparison != 0) return comparison;
+    }
+    return 0;
   }
+
+  static const _sortPriority = [
+    ExploreSortOption.newest,
+    ExploreSortOption.oldest,
+    ExploreSortOption.ratingHighLow,
+    ExploreSortOption.ratingLowHigh,
+    ExploreSortOption.viewsHighLow,
+    ExploreSortOption.viewsLowHigh,
+    ExploreSortOption.alphabetAZ,
+    ExploreSortOption.alphabetZA,
+  ];
 
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
@@ -337,7 +386,8 @@ class ExploreViewModel extends ChangeNotifier {
 
   ExploreRecipe _copyRecipe(
     ExploreRecipe recipe, {
-    required bool isFollowingAuthor,
+    bool? isFollowingAuthor,
+    bool? isFavourite,
   }) {
     return ExploreRecipe(
       id: recipe.id,
@@ -362,7 +412,8 @@ class ExploreViewModel extends ChangeNotifier {
       commentCount: recipe.commentCount,
       totalViews: recipe.totalViews,
       publishedAt: recipe.publishedAt,
-      isFollowingAuthor: isFollowingAuthor,
+      isFollowingAuthor: isFollowingAuthor ?? recipe.isFollowingAuthor,
+      isFavourite: isFavourite ?? recipe.isFavourite,
       isCreatedByCurrentUser: recipe.isCreatedByCurrentUser,
       ingredients: recipe.ingredients,
       instructionSections: recipe.instructionSections,

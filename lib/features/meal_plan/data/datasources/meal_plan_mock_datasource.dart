@@ -82,6 +82,7 @@ class MealPlanMockDataSource {
         'High in protein and antioxidants',
         'Quick and easy to prepare',
       ],
+      categoryName: 'Breakfast',
     );
     const avocadoToast = AddMealAiRecipe(
       id: 'avocado_egg_toast',
@@ -96,6 +97,7 @@ class MealPlanMockDataSource {
         'Fresh ingredients match sunny weather',
         'Balanced protein and healthy fats',
       ],
+      categoryName: 'Breakfast',
     );
     const quinoaBowl = AddMealAiRecipe(
       id: 'quinoa_veggie_bowl',
@@ -110,6 +112,7 @@ class MealPlanMockDataSource {
         'Avoids common disliked ingredients',
         'Works well for light meal planning',
       ],
+      categoryName: 'Main Dish',
     );
 
     return AddMealAiPlan(

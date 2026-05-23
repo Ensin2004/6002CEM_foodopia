@@ -8,7 +8,6 @@ import '../../../../app/routers/router_args.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
 import '../viewmodel/login_viewmodel.dart';
 import '../widgets/curved_header.dart';
-import '../widgets/email_verification_dialog.dart';
 
 /// Runs the login screen operation.
 class LoginScreen extends StatelessWidget {
@@ -75,15 +74,18 @@ class _LoginViewState extends State<_LoginView> {
                 onTrailingPressed: () => viewModel.goToSignup(),
                 trailingText: "Sign Up",
               ),
+
               /// Creates a padding instance.
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
                     _buildTitle(context),
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
                     _buildEmailField(viewModel),
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
                     _buildPasswordField(viewModel),
@@ -92,8 +94,10 @@ class _LoginViewState extends State<_LoginView> {
                       const SizedBox(height: 8),
                       _buildErrorMessage(viewModel.errorMessage!),
                     ],
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 24),
+
                     /// Creates a primary button instance.
                     PrimaryButton(
                       text: 'Login',
@@ -102,6 +106,7 @@ class _LoginViewState extends State<_LoginView> {
                           : () => _handleLogin(context, viewModel),
                       isLoading: viewModel.isLoading,
                     ),
+
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
                     _buildForgotPasswordLink(context),
@@ -117,10 +122,10 @@ class _LoginViewState extends State<_LoginView> {
 
   // Type-safe navigation handler
   void _handleNavigation(
-      BuildContext context,
-      AuthNavigationEvent event,
-      LoginViewModel viewModel,
-      ) {
+    BuildContext context,
+    AuthNavigationEvent event,
+    LoginViewModel viewModel,
+  ) {
     switch (event) {
       case AuthNavigationEvent.goToHome:
         final user = viewModel.authenticatedUser;
@@ -160,9 +165,7 @@ class _LoginViewState extends State<_LoginView> {
       decoration: InputDecoration(
         prefixIcon: const Icon(Icons.email),
         hintText: "Enter your email",
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
       keyboardType: TextInputType.emailAddress,
       onChanged: (_) => viewModel.clearError(),
@@ -178,14 +181,10 @@ class _LoginViewState extends State<_LoginView> {
       decoration: InputDecoration(
         prefixIcon: const Icon(Icons.lock),
         hintText: "Enter your password",
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         suffixIcon: IconButton(
           icon: Icon(
-            viewModel.obscurePassword
-                ? Icons.visibility_off
-                : Icons.visibility,
+            viewModel.obscurePassword ? Icons.visibility_off : Icons.visibility,
           ),
           onPressed: viewModel.togglePasswordVisibility,
         ),
@@ -208,14 +207,13 @@ class _LoginViewState extends State<_LoginView> {
         children: [
           /// Creates a icon instance.
           Icon(Icons.error_outline, color: Colors.red.shade700),
+
           /// Creates a sized box instance.
           const SizedBox(width: 8),
+
           /// Creates a expanded instance.
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: Colors.red.shade700),
-            ),
+            child: Text(message, style: TextStyle(color: Colors.red.shade700)),
           ),
         ],
       ),
@@ -237,7 +235,10 @@ class _LoginViewState extends State<_LoginView> {
   }
 
   /// Handles the handle login operation.
-  Future<void> _handleLogin(BuildContext context, LoginViewModel viewModel) async {
+  Future<void> _handleLogin(
+    BuildContext context,
+    LoginViewModel viewModel,
+  ) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     await viewModel.login(email: email, password: password);
@@ -248,29 +249,5 @@ class _LoginViewState extends State<_LoginView> {
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
-  }
-
-  /// Handles the show exit dialog operation.
-  void _showExitDialog(BuildContext context) {
-    /// Displays the show dialog flow.
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Exit App'),
-        content: const Text('Do you want to exit the app?'),
-        actions: [
-          /// Creates a text button instance.
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          /// Creates a text button instance.
-          TextButton(
-            onPressed: () => Navigator.of(context).popUntil((route) => false),
-            child: const Text('Exit'),
-          ),
-        ],
-      ),
-    );
   }
 }

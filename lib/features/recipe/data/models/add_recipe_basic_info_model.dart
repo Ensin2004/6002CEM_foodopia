@@ -8,7 +8,6 @@ class AddRecipeBasicInfoModel {
   final List<String> mediaUrls;
   final List<String> customCategoryIds;
   final List<String> customAllergenIds;
-  final String visibility;
 
   const AddRecipeBasicInfoModel({
     required this.creatorUid,
@@ -16,7 +15,6 @@ class AddRecipeBasicInfoModel {
     required this.mediaUrls,
     required this.customCategoryIds,
     required this.customAllergenIds,
-    this.visibility = 'private',
   });
 
   Map<String, dynamic> toFirestore() {
@@ -33,12 +31,33 @@ class AddRecipeBasicInfoModel {
       'servings': info.servings,
       'allergenIds': info.allergenIds,
       'customAllergenIds': customAllergenIds,
-      'visibility': visibility,
+      'visibility': info.visibility,
+      'sourceMethod': info.isAiGenerated ? 'ai_generated' : 'scratch',
+      'mode': info.isAiGenerated ? 'ai_generated' : 'manual',
+      'status': 'draft',
       'averageRating': 0.0,
       'ratingCount': 0,
       'commentCount': 0,
       'totalViews': 0,
       'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+  }
+
+  Map<String, dynamic> toFirestoreForUpdate() {
+    return {
+      'media': mediaUrls,
+      'name': info.recipeName,
+      'description': info.description,
+      'otherNames': info.otherNames,
+      'categoryIds': info.categoryIds,
+      'customCategoryIds': customCategoryIds,
+      'preparationTime': info.preparationMinutes,
+      'difficultyLevel': info.difficultyLevel,
+      'servings': info.servings,
+      'allergenIds': info.allergenIds,
+      'customAllergenIds': customAllergenIds,
+      'visibility': info.visibility,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }

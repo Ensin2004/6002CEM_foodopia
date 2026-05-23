@@ -14,7 +14,7 @@ import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../viewmodel/explore_creator_detail_viewmodel.dart';
 import '../widgets/explore_empty_state.dart';
-import '../widgets/explore_recipe_card.dart';
+import '../widgets/explore_recipe_grid.dart';
 
 class ExploreCreatorDetailPage extends StatelessWidget {
   final String creatorUid;
@@ -28,6 +28,7 @@ class ExploreCreatorDetailPage extends StatelessWidget {
         creatorUid: creatorUid,
         getCreatorDetailUseCase: sl(),
         toggleCreatorFollowUseCase: sl(),
+        toggleFavouriteUseCase: sl(),
       ),
       child: const _ExploreCreatorDetailView(),
     );
@@ -69,6 +70,43 @@ class _ExploreCreatorDetailViewState extends State<_ExploreCreatorDetailView>
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
+  Future<void> _showRecipeImage(ExploreRecipe recipe) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 1,
+                    maxScale: 4,
+                    child: AppRemoteOrAssetImage(
+                      imagePath: recipe.imagePath,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChanged);
@@ -83,7 +121,7 @@ class _ExploreCreatorDetailViewState extends State<_ExploreCreatorDetailView>
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: CustomAppBar(
-        title: '',
+        title: 'Creator Details',
         leading: IconButton(
           onPressed: () => context.pop(),
           icon: const Icon(Icons.chevron_left),
@@ -99,6 +137,7 @@ class _ExploreCreatorDetailViewState extends State<_ExploreCreatorDetailView>
         viewModel: viewModel,
         tabController: _tabController,
         onComingSoonTap: _showComingSoonMessage,
+        onImageLongPress: _showRecipeImage,
       ),
     );
   }
@@ -108,11 +147,13 @@ class _CreatorBody extends StatelessWidget {
   final ExploreCreatorDetailViewModel viewModel;
   final TabController tabController;
   final VoidCallback onComingSoonTap;
+  final ValueChanged<ExploreRecipe> onImageLongPress;
 
   const _CreatorBody({
     required this.viewModel,
     required this.tabController,
     required this.onComingSoonTap,
+    required this.onImageLongPress,
   });
 
   @override
@@ -142,24 +183,10 @@ class _CreatorBody extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: _CreatorHeader(
-                creator: creator,
-                isUpdatingFollow: viewModel.isUpdatingFollow,
-                onFollowTap: viewModel.toggleFollow,
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-              child: Text(
-                creator.bio,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: context.text.bodyLarge,
-              ),
+            child: _CreatorHeader(
+              creator: creator,
+              isUpdatingFollow: viewModel.isUpdatingFollow,
+              onFollowTap: viewModel.toggleFollow,
             ),
           ),
           SliverToBoxAdapter(
@@ -168,13 +195,15 @@ class _CreatorBody extends StatelessWidget {
               tabs: ExploreCreatorRecipeTab.values
                   .map(_creatorTabLabel)
                   .toList(),
-              margin: const EdgeInsets.only(top: 12),
+              margin: EdgeInsets.zero,
               isScrollable: false,
             ),
           ),
           _RecipeGrid(
             recipes: viewModel.visibleRecipes,
             onComingSoonTap: onComingSoonTap,
+            onFavouriteTap: viewModel.toggleFavourite,
+            onImageLongPress: onImageLongPress,
           ),
         ],
       ),
@@ -198,83 +227,123 @@ class _CreatorHeader extends StatelessWidget {
     final summary = creator.summary;
     final colors = context.colors;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Stack(
-          clipBehavior: Clip.none,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        border: const Border(
+          bottom: BorderSide(color: AppColors.border, width: 0.5),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AppRemoteOrAssetAvatar(radius: 30, imagePath: summary.avatarPath),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    border: Border.all(color: AppColors.primary, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.14),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: AppRemoteOrAssetAvatar(
+                    radius: 38,
+                    imagePath: summary.avatarPath,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        summary.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        creator.bio,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                FilledButton.icon(
+                  onPressed: isUpdatingFollow ? null : () => onFollowTap(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    minimumSize: const Size(0, 36),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: Icon(
+                    creator.isFollowing ? Icons.check : Icons.add,
+                    size: 16,
+                  ),
+                  label: Text(
+                    creator.isFollowing ? 'Following' : 'Follow',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: _CreatorMetric(
+                    value: '${creator.postCount}',
+                    label: 'Posts',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _CreatorMetric(
+                    value: _compactCount(summary.followerCount),
+                    label: 'Followers',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _CreatorMetric(
+                    value: '${creator.followingCount}',
+                    label: 'Following',
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-        const SizedBox(width: 18),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      summary.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.text.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: isUpdatingFollow ? null : () => onFollowTap(),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: colors.primary,
-                      foregroundColor: Colors.white,
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    icon: Icon(
-                      creator.isFollowing ? Icons.check : Icons.add,
-                      size: 15,
-                    ),
-                    label: Text(creator.isFollowing ? 'Following' : 'Follow'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _CreatorMetric(
-                      value: '${creator.postCount}',
-                      label: 'Posts',
-                    ),
-                  ),
-                  _MetricDivider(),
-                  Expanded(
-                    child: _CreatorMetric(
-                      value: _compactCount(summary.followerCount),
-                      label: 'Followers',
-                    ),
-                  ),
-                  _MetricDivider(),
-                  Expanded(
-                    child: _CreatorMetric(
-                      value: '${creator.followingCount}',
-                      label: 'Following',
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -287,37 +356,40 @@ class _CreatorMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: context.text.titleLarge?.copyWith(
-            color: context.colors.primary,
-            fontWeight: FontWeight.w800,
-          ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.titleLarge?.copyWith(
+                color: context.colors.primary,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: context.text.bodySmall,
-        ),
-      ],
-    );
-  }
-}
-
-class _MetricDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 36,
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      color: AppColors.border,
+      ),
     );
   }
 }
@@ -325,8 +397,15 @@ class _MetricDivider extends StatelessWidget {
 class _RecipeGrid extends StatelessWidget {
   final List<ExploreRecipe> recipes;
   final VoidCallback onComingSoonTap;
+  final ValueChanged<String> onFavouriteTap;
+  final ValueChanged<ExploreRecipe> onImageLongPress;
 
-  const _RecipeGrid({required this.recipes, required this.onComingSoonTap});
+  const _RecipeGrid({
+    required this.recipes,
+    required this.onComingSoonTap,
+    required this.onFavouriteTap,
+    required this.onImageLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -337,36 +416,17 @@ class _RecipeGrid extends StatelessWidget {
       );
     }
 
-    final width = MediaQuery.sizeOf(context).width;
-    final crossAxisCount = width >= 900
-        ? 4
-        : width >= 600
-        ? 3
-        : 2;
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      sliver: SliverGrid.builder(
-        itemCount: recipes.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          mainAxisExtent: width < 380 ? 216 : 220,
-        ),
-        itemBuilder: (context, index) {
-          final recipe = recipes[index];
-          return ExploreRecipeCard(
-            recipe: recipe,
-            onComingSoonTap: onComingSoonTap,
-            onTap: () {
-              context.push(
-                AppRouter.exploreRecipeDetail,
-                extra: ExploreRecipeDetailArgs(recipeId: recipe.id),
-              );
-            },
-          );
-        },
-      ),
+    return ExploreRecipeSliverGrid(
+      recipes: recipes,
+      onComingSoonTap: onComingSoonTap,
+      onFavouriteTap: onFavouriteTap,
+      onImageLongPress: onImageLongPress,
+      onRecipeTap: (recipe) {
+        context.push(
+          AppRouter.exploreRecipeDetail,
+          extra: ExploreRecipeDetailArgs(recipeId: recipe.id),
+        );
+      },
     );
   }
 }
