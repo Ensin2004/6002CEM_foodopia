@@ -10,6 +10,7 @@ import '../../features/auth/presentation/view/login_screen.dart';
 import '../../features/auth/presentation/view/signup_screen.dart';
 import '../../features/onboarding/presentation/view/onboarding_screen.dart';
 import '../../features/main/presentation/view/main_page.dart';
+import '../../features/notifications/presentation/view/notification_settings_page.dart';
 import '../../features/notifications/presentation/view/notifications_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_page.dart';
 import '../../features/explore/presentation/view/explore_page.dart';
@@ -21,6 +22,19 @@ import '../../features/meal_plan/presentation/view/meal_plan_page.dart';
 import '../../features/meal_plan/presentation/view/planning/add_meal_plan_page.dart';
 import '../../features/meal_plan/presentation/view/planning/generate_ai_meal_page.dart';
 import '../../features/statistics/presentation/view/statistics_page.dart';
+import '../../features/statistics/presentation/view/admin_dietary_preference_page.dart';
+import '../../features/statistics/presentation/view/admin_meal_analytic_page.dart';
+import '../../features/statistics/presentation/view/admin_post_analytic_page.dart';
+import '../../features/statistics/presentation/view/calories_intake_page.dart';
+import '../../features/statistics/presentation/view/calories_posted_page.dart';
+import '../../features/statistics/presentation/view/difficulty_meal_page.dart';
+import '../../features/statistics/presentation/view/food_analytic_page.dart';
+import '../../features/statistics/presentation/view/meal_plan_method_page.dart';
+import '../../features/statistics/presentation/view/meal_planned_time_page.dart';
+import '../../features/statistics/presentation/view/most_cooked_recipe_page.dart';
+import '../../features/statistics/presentation/view/post_analytic_page.dart';
+import '../../features/statistics/presentation/view/post_difficulty_page.dart';
+import '../../features/statistics/presentation/view/posted_meal_time_page.dart';
 import '../../features/settings/presentation/view/settings_page.dart';
 import '../../features/settings/presentation/view/subfeatures/about/about_editor_page.dart';
 import '../../features/settings/presentation/view/subfeatures/about/about_viewer_page.dart';
@@ -53,6 +67,7 @@ class AppRouter {
   static const String rateUs = '/rate-us';
   static const String helpCenter = '/help-center';
   static const String notifications = '/notifications';
+  static const String notificationSettings = '/notifications/settings';
   static const String addRecipe = '/recipes/add';
   static const String explore = '/explore';
   static const String exploreRecipeDetail = '/explore/recipe';
@@ -64,6 +79,20 @@ class AppRouter {
   static const String manageGroceryList = '/meal-plan/grocery-list/manage';
   static const String library = '/library';
   static const String statistics = '/statistics';
+  static const String adminMealAnalytic = '/statistics/admin-meal-analytic';
+  static const String adminPostAnalytic = '/statistics/admin-post-analytic';
+  static const String adminDietaryPreference =
+      '/statistics/admin-dietary-preference';
+  static const String foodAnalytic = '/statistics/food-analytic';
+  static const String caloriesIntake = '/statistics/calories-intake';
+  static const String difficultyMeals = '/statistics/difficulty-meals';
+  static const String mealPlanMethods = '/statistics/meal-plan-methods';
+  static const String mealPlannedTime = '/statistics/meal-planned-time';
+  static const String postAnalytic = '/statistics/post-analytic';
+  static const String caloriesPosted = '/statistics/calories-posted';
+  static const String postedMealTime = '/statistics/posted-meal-time';
+  static const String mostCookedRecipes = '/statistics/most-cooked-recipes';
+  static const String postDifficulty = '/statistics/post-difficulty';
   static const String issueDetail = '/help-center/issue';
   static const String faqForm = '/faq/form';
   static const String imagePreview = '/image-preview';
@@ -368,6 +397,12 @@ class AppRouter {
         builder: (context, state) => const NotificationsPage(),
       ),
 
+      GoRoute(
+        name: 'notificationSettings',
+        path: notificationSettings,
+        builder: (context, state) => const NotificationSettingsPage(),
+      ),
+
       /// Creates a go route instance.
       GoRoute(
         name: 'addRecipe',
@@ -460,6 +495,84 @@ class AppRouter {
           final args = state.extra as StatisticsArgs?;
           return StatisticsPage(isAdmin: args?.isAdmin ?? false);
         },
+      ),
+
+      GoRoute(
+        name: 'adminMealAnalytic',
+        path: adminMealAnalytic,
+        builder: (context, state) => const AdminMealAnalyticPage(),
+      ),
+
+      GoRoute(
+        name: 'adminPostAnalytic',
+        path: adminPostAnalytic,
+        builder: (context, state) => const AdminPostAnalyticPage(),
+      ),
+
+      GoRoute(
+        name: 'adminDietaryPreference',
+        path: adminDietaryPreference,
+        builder: (context, state) => const AdminDietaryPreferencePage(),
+      ),
+
+      GoRoute(
+        name: 'foodAnalytic',
+        path: foodAnalytic,
+        builder: (context, state) => const FoodAnalyticPage(),
+      ),
+
+      GoRoute(
+        name: 'caloriesIntake',
+        path: caloriesIntake,
+        builder: (context, state) => const CaloriesIntakePage(),
+      ),
+
+      GoRoute(
+        name: 'difficultyMeals',
+        path: difficultyMeals,
+        builder: (context, state) => const DifficultyMealPage(),
+      ),
+
+      GoRoute(
+        name: 'mealPlanMethods',
+        path: mealPlanMethods,
+        builder: (context, state) => const MealPlanMethodPage(),
+      ),
+
+      GoRoute(
+        name: 'postAnalytic',
+        path: postAnalytic,
+        builder: (context, state) => const PostAnalyticPage(),
+      ),
+
+      GoRoute(
+        name: 'caloriesPosted',
+        path: caloriesPosted,
+        builder: (context, state) => const CaloriesPostedPage(),
+      ),
+
+      GoRoute(
+        name: 'postedMealTime',
+        path: postedMealTime,
+        builder: (context, state) => const PostedMealTimePage(),
+      ),
+
+      GoRoute(
+        name: 'mealPlannedTime',
+        path: mealPlannedTime,
+        builder: (context, state) => const MealPlannedTimePage(),
+      ),
+
+      GoRoute(
+        name: 'mostCookedRecipes',
+        path: mostCookedRecipes,
+        builder: (context, state) => const MostCookedRecipePage(),
+      ),
+
+      GoRoute(
+        name: 'postDifficulty',
+        path: postDifficulty,
+        builder: (context, state) => const PostDifficultyPage(),
       ),
 
       /// Creates a go route instance.

@@ -1,37 +1,207 @@
-// Builds the notifications screen.
-
 import 'package:flutter/material.dart';
-import '../../../../core/widgets/custom_app_bar.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-/// Defines behavior for notifications page.
+import '../../../../app/dependency_injection/injection_container.dart';
+import '../../../../app/routers/app_router.dart';
+import '../../../../core/widgets/custom_app_bar.dart';
+import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../domain/usecases/get_notification_preferences_usecase.dart';
+import '../../domain/usecases/get_notifications_usecase.dart';
+import '../../domain/usecases/mark_all_notifications_as_read_usecase.dart';
+import '../../domain/usecases/mark_notification_as_read_usecase.dart';
+import '../../domain/usecases/schedule_plan_reminder_usecase.dart';
+import '../../domain/usecases/update_notification_preference_usecase.dart';
+import '../viewmodel/notifications_viewmodel.dart';
+import '../widgets/notification_empty_state.dart';
+import '../widgets/notification_tile.dart';
+
 class NotificationsPage extends StatelessWidget {
-  /// Creates a notifications page instance.
   const NotificationsPage({super.key});
 
-  /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
-    /// Handles the scaffold operation.
+    return ChangeNotifierProvider(
+      create: (_) => NotificationsViewModel(
+        getNotificationsUseCase: sl<GetNotificationsUseCase>(),
+        getPreferencesUseCase: sl<GetNotificationPreferencesUseCase>(),
+        markAsReadUseCase: sl<MarkNotificationAsReadUseCase>(),
+        markAllAsReadUseCase: sl<MarkAllNotificationsAsReadUseCase>(),
+        updatePreferenceUseCase: sl<UpdateNotificationPreferenceUseCase>(),
+        schedulePlanReminderUseCase: sl<SchedulePlanReminderUseCase>(),
+      ),
+      child: const _NotificationsView(),
+    );
+  }
+}
+
+class _NotificationsView extends StatelessWidget {
+  const _NotificationsView();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<NotificationsViewModel>();
+    final event = viewModel.navigationEvent;
+
+    if (event == NotificationNavigationEvent.goToSettings) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.push(AppRouter.notificationSettings).then((_) {
+          if (context.mounted) {
+            context.read<NotificationsViewModel>().load();
+          }
+        });
+      });
+    }
+
+    if (viewModel.errorMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final message = viewModel.errorMessage;
+        if (message == null || !context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+        );
+        context.read<NotificationsViewModel>().clearError();
+      });
+    }
+
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: CustomAppBar(
-        title: 'Notifications',
-        centerTitle: false,
-      ),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            /// Creates a icon instance.
-            Icon(Icons.notifications_none, size: 80, color: Colors.grey),
-            /// Creates a sized box instance.
-            SizedBox(height: 16),
-            /// Creates a text instance.
-            Text('No Notifications'),
-            /// Creates a text instance.
-            Text('You\'re all caught up!'),
-          ],
+        title: 'Notification',
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
         ),
+        actions: [
+          PopupMenuButton<_NotificationMenuAction>(
+            icon: const Icon(Icons.more_horiz),
+            offset: const Offset(0, 40),
+            onSelected: (action) => _handleMenuAction(
+              context: context,
+              viewModel: viewModel,
+              action: action,
+            ),
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _NotificationMenuAction.markAllAsRead,
+                child: _NotificationMenuItem(
+                  icon: Icons.done_all,
+                  label: 'Mark all as read',
+                ),
+              ),
+              PopupMenuItem(
+                value: _NotificationMenuAction.settings,
+                child: _NotificationMenuItem(
+                  icon: Icons.settings_outlined,
+                  label: 'Notification Settings',
+                ),
+              ),
+              PopupMenuItem(
+                value: _NotificationMenuAction.scheduleTest,
+                child: _NotificationMenuItem(
+                  icon: Icons.alarm_add_outlined,
+                  label: 'Schedule test reminder',
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
+      body: viewModel.isLoading
+          ? const LoadingDialog()
+          : viewModel.notifications.isEmpty
+          ? const NotificationEmptyState()
+          : RefreshIndicator(
+              onRefresh: viewModel.load,
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: viewModel.notifications.length,
+                itemBuilder: (context, index) {
+                  final notification = viewModel.notifications[index];
+                  return NotificationTile(
+                    notification: notification,
+                    onTap: () => viewModel.markAsRead(notification.id),
+                  );
+                },
+              ),
+            ),
+    );
+  }
+
+  void _handleMenuAction({
+    required BuildContext context,
+    required NotificationsViewModel viewModel,
+    required _NotificationMenuAction action,
+  }) {
+    switch (action) {
+      case _NotificationMenuAction.markAllAsRead:
+        viewModel.markAllAsRead();
+        break;
+      case _NotificationMenuAction.settings:
+        viewModel.goToSettings();
+        break;
+      case _NotificationMenuAction.scheduleTest:
+        _showSchedulePicker(context, viewModel);
+        break;
+    }
+  }
+
+  Future<void> _showSchedulePicker(
+    BuildContext context,
+    NotificationsViewModel viewModel,
+  ) async {
+    final now = DateTime.now();
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(minutes: 1))),
+    );
+    if (pickedTime == null || !context.mounted) return;
+
+    var scheduledAt = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+    if (!scheduledAt.isAfter(now)) {
+      scheduledAt = scheduledAt.add(const Duration(days: 1));
+    }
+
+    await viewModel.schedulePlanReminder(scheduledAt);
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Plan reminder scheduled for ${pickedTime.format(context)}',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+}
+
+enum _NotificationMenuAction { markAllAsRead, settings, scheduleTest }
+
+class _NotificationMenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _NotificationMenuItem({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.grey),
+        const SizedBox(width: 14),
+        Flexible(
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+      ],
     );
   }
 }

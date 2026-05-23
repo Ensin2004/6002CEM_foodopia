@@ -70,6 +70,13 @@ class StatisticsArgs {
   const StatisticsArgs({required this.isAdmin});
 }
 
+/// Typed arguments for statistics detail routes.
+class StatisticsDetailArgs {
+  final bool isAdmin;
+
+  const StatisticsDetailArgs({this.isAdmin = false});
+}
+
 /// Typed arguments for user_home route
 class HomeArgs {
   final UserEntity user;
