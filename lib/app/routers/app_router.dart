@@ -563,6 +563,7 @@ class AppRouter {
           final args = state.extra as LibraryProfileUsersArgs?;
           return LibraryProfileUsersPage(
             showFollowers: args?.showFollowers ?? true,
+            ownerUid: args?.ownerUid,
           );
         },
       ),

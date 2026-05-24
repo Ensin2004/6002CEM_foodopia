@@ -9,7 +9,9 @@ class GetLibraryFollowersUseCase {
 
   const GetLibraryFollowersUseCase(this.repository);
 
-  Future<Either<Failure, List<LibraryProfileUser>>> execute() {
-    return repository.getFollowers();
+  Future<Either<Failure, List<LibraryProfileUser>>> execute({
+    String? ownerUid,
+  }) {
+    return repository.getFollowers(ownerUid: ownerUid);
   }
 }
