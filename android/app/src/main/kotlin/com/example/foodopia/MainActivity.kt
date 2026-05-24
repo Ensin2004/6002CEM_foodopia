@@ -9,6 +9,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.example.foodopia.notifications.NotificationReceiver
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -17,6 +19,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val channelName = "foodopia/notifications"
     private val notificationChannelId = "foodopia_reminders_v2"
+    private val socialNotificationChannelId = "foodopia_social_notifications"
     private val notificationPrefsName = "foodopia_native_notifications"
     private val scheduledIdsKey = "scheduled_notification_ids"
     private val suppressAllKey = "suppress_all_demo_notifications"
@@ -39,6 +42,13 @@ class MainActivity : FlutterActivity() {
                     val scheduledAt = call.argument<Long>("scheduledAt") ?: System.currentTimeMillis()
                     scheduleNotification(id, notificationKey, title, message, scheduledAt)
                     result.success(null)
+                }
+                "showNotificationNow" -> {
+                    val id = call.argument<Int>("id") ?: 1
+                    val title = call.argument<String>("title") ?: "Foodopia"
+                    val message = call.argument<String>("message") ?: "You have a new notification"
+                    val channelId = call.argument<String>("channelId") ?: socialNotificationChannelId
+                    result.success(showNotificationNow(id, title, message, channelId))
                 }
                 "cancelNotification" -> {
                     val id = call.argument<Int>("id") ?: 1
@@ -76,6 +86,51 @@ class MainActivity : FlutterActivity() {
         }
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(channel)
+        val socialChannel = NotificationChannel(
+            socialNotificationChannelId,
+            "Foodopia notifications",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Follower, rating, comment, reply, and recipe notifications"
+            enableVibration(true)
+        }
+        manager.createNotificationChannel(socialChannel)
+    }
+
+    private fun canPostNotifications(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun showNotificationNow(
+        id: Int,
+        title: String,
+        message: String,
+        channelId: String,
+    ): Boolean {
+        requestNotificationPermission()
+        if (!canPostNotifications()) return false
+
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+            ?: Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            id,
+            launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(applicationInfo.icon)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        NotificationManagerCompat.from(this).notify(id, notification)
+        return true
     }
 
     private fun scheduleNotification(

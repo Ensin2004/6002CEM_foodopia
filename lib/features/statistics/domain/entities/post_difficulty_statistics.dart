@@ -32,10 +32,12 @@ class PostDifficultyItem {
   final String recipeName;
   final DateTime date;
   final IconData icon;
+  final String? imageUrl;
 
   const PostDifficultyItem({
     required this.recipeName,
     required this.date,
     required this.icon,
+    this.imageUrl,
   });
 }

@@ -41,6 +41,7 @@ import '../../features/statistics/presentation/view/most_cooked_recipe_page.dart
 import '../../features/statistics/presentation/view/post_analytic_page.dart';
 import '../../features/statistics/presentation/view/post_difficulty_page.dart';
 import '../../features/statistics/presentation/view/posted_meal_time_page.dart';
+import '../../features/statistics/presentation/view/recipe_performance_page.dart';
 import '../../features/settings/presentation/view/settings_page.dart';
 import '../../features/settings/presentation/view/subfeatures/about/about_editor_page.dart';
 import '../../features/settings/presentation/view/subfeatures/about/about_viewer_page.dart';
@@ -104,6 +105,7 @@ class AppRouter {
   static const String postAnalytic = '/statistics/post-analytic';
   static const String caloriesPosted = '/statistics/calories-posted';
   static const String postedMealTime = '/statistics/posted-meal-time';
+  static const String recipePerformance = '/statistics/recipe-performance';
   static const String mostCookedRecipes = '/statistics/most-cooked-recipes';
   static const String postDifficulty = '/statistics/post-difficulty';
   static const String issueDetail = '/help-center/issue';
@@ -719,6 +721,12 @@ class AppRouter {
         name: 'postedMealTime',
         path: postedMealTime,
         builder: (context, state) => const PostedMealTimePage(),
+      ),
+
+      GoRoute(
+        name: 'recipePerformance',
+        path: recipePerformance,
+        builder: (context, state) => const RecipePerformancePage(),
       ),
 
       GoRoute(

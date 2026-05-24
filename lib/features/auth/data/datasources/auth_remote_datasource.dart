@@ -58,6 +58,56 @@ class AuthRemoteDataSource {
     return await _fcm.getToken();
   }
 
+  Future<void> saveFcmToken(String uid) async {
+    final token = await getFCMToken();
+    if (token == null || token.isEmpty) return;
+    await _removeFcmTokenFromOtherUsers(uid: uid, token: token);
+    await _firestore.collection('users').doc(uid).set({
+      'fcmTokens': FieldValue.arrayUnion([token]),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> removeCurrentFcmToken() async {
+    final uid = _auth.currentUser?.uid;
+    final token = await getFCMToken();
+    if (uid == null || uid.isEmpty || token == null || token.isEmpty) return;
+    try {
+      await _firestore.collection('users').doc(uid).set({
+        'fcmTokens': FieldValue.arrayRemove([token]),
+      }, SetOptions(merge: true));
+    } on FirebaseException {
+      // Logout should still continue if token cleanup is blocked.
+    }
+  }
+
+  Future<void> _removeFcmTokenFromOtherUsers({
+    required String uid,
+    required String token,
+  }) async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .where('fcmTokens', arrayContains: token)
+          .get();
+      final batch = _firestore.batch();
+      var hasUpdates = false;
+
+      for (final doc in snapshot.docs) {
+        if (doc.id == uid) continue;
+        batch.set(doc.reference, {
+          'fcmTokens': FieldValue.arrayRemove([token]),
+        }, SetOptions(merge: true));
+        hasUpdates = true;
+      }
+
+      if (hasUpdates) {
+        await batch.commit();
+      }
+    } on FirebaseException {
+      // Best-effort cleanup for shared test devices.
+    }
+  }
+
   /// Runs the save user to firestore operation.
   Future<void> saveUserToFirestore({
     required String uid,
@@ -91,6 +141,7 @@ class AuthRemoteDataSource {
 
   /// Handles the logout operation.
   Future<void> logout() async {
+    await removeCurrentFcmToken();
     await _auth.signOut();
   }
 }

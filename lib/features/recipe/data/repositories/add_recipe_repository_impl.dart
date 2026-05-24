@@ -211,6 +211,20 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
   }
 
   @override
+  Future<Either<Failure, void>> finalizeRecipe(String recipeId) async {
+    if (recipeId.trim().isEmpty) {
+      return Left(ValidationFailure(message: 'Recipe id is missing.'));
+    }
+
+    try {
+      await remoteDataSource.finalizeRecipe(recipeId);
+      return const Right(null);
+    } catch (error) {
+      return Left(ServerFailure(message: 'Unable to save recipe: $error'));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> updateVisibility({
     required String recipeId,
     required String visibility,

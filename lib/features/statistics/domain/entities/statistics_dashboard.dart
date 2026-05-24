@@ -1,10 +1,12 @@
 class StatisticsDashboard {
   final List<StatisticsHeroSlide> heroSlides;
+  final List<StatisticsHeroSlide> communityHeroSlides;
   final List<StatisticsMenuItem> menuItems;
   final List<StatisticsMenuItem> communityMenuItems;
 
   const StatisticsDashboard({
     required this.heroSlides,
+    this.communityHeroSlides = const [],
     required this.menuItems,
     this.communityMenuItems = const [],
   });

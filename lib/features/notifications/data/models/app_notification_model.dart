@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../domain/entities/app_notification.dart';
 
 class AppNotificationModel extends AppNotification {
@@ -39,6 +41,23 @@ class AppNotificationModel extends AppNotification {
     );
   }
 
+  factory AppNotificationModel.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? const <String, dynamic>{};
+    return AppNotificationModel(
+      id: doc.id,
+      type: _typeFromString(data['type']?.toString()),
+      title: data['title']?.toString() ?? '',
+      message: data['message']?.toString() ?? '',
+      createdAt: _dateTime(data['createdAt']),
+      isRead: data['isRead'] == true,
+      nativeNotificationId: data['nativeNotificationId'] is int
+          ? data['nativeNotificationId'] as int
+          : int.tryParse(data['nativeNotificationId']?.toString() ?? ''),
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -56,5 +75,11 @@ class AppNotificationModel extends AppNotification {
       (type) => type.name == value,
       orElse: () => AppNotificationType.planReminder,
     );
+  }
+
+  static DateTime _dateTime(Object? value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return DateTime.tryParse(value?.toString() ?? '') ?? DateTime.now();
   }
 }

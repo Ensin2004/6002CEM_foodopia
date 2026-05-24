@@ -312,7 +312,7 @@ class LibraryRemoteDataSource {
     required bool isFollowingAuthor,
   }) {
     final data = doc.data() ?? const <String, dynamic>{};
-    final creatorUid = data['creatorUid']?.toString() ?? '';
+    final creatorUid = _recipeCreatorUid(data);
     final media = _stringList(data['media']);
     final categories = _stringList(data['categories']).isNotEmpty
         ? _stringList(data['categories'])
@@ -404,6 +404,14 @@ class LibraryRemoteDataSource {
       if (normalized.isNotEmpty) return normalized;
     }
     return '';
+  }
+
+  String _recipeCreatorUid(Map<String, dynamic> data) {
+    return _firstNotBlank([
+      data['creatorUid']?.toString(),
+      data['creatorId']?.toString(),
+      data['userId']?.toString(),
+    ]);
   }
 
   static bool _isNotBlank(String value) => value.trim().isNotEmpty;

@@ -29,8 +29,15 @@ class CaloriesPostedPage extends StatelessWidget {
   }
 }
 
-class _CaloriesPostedView extends StatelessWidget {
+class _CaloriesPostedView extends StatefulWidget {
   const _CaloriesPostedView();
+
+  @override
+  State<_CaloriesPostedView> createState() => _CaloriesPostedViewState();
+}
+
+class _CaloriesPostedViewState extends State<_CaloriesPostedView> {
+  int _selectedChart = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -95,50 +102,282 @@ class _CaloriesPostedView extends StatelessWidget {
                 Expanded(
                   child: _SummaryTile(
                     icon: Icons.favorite_border,
-                    title: 'Average Calories',
-                    value:
-                        '${viewModel.convertCalories(statistics.averageCaloriesKcal)}',
+                    title: _averageTitle,
+                    value: _averageValue(statistics, viewModel),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
-            _CaloriesChartCard(statistics: statistics, viewModel: viewModel),
-            const SizedBox(height: AppSpacing.lg),
-            _CaloriesPostedBreakdown(
-              days: statistics.dailyPosts,
-              expandedIndex: viewModel.expandedIndex,
-              displayUnit: viewModel.displayUnit,
-              unitLabel: viewModel.unitLabel,
-              onUnitChanged: viewModel.setDisplayUnit,
-              onToggle: viewModel.toggleDay,
-              convertCalories: viewModel.convertCalories,
+            _PostedMetricPager(
+              statistics: statistics,
+              viewModel: viewModel,
+              selectedChart: _selectedChart,
+              onChartChanged: (index) => setState(() {
+                _selectedChart = index;
+              }),
             ),
           ],
         ),
       ),
     );
   }
+
+  String get _averageTitle {
+    switch (_selectedChart) {
+      case 1:
+        return 'Average Carbohydrate';
+      case 2:
+        return 'Average Protein';
+      case 3:
+        return 'Average Fat';
+      default:
+        return 'Average Calories';
+    }
+  }
+
+  String _averageValue(
+    CaloriesPostedStatistics statistics,
+    CaloriesPostedViewModel viewModel,
+  ) {
+    switch (_selectedChart) {
+      case 1:
+        return '${statistics.averageCarbohydrateGram} g';
+      case 2:
+        return '${statistics.averageProteinGram} g';
+      case 3:
+        return '${statistics.averageFatGram} g';
+      default:
+        return '${viewModel.convertCalories(statistics.averageCaloriesKcal)} ${viewModel.unitLabel}';
+    }
+  }
+}
+
+class _PostedChartMetric {
+  final String title;
+  final String breakdownTitle;
+  final String unit;
+  final int Function(CaloriesPostedDay day) valueForDay;
+  final int Function(CaloriesPostedItem post) valueForPost;
+  final bool allowUnitChange;
+
+  const _PostedChartMetric({
+    required this.title,
+    required this.breakdownTitle,
+    required this.unit,
+    required this.valueForDay,
+    required this.valueForPost,
+    this.allowUnitChange = false,
+  });
+}
+
+class _PostedMetricPager extends StatelessWidget {
+  final CaloriesPostedStatistics statistics;
+  final CaloriesPostedViewModel viewModel;
+  final int selectedChart;
+  final ValueChanged<int> onChartChanged;
+
+  const _PostedMetricPager({
+    required this.statistics,
+    required this.viewModel,
+    required this.selectedChart,
+    required this.onChartChanged,
+  });
+
+  List<_PostedChartMetric> get _metrics => [
+    _PostedChartMetric(
+      title: 'Calories Posted Vs Day',
+      breakdownTitle: 'Calories Breakdown',
+      unit: viewModel.unitLabel,
+      valueForDay: (day) => viewModel.convertCalories(day.totalCaloriesKcal),
+      valueForPost: (post) => viewModel.convertCalories(post.caloriesKcal),
+      allowUnitChange: true,
+    ),
+    const _PostedChartMetric(
+      title: 'Carbohydrate Posted Vs Day',
+      breakdownTitle: 'Carbohydrate Breakdown',
+      unit: 'g',
+      valueForDay: _carbohydrateForDay,
+      valueForPost: _carbohydrateForPost,
+    ),
+    const _PostedChartMetric(
+      title: 'Protein Posted Vs Day',
+      breakdownTitle: 'Protein Breakdown',
+      unit: 'g',
+      valueForDay: _proteinForDay,
+      valueForPost: _proteinForPost,
+    ),
+    const _PostedChartMetric(
+      title: 'Fat Posted Vs Day',
+      breakdownTitle: 'Fat Breakdown',
+      unit: 'g',
+      valueForDay: _fatForDay,
+      valueForPost: _fatForPost,
+    ),
+  ];
+
+  static int _carbohydrateForDay(CaloriesPostedDay day) {
+    return day.totalCarbohydrateGram;
+  }
+
+  static int _proteinForDay(CaloriesPostedDay day) {
+    return day.totalProteinGram;
+  }
+
+  static int _fatForDay(CaloriesPostedDay day) {
+    return day.totalFatGram;
+  }
+
+  static int _carbohydrateForPost(CaloriesPostedItem post) {
+    return post.carbohydrateGram;
+  }
+
+  static int _proteinForPost(CaloriesPostedItem post) {
+    return post.proteinGram;
+  }
+
+  static int _fatForPost(CaloriesPostedItem post) {
+    return post.fatGram;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = _metrics;
+    final metric = metrics[selectedChart];
+
+    return Column(
+      children: [
+        _MetricTabs(selectedIndex: selectedChart, onSelected: onChartChanged),
+        const SizedBox(height: AppSpacing.md),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragEnd: (details) => _handleSwipe(details, metrics),
+          child: Column(
+            children: [
+              _CaloriesChartCard(statistics: statistics, metric: metric),
+              const SizedBox(height: AppSpacing.lg),
+              _CaloriesPostedBreakdown(
+                days: statistics.dailyPosts,
+                expandedIndex: viewModel.expandedIndex,
+                metric: metric,
+                onUnitChanged: viewModel.setDisplayUnit,
+                onToggle: viewModel.toggleDay,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _MetricDots(count: metrics.length, selectedIndex: selectedChart),
+      ],
+    );
+  }
+
+  void _handleSwipe(DragEndDetails details, List<_PostedChartMetric> metrics) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity.abs() < 220) return;
+
+    final nextIndex = velocity < 0 ? selectedChart + 1 : selectedChart - 1;
+    if (nextIndex < 0 || nextIndex >= metrics.length) return;
+    onChartChanged(nextIndex);
+  }
+}
+
+class _MetricTabs extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  const _MetricTabs({required this.selectedIndex, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = ['Calories', 'Carbohydrate', 'Protein', 'Fat'];
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F7F7),
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: List.generate(labels.length, (index) {
+          final selected = selectedIndex == index;
+          return Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () => onSelected(index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  labels[index],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.bodySmall?.copyWith(
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _MetricDots extends StatelessWidget {
+  final int count;
+  final int selectedIndex;
+
+  const _MetricDots({required this.count, required this.selectedIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(count, (index) {
+        final selected = index == selectedIndex;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: selected ? 16 : 6,
+          height: 6,
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : AppColors.border,
+            borderRadius: BorderRadius.circular(999),
+          ),
+        );
+      }),
+    );
+  }
 }
 
 class _CaloriesChartCard extends StatelessWidget {
   final CaloriesPostedStatistics statistics;
-  final CaloriesPostedViewModel viewModel;
+  final _PostedChartMetric metric;
 
-  const _CaloriesChartCard({required this.statistics, required this.viewModel});
+  const _CaloriesChartCard({required this.statistics, required this.metric});
 
   @override
   Widget build(BuildContext context) {
-    final chartWidth = (MediaQuery.sizeOf(context).width - 48).clamp(
-      280.0,
-      340.0,
-    );
+    final formatter = DateFormat('MMM d');
 
     return _SectionCard(
       child: Column(
         children: [
           Text(
-            'Calories Posted Meal',
+            metric.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: context.text.bodyMedium?.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w800,
@@ -146,18 +385,41 @@ class _CaloriesChartCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          SizedBox(
-            width: chartWidth,
-            child: StatisticsLineChart(
-              height: chartWidth * 0.72,
-              points: statistics.dailyPosts
-                  .map(
-                    (day) => StatisticsLineChartPoint(
-                      label: day.weekdayLabel,
-                      value: viewModel.convertCalories(day.totalCaloriesKcal),
-                    ),
-                  )
-                  .toList(),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final chartWidth = (statistics.dailyPosts.length * 52.0).clamp(
+                constraints.maxWidth,
+                double.infinity,
+              );
+
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: chartWidth,
+                  child: StatisticsLineChart(
+                    height: 220,
+                    points: statistics.dailyPosts
+                        .map(
+                          (day) => StatisticsLineChartPoint(
+                            label: formatter.format(day.date),
+                            value: metric.valueForDay(day),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            metric.unit,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+              fontSize: 10,
             ),
           ),
         ],
@@ -169,20 +431,16 @@ class _CaloriesChartCard extends StatelessWidget {
 class _CaloriesPostedBreakdown extends StatelessWidget {
   final List<CaloriesPostedDay> days;
   final int? expandedIndex;
-  final CaloriesDisplayUnit displayUnit;
-  final String unitLabel;
+  final _PostedChartMetric metric;
   final ValueChanged<CaloriesDisplayUnit> onUnitChanged;
   final ValueChanged<int> onToggle;
-  final int Function(int kcal) convertCalories;
 
   const _CaloriesPostedBreakdown({
     required this.days,
     required this.expandedIndex,
-    required this.displayUnit,
-    required this.unitLabel,
+    required this.metric,
     required this.onUnitChanged,
     required this.onToggle,
-    required this.convertCalories,
   });
 
   @override
@@ -194,7 +452,7 @@ class _CaloriesPostedBreakdown extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Calories Breakdown',
+                  metric.breakdownTitle,
                   style: context.text.bodySmall?.copyWith(
                     color: Colors.black,
                     fontWeight: FontWeight.w800,
@@ -202,10 +460,13 @@ class _CaloriesPostedBreakdown extends StatelessWidget {
                   ),
                 ),
               ),
-              _UnitButton(
-                displayUnit: displayUnit,
-                onUnitChanged: onUnitChanged,
-              ),
+              if (metric.allowUnitChange)
+                _UnitButton(
+                  displayUnit: metric.unit == 'kcal'
+                      ? CaloriesDisplayUnit.kcal
+                      : CaloriesDisplayUnit.cal,
+                  onUnitChanged: onUnitChanged,
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -222,9 +483,9 @@ class _CaloriesPostedBreakdown extends StatelessWidget {
                   day: day,
                   isExpanded: isExpanded,
                   showDivider: index != days.length - 1,
-                  unitLabel: unitLabel,
+                  unitLabel: metric.unit,
                   onTap: () => onToggle(index),
-                  convertCalories: convertCalories,
+                  valueForPost: metric.valueForPost,
                 );
               }),
             ),
@@ -241,7 +502,7 @@ class _DaySection extends StatelessWidget {
   final bool showDivider;
   final String unitLabel;
   final VoidCallback onTap;
-  final int Function(int kcal) convertCalories;
+  final int Function(CaloriesPostedItem post) valueForPost;
 
   const _DaySection({
     required this.day,
@@ -249,7 +510,7 @@ class _DaySection extends StatelessWidget {
     required this.showDivider,
     required this.unitLabel,
     required this.onTap,
-    required this.convertCalories,
+    required this.valueForPost,
   });
 
   @override
@@ -315,7 +576,7 @@ class _DaySection extends StatelessWidget {
             (post) => _PostMealRow(
               post: post,
               unitLabel: unitLabel,
-              convertCalories: convertCalories,
+              valueForPost: valueForPost,
             ),
           ),
         if (showDivider) const Divider(height: 1, color: AppColors.border),
@@ -327,12 +588,12 @@ class _DaySection extends StatelessWidget {
 class _PostMealRow extends StatelessWidget {
   final CaloriesPostedItem post;
   final String unitLabel;
-  final int Function(int kcal) convertCalories;
+  final int Function(CaloriesPostedItem post) valueForPost;
 
   const _PostMealRow({
     required this.post,
     required this.unitLabel,
-    required this.convertCalories,
+    required this.valueForPost,
   });
 
   @override
@@ -345,7 +606,7 @@ class _PostMealRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _FoodIcon(icon: post.icon),
+          _FoodIcon(icon: post.icon, imageUrl: post.imageUrl),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
@@ -358,7 +619,7 @@ class _PostMealRow extends StatelessWidget {
             ),
           ),
           Text(
-            '${convertCalories(post.caloriesKcal)} $unitLabel',
+            '${valueForPost(post)} $unitLabel',
             style: context.text.bodyMedium?.copyWith(
               color: Colors.black,
               fontWeight: FontWeight.w800,
@@ -520,21 +781,33 @@ class _SectionCard extends StatelessWidget {
 
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
+  final String? imageUrl;
 
-  const _FoodIcon({required this.icon});
+  const _FoodIcon({required this.icon, this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
+    final url = imageUrl?.trim() ?? '';
     return Container(
       width: 32,
       height: 32,
+      clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: const Color(0xFFECE7CF),
         shape: BoxShape.circle,
         border: Border.all(color: const Color(0xFFD7C98D)),
       ),
-      child: Icon(icon, color: const Color(0xFF6D642C), size: 18),
+      child: url.isNotEmpty
+          ? Image.network(
+              url,
+              width: 32,
+              height: 32,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Icon(icon, color: const Color(0xFF6D642C), size: 18),
+            )
+          : Icon(icon, color: const Color(0xFF6D642C), size: 18),
     );
   }
 }

@@ -65,7 +65,7 @@ class NotificationTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       notification.message,
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.bodySmall?.copyWith(fontSize: 11),
                     ),
@@ -92,6 +92,14 @@ class NotificationTile extends StatelessWidget {
         return Icons.group_add_outlined;
       case AppNotificationType.newRating:
         return Icons.info_outline;
+      case AppNotificationType.newComment:
+        return Icons.chat_bubble_outline;
+      case AppNotificationType.newRecipe:
+        return Icons.restaurant_menu_outlined;
+      case AppNotificationType.newReply:
+        return Icons.reply_outlined;
+      case AppNotificationType.newLike:
+        return Icons.favorite_border;
       case AppNotificationType.planReminder:
         return Icons.schedule_outlined;
     }

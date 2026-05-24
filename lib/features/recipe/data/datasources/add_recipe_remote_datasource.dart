@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/services/cloudinary_service.dart';
+import '../../../../core/services/fcm_sender.dart';
 import '../../../../core/services/food_search_service.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_food_search_result.dart';
@@ -426,10 +427,199 @@ class AddRecipeRemoteDataSource {
     required String recipeId,
     required String visibility,
   }) async {
-    await firestore.collection('recipes').doc(recipeId).update({
+    final recipeRef = firestore.collection('recipes').doc(recipeId);
+    final snapshot = await recipeRef.get();
+    final previousVisibility = snapshot.data()?['visibility']?.toString();
+
+    await recipeRef.update({
       'visibility': visibility,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    if (visibility == 'public' &&
+        previousVisibility != 'public' &&
+        _isFinalizedRecipe(snapshot.data())) {
+      final data = snapshot.data() ?? const <String, dynamic>{};
+      final recipeOwnerUid = _recipeOwnerUid(
+        data,
+        fallbackUid: auth.currentUser?.uid ?? '',
+      );
+      await _notifyFollowersOfNewRecipe(
+        recipeOwnerUid: recipeOwnerUid,
+        recipeTitle: data['name']?.toString() ?? 'a new recipe',
+      );
+      await recipeRef.update({
+        'publicNotificationSentAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<void> finalizeRecipe(String recipeId) async {
+    final uid = auth.currentUser?.uid ?? '';
+    if (uid.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'not-authenticated',
+        message: 'User is not authenticated.',
+      );
+    }
+
+    final recipeRef = firestore.collection('recipes').doc(recipeId);
+    final snapshot = await recipeRef.get();
+    final data = snapshot.data();
+    if (!snapshot.exists || data == null) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        message: 'Recipe not found.',
+      );
+    }
+
+    final recipeOwnerUid = _recipeOwnerUid(data, fallbackUid: uid);
+    if (recipeOwnerUid != uid) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        message: 'Only the recipe creator can save this recipe.',
+      );
+    }
+
+    await recipeRef.update({
+      'isFinalized': true,
+      'finalizedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    if (data['visibility']?.toString() == 'public' &&
+        !_hasSentPublicNotification(data)) {
+      await _notifyFollowersOfNewRecipe(
+        recipeOwnerUid: _recipeOwnerUid(
+          data,
+          fallbackUid: auth.currentUser?.uid ?? '',
+        ),
+        recipeTitle: data['name']?.toString() ?? 'a new recipe',
+      );
+      await recipeRef.update({
+        'publicNotificationSentAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  String _recipeOwnerUid(
+    Map<String, dynamic> data, {
+    required String fallbackUid,
+  }) {
+    final creatorId = data['creatorId']?.toString().trim() ?? '';
+    if (creatorId.isNotEmpty) return creatorId;
+
+    final creatorUid = data['creatorUid']?.toString().trim() ?? '';
+    if (creatorUid.isNotEmpty) return creatorUid;
+
+    return fallbackUid;
+  }
+
+  bool _isFinalizedRecipe(Map<String, dynamic>? data) {
+    return data?['isFinalized'] != false;
+  }
+
+  bool _hasSentPublicNotification(Map<String, dynamic>? data) {
+    return data?['publicNotificationSentAt'] != null;
+  }
+
+  Future<void> _notifyFollowersOfNewRecipe({
+    required String recipeOwnerUid,
+    required String recipeTitle,
+  }) async {
+    if (recipeOwnerUid.isEmpty) return;
+    try {
+      final creatorName = await _currentUserName(recipeOwnerUid);
+      final followerUids = await _getFollowerUids(recipeOwnerUid);
+
+      for (final followerUid in followerUids) {
+        final notificationRef = await firestore
+            .collection('users')
+            .doc(followerUid)
+            .collection('notifications')
+            .add({
+              'type': 'newRecipe',
+              'title': 'New Recipe',
+              'message': '$creatorName posted $recipeTitle.',
+              'isRead': false,
+              'senderUid': recipeOwnerUid,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+        await _sendPushToUser(
+          receiverUid: followerUid,
+          title: 'New Recipe',
+          message: '$creatorName posted $recipeTitle.',
+          data: {
+            'type': 'newRecipe',
+            'notificationId': notificationRef.id,
+            'senderUid': recipeOwnerUid,
+          },
+        );
+      }
+    } on FirebaseException {
+      // Best-effort notification fan-out.
+    }
+  }
+
+  Future<List<String>> _getFollowerUids(String recipeOwnerUid) async {
+    final followerUids = <String>[];
+    final usersSnapshot = await firestore.collection('users').get();
+
+    for (final userDoc in usersSnapshot.docs) {
+      final followerUid = userDoc.id;
+      if (followerUid.isEmpty || followerUid == recipeOwnerUid) continue;
+
+      final followingDoc = await firestore
+          .collection('users')
+          .doc(followerUid)
+          .collection('followingCreators')
+          .doc(recipeOwnerUid)
+          .get();
+
+      if (followingDoc.exists) {
+        followerUids.add(followerUid);
+      }
+    }
+
+    return followerUids;
+  }
+
+  Future<void> _sendPushToUser({
+    required String receiverUid,
+    required String title,
+    required String message,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final userDoc = await firestore
+          .collection('users')
+          .doc(receiverUid)
+          .get();
+      final rawTokens = userDoc.data()?['fcmTokens'];
+      final tokens = rawTokens is Iterable
+          ? rawTokens
+                .map((token) => token?.toString().trim() ?? '')
+                .where((token) => token.isNotEmpty)
+                .toSet()
+          : <String>{};
+
+      for (final token in tokens) {
+        await FcmSender.instance.sendToToken(
+          deviceToken: token,
+          title: title,
+          body: message,
+          data: data,
+        );
+      }
+    } catch (_) {
+      // Push sending is best-effort; the Firestore notification remains saved.
+    }
+  }
+
+  Future<String> _currentUserName(String uid) async {
+    final doc = await firestore.collection('users').doc(uid).get();
+    final name = doc.data()?['name']?.toString().trim() ?? '';
+    return name.isEmpty ? 'Someone' : name;
   }
 
   Future<void> deleteRecipe(String recipeId) async {
@@ -507,6 +697,7 @@ class AddRecipeRemoteDataSource {
       'status': 'saved',
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await finalizeRecipe(recipeId);
   }
 
   Future<List<String>> _resolveOptionNames({

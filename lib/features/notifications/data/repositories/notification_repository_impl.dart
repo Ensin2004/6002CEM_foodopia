@@ -5,16 +5,26 @@ import '../../domain/entities/app_notification.dart';
 import '../../domain/entities/notification_preference.dart';
 import '../../domain/repositories/notification_repository.dart';
 import '../datasources/notification_local_datasource.dart';
+import '../datasources/notification_remote_datasource.dart';
 
 class NotificationRepositoryImpl implements NotificationRepository {
   final NotificationLocalDataSource localDataSource;
+  final NotificationRemoteDataSource remoteDataSource;
 
-  const NotificationRepositoryImpl({required this.localDataSource});
+  const NotificationRepositoryImpl({
+    required this.localDataSource,
+    required this.remoteDataSource,
+  });
 
   @override
   Future<Either<Failure, List<AppNotification>>> getNotifications() async {
     try {
-      return Right(await localDataSource.getNotifications());
+      final local = await localDataSource.getNotifications();
+      final remote = await _safeRemoteNotifications();
+      return Right(
+        [...remote, ...local]
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+      );
     } catch (_) {
       return Left(CacheFailure(message: 'Unable to load notifications'));
     }
@@ -35,6 +45,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
   Future<Either<Failure, void>> markAsRead(String notificationId) async {
     try {
       await localDataSource.markAsRead(notificationId);
+      await _safeRemoteMarkAsRead(notificationId);
       return const Right(null);
     } catch (_) {
       return Left(CacheFailure(message: 'Unable to update notification'));
@@ -45,6 +56,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
   Future<Either<Failure, void>> markAllAsRead() async {
     try {
       await localDataSource.markAllAsRead();
+      await _safeRemoteMarkAllAsRead();
       return const Right(null);
     } catch (_) {
       return Left(CacheFailure(message: 'Unable to update notifications'));
@@ -79,5 +91,25 @@ class NotificationRepositoryImpl implements NotificationRepository {
     } catch (_) {
       return Left(CacheFailure(message: 'Unable to schedule notification'));
     }
+  }
+
+  Future<List<AppNotification>> _safeRemoteNotifications() async {
+    try {
+      return await remoteDataSource.getNotifications();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> _safeRemoteMarkAsRead(String notificationId) async {
+    try {
+      await remoteDataSource.markAsRead(notificationId);
+    } catch (_) {}
+  }
+
+  Future<void> _safeRemoteMarkAllAsRead() async {
+    try {
+      await remoteDataSource.markAllAsRead();
+    } catch (_) {}
   }
 }

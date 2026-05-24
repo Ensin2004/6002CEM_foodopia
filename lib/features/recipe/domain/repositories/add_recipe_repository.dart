@@ -37,6 +37,8 @@ abstract class AddRecipeRepository {
 
   Future<Either<Failure, AddRecipeReview>> getReview(String recipeId);
 
+  Future<Either<Failure, void>> finalizeRecipe(String recipeId);
+
   Future<Either<Failure, void>> updateVisibility({
     required String recipeId,
     required String visibility,
