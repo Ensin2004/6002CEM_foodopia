@@ -98,7 +98,7 @@ class NotificationTile extends StatelessWidget {
         return Icons.restaurant_menu_outlined;
       case AppNotificationType.newReply:
         return Icons.reply_outlined;
-      case AppNotificationType.newFavourite:
+      case AppNotificationType.newLike:
         return Icons.favorite_border;
       case AppNotificationType.planReminder:
         return Icons.schedule_outlined;

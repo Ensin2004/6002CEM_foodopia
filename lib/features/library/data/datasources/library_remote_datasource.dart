@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/services/cloudinary_service.dart';
-import '../../../../core/services/fcm_sender.dart';
 import '../../domain/entities/library_profile.dart';
 import '../../domain/entities/library_recipe.dart';
 import '../models/library_recipe_model.dart';
@@ -126,95 +125,10 @@ class LibraryRemoteDataSource {
         'recipeId': recipeId,
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-      await _notifyRecipeFavourite(recipeId: recipeId, senderUid: uid);
       return;
     }
 
     await favouriteRef.delete();
-  }
-
-  Future<void> _notifyRecipeFavourite({
-    required String recipeId,
-    required String senderUid,
-  }) async {
-    try {
-      final recipeDoc = await firestore
-          .collection('recipes')
-          .doc(recipeId)
-          .get();
-      if (!recipeDoc.exists) return;
-      final data = recipeDoc.data() ?? const <String, dynamic>{};
-      final ownerUid = _recipeCreatorUid(data);
-      if (ownerUid.isEmpty || ownerUid == senderUid) return;
-
-      final senderName = await _currentUserName(senderUid);
-      final recipeTitle = _firstNotBlank([
-        data['name']?.toString(),
-        data['recipeName']?.toString(),
-        'your recipe',
-      ]);
-      final title = 'New Favourite';
-      final message = '$senderName saved $recipeTitle to favourites.';
-      final notificationRef = await firestore
-          .collection('users')
-          .doc(ownerUid)
-          .collection('notifications')
-          .add({
-            'type': 'newFavourite',
-            'title': title,
-            'message': message,
-            'isRead': false,
-            'senderUid': senderUid,
-            'recipeId': recipeId,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-
-      await _sendPushToUser(
-        receiverUid: ownerUid,
-        title: title,
-        message: message,
-        data: {
-          'type': 'newFavourite',
-          'notificationId': notificationRef.id,
-          'senderUid': senderUid,
-          'recipeId': recipeId,
-        },
-      );
-    } on FirebaseException {
-      // Favourite notifications are best-effort.
-    }
-  }
-
-  Future<void> _sendPushToUser({
-    required String receiverUid,
-    required String title,
-    required String message,
-    required Map<String, dynamic> data,
-  }) async {
-    try {
-      final userDoc = await firestore
-          .collection('users')
-          .doc(receiverUid)
-          .get();
-      final rawTokens = userDoc.data()?['fcmTokens'];
-      final tokens = rawTokens is Iterable
-          ? rawTokens
-                .map((token) => token?.toString().trim() ?? '')
-                .where((token) => token.isNotEmpty)
-                .toSet()
-          : <String>{};
-
-      for (final token in tokens) {
-        await FcmSender.instance.sendToToken(
-          deviceToken: token,
-          title: title,
-          body: message,
-          data: data,
-        );
-      }
-    } catch (_) {
-      // Firestore notification remains saved even if push sending fails.
-    }
   }
 
   String _currentUid() {
@@ -406,17 +320,6 @@ class LibraryRemoteDataSource {
       data['creatorUid']?.toString(),
       data['creatorId']?.toString(),
       data['userId']?.toString(),
-    ]);
-  }
-
-  Future<String> _currentUserName(String uid) async {
-    final doc = await firestore.collection('users').doc(uid).get();
-    final data = doc.data() ?? const <String, dynamic>{};
-    return _firstNotBlank([
-      data['name']?.toString(),
-      data['firstName']?.toString(),
-      auth.currentUser?.displayName,
-      'Someone',
     ]);
   }
 

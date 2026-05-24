@@ -758,17 +758,29 @@ class ExploreRemoteDataSource {
         .collection('comments')
         .doc(commentId);
     final likeRef = commentRef.collection('likedBy').doc(uid);
+    var isNewLike = false;
+    var commentOwnerUid = '';
+    var recipeTitle = 'your comment';
 
     await firestore.runTransaction((transaction) async {
       final commentSnapshot = await transaction.get(commentRef);
       if (!commentSnapshot.exists) {
         throw StateError('Comment not found');
       }
+      final recipeSnapshot = await transaction.get(
+        firestore.collection('recipes').doc(recipeId),
+      );
+      commentOwnerUid = _stringValue(commentSnapshot.data()?['userId']);
+      recipeTitle = _stringValue(
+        recipeSnapshot.data()?['name'],
+        fallback: 'your comment',
+      );
       final likeSnapshot = await transaction.get(likeRef);
       if (likeSnapshot.exists) {
         transaction.delete(likeRef);
         transaction.update(commentRef, {'likes': FieldValue.increment(-1)});
       } else {
+        isNewLike = true;
         transaction.set(likeRef, {
           'userId': uid,
           'createdAt': FieldValue.serverTimestamp(),
@@ -776,6 +788,16 @@ class ExploreRemoteDataSource {
         transaction.update(commentRef, {'likes': FieldValue.increment(1)});
       }
     });
+
+    if (isNewLike) {
+      await _notifyUser(
+        receiverUid: commentOwnerUid,
+        type: 'newLike',
+        title: 'New Like',
+        message:
+            '${await _currentUserName()} liked your comment on $recipeTitle.',
+      );
+    }
   }
 
   Future<void> addCommentReply({
@@ -828,17 +850,23 @@ class ExploreRemoteDataSource {
     final uid = _requiredUid();
     final replyRef = firestore.doc(replyPath);
     final likeRef = replyRef.collection('likedBy').doc(uid);
+    var isNewLike = false;
+    var replyOwnerUid = '';
+    var recipeTitle = 'your reply';
 
     await firestore.runTransaction((transaction) async {
       final replySnapshot = await transaction.get(replyRef);
       if (!replySnapshot.exists) {
         throw StateError('Reply not found');
       }
+      replyOwnerUid = _stringValue(replySnapshot.data()?['userId']);
+      recipeTitle = await _recipeTitleFromReplyPath(replyPath);
       final likeSnapshot = await transaction.get(likeRef);
       if (likeSnapshot.exists) {
         transaction.delete(likeRef);
         transaction.update(replyRef, {'likes': FieldValue.increment(-1)});
       } else {
+        isNewLike = true;
         transaction.set(likeRef, {
           'userId': uid,
           'createdAt': FieldValue.serverTimestamp(),
@@ -846,6 +874,16 @@ class ExploreRemoteDataSource {
         transaction.update(replyRef, {'likes': FieldValue.increment(1)});
       }
     });
+
+    if (isNewLike) {
+      await _notifyUser(
+        receiverUid: replyOwnerUid,
+        type: 'newLike',
+        title: 'New Like',
+        message:
+            '${await _currentUserName()} liked your reply on $recipeTitle.',
+      );
+    }
   }
 
   Future<void> addReplyToReply({
