@@ -122,74 +122,6 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _confirmVisibilityChange(
-    ExploreRecipeDetailViewModel viewModel,
-  ) async {
-    final nextPublished = !_isPublished;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(
-            nextPublished ? 'Publish recipe?' : 'Make recipe private?',
-          ),
-          content: Text(
-            nextPublished
-                ? 'This recipe will be visible to other users in Explore.'
-                : 'This recipe will be hidden from Explore but remain in your library.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(nextPublished ? 'Publish' : 'Make Private'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    final rootNavigator = Navigator.of(context, rootNavigator: true);
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => LoadingDialog(
-        message: nextPublished ? 'Publishing recipe...' : 'Updating recipe...',
-      ),
-    );
-
-    final success = await viewModel.updateVisibility(
-      isPublished: nextPublished,
-    );
-
-    if (!mounted) return;
-    rootNavigator.pop();
-
-    if (success) {
-      setState(() => _isPublished = nextPublished);
-    }
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? nextPublished
-                      ? 'Recipe published.'
-                      : 'Recipe is now private.'
-                : viewModel.communityActionErrorMessage ??
-                      'Unable to update recipe visibility.',
-          ),
-        ),
-      );
-  }
-
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChanged);
@@ -209,21 +141,17 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
           onPressed: () => context.pop(),
           icon: const Icon(Icons.chevron_left),
         ),
-        actions: [
-          IconButton(
-            onPressed: viewModel.recipe == null
-                ? null
-                : () => _toggleFavourite(viewModel),
-            icon: Icon(
-              viewModel.recipe?.isFavourite == true
-                  ? Icons.favorite
-                  : Icons.favorite_border,
-              color: viewModel.recipe?.isFavourite == true
-                  ? AppColors.favourite
-                  : null,
-            ),
-          ),
-        ],
+        actions: widget.showLibraryActions
+            ? [
+                IconButton(
+                  tooltip: 'Edit recipe',
+                  onPressed: viewModel.recipe == null
+                      ? null
+                      : () => _openRecipeReview(viewModel),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+              ]
+            : null,
       ),
       body: _DetailBody(
         viewModel: viewModel,
@@ -231,8 +159,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         onComingSoonTap: _showComingSoonMessage,
         showLibraryActions: widget.showLibraryActions,
         isPublished: _isPublished,
-        onEditTap: () => _openRecipeReview(viewModel),
-        onVisibilityTap: () => _confirmVisibilityChange(viewModel),
+        onFavouriteTap: () => _toggleFavourite(viewModel),
       ),
     );
   }
@@ -242,8 +169,7 @@ class _DetailBody extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final TabController tabController;
   final VoidCallback onComingSoonTap;
-  final VoidCallback onEditTap;
-  final VoidCallback onVisibilityTap;
+  final VoidCallback onFavouriteTap;
   final bool showLibraryActions;
   final bool isPublished;
 
@@ -251,8 +177,7 @@ class _DetailBody extends StatelessWidget {
     required this.viewModel,
     required this.tabController,
     required this.onComingSoonTap,
-    required this.onEditTap,
-    required this.onVisibilityTap,
+    required this.onFavouriteTap,
     required this.showLibraryActions,
     required this.isPublished,
   });
@@ -282,16 +207,14 @@ class _DetailBody extends StatelessWidget {
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: EdgeInsets.zero,
       children: [
-        _HeroImage(
-          recipe: recipe,
-          showLibraryActions: showLibraryActions,
-          isPublished: isPublished,
-          onEditTap: onEditTap,
-          onVisibilityTap: onVisibilityTap,
-        ),
+        _HeroImage(recipe: recipe),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: _RecipeHeader(recipe: recipe, isPublished: isPublished),
+          child: _RecipeHeader(
+            recipe: recipe,
+            isPublished: isPublished,
+            onFavouriteTap: onFavouriteTap,
+          ),
         ),
         _TopTabs(tabController: tabController),
         Padding(
@@ -310,18 +233,8 @@ class _DetailBody extends StatelessWidget {
 
 class _HeroImage extends StatefulWidget {
   final ExploreRecipe recipe;
-  final bool showLibraryActions;
-  final bool isPublished;
-  final VoidCallback onEditTap;
-  final VoidCallback onVisibilityTap;
 
-  const _HeroImage({
-    required this.recipe,
-    required this.showLibraryActions,
-    required this.isPublished,
-    required this.onEditTap,
-    required this.onVisibilityTap,
-  });
+  const _HeroImage({required this.recipe});
 
   @override
   State<_HeroImage> createState() => _HeroImageState();
@@ -382,28 +295,6 @@ class _HeroImageState extends State<_HeroImage> {
             ),
           ),
         ),
-        if (widget.showLibraryActions) ...[
-          Positioned(
-            left: 8,
-            top: 8,
-            child: _LibraryImageActionButton(
-              label: 'Edit',
-              foregroundColor: AppColors.textPrimary,
-              onTap: widget.onEditTap,
-            ),
-          ),
-          Positioned(
-            right: 8,
-            top: 8,
-            child: _LibraryImageActionButton(
-              label: widget.isPublished ? 'Private' : 'Publish',
-              foregroundColor: widget.isPublished
-                  ? AppColors.error
-                  : AppColors.primary,
-              onTap: widget.onVisibilityTap,
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -449,47 +340,16 @@ class _HeroImageState extends State<_HeroImage> {
   }
 }
 
-class _LibraryImageActionButton extends StatelessWidget {
-  final String label;
-  final Color foregroundColor;
-  final VoidCallback onTap;
-
-  const _LibraryImageActionButton({
-    required this.label,
-    required this.foregroundColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.92),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: context.text.bodySmall?.copyWith(
-              color: foregroundColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _RecipeHeader extends StatelessWidget {
   final ExploreRecipe recipe;
   final bool isPublished;
+  final VoidCallback onFavouriteTap;
 
-  const _RecipeHeader({required this.recipe, required this.isPublished});
+  const _RecipeHeader({
+    required this.recipe,
+    required this.isPublished,
+    required this.onFavouriteTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -498,11 +358,33 @@ class _RecipeHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          recipe.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: textTheme.titleLarge,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                recipe.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleLarge,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: recipe.isFavourite
+                  ? 'Remove from favourites'
+                  : 'Add to favourites',
+              onPressed: onFavouriteTap,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+              visualDensity: VisualDensity.compact,
+              icon: Icon(
+                recipe.isFavourite ? Icons.favorite : Icons.favorite_border,
+                size: 22,
+                color: recipe.isFavourite ? AppColors.favourite : null,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 4),
         Text(

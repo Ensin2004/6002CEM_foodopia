@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/library_profile.dart';
 import '../../domain/entities/library_recipe.dart';
+import '../../domain/usecases/get_library_followers_usecase.dart';
+import '../../domain/usecases/get_library_following_usecase.dart';
 import '../../domain/usecases/get_library_profile_usecase.dart';
 import '../../domain/usecases/get_library_recipes_usecase.dart';
 import '../../domain/usecases/toggle_library_recipe_favourite_usecase.dart';
@@ -12,26 +14,36 @@ import '../../domain/usecases/update_library_profile_usecase.dart';
 
 class LibraryViewModel extends ChangeNotifier {
   final GetLibraryProfileUseCase _getProfileUseCase;
+  final GetLibraryFollowersUseCase _getFollowersUseCase;
+  final GetLibraryFollowingUseCase _getFollowingUseCase;
   final GetLibraryRecipesUseCase _getRecipesUseCase;
   final ToggleLibraryRecipeFavouriteUseCase _toggleFavouriteUseCase;
   final UpdateLibraryProfileUseCase _updateProfileUseCase;
 
   LibraryProfile? _profile;
+  List<LibraryProfileUser> _followers = const [];
+  List<LibraryProfileUser> _following = const [];
   List<LibraryRecipe> _recipes = const [];
   LibraryRecipeTab _selectedTab = LibraryRecipeTab.public;
   String _query = '';
   bool _isLoading = true;
   bool _isSavingProfile = false;
+  bool _isLoadingFollowers = false;
+  bool _isLoadingFollowing = false;
   bool _isDisposed = false;
   String? _errorMessage;
 
   LibraryViewModel({
     required GetLibraryProfileUseCase getProfileUseCase,
+    required GetLibraryFollowersUseCase getFollowersUseCase,
+    required GetLibraryFollowingUseCase getFollowingUseCase,
     required GetLibraryRecipesUseCase getRecipesUseCase,
     required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
     required UpdateLibraryProfileUseCase updateProfileUseCase,
     LibraryRecipeTab initialTab = LibraryRecipeTab.public,
   }) : _getProfileUseCase = getProfileUseCase,
+       _getFollowersUseCase = getFollowersUseCase,
+       _getFollowingUseCase = getFollowingUseCase,
        _getRecipesUseCase = getRecipesUseCase,
        _toggleFavouriteUseCase = toggleFavouriteUseCase,
        _updateProfileUseCase = updateProfileUseCase,
@@ -40,11 +52,15 @@ class LibraryViewModel extends ChangeNotifier {
   }
 
   LibraryProfile? get profile => _profile;
+  List<LibraryProfileUser> get followers => _followers;
+  List<LibraryProfileUser> get following => _following;
   List<LibraryRecipe> get recipes => _recipes;
   LibraryRecipeTab get selectedTab => _selectedTab;
   String get query => _query;
   bool get isLoading => _isLoading;
   bool get isSavingProfile => _isSavingProfile;
+  bool get isLoadingFollowers => _isLoadingFollowers;
+  bool get isLoadingFollowing => _isLoadingFollowing;
   String? get errorMessage => _errorMessage;
   int get postCount =>
       _recipes.where((recipe) => recipe.isSelfPublished).length;
@@ -160,6 +176,50 @@ class LibraryViewModel extends ChangeNotifier {
     }
 
     _isSavingProfile = false;
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> loadFollowers() async {
+    _isLoadingFollowers = true;
+    _errorMessage = null;
+    _notifyIfActive();
+
+    final result = await _getFollowersUseCase.execute();
+    if (_isDisposed) return false;
+
+    var success = false;
+    result.ifRight((followers) {
+      _followers = followers;
+      success = true;
+    });
+    result.ifLeft((failure) {
+      _errorMessage = failure.message;
+    });
+
+    _isLoadingFollowers = false;
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> loadFollowing() async {
+    _isLoadingFollowing = true;
+    _errorMessage = null;
+    _notifyIfActive();
+
+    final result = await _getFollowingUseCase.execute();
+    if (_isDisposed) return false;
+
+    var success = false;
+    result.ifRight((following) {
+      _following = following;
+      success = true;
+    });
+    result.ifLeft((failure) {
+      _errorMessage = failure.message;
+    });
+
+    _isLoadingFollowing = false;
     _notifyIfActive();
     return success;
   }

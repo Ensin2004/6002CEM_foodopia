@@ -50,6 +50,12 @@ class LibraryArgs {
   const LibraryArgs({this.focusedRecipeId, this.focusedRecipeIsPublished});
 }
 
+class LibraryProfileUsersArgs {
+  final bool showFollowers;
+
+  const LibraryProfileUsersArgs({required this.showFollowers});
+}
+
 /// Typed arguments for explore creator detail route.
 class ExploreCreatorDetailArgs {
   final String creatorUid;

@@ -38,9 +38,46 @@ class LibraryRemoteDataSource {
         'Hi, I am $name, a recipe developer',
       ]),
       imageUrl: imageUrl,
-      followersCount: _intValue(data['followersCount']) ?? 0,
-      followingCount: _intValue(data['followingCount']) ?? 0,
+      followersCount:
+          _intValue(data['followersCount']) ??
+          _intValue(data['followerCount']) ??
+          0,
+      followingCount: await _followingCount(uid, data),
     );
+  }
+
+  Future<List<LibraryProfileUser>> getFollowers() async {
+    final uid = _currentUid();
+    final usersSnapshot = await firestore.collection('users').get();
+
+    final followerIds = <String>{};
+    await Future.wait(
+      usersSnapshot.docs.where((doc) => doc.id != uid).map((doc) async {
+        final followDoc = await doc.reference
+            .collection('followingCreators')
+            .doc(uid)
+            .get();
+        if (followDoc.exists) followerIds.add(doc.id);
+      }),
+    );
+
+    return _getProfileUsers(followerIds);
+  }
+
+  Future<List<LibraryProfileUser>> getFollowing() async {
+    final uid = _currentUid();
+    final snapshot = await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('followingCreators')
+        .get();
+
+    final creatorIds = snapshot.docs
+        .map((doc) => doc.data()['creatorUid']?.toString() ?? doc.id)
+        .where((id) => _isNotBlank(id) && id != uid)
+        .toSet();
+
+    return _getProfileUsers(creatorIds);
   }
 
   Future<void> updateProfile({
@@ -79,6 +116,60 @@ class LibraryRemoteDataSource {
     if (imageUrl != null && imageUrl.isNotEmpty) {
       await auth.currentUser?.updatePhotoURL(imageUrl);
     }
+  }
+
+  Future<int> _followingCount(String uid, Map<String, dynamic> data) async {
+    final storedCount =
+        _intValue(data['followingCount']) ?? _intValue(data['following']);
+    if (storedCount != null && storedCount > 0) return storedCount;
+
+    final snapshot = await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('followingCreators')
+        .count()
+        .get();
+    return snapshot.count ?? 0;
+  }
+
+  Future<List<LibraryProfileUser>> _getProfileUsers(Set<String> uids) async {
+    if (uids.isEmpty) return const [];
+
+    final users = <LibraryProfileUser>[];
+    for (final chunk in _chunks(uids.toList(), 10)) {
+      final snapshot = await firestore
+          .collection('users')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      users.addAll(snapshot.docs.map(_profileUserFromSnapshot));
+    }
+
+    users.sort((first, second) => first.name.compareTo(second.name));
+    return users;
+  }
+
+  LibraryProfileUser _profileUserFromSnapshot(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? const <String, dynamic>{};
+    return LibraryProfileUser(
+      uid: doc.id,
+      name: _firstNotBlank([
+        data['name']?.toString(),
+        data['displayName']?.toString(),
+        'Foodopia User',
+      ]),
+      imageUrl: _firstNotBlank([
+        data['profileImage']?.toString(),
+        data['profileImageUrl']?.toString(),
+        data['photoUrl']?.toString(),
+        'assets/images/onboarding1.png',
+      ]),
+      followerCount:
+          _intValue(data['followersCount']) ??
+          _intValue(data['followerCount']) ??
+          0,
+    );
   }
 
   Future<List<LibraryRecipeModel>> getRecipes() async {
