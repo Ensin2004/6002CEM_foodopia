@@ -7,6 +7,7 @@ import '../../../../app/routers/app_router.dart';
 import '../../../../app/routers/router_args.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/entities/explore_recipe.dart';
@@ -17,24 +18,46 @@ import '../widgets/explore_empty_state.dart';
 import '../widgets/explore_recipe_grid.dart';
 
 class ExplorePage extends StatelessWidget {
-  const ExplorePage({super.key});
+  final bool showAppBar;
+  final MealPlanSelectionArgs? mealPlanSelection;
+
+  const ExplorePage({
+    super.key,
+    this.showAppBar = false,
+    this.mealPlanSelection,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
+    final page = ChangeNotifierProvider(
       create: (_) => ExploreViewModel(
         getRecipesUseCase: sl(),
         watchRecipesUseCase: sl(),
         toggleCreatorFollowUseCase: sl(),
         toggleFavouriteUseCase: sl(),
       ),
-      child: const _ExplorePageView(),
+      child: _ExplorePageView(mealPlanSelection: mealPlanSelection),
+    );
+    if (!showAppBar) return page;
+
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: CustomAppBar(
+        title: 'Explore Community Recipes',
+        leading: IconButton(
+          onPressed: () => context.pop(),
+          icon: const Icon(Icons.chevron_left),
+        ),
+      ),
+      body: page,
     );
   }
 }
 
 class _ExplorePageView extends StatefulWidget {
-  const _ExplorePageView();
+  final MealPlanSelectionArgs? mealPlanSelection;
+
+  const _ExplorePageView({this.mealPlanSelection});
 
   @override
   State<_ExplorePageView> createState() => _ExplorePageViewState();
@@ -124,6 +147,7 @@ class _ExplorePageViewState extends State<_ExplorePageView>
             Expanded(
               child: _ExploreContent(
                 viewModel: viewModel,
+                mealPlanSelection: widget.mealPlanSelection,
                 onExploreNow: () => _selectTab(ExploreRecipeTab.all),
                 onCommentTap: _showCommentsPopup,
               ),
@@ -276,11 +300,13 @@ class _ExploreCommentsDialogBody extends StatelessWidget {
 
 class _ExploreContent extends StatelessWidget {
   final ExploreViewModel viewModel;
+  final MealPlanSelectionArgs? mealPlanSelection;
   final VoidCallback onExploreNow;
   final ValueChanged<ExploreRecipe> onCommentTap;
 
   const _ExploreContent({
     required this.viewModel,
+    this.mealPlanSelection,
     required this.onExploreNow,
     required this.onCommentTap,
   });
@@ -336,7 +362,10 @@ class _ExploreContent extends StatelessWidget {
         onRecipeTap: (recipe) {
           context.push(
             AppRouter.exploreRecipeDetail,
-            extra: ExploreRecipeDetailArgs(recipeId: recipe.id),
+            extra: ExploreRecipeDetailArgs(
+              recipeId: recipe.id,
+              mealPlanSelection: mealPlanSelection,
+            ),
           );
         },
       ),

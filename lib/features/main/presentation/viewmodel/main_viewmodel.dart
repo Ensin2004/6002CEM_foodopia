@@ -21,8 +21,10 @@ class MainViewModel extends ChangeNotifier {
     required this.user,
     required MainRepository repository,
     int initialIndex = 0,
+    int initialMealPlanTabIndex = 0,
   }) : _repository = repository,
        _selectedIndex = initialIndex {
+    _mealPlanInitialTabIndex = initialMealPlanTabIndex.clamp(0, 2);
     _loadUserProfile();
     _updateLastLogin();
   }

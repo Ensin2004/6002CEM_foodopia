@@ -28,12 +28,14 @@ class PostRatingItem {
   final double rating;
   final int ratingCount;
   final IconData icon;
+  final String? imageUrl;
 
   const PostRatingItem({
     required this.name,
     required this.rating,
     required this.ratingCount,
     required this.icon,
+    this.imageUrl,
   });
 }
 

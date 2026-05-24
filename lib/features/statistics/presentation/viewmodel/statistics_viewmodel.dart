@@ -50,6 +50,7 @@ class StatisticsViewModel extends ChangeNotifier {
   void selectAudience(int index) {
     if (_selectedAudienceIndex == index) return;
     _selectedAudienceIndex = index;
+    _selectedHeroIndex = 0;
     _notifyIfActive();
   }
 

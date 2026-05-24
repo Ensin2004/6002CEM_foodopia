@@ -8,12 +8,16 @@ class StatisticsBarChartItem {
   final int value;
   final IconData icon;
   final Color color;
+  final String? imageUrl;
+  final String? markerText;
 
   const StatisticsBarChartItem({
     required this.label,
     required this.value,
     required this.icon,
     required this.color,
+    this.imageUrl,
+    this.markerText,
   });
 }
 
@@ -153,11 +157,7 @@ class StatisticsBarChart extends StatelessWidget {
                                           color: const Color(0xFFD7C98D),
                                         ),
                                       ),
-                                      child: Icon(
-                                        item.icon,
-                                        size: 17,
-                                        color: const Color(0xFF6D642C),
-                                      ),
+                                      child: _ChartMarkerContent(item: item),
                                     ),
                                   ),
                                 ),
@@ -194,5 +194,61 @@ class StatisticsBarChart extends StatelessWidget {
       final value = highestValue - ((highestValue * index) / 4).round();
       return value.clamp(0, highestValue);
     });
+  }
+}
+
+class _ChartMarkerContent extends StatelessWidget {
+  final StatisticsBarChartItem item;
+
+  const _ChartMarkerContent({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    if (item.imageUrl?.isNotEmpty == true) {
+      return ClipOval(
+        child: Image.network(
+          item.imageUrl!,
+          width: 34,
+          height: 34,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stack) =>
+              Icon(item.icon, size: 17, color: const Color(0xFF6D642C)),
+        ),
+      );
+    }
+
+    final text = _markerText(item.markerText);
+    if (text.isNotEmpty) {
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          maxLines: 1,
+          style: context.text.bodySmall?.copyWith(
+            color: const Color(0xFF6D642C),
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      );
+    }
+
+    return Icon(item.icon, size: 17, color: const Color(0xFF6D642C));
+  }
+
+  String _markerText(String? value) {
+    final words = value
+        ?.trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+    if (words == null || words.isEmpty) return '';
+    if (words.length == 1) {
+      final word = words.first;
+      return word.length <= 2
+          ? word.toUpperCase()
+          : word.substring(0, 2).toUpperCase();
+    }
+    return words.take(2).map((word) => word[0].toUpperCase()).join();
   }
 }

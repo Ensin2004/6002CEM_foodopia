@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../../library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
+import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../../domain/usecases/add_recipe_comment_usecase.dart';
 import '../../domain/usecases/add_recipe_comment_reply_usecase.dart';
@@ -40,6 +42,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   final ToggleCreatorFollowUseCase _toggleCreatorFollowUseCase;
   final UpdateRecipeVisibilityUseCase _updateRecipeVisibilityUseCase;
   final ToggleLibraryRecipeFavouriteUseCase _toggleFavouriteUseCase;
+  final SaveRecipeMealPlanUseCase? _saveRecipeMealPlanUseCase;
   final String recipeId;
 
   ExploreRecipe? _recipe;
@@ -55,6 +58,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   bool _isLoading = true;
   bool _isSubmittingCommunityAction = false;
   bool _isUpdatingVisibility = false;
+  bool _isSavingMealPlan = false;
   bool _isDisposed = false;
   String? _errorMessage;
   String? _communityActionErrorMessage;
@@ -73,6 +77,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     required ToggleCreatorFollowUseCase toggleCreatorFollowUseCase,
     required UpdateRecipeVisibilityUseCase updateRecipeVisibilityUseCase,
     required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
+    SaveRecipeMealPlanUseCase? saveRecipeMealPlanUseCase,
   }) : _getRecipeDetailUseCase = getRecipeDetailUseCase,
        _submitRecipeRatingUseCase = submitRecipeRatingUseCase,
        _addRecipeCommentUseCase = addRecipeCommentUseCase,
@@ -84,7 +89,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
        _watchRecipeDetailUseCase = watchRecipeDetailUseCase,
        _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
        _updateRecipeVisibilityUseCase = updateRecipeVisibilityUseCase,
-       _toggleFavouriteUseCase = toggleFavouriteUseCase {
+       _toggleFavouriteUseCase = toggleFavouriteUseCase,
+       _saveRecipeMealPlanUseCase = saveRecipeMealPlanUseCase {
     Future.microtask(_openRecipe);
     _watchRecipeDetail();
   }
@@ -99,6 +105,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isSubmittingCommunityAction => _isSubmittingCommunityAction;
   bool get isUpdatingVisibility => _isUpdatingVisibility;
+  bool get isSavingMealPlan => _isSavingMealPlan;
   String? get errorMessage => _errorMessage;
   String? get communityActionErrorMessage => _communityActionErrorMessage;
 
@@ -483,6 +490,49 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     }
 
     _isUpdatingVisibility = false;
+    _notifyIfActive();
+    return success;
+  }
+
+  Future<bool> saveToMealPlan({
+    required String userId,
+    required DateTime date,
+    required AddMealCategoryOption mealCategory,
+    required String source,
+  }) async {
+    final recipe = _recipe;
+    final useCase = _saveRecipeMealPlanUseCase;
+    if (recipe == null || useCase == null || _isSavingMealPlan) return false;
+
+    _isSavingMealPlan = true;
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await useCase.execute(
+      userId: userId,
+      date: date,
+      mealCategory: mealCategory,
+      recipe: AddMealAiRecipe(
+        id: recipe.id,
+        title: recipe.title,
+        durationLabel: recipe.totalTime,
+        difficultyLabel: recipe.difficulty,
+        servingLabel: '1 serving',
+        imagePath: recipe.imagePath,
+        description: recipe.description,
+        reasons: const [],
+        calories: recipe.nutrition.calories,
+        categoryName: recipe.category,
+      ),
+      source: source,
+    );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+    _isSavingMealPlan = false;
     _notifyIfActive();
     return success;
   }

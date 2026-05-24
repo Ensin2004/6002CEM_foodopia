@@ -9,7 +9,7 @@ class GetMealPlanWeatherUseCase {
 
   const GetMealPlanWeatherUseCase(this.repository);
 
-  Future<Either<Failure, MealPlanWeather>> execute() {
-    return repository.getTodayWeather();
+  Future<Either<Failure, MealPlanWeather>> execute(DateTime date) {
+    return repository.getWeatherForDate(date);
   }
 }

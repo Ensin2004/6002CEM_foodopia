@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dartz/dartz.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../../../../core/auth/role_manager.dart';
+import '../../../../core/services/fcm_notification_service.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/entities/user_entity.dart';
 import '../datasources/auth_remote_datasource.dart';
@@ -35,6 +36,8 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final userDoc = await remoteDataSource.getUserFromFirestore(user.uid);
+      await remoteDataSource.saveFcmToken(user.uid);
+      await FcmNotificationService.initialize();
       final userEntity = UserModel.fromFirebase(user, userDoc);
 
       return Right(userEntity);
@@ -106,6 +109,7 @@ class AuthRepositoryImpl implements AuthRepository {
           'role': RoleManager().getDefaultRole(),
         },
       );
+      await remoteDataSource.saveFcmToken(user.uid);
 
       await remoteDataSource.sendEmailVerification();
 

@@ -1,0 +1,540 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../../../app/dependency_injection/injection_container.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/theme_extension.dart';
+import '../../../../core/widgets/custom_app_bar.dart';
+import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../domain/entities/recipe_performance_statistics.dart';
+import '../../domain/usecases/get_recipe_performance_statistics_usecase.dart';
+import '../viewmodel/recipe_performance_viewmodel.dart';
+import '../widgets/statistics_bar_chart.dart';
+import '../widgets/statistics_page_helpers.dart';
+
+class RecipePerformancePage extends StatelessWidget {
+  const RecipePerformancePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => RecipePerformanceViewModel(
+        getStatisticsUseCase: sl<GetRecipePerformanceStatisticsUseCase>(),
+      ),
+      child: const _RecipePerformanceView(),
+    );
+  }
+}
+
+class _RecipePerformanceView extends StatelessWidget {
+  const _RecipePerformanceView();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<RecipePerformanceViewModel>();
+
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: const CustomAppBar(
+        title: 'Recipe Performance',
+        leading: StatisticsBackButton(),
+      ),
+      body: _buildBody(context, viewModel),
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context,
+    RecipePerformanceViewModel viewModel,
+  ) {
+    if (viewModel.isLoading && viewModel.statistics == null) {
+      return const LoadingDialog(
+        inline: true,
+        message: 'Loading performance...',
+      );
+    }
+
+    final statistics = viewModel.statistics;
+    if (statistics == null) {
+      return StatisticsErrorState(
+        message: viewModel.errorMessage ?? 'Unable to load recipe performance',
+        onRetry: viewModel.loadStatistics,
+      );
+    }
+
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.sm,
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.xl,
+        ),
+        child: Column(
+          children: [
+            StatisticsDateRangeBar(
+              dateRange: statistics.dateRange,
+              onTap: () => _showUnavailable(context),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _SummaryGrid(
+              tiles: [
+                _SummaryTileData(
+                  icon: Icons.comment_outlined,
+                  title: 'Comments',
+                  value: statistics.totalComments.toString(),
+                ),
+                _SummaryTileData(
+                  icon: Icons.visibility_outlined,
+                  title: 'Views',
+                  value: statistics.totalViews.toString(),
+                ),
+                _SummaryTileData(
+                  icon: Icons.favorite_border,
+                  title: 'Favourites',
+                  value: statistics.totalFavourites.toString(),
+                ),
+                _SummaryTileData(
+                  icon: Icons.star_border,
+                  title: 'Ratings',
+                  value: statistics.totalRatings.toString(),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _ChartCard(recipe: viewModel.selectedRecipe),
+            const SizedBox(height: AppSpacing.lg),
+            _RecipeList(
+              recipes: statistics.recipes,
+              selectedRecipeId: viewModel.selectedRecipeId,
+              onSelected: viewModel.selectRecipe,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showUnavailable(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Date filter is not available for this section',
+          style: context.text.bodyMedium?.copyWith(color: Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChartCard extends StatelessWidget {
+  final RecipePerformanceItem? recipe;
+
+  const _ChartCard({required this.recipe});
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedRecipe = recipe;
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  selectedRecipe?.name ?? 'Recipe Activity',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          const Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
+            children: [
+              _Legend(color: Color(0xFF7C5CFF), label: 'Comment'),
+              _Legend(color: Color(0xFF65C8F4), label: 'View'),
+              _Legend(color: AppColors.favourite, label: 'Favourite'),
+              _Legend(color: AppColors.primary, label: 'Rating'),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (selectedRecipe == null)
+            SizedBox(
+              height: 220,
+              child: Center(
+                child: Text(
+                  'Pick a posted recipe',
+                  textAlign: TextAlign.center,
+                  style: context.text.titleMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            )
+          else
+            StatisticsBarChart(
+              height: 220,
+              items: [
+                StatisticsBarChartItem(
+                  label: 'Comment',
+                  value: selectedRecipe.commentCount,
+                  icon: Icons.comment_outlined,
+                  color: const Color(0xFF7C5CFF),
+                ),
+                StatisticsBarChartItem(
+                  label: 'View',
+                  value: selectedRecipe.totalViews,
+                  icon: Icons.visibility_outlined,
+                  color: const Color(0xFF65C8F4),
+                ),
+                StatisticsBarChartItem(
+                  label: 'Favourite',
+                  value: selectedRecipe.favouriteCount,
+                  icon: Icons.favorite_border,
+                  color: AppColors.favourite,
+                ),
+                StatisticsBarChartItem(
+                  label: 'Rating',
+                  value: selectedRecipe.ratingCount,
+                  icon: Icons.star_border,
+                  color: AppColors.primary,
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecipeList extends StatelessWidget {
+  final List<RecipePerformanceItem> recipes;
+  final String? selectedRecipeId;
+  final ValueChanged<String> onSelected;
+
+  const _RecipeList({
+    required this.recipes,
+    required this.selectedRecipeId,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Posted Recipe',
+            style: context.text.titleMedium?.copyWith(
+              color: Colors.black,
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (recipes.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+              child: Column(
+                children: [
+                  Image.asset('assets/images/empty_page.png', height: 120),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'No posted recipe yet',
+                    style: context.text.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...recipes.map(
+              (recipe) => _RecipeTile(
+                recipe: recipe,
+                isSelected: recipe.id == selectedRecipeId,
+                onTap: () => onSelected(recipe.id),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecipeTile extends StatelessWidget {
+  final RecipePerformanceItem recipe;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _RecipeTile({
+    required this.recipe,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.08)
+              : const Color(0xFFFAFAFA),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            _RecipeImage(imageUrl: recipe.imageUrl),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    recipe.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.bodyMedium?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${recipe.commentCount} comments, ${recipe.totalViews} views, ${recipe.favouriteCount} favourites, ${recipe.ratingCount} ratings',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Icon(
+              isSelected ? Icons.check_circle : Icons.chevron_right,
+              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              size: 22,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecipeImage extends StatelessWidget {
+  final String? imageUrl;
+
+  const _RecipeImage({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 52,
+        height: 52,
+        color: AppColors.primary.withValues(alpha: 0.08),
+        child: url == null || url.isEmpty
+            ? const Icon(Icons.restaurant, color: AppColors.primary)
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) =>
+                    const Icon(Icons.restaurant, color: AppColors.primary),
+              ),
+      ),
+    );
+  }
+}
+
+class _Legend extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _Legend({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: context.text.bodySmall?.copyWith(
+            color: AppColors.textSecondary,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryGrid extends StatelessWidget {
+  final List<_SummaryTileData> tiles;
+
+  const _SummaryGrid({required this.tiles});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final itemWidth = (constraints.maxWidth - AppSpacing.md) / 2;
+        return Wrap(
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
+          children: tiles
+              .map(
+                (tile) => SizedBox(
+                  width: itemWidth,
+                  child: _SummaryTile(
+                    icon: tile.icon,
+                    title: tile.title,
+                    value: tile.value,
+                  ),
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class _SummaryTileData {
+  final IconData icon;
+  final String title;
+  final String value;
+
+  const _SummaryTileData({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+}
+
+class _SummaryTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+
+  const _SummaryTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 74,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primary, size: 22),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.titleMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  final Widget child;
+
+  const _SectionCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: AppSpacing.cardPadding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
