@@ -393,11 +393,18 @@ class ExploreRemoteDataSource {
     final doc = await firestore.collection('users').doc(creatorUid).get();
     final data = doc.data() ?? {};
     return _CreatorProfile(
-      name: _stringValue(data['name'], fallback: 'Unknown Creator'),
-      profileImage: _stringValue(
-        data['profileImage'],
-        fallback: 'assets/images/onboarding1.png',
-      ),
+      name: _firstNotBlank([
+        data['name']?.toString(),
+        data['displayName']?.toString(),
+        'Unknown Creator',
+      ]),
+      profileImage: _firstNotBlank([
+        data['profileImage']?.toString(),
+        data['profileImageUrl']?.toString(),
+        data['photoUrl']?.toString(),
+        data['photoURL']?.toString(),
+        'assets/images/onboarding1.png',
+      ]),
       followerCount: _intValue(data['followerCount']),
     );
   }
@@ -837,6 +844,7 @@ class ExploreRemoteDataSource {
         .collection('followingCreators')
         .doc(creatorUid);
     final creatorRef = firestore.collection('users').doc(creatorUid);
+    final followerRef = creatorRef.collection('followers').doc(uid);
     await firestore.runTransaction((transaction) async {
       final followSnapshot = await transaction.get(followRef);
       if (follow && !followSnapshot.exists) {
@@ -844,11 +852,16 @@ class ExploreRemoteDataSource {
           'creatorUid': creatorUid,
           'createdAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
+        transaction.set(followerRef, {
+          'followerUid': uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
         transaction.set(creatorRef, {
           'followerCount': FieldValue.increment(1),
         }, SetOptions(merge: true));
       } else if (!follow && followSnapshot.exists) {
         transaction.delete(followRef);
+        transaction.delete(followerRef);
         transaction.set(creatorRef, {
           'followerCount': FieldValue.increment(-1),
         }, SetOptions(merge: true));
@@ -932,6 +945,14 @@ class ExploreRemoteDataSource {
   static String _stringValue(Object? value, {String fallback = ''}) {
     final text = value?.toString().trim() ?? '';
     return text.isEmpty ? fallback : text;
+  }
+
+  static String _firstNotBlank(List<String?> values) {
+    for (final value in values) {
+      final normalized = value?.trim() ?? '';
+      if (normalized.isNotEmpty) return normalized;
+    }
+    return '';
   }
 
   static List<String> _stringList(Object? value) {

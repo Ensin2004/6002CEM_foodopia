@@ -21,6 +21,8 @@ import '../../features/explore/presentation/view/explore_page.dart';
 import '../../features/explore/presentation/view/explore_creator_detail_page.dart';
 import '../../features/explore/presentation/view/explore_recipe_detail_page.dart';
 import '../../features/library/presentation/view/library_page.dart';
+import '../../features/library/presentation/view/library_social_list_page.dart';
+import '../../features/library/presentation/viewmodel/library_social_list_viewmodel.dart';
 import '../../features/meal_plan/presentation/view/add_grocery_list_page.dart';
 import '../../features/meal_plan/presentation/view/manage_grocery_list_page.dart';
 import '../../features/meal_plan/presentation/view/meal_plan_page.dart';
@@ -89,6 +91,7 @@ class AppRouter {
   static const String addGroceryList = '/meal-plan/grocery-list/add';
   static const String manageGroceryList = '/meal-plan/grocery-list/manage';
   static const String library = '/library';
+  static const String librarySocialList = '/library/social';
   static const String statistics = '/statistics';
   static const String adminMealAnalytic = '/statistics/admin-meal-analytic';
   static const String adminPostAnalytic = '/statistics/admin-post-analytic';
@@ -598,6 +601,18 @@ class AppRouter {
             focusedRecipeId: args?.focusedRecipeId,
             focusedRecipeIsPublished: args?.focusedRecipeIsPublished,
           );
+        },
+      ),
+
+      GoRoute(
+        name: 'librarySocialList',
+        path: librarySocialList,
+        builder: (context, state) {
+          final args = state.extra as LibrarySocialListArgs?;
+          final type = args?.type == 'following'
+              ? LibrarySocialListType.following
+              : LibrarySocialListType.followers;
+          return LibrarySocialListPage(type: type);
         },
       ),
 

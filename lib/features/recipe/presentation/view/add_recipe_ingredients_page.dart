@@ -25,10 +25,11 @@ import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_ingredients_viewmodel.dart';
 import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/discard_recipe_changes_dialog.dart';
 import '../widgets/ingredients/ingredient_name_picker_sheet.dart';
 import '../widgets/ingredients/ingredient_unit_picker_sheet.dart';
 import '../widgets/label.dart';
-import '../widgets/recipe_visibility_action_button.dart';
+import '../widgets/recipe_visibility_confirm_action.dart';
 
 class AddRecipeIngredientsPage extends StatelessWidget {
   final String recipeId;
@@ -80,7 +81,8 @@ class _AddRecipeIngredientsView extends StatefulWidget {
   });
 
   @override
-  State<_AddRecipeIngredientsView> createState() => _AddRecipeIngredientsViewState();
+  State<_AddRecipeIngredientsView> createState() =>
+      _AddRecipeIngredientsViewState();
 }
 
 class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
@@ -88,6 +90,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
   final List<IngredientRowState> _rows = [IngredientRowState()];
   String? _seededRecipeId;
   String? _requestedRecipeId;
+  bool _allowPop = false;
 
   @override
   void initState() {
@@ -133,144 +136,157 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       _seedFromReview(viewModel);
     }
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.white,
-      appBar: CustomAppBar(
-        title: "New Recipe",
-        actions: [
-          Consumer<AddRecipeVisibilityViewModel>(
-            builder: (context, visibilityViewModel, _) {
-              return RecipeVisibilityActionButton(
-                visibility: visibilityViewModel.visibility,
-                isSaving: visibilityViewModel.isSaving,
-                onChanged: (value) async {
-                  final success = await visibilityViewModel.updateVisibility(
-                    recipeId: widget.recipeId,
-                    value: value,
-                  );
-                  if (!context.mounted || success) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        visibilityViewModel.errorMessage ?? "Unable to update visibility.",
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
+    return PopScope(
+      canPop: _allowPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack(context);
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        backgroundColor: Colors.white,
+        appBar: CustomAppBar(
+          title: "New Recipe",
+          leading: IconButton(
+            onPressed: () => _handleBack(context),
+            icon: const Icon(Icons.arrow_back),
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Progress Bar
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.md,
-              ),
-              child: AppStepProgressBar(
-                totalSteps: 4,
-                currentStep: 2,
-                labels: ["Basic Info", "Ingredients", "Instructions", "Review"],
-              ),
-            ),
-
-            // Label, Tips
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                AppSpacing.sm,
-                horizontalPadding,
-                AppSpacing.lg,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Label(text: "Ingredients", isRequired: true),
-                  const SizedBox(height: 2),
-                  Text(
-                    "Add all the ingredients for your recipe",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-
-            // Input Fields
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  0,
-                  horizontalPadding,
-                  0,
-                ),
-                children: [
-                  ReorderableListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    buildDefaultDragHandles: false,
-                    itemCount: _rows.length,
-                    onReorder: _reorderRows,
-                    itemBuilder: (context, index) {
-                      final row = _rows[index];
-                      return Padding(
-                        key: ValueKey(row.id),
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: InputIngredientField(
-                          index: index,
-                          row: row,
-                          onPickImage: () => _pickIngredientImage(row),
-                          onSelectName: () => _showIngredientNameSheet(
-                            row: row,
-                            viewModel: viewModel,
-                          ),
-                          onSelectUnit: () =>
-                              _showUnitSheet(row: row, units: viewModel.units),
-                          onDelete: () => _removeRow(index),
-                        ),
-                      );
-                    },
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(top: AppSpacing.sm),
-                    child: SecondaryButton(
-                      text: "+  Add Ingredient",
-                      onPressed: _addRow,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                AppSpacing.lg,
-                horizontalPadding,
-                AppSpacing.lg,
-              ),
-              child: PrimaryButton(
-                text: widget.returnToReview ? "Save & Review" : "Save & Continue",
-                isLoading: viewModel.isSaving,
-                onPressed: viewModel.isSaving || !_canSave
-                    ? null
-                    : () => _handleNext(context, viewModel),
-              ),
+          actions: [
+            Consumer<AddRecipeVisibilityViewModel>(
+              builder: (context, visibilityViewModel, _) {
+                return RecipeVisibilityConfirmAction(
+                  recipeId: widget.recipeId,
+                  viewModel: visibilityViewModel,
+                );
+              },
             ),
           ],
         ),
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Progress Bar
+              const Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                ),
+                child: AppStepProgressBar(
+                  totalSteps: 4,
+                  currentStep: 2,
+                  labels: [
+                    "Basic Info",
+                    "Ingredients",
+                    "Instructions",
+                    "Review",
+                  ],
+                ),
+              ),
+
+              // Label, Tips
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  AppSpacing.sm,
+                  horizontalPadding,
+                  AppSpacing.lg,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Label(text: "Ingredients", isRequired: true),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Add all the ingredients for your recipe",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Input Fields
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    0,
+                    horizontalPadding,
+                    0,
+                  ),
+                  children: [
+                    ReorderableListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      buildDefaultDragHandles: false,
+                      itemCount: _rows.length,
+                      onReorder: _reorderRows,
+                      itemBuilder: (context, index) {
+                        final row = _rows[index];
+                        return Padding(
+                          key: ValueKey(row.id),
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: InputIngredientField(
+                            index: index,
+                            row: row,
+                            onPickImage: () => _pickIngredientImage(row),
+                            onSelectName: () => _showIngredientNameSheet(
+                              row: row,
+                              viewModel: viewModel,
+                            ),
+                            onSelectUnit: () => _showUnitSheet(
+                              row: row,
+                              units: viewModel.units,
+                            ),
+                            onDelete: () => _removeRow(index),
+                          ),
+                        );
+                      },
+                    ),
+                    Padding(
+                      padding: EdgeInsets.only(top: AppSpacing.sm),
+                      child: SecondaryButton(
+                        text: "+  Add Ingredient",
+                        onPressed: _addRow,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  AppSpacing.lg,
+                  horizontalPadding,
+                  AppSpacing.lg,
+                ),
+                child: PrimaryButton(
+                  text: widget.returnToReview
+                      ? "Save & Review"
+                      : "Save & Continue",
+                  isLoading: viewModel.isSaving,
+                  onPressed: viewModel.isSaving || !_canSave
+                      ? null
+                      : () => _handleNext(context, viewModel),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  Future<void> _handleBack(BuildContext context) async {
+    final shouldDiscard = await showDiscardRecipeChangesDialog(context);
+    if (!mounted || !context.mounted || !shouldDiscard) return;
+    setState(() => _allowPop = true);
+    context.pop();
   }
 
   // Image Picker Helper
@@ -402,10 +418,8 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     ).showSnackBar(const SnackBar(content: Text("Recipe ingredients saved.")));
 
     if (widget.returnToReview) {
-      context.pushReplacement(
-        AppRouter.addRecipeReview,
-        extra: AddRecipeReviewArgs(recipeId: widget.recipeId),
-      );
+      setState(() => _allowPop = true);
+      context.pop(true);
       return;
     }
 

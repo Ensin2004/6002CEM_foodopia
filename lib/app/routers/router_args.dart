@@ -46,6 +46,13 @@ class LibraryArgs {
   const LibraryArgs({this.focusedRecipeId, this.focusedRecipeIsPublished});
 }
 
+/// Typed arguments for library social list route.
+class LibrarySocialListArgs {
+  final String type;
+
+  const LibrarySocialListArgs({required this.type});
+}
+
 /// Typed arguments for explore creator detail route.
 class ExploreCreatorDetailArgs {
   final String creatorUid;

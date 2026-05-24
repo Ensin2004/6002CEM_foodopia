@@ -17,7 +17,7 @@ import '../../domain/entities/add_recipe_review.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../viewmodel/add_recipe_review_viewmodel.dart';
 import '../viewmodel/add_recipe_visibility_viewmodel.dart';
-import '../widgets/recipe_visibility_action_button.dart';
+import '../widgets/recipe_visibility_confirm_action.dart';
 import '../widgets/review/review_hero_image.dart';
 import '../widgets/review/review_info_row.dart';
 import '../widgets/review/review_ingredient_item.dart';
@@ -85,24 +85,9 @@ class _AddRecipeReviewView extends StatelessWidget {
         actions: [
           Consumer<AddRecipeVisibilityViewModel>(
             builder: (context, visibilityViewModel, _) {
-              return RecipeVisibilityActionButton(
-                visibility: visibilityViewModel.visibility,
-                isSaving: visibilityViewModel.isSaving,
-                onChanged: (value) async {
-                  final success = await visibilityViewModel.updateVisibility(
-                    recipeId: recipeId,
-                    value: value,
-                  );
-                  if (!context.mounted || success) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        visibilityViewModel.errorMessage ??
-                            "Unable to update visibility.",
-                      ),
-                    ),
-                  );
-                },
+              return RecipeVisibilityConfirmAction(
+                recipeId: recipeId,
+                viewModel: visibilityViewModel,
               );
             },
           ),
@@ -183,8 +168,10 @@ class _AddRecipeReviewView extends StatelessWidget {
                   ReviewSectionRow(
                     icon: Icons.info_rounded,
                     title: "Basic Info",
-                    onEdit: () => context.push(
-                      AppRouter.addRecipeBasicInfo,
+                    onEdit: () => _openEditSection(
+                      context,
+                      viewModel,
+                      route: AppRouter.addRecipeBasicInfo,
                       extra: AddRecipeBasicInfoArgs(
                         recipeId: recipeId,
                         returnToReview: true,
@@ -258,8 +245,10 @@ class _AddRecipeReviewView extends StatelessWidget {
                   ReviewSectionRow(
                     icon: Icons.eco_rounded,
                     title: "Ingredients",
-                    onEdit: () => context.push(
-                      AppRouter.addRecipeIngredients,
+                    onEdit: () => _openEditSection(
+                      context,
+                      viewModel,
+                      route: AppRouter.addRecipeIngredients,
                       extra: AddRecipeIngredientsArgs(
                         recipeId: recipeId,
                         visibility: context
@@ -278,8 +267,10 @@ class _AddRecipeReviewView extends StatelessWidget {
                   ReviewSectionRow(
                     icon: Icons.menu_book_rounded,
                     title: "Instructions",
-                    onEdit: () => context.push(
-                      AppRouter.addRecipeInstructions,
+                    onEdit: () => _openEditSection(
+                      context,
+                      viewModel,
+                      route: AppRouter.addRecipeInstructions,
                       extra: AddRecipeInstructionsArgs(
                         recipeId: recipeId,
                         visibility: context
@@ -332,6 +323,18 @@ class _AddRecipeReviewView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openEditSection(
+    BuildContext context,
+    AddRecipeReviewViewModel viewModel, {
+    required String route,
+    required Object extra,
+  }) async {
+    final didSave = await context.push<bool>(route, extra: extra);
+    if (!context.mounted || didSave != true) return;
+
+    await viewModel.loadReview(recipeId);
   }
 
   Future<void> _confirmDeleteRecipe(

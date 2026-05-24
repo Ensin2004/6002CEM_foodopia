@@ -24,10 +24,11 @@ import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_basic_info_viewmodel.dart';
 import '../viewmodel/add_recipe_visibility_viewmodel.dart';
 import '../widgets/basic_info/add_more_button_small.dart';
-import '../widgets/recipe_visibility_action_button.dart';
+import '../widgets/recipe_visibility_confirm_action.dart';
 import '../widgets/basic_info/recipe_difficulty_picker.dart';
 import '../widgets/basic_info/recipe_image_edit_sheet.dart';
 import '../widgets/basic_info/recipe_image_picker.dart';
+import '../widgets/discard_recipe_changes_dialog.dart';
 import '../widgets/label.dart';
 import '../widgets/basic_info/input_text_field.dart';
 import '../widgets/basic_info/recipe_option_picker_sheet.dart';
@@ -71,13 +72,11 @@ class _AddRecipeBasicInfoView extends StatefulWidget {
   final String? recipeId;
   final bool returnToReview;
 
-  const _AddRecipeBasicInfoView({
-    this.recipeId,
-    required this.returnToReview
-  });
+  const _AddRecipeBasicInfoView({this.recipeId, required this.returnToReview});
 
   @override
-  State<_AddRecipeBasicInfoView> createState() => _AddRecipeBasicInfoViewState();
+  State<_AddRecipeBasicInfoView> createState() =>
+      _AddRecipeBasicInfoViewState();
 }
 
 class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
@@ -99,6 +98,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   List<String> _customAllergens = [];
   String? _seededRecipeId;
   String? _requestedRecipeId;
+  bool _allowPop = false;
 
   @override
   void initState() {
@@ -159,206 +159,227 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       _seedFromReview(viewModel, setup.categories, setup.allergens);
     }
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.white,
-      appBar: CustomAppBar(
-        title: "New Recipe",
-        actions: [
-          Consumer<AddRecipeVisibilityViewModel>(
-            builder: (context, visibilityViewModel, _) {
-              return RecipeVisibilityActionButton(
-                visibility: visibilityViewModel.visibility,
-                isSaving: visibilityViewModel.isSaving,
-                onChanged: (value) => visibilityViewModel.updateVisibility(
-                  recipeId: widget.recipeId ?? "",
-                  value: value,
-                ),
-              );
-            },
+    return PopScope(
+      canPop: _allowPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack(context);
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        backgroundColor: Colors.white,
+        appBar: CustomAppBar(
+          title: "New Recipe",
+          leading: IconButton(
+            onPressed: () => _handleBack(context),
+            icon: const Icon(Icons.arrow_back),
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Progress Bar
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.md,
-              ),
-              child: AppStepProgressBar(
-                totalSteps: 4,
-                currentStep: 1,
-                labels: ["Basic Info", "Ingredients", "Instructions", "Review"],
-              ),
-            ),
-
-            // Input Fields
-            Expanded(
-              child: ListView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.manual,
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  AppSpacing.sm,
-                  horizontalPadding,
-                  0,
-                ),
-
-                children: [
-                  // Recipe Image
-                  Label(text: "Recipe Image", isRequired: true),
-                  const SizedBox(height: AppSpacing.sm),
-                  RecipeImagePicker(
-                    images: _images,
-                    existingImageUrls: _existingImageUrls,
-                    onPick: _pickImages,
-                    onEdit: _showSelectedMediaSheet,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Recipe Name
-                  Label(text: "Recipe Name", isRequired: true),
-                  const SizedBox(height: AppSpacing.sm),
-                  InputTextField(
-                    controller: _recipeNameController,
-                    hint: "e.g. Classic Italian Basil Pesto Pasta",
-                    textInputAction: TextInputAction.next,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Recipe Description
-                  Label(text: "Recipe Description", isRequired: true),
-                  const SizedBox(height: AppSpacing.sm),
-                  InputTextField(
-                    controller: _descriptionController,
-                    hint: "Describe what makes this recipe delicious",
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.newline,
-                    maxLines: 4,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Other Name
-                  Label(text: "Other Name"),
-                  const SizedBox(height: AppSpacing.sm),
-                  ..._otherNameControllers.asMap().entries.map((entry) {
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        bottom: entry.key == _otherNameControllers.length - 1
-                            ? 0
-                            : AppSpacing.sm,
-                      ),
-                      child: InputTextField(
-                        controller: entry.value,
-                        hint: "e.g. Pesto alla Genovese",
-                        onDelete: _otherNameControllers.length > 1
-                            ? () => _removeOtherName(entry.key)
-                            : null,
-                      ),
-                    );
-                  }),
-                  AddMoreButtonSmall(onPressed: _addOtherName),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Category
-                  Label(text: "Category", isRequired: true),
-                  const SizedBox(height: AppSpacing.sm),
-                  InputOptionField(
-                    placeholder: "Select categories",
-                    values: _selectedOptionValues(
-                      options: setup.categories,
-                      selectedIds: _selectedCategoryIds,
-                      customOptions: _customCategories,
-                    ),
-                    onDelete: _removeCategorySelection,
-                    onTap: () => _showCategorySheet(setup.categories),
-                  ),
-                  AddMoreButtonSmall(
-                    onPressed: () => _showCategorySheet(setup.categories),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Preparation Time
-                  Label(text: "Preparation Time", isRequired: true),
-                  const SizedBox(height: AppSpacing.sm),
-                  InputTextField(
-                    controller: _prepTimeController,
-                    hint: "e.g. 30",
-                    keyboardType: TextInputType.number,
-                    suffixText: "minutes",
-                    textInputAction: TextInputAction.next,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Difficulty Level
-                  Label(text: "Difficulty Level", isRequired: true),
-                  const SizedBox(height: AppSpacing.sm),
-                  RecipeDifficultyPicker(levels: setup.difficultyLevels),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Servings
-                  Label(text: "Servings", isRequired: true),
-                  const SizedBox(height: AppSpacing.sm),
-                  InputTextField(
-                    controller: _servingsController,
-                    hint: "e.g. 1",
-                    keyboardType: TextInputType.number,
-                    suffixText: "servings",
-                    textInputAction: TextInputAction.next,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Allergen Info
-                  Label(text: "Allergen Info"),
-                  const SizedBox(height: AppSpacing.sm),
-                  InputOptionField(
-                    placeholder: "Select allergens",
-                    values: _selectedOptionValues(
-                      options: setup.allergens,
-                      selectedIds: _selectedAllergenIds,
-                      customOptions: _customAllergens,
-                    ),
-                    onDelete: _removeAllergenSelection,
-                    onTap: () => _showAllergenSheet(
-                      setup.allergens,
-                      viewModel.searchFoods,
-                    ),
-                  ),
-                  AddMoreButtonSmall(
-                    onPressed: () => _showAllergenSheet(
-                      setup.allergens,
-                      viewModel.searchFoods,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                ],
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                AppSpacing.lg,
-                horizontalPadding,
-                AppSpacing.lg,
-              ),
-              child: PrimaryButton(
-                text: widget.returnToReview ? "Save & Review" : "Save & Continue",
-                isLoading: viewModel.isSaving,
-                onPressed:
-                    viewModel.isSaving || !_isBasicInfoComplete(viewModel)
-                    ? null
-                    : () => _handleNext(context, viewModel),
-              ),
+          actions: [
+            Consumer<AddRecipeVisibilityViewModel>(
+              builder: (context, visibilityViewModel, _) {
+                return RecipeVisibilityConfirmAction(
+                  recipeId: widget.recipeId ?? "",
+                  viewModel: visibilityViewModel,
+                );
+              },
             ),
           ],
         ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Progress Bar
+              const Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                ),
+                child: AppStepProgressBar(
+                  totalSteps: 4,
+                  currentStep: 1,
+                  labels: [
+                    "Basic Info",
+                    "Ingredients",
+                    "Instructions",
+                    "Review",
+                  ],
+                ),
+              ),
+
+              // Input Fields
+              Expanded(
+                child: ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.manual,
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    AppSpacing.sm,
+                    horizontalPadding,
+                    0,
+                  ),
+
+                  children: [
+                    // Recipe Image
+                    Label(text: "Recipe Image", isRequired: true),
+                    const SizedBox(height: AppSpacing.sm),
+                    RecipeImagePicker(
+                      images: _images,
+                      existingImageUrls: _existingImageUrls,
+                      onPick: _pickImages,
+                      onEdit: _showSelectedMediaSheet,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Recipe Name
+                    Label(text: "Recipe Name", isRequired: true),
+                    const SizedBox(height: AppSpacing.sm),
+                    InputTextField(
+                      controller: _recipeNameController,
+                      hint: "e.g. Classic Italian Basil Pesto Pasta",
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Recipe Description
+                    Label(text: "Recipe Description", isRequired: true),
+                    const SizedBox(height: AppSpacing.sm),
+                    InputTextField(
+                      controller: _descriptionController,
+                      hint: "Describe what makes this recipe delicious",
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      maxLines: 4,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Other Name
+                    Label(text: "Other Name"),
+                    const SizedBox(height: AppSpacing.sm),
+                    ..._otherNameControllers.asMap().entries.map((entry) {
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: entry.key == _otherNameControllers.length - 1
+                              ? 0
+                              : AppSpacing.sm,
+                        ),
+                        child: InputTextField(
+                          controller: entry.value,
+                          hint: "e.g. Pesto alla Genovese",
+                          onDelete: _otherNameControllers.length > 1
+                              ? () => _removeOtherName(entry.key)
+                              : null,
+                        ),
+                      );
+                    }),
+                    AddMoreButtonSmall(onPressed: _addOtherName),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Category
+                    Label(text: "Category", isRequired: true),
+                    const SizedBox(height: AppSpacing.sm),
+                    InputOptionField(
+                      placeholder: "Select categories",
+                      values: _selectedOptionValues(
+                        options: setup.categories,
+                        selectedIds: _selectedCategoryIds,
+                        customOptions: _customCategories,
+                      ),
+                      onDelete: _removeCategorySelection,
+                      onTap: () => _showCategorySheet(setup.categories),
+                    ),
+                    AddMoreButtonSmall(
+                      onPressed: () => _showCategorySheet(setup.categories),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Preparation Time
+                    Label(text: "Preparation Time", isRequired: true),
+                    const SizedBox(height: AppSpacing.sm),
+                    InputTextField(
+                      controller: _prepTimeController,
+                      hint: "e.g. 30",
+                      keyboardType: TextInputType.number,
+                      suffixText: "minutes",
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Difficulty Level
+                    Label(text: "Difficulty Level", isRequired: true),
+                    const SizedBox(height: AppSpacing.sm),
+                    RecipeDifficultyPicker(levels: setup.difficultyLevels),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Servings
+                    Label(text: "Servings", isRequired: true),
+                    const SizedBox(height: AppSpacing.sm),
+                    InputTextField(
+                      controller: _servingsController,
+                      hint: "e.g. 1",
+                      keyboardType: TextInputType.number,
+                      suffixText: "servings",
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Allergen Info
+                    Label(text: "Allergen Info"),
+                    const SizedBox(height: AppSpacing.sm),
+                    InputOptionField(
+                      placeholder: "Select allergens",
+                      values: _selectedOptionValues(
+                        options: setup.allergens,
+                        selectedIds: _selectedAllergenIds,
+                        customOptions: _customAllergens,
+                      ),
+                      onDelete: _removeAllergenSelection,
+                      onTap: () => _showAllergenSheet(
+                        setup.allergens,
+                        viewModel.searchFoods,
+                      ),
+                    ),
+                    AddMoreButtonSmall(
+                      onPressed: () => _showAllergenSheet(
+                        setup.allergens,
+                        viewModel.searchFoods,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  AppSpacing.lg,
+                  horizontalPadding,
+                  AppSpacing.lg,
+                ),
+                child: PrimaryButton(
+                  text: widget.returnToReview
+                      ? "Save & Review"
+                      : "Save & Continue",
+                  isLoading: viewModel.isSaving,
+                  onPressed:
+                      viewModel.isSaving || !_isBasicInfoComplete(viewModel)
+                      ? null
+                      : () => _handleNext(context, viewModel),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  Future<void> _handleBack(BuildContext context) async {
+    final shouldDiscard = await showDiscardRecipeChangesDialog(context);
+    if (!mounted || !context.mounted || !shouldDiscard) return;
+    setState(() => _allowPop = true);
+    context.pop();
   }
 
   // Image Picker Helper
@@ -576,10 +597,8 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     ).showSnackBar(const SnackBar(content: Text("Recipe basic info saved.")));
 
     if (widget.returnToReview) {
-      context.pushReplacement(
-        AppRouter.addRecipeReview,
-        extra: AddRecipeReviewArgs(recipeId: viewModel.savedRecipeId!),
-      );
+      setState(() => _allowPop = true);
+      context.pop(true);
       return;
     }
 
@@ -687,10 +706,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       }
     }
 
-    return _SavedRecipeOption(
-      optionIds: optionIds,
-      customNames: customNames,
-    );
+    return _SavedRecipeOption(optionIds: optionIds, customNames: customNames);
   }
 }
 

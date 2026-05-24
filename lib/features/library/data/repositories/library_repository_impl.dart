@@ -5,6 +5,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/library_profile.dart';
 import '../../domain/entities/library_recipe.dart';
+import '../../domain/entities/library_social_profile.dart';
 import '../../domain/repositories/library_repository.dart';
 import '../datasources/library_remote_datasource.dart';
 
@@ -44,6 +45,26 @@ class LibraryRepositoryImpl implements LibraryRepository {
       return Right(recipe);
     } on StateError {
       return Left(NotFoundFailure(message: 'Recipe not found.'));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<LibrarySocialProfile>>> getFollowers() async {
+    try {
+      final profiles = await remoteDataSource.getFollowers();
+      return Right(profiles);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<LibrarySocialProfile>>> getFollowing() async {
+    try {
+      final profiles = await remoteDataSource.getFollowing();
+      return Right(profiles);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

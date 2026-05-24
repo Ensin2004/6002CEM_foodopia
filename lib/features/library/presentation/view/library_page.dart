@@ -253,6 +253,14 @@ class _LibraryContent extends StatelessWidget {
               postCount: viewModel.postCount,
               onMoreTap: onComingSoonTap,
               onEditProfileTap: onEditProfileTap,
+              onFollowersTap: () => context.push(
+                AppRouter.librarySocialList,
+                extra: const LibrarySocialListArgs(type: 'followers'),
+              ),
+              onFollowingTap: () => context.push(
+                AppRouter.librarySocialList,
+                extra: const LibrarySocialListArgs(type: 'following'),
+              ),
             ),
           ),
           SliverToBoxAdapter(child: _LibraryTabs(tabController: tabController)),
@@ -321,12 +329,16 @@ class _LibraryProfileHeader extends StatelessWidget {
   final int postCount;
   final VoidCallback onMoreTap;
   final VoidCallback onEditProfileTap;
+  final VoidCallback onFollowersTap;
+  final VoidCallback onFollowingTap;
 
   const _LibraryProfileHeader({
     required this.profile,
     required this.postCount,
     required this.onMoreTap,
     required this.onEditProfileTap,
+    required this.onFollowersTap,
+    required this.onFollowingTap,
   });
 
   @override
@@ -352,25 +364,13 @@ class _LibraryProfileHeader extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            profile.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.headlineSmall?.copyWith(
-                              fontSize: compact ? 24 : 28,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.verified,
-                          color: AppColors.primary,
-                          size: 22,
-                        ),
-                      ],
+                    Text(
+                      profile.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.headlineSmall?.copyWith(
+                        fontSize: compact ? 24 : 28,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -383,6 +383,7 @@ class _LibraryProfileHeader extends StatelessWidget {
                           child: _ProfileStat(
                             value: profile.followersCount,
                             label: 'Followers',
+                            onTap: onFollowersTap,
                           ),
                         ),
                         _StatDivider(height: compact ? 34 : 40),
@@ -390,6 +391,7 @@ class _LibraryProfileHeader extends StatelessWidget {
                           child: _ProfileStat(
                             value: profile.followingCount,
                             label: 'Following',
+                            onTap: onFollowingTap,
                           ),
                         ),
                       ],
@@ -607,39 +609,18 @@ class _ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: size,
-          height: size,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.primary, width: 2),
-          ),
-          child: CircleAvatar(
-            backgroundColor: context.colors.surfaceContainerHighest,
-            backgroundImage: _imageProvider(imageUrl),
-          ),
-        ),
-        Positioned(
-          right: -1,
-          bottom: -1,
-          child: Container(
-            padding: const EdgeInsets.all(2),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.verified,
-              color: AppColors.primary,
-              size: 22,
-            ),
-          ),
-        ),
-      ],
+    return Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.primary, width: 2),
+      ),
+      child: CircleAvatar(
+        backgroundColor: context.colors.surfaceContainerHighest,
+        backgroundImage: _imageProvider(imageUrl),
+      ),
     );
   }
 }
@@ -647,12 +628,13 @@ class _ProfileAvatar extends StatelessWidget {
 class _ProfileStat extends StatelessWidget {
   final int value;
   final String label;
+  final VoidCallback? onTap;
 
-  const _ProfileStat({required this.value, required this.label});
+  const _ProfileStat({required this.value, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         FittedBox(
@@ -675,6 +657,17 @@ class _ProfileStat extends StatelessWidget {
           ),
         ),
       ],
+    );
+
+    if (onTap == null) return content;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: content,
+      ),
     );
   }
 }

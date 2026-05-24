@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/services/cloudinary_service.dart';
 import '../../domain/entities/library_profile.dart';
 import '../../domain/entities/library_recipe.dart';
+import '../../domain/entities/library_social_profile.dart';
 import '../models/library_recipe_model.dart';
 
 class LibraryRemoteDataSource {
@@ -17,6 +18,11 @@ class LibraryRemoteDataSource {
   Future<LibraryProfile> getProfile() async {
     final uid = _currentUid();
     final doc = await firestore.collection('users').doc(uid).get();
+    final followingSnapshot = await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('followingCreators')
+        .get();
     final data = doc.data() ?? const <String, dynamic>{};
     final name = _firstNotBlank([
       data['name']?.toString(),
@@ -38,8 +44,11 @@ class LibraryRemoteDataSource {
         'Hi, I am $name, a recipe developer',
       ]),
       imageUrl: imageUrl,
-      followersCount: _intValue(data['followersCount']) ?? 0,
-      followingCount: _intValue(data['followingCount']) ?? 0,
+      followersCount:
+          _intValue(data['followersCount']) ??
+          _intValue(data['followerCount']) ??
+          0,
+      followingCount: followingSnapshot.docs.length,
     );
   }
 
@@ -81,6 +90,29 @@ class LibraryRemoteDataSource {
     }
   }
 
+  Future<List<LibrarySocialProfile>> getFollowers() async {
+    final uid = _currentUid();
+    final followerIds = await _getFollowerIds(uid);
+
+    return _getSocialProfiles(followerIds);
+  }
+
+  Future<List<LibrarySocialProfile>> getFollowing() async {
+    final uid = _currentUid();
+    final snapshot = await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('followingCreators')
+        .get();
+
+    final followingIds = snapshot.docs
+        .map((doc) => doc.data()['creatorUid']?.toString() ?? doc.id)
+        .where(_isNotBlank)
+        .toSet();
+
+    return _getSocialProfiles(followingIds);
+  }
+
   Future<List<LibraryRecipeModel>> getRecipes() async {
     final uid = _currentUid();
     final selfRecipes = await _getSelfRecipes(uid);
@@ -102,7 +134,7 @@ class LibraryRemoteDataSource {
     }
 
     final followedRecipeIds = await _getFollowedRecipeIds(uid);
-    return _recipeFromSnapshot(
+    return await _recipeFromSnapshot(
       doc,
       uid: uid,
       isFollowingAuthor: followedRecipeIds.contains(recipeId),
@@ -148,11 +180,11 @@ class LibraryRemoteDataSource {
         .where('creatorUid', isEqualTo: uid)
         .get();
 
-    return snapshot.docs
-        .map(
-          (doc) => _recipeFromSnapshot(doc, uid: uid, isFollowingAuthor: false),
-        )
-        .toList();
+    return Future.wait(
+      snapshot.docs.map(
+        (doc) => _recipeFromSnapshot(doc, uid: uid, isFollowingAuthor: false),
+      ),
+    );
   }
 
   Future<List<LibraryRecipeModel>> _getFollowedRecipes(String uid) async {
@@ -167,8 +199,11 @@ class LibraryRemoteDataSource {
           .get();
 
       recipes.addAll(
-        snapshot.docs.map(
-          (doc) => _recipeFromSnapshot(doc, uid: uid, isFollowingAuthor: true),
+        await Future.wait(
+          snapshot.docs.map(
+            (doc) =>
+                _recipeFromSnapshot(doc, uid: uid, isFollowingAuthor: true),
+          ),
         ),
       );
     }
@@ -215,13 +250,96 @@ class LibraryRemoteDataSource {
     return ids;
   }
 
-  LibraryRecipeModel _recipeFromSnapshot(
+  Future<List<LibrarySocialProfile>> _getSocialProfiles(
+    Set<String> userIds,
+  ) async {
+    if (userIds.isEmpty) return const [];
+
+    final profiles = <LibrarySocialProfile>[];
+    for (final chunk in _chunks(userIds.toList(), 10)) {
+      final snapshot = await firestore
+          .collection('users')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+
+      profiles.addAll(snapshot.docs.map(_socialProfileFromDoc));
+    }
+
+    profiles.sort(
+      (first, second) =>
+          first.name.toLowerCase().compareTo(second.name.toLowerCase()),
+    );
+    return profiles;
+  }
+
+  Future<Set<String>> _getFollowerIds(String uid) async {
+    final followerIds = <String>{};
+    final followersSnapshot = await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('followers')
+        .get();
+
+    for (final doc in followersSnapshot.docs) {
+      final followerUid = doc.data()['followerUid']?.toString() ?? doc.id;
+      if (_isNotBlank(followerUid)) followerIds.add(followerUid);
+    }
+
+    final usersSnapshot = await firestore.collection('users').get();
+    final checks = usersSnapshot.docs.where((doc) => doc.id != uid).map((
+      doc,
+    ) async {
+      final followDoc = await doc.reference
+          .collection('followingCreators')
+          .doc(uid)
+          .get();
+      if (followDoc.exists) followerIds.add(doc.id);
+    });
+    await Future.wait(checks);
+
+    return followerIds;
+  }
+
+  LibrarySocialProfile _socialProfileFromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? const <String, dynamic>{};
+    final name = _firstNotBlank([
+      data['name']?.toString(),
+      data['displayName']?.toString(),
+      'Foodopia User',
+    ]);
+
+    return LibrarySocialProfile(
+      uid: doc.id,
+      name: name,
+      bio: _firstNotBlank([
+        data['bio']?.toString(),
+        'Hi, I am $name, a recipe developer',
+      ]),
+      imageUrl: _firstNotBlank([
+        data['profileImage']?.toString(),
+        data['profileImageUrl']?.toString(),
+        data['photoUrl']?.toString(),
+        data['photoURL']?.toString(),
+        'assets/images/onboarding1.png',
+      ]),
+      followersCount:
+          _intValue(data['followersCount']) ??
+          _intValue(data['followerCount']) ??
+          0,
+      followingCount: _intValue(data['followingCount']) ?? 0,
+    );
+  }
+
+  Future<LibraryRecipeModel> _recipeFromSnapshot(
     DocumentSnapshot<Map<String, dynamic>> doc, {
     required String uid,
     required bool isFollowingAuthor,
-  }) {
+  }) async {
     final data = doc.data() ?? const <String, dynamic>{};
     final creatorUid = data['creatorUid']?.toString() ?? '';
+    final creator = await _getCreator(creatorUid);
     final media = _stringList(data['media']);
     final categories = _stringList(data['categories']).isNotEmpty
         ? _stringList(data['categories'])
@@ -249,12 +367,15 @@ class LibraryRemoteDataSource {
         'Untitled Recipe',
       ]),
       author: _firstNotBlank([
+        creatorUid == uid ? 'You' : null,
+        creator.name,
         data['creatorName']?.toString(),
         data['author']?.toString(),
-        'You',
+        'Unknown Creator',
       ]),
       publishedAtLabel: _formatPublishedAt(createdAt),
       authorAvatarPath: _firstNotBlank([
+        creator.profileImage,
         data['creatorAvatar']?.toString(),
         data['authorAvatarPath']?.toString(),
         'assets/images/onboarding1.png',
@@ -294,6 +415,32 @@ class LibraryRemoteDataSource {
         comments: const [],
       ),
       relatedRecipes: const [],
+    );
+  }
+
+  Future<_LibraryCreatorProfile> _getCreator(String creatorUid) async {
+    if (creatorUid.isEmpty) {
+      return const _LibraryCreatorProfile(
+        name: 'Unknown Creator',
+        profileImage: 'assets/images/onboarding1.png',
+      );
+    }
+
+    final doc = await firestore.collection('users').doc(creatorUid).get();
+    final data = doc.data() ?? const <String, dynamic>{};
+    return _LibraryCreatorProfile(
+      name: _firstNotBlank([
+        data['name']?.toString(),
+        data['displayName']?.toString(),
+        'Unknown Creator',
+      ]),
+      profileImage: _firstNotBlank([
+        data['profileImage']?.toString(),
+        data['profileImageUrl']?.toString(),
+        data['photoUrl']?.toString(),
+        data['photoURL']?.toString(),
+        'assets/images/onboarding1.png',
+      ]),
     );
   }
 
@@ -386,4 +533,14 @@ class LibraryRemoteDataSource {
     }
     return chunks;
   }
+}
+
+class _LibraryCreatorProfile {
+  final String name;
+  final String profileImage;
+
+  const _LibraryCreatorProfile({
+    required this.name,
+    required this.profileImage,
+  });
 }

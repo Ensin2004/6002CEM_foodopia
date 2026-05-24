@@ -55,6 +55,8 @@ import '../../features/library/domain/repositories/library_repository.dart';
 import '../../features/library/domain/usecases/get_library_profile_usecase.dart';
 import '../../features/library/domain/usecases/get_library_recipe_detail_usecase.dart';
 import '../../features/library/domain/usecases/get_library_recipes_usecase.dart';
+import '../../features/library/domain/usecases/get_library_followers_usecase.dart';
+import '../../features/library/domain/usecases/get_library_following_usecase.dart';
 import '../../features/library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
 import '../../features/library/domain/usecases/update_library_profile_usecase.dart';
 import '../../features/explore/domain/usecases/increment_recipe_view_count_usecase.dart';
@@ -354,6 +356,8 @@ void _initLibraryFeature() {
   sl.registerLazySingleton(() => GetLibraryRecipesUseCase(sl()));
   sl.registerLazySingleton(() => GetLibraryProfileUseCase(sl()));
   sl.registerLazySingleton(() => GetLibraryRecipeDetailUseCase(sl()));
+  sl.registerLazySingleton(() => GetLibraryFollowersUseCase(sl()));
+  sl.registerLazySingleton(() => GetLibraryFollowingUseCase(sl()));
   sl.registerLazySingleton(() => ToggleLibraryRecipeFavouriteUseCase(sl()));
   sl.registerLazySingleton(() => UpdateLibraryProfileUseCase(sl()));
 }
