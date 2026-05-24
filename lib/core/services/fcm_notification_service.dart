@@ -50,9 +50,38 @@ class FcmNotificationService {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || uid.isEmpty || token.isEmpty) return;
 
+    await _removeTokenFromOtherUsers(uid: uid, token: token);
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'fcmTokens': FieldValue.arrayUnion([token]),
     }, SetOptions(merge: true));
+  }
+
+  static Future<void> _removeTokenFromOtherUsers({
+    required String uid,
+    required String token,
+  }) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('fcmTokens', arrayContains: token)
+          .get();
+      final batch = FirebaseFirestore.instance.batch();
+      var hasUpdates = false;
+
+      for (final doc in snapshot.docs) {
+        if (doc.id == uid) continue;
+        batch.set(doc.reference, {
+          'fcmTokens': FieldValue.arrayRemove([token]),
+        }, SetOptions(merge: true));
+        hasUpdates = true;
+      }
+
+      if (hasUpdates) {
+        await batch.commit();
+      }
+    } on FirebaseException {
+      // Best-effort cleanup for shared test devices.
+    }
   }
 
   static Future<void> _showForegroundNotification(RemoteMessage message) async {

@@ -109,6 +109,7 @@ class AuthRepositoryImpl implements AuthRepository {
           'role': RoleManager().getDefaultRole(),
         },
       );
+      await remoteDataSource.saveFcmToken(user.uid);
 
       await remoteDataSource.sendEmailVerification();
 
