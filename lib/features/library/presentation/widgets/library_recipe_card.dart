@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
+import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../domain/entities/library_recipe.dart';
 
 class LibraryRecipeCard extends StatelessWidget {
@@ -27,111 +28,154 @@ class LibraryRecipeCard extends StatelessWidget {
 
     return Material(
       color: colors.surface,
-      elevation: isHighlighted ? 8 : 4,
+      borderRadius: BorderRadius.circular(8),
+      elevation: isHighlighted ? 6 : 3,
       shadowColor: isHighlighted
           ? colors.primary.withValues(alpha: 0.24)
-          : Colors.black.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(16),
+          : Colors.black.withValues(alpha: 0.18),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: isHighlighted ? colors.primary : Colors.transparent,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isHighlighted ? colors.primary : AppColors.border,
+              width: isHighlighted ? 1.6 : 1,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      ColoredBox(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 5,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(8),
+                      ),
+                      child: ColoredBox(
                         color: colors.surfaceContainerHighest,
-                        child: _RecipeImage(path: recipe.imagePath),
+                        child: AppRemoteOrAssetImage(
+                          imagePath: recipe.imagePath,
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: _ViewsBadge(count: recipe.totalViews),
+                    ),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: _ImageIconButton(
+                        icon: recipe.isFollowingAuthor
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: recipe.isFollowingAuthor
+                            ? AppColors.favourite
+                            : Colors.white,
+                        onTap: onFavouriteTap,
                       ),
-                      Positioned(
-                        left: 8,
-                        bottom: 8,
-                        child: _StatusBadge(recipe: recipe),
-                      ),
-                    ],
-                  ),
+                    ),
+                    Positioned(
+                      left: 8,
+                      top: 8,
+                      child: _ViewsBadge(count: recipe.totalViews),
+                    ),
+                    Positioned(
+                      left: 8,
+                      bottom: 8,
+                      child: _StatusBadge(recipe: recipe),
+                    ),
+                  ],
                 ),
-                Expanded(
-                  flex: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+              ),
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        height: 20,
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               child: Text(
                                 recipe.title,
-                                maxLines: 2,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: textTheme.titleMedium?.copyWith(
+                                style: textTheme.labelLarge?.copyWith(
+                                  color: colors.onSurface,
                                   height: 1.15,
-                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            _RatingLabel(recipe: recipe),
+                            const SizedBox(width: 4),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 1),
+                              child: _RatingLabel(recipe: recipe),
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
+                      ),
+                      const SizedBox(height: 5),
+                      SizedBox(
+                        height: 18,
+                        child: Text(
                           recipe.description,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodySmall?.copyWith(height: 1.35),
+                          style: textTheme.bodySmall?.copyWith(height: 1.22),
                         ),
-                        const Spacer(),
-                        Row(
+                      ),
+                      const SizedBox(height: 5),
+                      SizedBox(
+                        height: 34,
+                        child: Row(
                           children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: colors.primary,
-                              backgroundImage: _imageProvider(
-                                recipe.authorAvatarPath,
+                            Container(
+                              padding: const EdgeInsets.all(1.5),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.primary,
+                                  width: 1.4,
+                                ),
+                              ),
+                              child: AppRemoteOrAssetAvatar(
+                                radius: 16,
+                                backgroundColor: colors.primary,
+                                imagePath: recipe.authorAvatarPath,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 7),
                             Expanded(
                               child: Column(
-                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     recipe.author,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.textPrimary,
-                                      fontWeight: FontWeight.w700,
+                                    style: textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                   Text(
                                     recipe.publishedAtLabel,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: textTheme.bodySmall,
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textSecondary.withValues(
+                                        alpha: 0.72,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -141,28 +185,14 @@ class LibraryRecipeCard extends StatelessWidget {
                               label: _compactCount(recipe.commentCount),
                               onTap: onComingSoonTap,
                             ),
-                            const SizedBox(width: 6),
-                            InkResponse(
-                              onTap: onFavouriteTap,
-                              radius: 18,
-                              child: Icon(
-                                recipe.isFollowingAuthor
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: recipe.isFollowingAuthor
-                                    ? AppColors.favourite
-                                    : AppColors.textSecondary,
-                                size: 22,
-                              ),
-                            ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -261,23 +291,23 @@ class _ViewsBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.58),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.visibility, size: 13, color: Colors.white),
-            const SizedBox(width: 3),
+            const Icon(Icons.visibility, size: 16, color: AppColors.primary),
+            const SizedBox(width: 5),
             Text(
               _compactCount(count),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: context.text.labelSmall?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
+              style: context.text.labelMedium?.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ],
@@ -310,14 +340,15 @@ class _CountWithIcon extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: context.text.bodySmall?.copyWith(
+            style: context.text.labelMedium?.copyWith(
               color: AppColors.textSecondary.withValues(alpha: 0.72),
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(width: 3),
+          const SizedBox(width: 4),
           Icon(
             icon,
-            size: 18,
+            size: 20,
             color: AppColors.textSecondary.withValues(alpha: 0.55),
           ),
         ],
@@ -326,39 +357,33 @@ class _CountWithIcon extends StatelessWidget {
   }
 }
 
-class _RecipeImage extends StatelessWidget {
-  final String path;
+class _ImageIconButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
 
-  const _RecipeImage({required this.path});
+  const _ImageIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (_isNetworkPath(path)) {
-      return Image.network(
-        path,
-        width: double.infinity,
-        height: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => const Icon(Icons.image_not_supported),
-      );
-    }
-
-    return Image.asset(
-      path,
-      width: double.infinity,
-      height: double.infinity,
-      fit: BoxFit.cover,
+    return Material(
+      color: Colors.black.withValues(alpha: 0.58),
+      shape: const CircleBorder(),
+      child: InkResponse(
+        onTap: onTap,
+        radius: 19,
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Icon(icon, size: 18, color: color),
+        ),
+      ),
     );
   }
-}
-
-ImageProvider _imageProvider(String path) {
-  if (_isNetworkPath(path)) return NetworkImage(path);
-  return AssetImage(path);
-}
-
-bool _isNetworkPath(String path) {
-  return path.startsWith('http://') || path.startsWith('https://');
 }
 
 String _compactCount(int value) {

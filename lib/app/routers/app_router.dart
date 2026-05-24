@@ -21,6 +21,7 @@ import '../../features/explore/presentation/view/explore_page.dart';
 import '../../features/explore/presentation/view/explore_creator_detail_page.dart';
 import '../../features/explore/presentation/view/explore_recipe_detail_page.dart';
 import '../../features/library/presentation/view/library_page.dart';
+import '../../features/library/presentation/view/library_profile_users_page.dart';
 import '../../features/meal_plan/presentation/view/add_grocery_list_page.dart';
 import '../../features/meal_plan/presentation/view/manage_grocery_list_page.dart';
 import '../../features/meal_plan/presentation/view/meal_plan_page.dart';
@@ -81,6 +82,7 @@ class AppRouter {
   static const String explore = '/explore';
   static const String exploreRecipeDetail = '/explore/recipe';
   static const String libraryRecipeDetail = '/library/recipe';
+  static const String libraryProfileUsers = '/library/profile-users';
   static const String exploreCreatorDetail = '/explore/creator';
   static const String mealPlan = '/meal-plan';
   static const String addMealPlan = '/meal-plan/planning/add-meal';
@@ -551,6 +553,17 @@ class AppRouter {
         builder: (context, state) {
           final args = state.extra as ExploreCreatorDetailArgs?;
           return ExploreCreatorDetailPage(creatorUid: args?.creatorUid ?? '');
+        },
+      ),
+
+      GoRoute(
+        name: 'libraryProfileUsers',
+        path: libraryProfileUsers,
+        builder: (context, state) {
+          final args = state.extra as LibraryProfileUsersArgs?;
+          return LibraryProfileUsersPage(
+            showFollowers: args?.showFollowers ?? true,
+          );
         },
       ),
 

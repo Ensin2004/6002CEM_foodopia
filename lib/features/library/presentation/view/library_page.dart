@@ -41,6 +41,8 @@ class LibraryPage extends StatelessWidget {
     final page = ChangeNotifierProvider(
       create: (_) => LibraryViewModel(
         getProfileUseCase: sl(),
+        getFollowersUseCase: sl(),
+        getFollowingUseCase: sl(),
         getRecipesUseCase: sl(),
         toggleFavouriteUseCase: sl(),
         updateProfileUseCase: sl(),
@@ -191,6 +193,14 @@ class _LibraryPageViewState extends State<_LibraryPageView>
       onComingSoonTap: _showComingSoonMessage,
       onEditProfileTap: _showEditProfileSheet,
       onFavouriteTap: _toggleFavourite,
+      onFollowersTap: () => context.push(
+        AppRouter.libraryProfileUsers,
+        extra: const LibraryProfileUsersArgs(showFollowers: true),
+      ),
+      onFollowingTap: () => context.push(
+        AppRouter.libraryProfileUsers,
+        extra: const LibraryProfileUsersArgs(showFollowers: false),
+      ),
       focusedRecipeId: _focusedRecipeId,
     );
   }
@@ -203,6 +213,8 @@ class _LibraryContent extends StatelessWidget {
   final VoidCallback onComingSoonTap;
   final VoidCallback onEditProfileTap;
   final ValueChanged<String> onFavouriteTap;
+  final VoidCallback onFollowersTap;
+  final VoidCallback onFollowingTap;
   final String? focusedRecipeId;
 
   const _LibraryContent({
@@ -212,6 +224,8 @@ class _LibraryContent extends StatelessWidget {
     required this.onComingSoonTap,
     required this.onEditProfileTap,
     required this.onFavouriteTap,
+    required this.onFollowersTap,
+    required this.onFollowingTap,
     this.focusedRecipeId,
   });
 
@@ -253,6 +267,8 @@ class _LibraryContent extends StatelessWidget {
               postCount: viewModel.postCount,
               onMoreTap: onComingSoonTap,
               onEditProfileTap: onEditProfileTap,
+              onFollowersTap: onFollowersTap,
+              onFollowingTap: onFollowingTap,
             ),
           ),
           SliverToBoxAdapter(child: _LibraryTabs(tabController: tabController)),
@@ -321,12 +337,16 @@ class _LibraryProfileHeader extends StatelessWidget {
   final int postCount;
   final VoidCallback onMoreTap;
   final VoidCallback onEditProfileTap;
+  final VoidCallback onFollowersTap;
+  final VoidCallback onFollowingTap;
 
   const _LibraryProfileHeader({
     required this.profile,
     required this.postCount,
     required this.onMoreTap,
     required this.onEditProfileTap,
+    required this.onFollowersTap,
+    required this.onFollowingTap,
   });
 
   @override
@@ -364,12 +384,6 @@ class _LibraryProfileHeader extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.verified,
-                          color: AppColors.primary,
-                          size: 22,
-                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -383,6 +397,7 @@ class _LibraryProfileHeader extends StatelessWidget {
                           child: _ProfileStat(
                             value: profile.followersCount,
                             label: 'Followers',
+                            onTap: onFollowersTap,
                           ),
                         ),
                         _StatDivider(height: compact ? 34 : 40),
@@ -390,6 +405,7 @@ class _LibraryProfileHeader extends StatelessWidget {
                           child: _ProfileStat(
                             value: profile.followingCount,
                             label: 'Following',
+                            onTap: onFollowingTap,
                           ),
                         ),
                       ],
@@ -607,39 +623,18 @@ class _ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: size,
-          height: size,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.primary, width: 2),
-          ),
-          child: CircleAvatar(
-            backgroundColor: context.colors.surfaceContainerHighest,
-            backgroundImage: _imageProvider(imageUrl),
-          ),
-        ),
-        Positioned(
-          right: -1,
-          bottom: -1,
-          child: Container(
-            padding: const EdgeInsets.all(2),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.verified,
-              color: AppColors.primary,
-              size: 22,
-            ),
-          ),
-        ),
-      ],
+    return Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.primary, width: 2),
+      ),
+      child: CircleAvatar(
+        backgroundColor: context.colors.surfaceContainerHighest,
+        backgroundImage: _imageProvider(imageUrl),
+      ),
     );
   }
 }
@@ -647,34 +642,42 @@ class _ProfileAvatar extends StatelessWidget {
 class _ProfileStat extends StatelessWidget {
   final int value;
   final String label;
+  final VoidCallback? onTap;
 
-  const _ProfileStat({required this.value, required this.label});
+  const _ProfileStat({required this.value, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FittedBox(
-          child: Text(
-            _compactCount(value),
-            maxLines: 1,
-            style: context.text.titleLarge?.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w800,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FittedBox(
+              child: Text(
+                _compactCount(value),
+                maxLines: 1,
+                style: context.text.titleLarge?.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: context.text.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

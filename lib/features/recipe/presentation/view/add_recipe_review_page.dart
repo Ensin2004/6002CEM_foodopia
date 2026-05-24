@@ -206,22 +206,17 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                     return RecipeVisibilityActionButton(
                       visibility: visibilityViewModel.visibility,
                       isSaving: visibilityViewModel.isSaving,
-                      onChanged: (value) async {
-                        final success = await visibilityViewModel
-                            .updateVisibility(
+                      onChanged: (value) => confirmRecipeVisibilityChange(
+                        context: context,
+                        currentVisibility: visibilityViewModel.visibility,
+                        nextVisibility: value,
+                        onConfirmed: (visibility) =>
+                            visibilityViewModel.updateVisibility(
                               recipeId: widget.recipeId,
-                              value: value,
-                            );
-                        if (!context.mounted || success) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              visibilityViewModel.errorMessage ??
-                                  "Unable to update visibility.",
+                              value: visibility,
                             ),
-                          ),
-                        );
-                      },
+                        errorMessage: () => visibilityViewModel.errorMessage,
+                      ),
                     );
                   },
                 ),
@@ -298,7 +293,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                     icon: Icons.info_rounded,
                     title: "Basic Info",
                     onEdit: widget.aiReview == null
-                        ? () => context.push(
+                        ? () => context.pushReplacement(
                             AppRouter.addRecipeBasicInfo,
                             extra: AddRecipeBasicInfoArgs(
                               recipeId: widget.recipeId,
@@ -371,7 +366,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                     icon: Icons.eco_rounded,
                     title: "Ingredients",
                     onEdit: widget.aiReview == null
-                        ? () => context.push(
+                        ? () => context.pushReplacement(
                             AppRouter.addRecipeIngredients,
                             extra: AddRecipeIngredientsArgs(
                               recipeId: widget.recipeId,
@@ -391,7 +386,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                     icon: Icons.menu_book_rounded,
                     title: "Instructions",
                     onEdit: widget.aiReview == null
-                        ? () => context.push(
+                        ? () => context.pushReplacement(
                             AppRouter.addRecipeInstructions,
                             extra: AddRecipeInstructionsArgs(
                               recipeId: widget.recipeId,
