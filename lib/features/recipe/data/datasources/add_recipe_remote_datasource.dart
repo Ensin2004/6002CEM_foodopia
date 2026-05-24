@@ -174,14 +174,34 @@ class AddRecipeRemoteDataSource {
 
     final recipeId = info.recipeId?.trim() ?? '';
     if (recipeId.isNotEmpty) {
+      final recipeRef = firestore.collection('recipes').doc(recipeId);
+      final previousSnapshot = await recipeRef.get();
+      final previousVisibility =
+          previousSnapshot.data()?['visibility']?.toString() ?? '';
+
       await firestore
           .collection('recipes')
           .doc(recipeId)
           .update(model.toFirestoreForUpdate());
+
+      if (info.visibility == 'public' && previousVisibility != 'public') {
+        final previousData =
+            previousSnapshot.data() ?? const <String, dynamic>{};
+        await _notifyFollowersOfNewRecipe(
+          recipeOwnerUid: _recipeOwnerUid(previousData, fallbackUid: uid),
+          recipeTitle: info.recipeName,
+        );
+      }
       return recipeId;
     }
 
     final doc = await firestore.collection('recipes').add(model.toFirestore());
+    if (info.visibility == 'public') {
+      await _notifyFollowersOfNewRecipe(
+        recipeOwnerUid: uid,
+        recipeTitle: info.recipeName,
+      );
+    }
     return doc.id;
   }
 
@@ -439,10 +459,26 @@ class AddRecipeRemoteDataSource {
     if (visibility == 'public' && previousVisibility != 'public') {
       final data = snapshot.data() ?? const <String, dynamic>{};
       await _notifyFollowersOfNewRecipe(
-        recipeOwnerUid: auth.currentUser?.uid ?? '',
+        recipeOwnerUid: _recipeOwnerUid(
+          data,
+          fallbackUid: auth.currentUser?.uid ?? '',
+        ),
         recipeTitle: data['name']?.toString() ?? 'a new recipe',
       );
     }
+  }
+
+  String _recipeOwnerUid(
+    Map<String, dynamic> data, {
+    required String fallbackUid,
+  }) {
+    final creatorId = data['creatorId']?.toString().trim() ?? '';
+    if (creatorId.isNotEmpty) return creatorId;
+
+    final creatorUid = data['creatorUid']?.toString().trim() ?? '';
+    if (creatorUid.isNotEmpty) return creatorUid;
+
+    return fallbackUid;
   }
 
   Future<void> _notifyFollowersOfNewRecipe({
