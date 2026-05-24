@@ -91,6 +91,7 @@ import '../../features/statistics/data/datasources/statistics_remote_datasource.
 import '../../features/recipe/data/datasources/add_recipe_remote_datasource.dart';
 import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart';
 import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
+import '../../features/recipe/domain/usecases/finalize_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_review_usecase.dart';
@@ -290,6 +291,7 @@ void _initRecipeFeature() {
   sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeInstructionsUseCase(sl()));
   sl.registerLazySingleton(() => GetAddRecipeReviewUseCase(sl()));
+  sl.registerLazySingleton(() => FinalizeAddRecipeUseCase(sl()));
   sl.registerLazySingleton(() => UpdateAddRecipeVisibilityUseCase(sl()));
 }
 

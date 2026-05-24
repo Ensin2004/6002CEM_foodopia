@@ -14,6 +14,7 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_recipe_review.dart';
+import '../../domain/usecases/finalize_add_recipe_usecase.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../viewmodel/add_recipe_review_viewmodel.dart';
 import '../viewmodel/add_recipe_visibility_viewmodel.dart';
@@ -36,6 +37,7 @@ class AddRecipeReviewPage extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => AddRecipeReviewViewModel(
             getReviewUseCase: sl<GetAddRecipeReviewUseCase>(),
+            finalizeRecipeUseCase: sl<FinalizeAddRecipeUseCase>(),
           )..loadReview(recipeId),
         ),
         ChangeNotifierProvider(
@@ -96,7 +98,8 @@ class _AddRecipeReviewView extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        visibilityViewModel.errorMessage ?? "Unable to update visibility.",
+                        visibilityViewModel.errorMessage ??
+                            "Unable to update visibility.",
                       ),
                     ),
                   );
@@ -244,7 +247,9 @@ class _AddRecipeReviewView extends StatelessWidget {
                       AppRouter.addRecipeIngredients,
                       extra: AddRecipeIngredientsArgs(
                         recipeId: recipeId,
-                        visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+                        visibility: context
+                            .read<AddRecipeVisibilityViewModel>()
+                            .visibility,
                         returnToReview: true,
                       ),
                     ),
@@ -262,7 +267,9 @@ class _AddRecipeReviewView extends StatelessWidget {
                       AppRouter.addRecipeInstructions,
                       extra: AddRecipeInstructionsArgs(
                         recipeId: recipeId,
-                        visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+                        visibility: context
+                            .read<AddRecipeVisibilityViewModel>()
+                            .visibility,
                         returnToReview: true,
                       ),
                     ),
@@ -280,12 +287,30 @@ class _AddRecipeReviewView extends StatelessWidget {
                 AppSpacing.lg,
               ),
               child: PrimaryButton(
-                text: "Save",
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Recipe saved.")),
-                  );
-                },
+                text: viewModel.isSaving ? "Saving..." : "Save",
+                onPressed: viewModel.isSaving
+                    ? null
+                    : () async {
+                        final success = await viewModel.finalizeRecipe(
+                          recipeId,
+                        );
+                        if (!context.mounted) return;
+                        if (!success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                viewModel.errorMessage ??
+                                    "Unable to save recipe.",
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Recipe saved.")),
+                        );
+                      },
               ),
             ),
           ],
@@ -298,10 +323,13 @@ class _AddRecipeReviewView extends StatelessWidget {
   List<Widget> _instructionsWidgets(AddRecipeReview review) {
     if (!review.instructionUseSection) {
       return review.instructions
-          .map((instruction) => ReviewInstructionItem(
+          .map(
+            (instruction) => ReviewInstructionItem(
               instruction: instruction,
               useSection: review.instructionUseSection,
-          )).toList();
+            ),
+          )
+          .toList();
     }
 
     final grouped = <int, List<AddRecipeReviewInstruction>>{};
@@ -330,10 +358,12 @@ class _AddRecipeReviewView extends StatelessWidget {
             ),
           ),
         ),
-        ...entry.value.map((step) => ReviewInstructionItem(
+        ...entry.value.map(
+          (step) => ReviewInstructionItem(
             instruction: step,
             useSection: review.instructionUseSection,
-        )),
+          ),
+        ),
       ];
     }).toList();
   }

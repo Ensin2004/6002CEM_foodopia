@@ -36,6 +36,7 @@ class AddRecipeBasicInfoModel {
       'ratingCount': 0,
       'commentCount': 0,
       'totalViews': 0,
+      'isFinalized': false,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };

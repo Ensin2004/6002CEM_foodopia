@@ -605,7 +605,7 @@ class StatisticsRemoteDataSource {
 
   bool _isSharedRecipe(Map<String, dynamic> data) {
     final visibility = data['visibility']?.toString().trim().toLowerCase();
-    return visibility == 'public';
+    return visibility == 'public' && data['isFinalized'] != false;
   }
 
   Future<CaloriesIntakeStatistics> getUserCaloriesIntake({

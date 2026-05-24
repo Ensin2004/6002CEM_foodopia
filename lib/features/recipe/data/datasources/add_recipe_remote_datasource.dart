@@ -174,34 +174,14 @@ class AddRecipeRemoteDataSource {
 
     final recipeId = info.recipeId?.trim() ?? '';
     if (recipeId.isNotEmpty) {
-      final recipeRef = firestore.collection('recipes').doc(recipeId);
-      final previousSnapshot = await recipeRef.get();
-      final previousVisibility =
-          previousSnapshot.data()?['visibility']?.toString() ?? '';
-
       await firestore
           .collection('recipes')
           .doc(recipeId)
           .update(model.toFirestoreForUpdate());
-
-      if (info.visibility == 'public' && previousVisibility != 'public') {
-        final previousData =
-            previousSnapshot.data() ?? const <String, dynamic>{};
-        await _notifyFollowersOfNewRecipe(
-          recipeOwnerUid: _recipeOwnerUid(previousData, fallbackUid: uid),
-          recipeTitle: info.recipeName,
-        );
-      }
       return recipeId;
     }
 
     final doc = await firestore.collection('recipes').add(model.toFirestore());
-    if (info.visibility == 'public') {
-      await _notifyFollowersOfNewRecipe(
-        recipeOwnerUid: uid,
-        recipeTitle: info.recipeName,
-      );
-    }
     return doc.id;
   }
 
@@ -456,8 +436,60 @@ class AddRecipeRemoteDataSource {
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
-    if (visibility == 'public' && previousVisibility != 'public') {
+    if (visibility == 'public' &&
+        previousVisibility != 'public' &&
+        _isFinalizedRecipe(snapshot.data()) &&
+        !_hasSentPublicNotification(snapshot.data())) {
       final data = snapshot.data() ?? const <String, dynamic>{};
+      final recipeOwnerUid = _recipeOwnerUid(
+        data,
+        fallbackUid: auth.currentUser?.uid ?? '',
+      );
+      await _notifyFollowersOfNewRecipe(
+        recipeOwnerUid: recipeOwnerUid,
+        recipeTitle: data['name']?.toString() ?? 'a new recipe',
+      );
+      await recipeRef.update({
+        'publicNotificationSentAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<void> finalizeRecipe(String recipeId) async {
+    final uid = auth.currentUser?.uid ?? '';
+    if (uid.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'not-authenticated',
+        message: 'User is not authenticated.',
+      );
+    }
+
+    final recipeRef = firestore.collection('recipes').doc(recipeId);
+    final snapshot = await recipeRef.get();
+    final data = snapshot.data();
+    if (!snapshot.exists || data == null) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        message: 'Recipe not found.',
+      );
+    }
+
+    final recipeOwnerUid = _recipeOwnerUid(data, fallbackUid: uid);
+    if (recipeOwnerUid != uid) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        message: 'Only the recipe creator can save this recipe.',
+      );
+    }
+
+    await recipeRef.update({
+      'isFinalized': true,
+      'finalizedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    if (data['visibility']?.toString() == 'public' &&
+        !_hasSentPublicNotification(data)) {
       await _notifyFollowersOfNewRecipe(
         recipeOwnerUid: _recipeOwnerUid(
           data,
@@ -465,6 +497,9 @@ class AddRecipeRemoteDataSource {
         ),
         recipeTitle: data['name']?.toString() ?? 'a new recipe',
       );
+      await recipeRef.update({
+        'publicNotificationSentAt': FieldValue.serverTimestamp(),
+      });
     }
   }
 
@@ -479,6 +514,14 @@ class AddRecipeRemoteDataSource {
     if (creatorUid.isNotEmpty) return creatorUid;
 
     return fallbackUid;
+  }
+
+  bool _isFinalizedRecipe(Map<String, dynamic>? data) {
+    return data?['isFinalized'] != false;
+  }
+
+  bool _hasSentPublicNotification(Map<String, dynamic>? data) {
+    return data?['publicNotificationSentAt'] != null;
   }
 
   Future<void> _notifyFollowersOfNewRecipe({

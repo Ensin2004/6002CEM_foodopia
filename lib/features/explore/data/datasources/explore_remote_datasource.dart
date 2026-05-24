@@ -22,6 +22,7 @@ class ExploreRemoteDataSource {
 
     final recipes = <ExploreRecipeModel>[];
     for (final doc in snapshot.docs) {
+      if (!_isPublicFinalizedRecipe(doc.data())) continue;
       recipes.add(await _recipeFromDoc(doc, includeCommunity: false));
     }
     return recipes;
@@ -219,7 +220,7 @@ class ExploreRemoteDataSource {
 
     final docs =
         snapshot.docs.where((doc) {
-          return _stringValue(doc.data()['visibility']) == 'public';
+          return _isPublicFinalizedRecipe(doc.data());
         }).toList()..sort((first, second) {
           final firstData = first.data();
           final secondData = second.data();
@@ -356,8 +357,7 @@ class ExploreRemoteDataSource {
     final docs =
         snapshot.docs.where((doc) {
           final data = doc.data();
-          return doc.id != currentRecipeId &&
-              _stringValue(data['visibility']) == 'public';
+          return doc.id != currentRecipeId && _isPublicFinalizedRecipe(data);
         }).toList()..sort((first, second) {
           final firstData = first.data();
           final secondData = second.data();
@@ -980,7 +980,10 @@ class ExploreRemoteDataSource {
 
       final data = snapshot.data() ?? {};
       shouldNotifyFollowers =
-          isPublished && _stringValue(data['visibility']) != 'public';
+          isPublished &&
+          _stringValue(data['visibility']) != 'public' &&
+          data['isFinalized'] != false &&
+          data['publicNotificationSentAt'] == null;
       recipeTitle = _stringValue(data['name'], fallback: 'a new recipe');
       final creatorUid = _stringValue(data['creatorId']).isNotEmpty
           ? _stringValue(data['creatorId'])
@@ -1000,6 +1003,9 @@ class ExploreRemoteDataSource {
         recipeOwnerUid: uid,
         recipeTitle: recipeTitle,
       );
+      await recipeRef.update({
+        'publicNotificationSentAt': FieldValue.serverTimestamp(),
+      });
     }
   }
 
@@ -1098,6 +1104,11 @@ class ExploreRemoteDataSource {
     final creatorId = _stringValue(data['creatorId']);
     if (creatorId.isNotEmpty) return creatorId;
     return _stringValue(data['creatorUid']);
+  }
+
+  bool _isPublicFinalizedRecipe(Map<String, dynamic> data) {
+    return _stringValue(data['visibility']) == 'public' &&
+        data['isFinalized'] != false;
   }
 
   String _shortText(String value) {
