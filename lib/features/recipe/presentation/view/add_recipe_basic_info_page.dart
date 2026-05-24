@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_option.dart';
+import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
@@ -36,11 +38,17 @@ import '../widgets/basic_info/recipe_option_picker_sheet.dart';
 class AddRecipeBasicInfoPage extends StatelessWidget {
   final String? recipeId;
   final bool returnToReview;
+  final AddMealAiRecipe? initialAiRecipe;
+  final AddMealAiGenerationRequest? initialAiRequest;
+  final String? userId;
 
   const AddRecipeBasicInfoPage({
     super.key,
     this.recipeId,
     this.returnToReview = false,
+    this.initialAiRecipe,
+    this.initialAiRequest,
+    this.userId,
   });
 
   @override
@@ -63,6 +71,9 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
       child: _AddRecipeBasicInfoView(
         recipeId: recipeId,
         returnToReview: returnToReview,
+        initialAiRecipe: initialAiRecipe,
+        initialAiRequest: initialAiRequest,
+        userId: userId,
       ),
     );
   }
@@ -71,8 +82,17 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
 class _AddRecipeBasicInfoView extends StatefulWidget {
   final String? recipeId;
   final bool returnToReview;
+  final AddMealAiRecipe? initialAiRecipe;
+  final AddMealAiGenerationRequest? initialAiRequest;
+  final String? userId;
 
-  const _AddRecipeBasicInfoView({this.recipeId, required this.returnToReview});
+  const _AddRecipeBasicInfoView({
+    this.recipeId,
+    required this.returnToReview,
+    this.initialAiRecipe,
+    this.initialAiRequest,
+    this.userId,
+  });
 
   @override
   State<_AddRecipeBasicInfoView> createState() =>
@@ -103,6 +123,18 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   @override
   void initState() {
     super.initState();
+    final recipe = widget.initialAiRecipe;
+    if (recipe != null) {
+      _recipeNameController.text = recipe.title;
+      _descriptionController.text = recipe.description;
+      _prepTimeController.text =
+          RegExp(r'\d+').firstMatch(recipe.durationLabel)?.group(0) ?? '30';
+      _servingsController.text =
+          RegExp(r'\d+').firstMatch(recipe.servingLabel)?.group(0) ?? '1';
+      _customCategories = [
+        recipe.categoryName.trim(),
+      ].where((value) => value.isNotEmpty).toList();
+    }
     _recipeNameController.addListener(_refreshRequiredState);
     _descriptionController.addListener(_refreshRequiredState);
     _prepTimeController.addListener(_refreshRequiredState);
@@ -138,6 +170,13 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     if (setup == null) {
       return _RecipeErrorState(message: viewModel.errorMessage);
     }
+    final aiRecipe = widget.initialAiRecipe;
+    if (aiRecipe != null && viewModel.difficultyLevel == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        viewModel.selectDifficulty(_difficultyLevelFor(aiRecipe));
+      });
+    }
 
     final recipeId = widget.recipeId;
     if (recipeId != null &&
@@ -159,20 +198,25 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       _seedFromReview(viewModel, setup.categories, setup.allergens);
     }
 
-    return PopScope(
-      canPop: _allowPop,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        _handleBack(context);
-      },
-      child: Scaffold(
-        resizeToAvoidBottomInset: true,
-        backgroundColor: Colors.white,
-        appBar: CustomAppBar(
-          title: "New Recipe",
-          leading: IconButton(
-            onPressed: () => _handleBack(context),
-            icon: const Icon(Icons.arrow_back),
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      backgroundColor: Colors.white,
+      appBar: CustomAppBar(
+        title: widget.initialAiRecipe == null
+            ? "New Recipe"
+            : "Customize AI Recipe",
+        actions: [
+          Consumer<AddRecipeVisibilityViewModel>(
+            builder: (context, visibilityViewModel, _) {
+              return RecipeVisibilityActionButton(
+                visibility: visibilityViewModel.visibility,
+                isSaving: visibilityViewModel.isSaving,
+                onChanged: (value) => visibilityViewModel.updateVisibility(
+                  recipeId: widget.recipeId ?? "",
+                  value: value,
+                ),
+              );
+            },
           ),
           actions: [
             Consumer<AddRecipeVisibilityViewModel>(
@@ -208,83 +252,64 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                 ),
               ),
 
-              // Input Fields
-              Expanded(
-                child: ListView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.manual,
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    AppSpacing.sm,
-                    horizontalPadding,
-                    0,
-                  ),
-
-                  children: [
-                    // Recipe Image
-                    Label(text: "Recipe Image", isRequired: true),
-                    const SizedBox(height: AppSpacing.sm),
+                children: [
+                  // Recipe Image
+                  Label(text: "Recipe Image", isRequired: true),
+                  const SizedBox(height: AppSpacing.sm),
+                  if (_images.isEmpty &&
+                      _existingImageUrls.isEmpty &&
+                      widget.initialAiRecipe?.imageBase64?.isNotEmpty == true)
+                    _AiRecipeImagePreview(
+                      imageBase64: widget.initialAiRecipe!.imageBase64!,
+                      onReplace: _pickImages,
+                    )
+                  else
                     RecipeImagePicker(
                       images: _images,
                       existingImageUrls: _existingImageUrls,
                       onPick: _pickImages,
                       onEdit: _showSelectedMediaSheet,
                     ),
-                    const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.lg),
 
-                    // Recipe Name
-                    Label(text: "Recipe Name", isRequired: true),
-                    const SizedBox(height: AppSpacing.sm),
-                    InputTextField(
-                      controller: _recipeNameController,
-                      hint: "e.g. Classic Italian Basil Pesto Pasta",
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
+                  // Recipe Name
+                  Label(text: "Recipe Name", isRequired: true),
+                  const SizedBox(height: AppSpacing.sm),
+                  InputTextField(
+                    controller: _recipeNameController,
+                    hint: "e.g. Classic Italian Basil Pesto Pasta",
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
 
-                    // Recipe Description
-                    Label(text: "Recipe Description", isRequired: true),
-                    const SizedBox(height: AppSpacing.sm),
-                    InputTextField(
-                      controller: _descriptionController,
-                      hint: "Describe what makes this recipe delicious",
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      maxLines: 4,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
+                  // Recipe Description
+                  Label(text: "Recipe Description", isRequired: true),
+                  const SizedBox(height: AppSpacing.sm),
+                  InputTextField(
+                    controller: _descriptionController,
+                    hint: "Describe what makes this recipe delicious",
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    maxLines: 4,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
 
-                    // Other Name
-                    Label(text: "Other Name"),
-                    const SizedBox(height: AppSpacing.sm),
-                    ..._otherNameControllers.asMap().entries.map((entry) {
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          bottom: entry.key == _otherNameControllers.length - 1
-                              ? 0
-                              : AppSpacing.sm,
-                        ),
-                        child: InputTextField(
-                          controller: entry.value,
-                          hint: "e.g. Pesto alla Genovese",
-                          onDelete: _otherNameControllers.length > 1
-                              ? () => _removeOtherName(entry.key)
-                              : null,
-                        ),
-                      );
-                    }),
-                    AddMoreButtonSmall(onPressed: _addOtherName),
-                    const SizedBox(height: AppSpacing.lg),
-
-                    // Category
-                    Label(text: "Category", isRequired: true),
-                    const SizedBox(height: AppSpacing.sm),
-                    InputOptionField(
-                      placeholder: "Select categories",
-                      values: _selectedOptionValues(
-                        options: setup.categories,
-                        selectedIds: _selectedCategoryIds,
-                        customOptions: _customCategories,
+                  // Other Name
+                  Label(text: "Other Name"),
+                  const SizedBox(height: AppSpacing.sm),
+                  ..._otherNameControllers.asMap().entries.map((entry) {
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: entry.key == _otherNameControllers.length - 1
+                            ? 0
+                            : AppSpacing.sm,
+                      ),
+                      child: InputTextField(
+                        controller: entry.value,
+                        hint: "e.g. Pesto alla Genovese",
+                        onDelete: _otherNameControllers.length > 1
+                            ? () => _removeOtherName(entry.key)
+                            : null,
                       ),
                       onDelete: _removeCategorySelection,
                       onTap: () => _showCategorySheet(setup.categories),
@@ -350,23 +375,17 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   ],
                 ),
               ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  AppSpacing.lg,
-                  horizontalPadding,
-                  AppSpacing.lg,
-                ),
-                child: PrimaryButton(
-                  text: widget.returnToReview
-                      ? "Save & Review"
-                      : "Save & Continue",
-                  isLoading: viewModel.isSaving,
-                  onPressed:
-                      viewModel.isSaving || !_isBasicInfoComplete(viewModel)
-                      ? null
-                      : () => _handleNext(context, viewModel),
-                ),
+              child: PrimaryButton(
+                text: widget.initialAiRecipe != null
+                    ? "Next"
+                    : widget.returnToReview
+                    ? "Save & Review"
+                    : "Save & Continue",
+                isLoading: viewModel.isSaving,
+                onPressed:
+                    viewModel.isSaving || !_isBasicInfoComplete(viewModel)
+                    ? null
+                    : () => _handleNext(context, viewModel),
               ),
             ],
           ),
@@ -578,7 +597,23 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       allergenIds: List<String>.unmodifiable(_selectedAllergenIds),
       customAllergens: List<String>.unmodifiable(_customAllergens),
       visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+      isAiGenerated: widget.initialAiRecipe != null,
     );
+
+    if (widget.initialAiRecipe != null) {
+      context.push(
+        AppRouter.addRecipeIngredients,
+        extra: AddRecipeIngredientsArgs(
+          recipeId: widget.recipeId ?? '',
+          visibility: info.visibility,
+          aiRecipe: widget.initialAiRecipe,
+          aiRequest: widget.initialAiRequest,
+          userId: widget.userId,
+          aiDraftBasicInfo: info,
+        ),
+      );
+      return;
+    }
 
     final success = await viewModel.saveBasicInfo(info);
 
@@ -607,6 +642,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       extra: AddRecipeIngredientsArgs(
         recipeId: viewModel.savedRecipeId!,
         visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
+        aiRecipe: widget.initialAiRecipe,
+        aiRequest: widget.initialAiRequest,
+        userId: widget.userId,
       ),
     );
   }
@@ -619,7 +657,11 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   }
 
   bool _isBasicInfoComplete(AddRecipeBasicInfoViewModel viewModel) {
-    return (_images.isNotEmpty || _existingImageUrls.isNotEmpty) &&
+    final hasImage =
+        _images.isNotEmpty ||
+        _existingImageUrls.isNotEmpty ||
+        widget.initialAiRecipe != null;
+    return hasImage &&
         _recipeNameController.text.trim().isNotEmpty &&
         _descriptionController.text.trim().isNotEmpty &&
         (_selectedCategoryIds.isNotEmpty || _customCategories.isNotEmpty) &&
@@ -627,6 +669,14 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         viewModel.difficultyLevel >= 1 &&
         viewModel.difficultyLevel <= 5 &&
         (int.tryParse(_servingsController.text.trim()) ?? 0) > 0;
+  }
+
+  int _difficultyLevelFor(AddMealAiRecipe recipe) {
+    final label = recipe.difficultyLabel.toLowerCase();
+    if (label.contains('easy') || label.contains('beginner')) return 2;
+    if (label.contains('medium') || label.contains('intermediate')) return 3;
+    if (label.contains('hard') || label.contains('advanced')) return 4;
+    return 1;
   }
 
   void _refreshRequiredState() {
@@ -719,6 +769,47 @@ class _SavedRecipeOption {
     required this.optionIds,
     required this.customNames,
   });
+}
+
+class _AiRecipeImagePreview extends StatelessWidget {
+  final String imageBase64;
+  final VoidCallback onReplace;
+
+  const _AiRecipeImagePreview({
+    required this.imageBase64,
+    required this.onReplace,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Stack(
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Image.memory(
+              base64Decode(imageBase64),
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Image.asset(
+                "assets/images/empty_page.png",
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          Positioned(
+            right: AppSpacing.sm,
+            bottom: AppSpacing.sm,
+            child: FilledButton.icon(
+              onPressed: onReplace,
+              icon: const Icon(Icons.photo_library_outlined, size: 18),
+              label: const Text('Replace'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // Selected Recipe Option Class

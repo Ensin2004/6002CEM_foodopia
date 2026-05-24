@@ -15,6 +15,7 @@ class AddRecipeBasicInfo {
   final List<String> allergenIds;
   final List<String> customAllergens;
   final String visibility;
+  final bool isAiGenerated;
 
   const AddRecipeBasicInfo({
     this.recipeId,
@@ -31,5 +32,6 @@ class AddRecipeBasicInfo {
     required this.allergenIds,
     required this.customAllergens,
     this.visibility = 'private',
+    this.isAiGenerated = false,
   });
 }

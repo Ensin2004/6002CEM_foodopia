@@ -457,9 +457,14 @@ class AppRouter {
         builder: (context, state) {
           final args = state.extra as AddRecipeBasicInfoArgs?;
           return AddRecipeBasicInfoPage(
-            key: ValueKey(args?.recipeId),
+            key: ValueKey(
+              args?.recipeId ?? args?.draftId ?? args?.aiRecipe?.id,
+            ),
             recipeId: args?.recipeId,
             returnToReview: args?.returnToReview ?? false,
+            initialAiRecipe: args?.aiRecipe,
+            initialAiRequest: args?.aiRequest,
+            userId: args?.userId,
           );
         },
       ),
@@ -473,6 +478,10 @@ class AppRouter {
             recipeId: args.recipeId,
             initialVisibility: args.visibility,
             returnToReview: args.returnToReview,
+            initialAiRecipe: args.aiRecipe,
+            initialAiRequest: args.aiRequest,
+            userId: args.userId,
+            aiDraftBasicInfo: args.aiDraftBasicInfo,
           );
         },
       ),
@@ -486,6 +495,11 @@ class AppRouter {
             recipeId: args.recipeId,
             initialVisibility: args.visibility,
             returnToReview: args.returnToReview,
+            initialAiRecipe: args.aiRecipe,
+            initialAiRequest: args.aiRequest,
+            userId: args.userId,
+            aiDraftBasicInfo: args.aiDraftBasicInfo,
+            aiDraftIngredients: args.aiDraftIngredients,
           );
         },
       ),
@@ -495,7 +509,16 @@ class AppRouter {
         path: addRecipeReview,
         builder: (context, state) {
           final args = state.extra as AddRecipeReviewArgs;
-          return AddRecipeReviewPage(recipeId: args.recipeId);
+          return AddRecipeReviewPage(
+            recipeId: args.recipeId,
+            initialAiRecipe: args.aiRecipe,
+            initialAiRequest: args.aiRequest,
+            userId: args.userId,
+            aiDraftBasicInfo: args.aiDraftBasicInfo,
+            aiDraftIngredients: args.aiDraftIngredients,
+            aiDraftInstructions: args.aiDraftInstructions,
+            aiDraftUseSections: args.aiDraftUseSections,
+          );
         },
       ),
 
@@ -570,6 +593,8 @@ class AppRouter {
             mealType: args?.mealType ?? 'Breakfast',
             userId:
                 args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+            initialRequest: args?.initialRequest,
+            autoGenerate: args?.autoGenerate ?? false,
           );
         },
       ),

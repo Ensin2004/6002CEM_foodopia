@@ -43,4 +43,9 @@ abstract class AddRecipeRepository {
   });
 
   Future<Either<Failure, void>> deleteRecipe(String recipeId);
+
+  Future<Either<Failure, void>> completeRecipe({
+    required String recipeId,
+    required String mode,
+  });
 }

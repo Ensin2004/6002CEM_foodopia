@@ -7,7 +7,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool isAdmin;
   final String? profileImageUrl;
   final VoidCallback onSettingsTap;
-  final VoidCallback? onFavoritesTap;
+  final VoidCallback? onStatisticsTap;
   final VoidCallback? onNotificationsTap;
 
   /// Creates a main app bar instance.
@@ -16,7 +16,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.isAdmin,
     required this.profileImageUrl,
     required this.onSettingsTap,
-    this.onFavoritesTap,
+    this.onStatisticsTap,
     this.onNotificationsTap,
   });
 
@@ -86,14 +86,14 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     // Admin has no actions
     if (isAdmin) return [];
 
-    // User has favorites and notifications
+    // User has statistics and notifications
     return [
       /// Creates a icon button instance.
       IconButton(
-        icon: const Icon(Icons.favorite),
+        icon: const Icon(Icons.bar_chart),
         color: Theme.of(context).colorScheme.onPrimary,
-        onPressed: onFavoritesTap,
-        tooltip: 'Favorites',
+        onPressed: onStatisticsTap,
+        tooltip: 'Statistics',
       ),
 
       /// Creates a icon button instance.
