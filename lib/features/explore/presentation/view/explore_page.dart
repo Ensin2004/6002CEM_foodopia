@@ -11,6 +11,8 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/entities/explore_recipe.dart';
+import 'explore_recipe_detail_page.dart';
+import '../viewmodel/explore_recipe_detail_viewmodel.dart';
 import '../viewmodel/explore_viewmodel.dart';
 import '../widgets/explore_empty_state.dart';
 import '../widgets/explore_recipe_grid.dart';
@@ -90,10 +92,30 @@ class _ExplorePageViewState extends State<_ExplorePageView>
     context.read<ExploreViewModel>().selectTab(tab);
   }
 
-  void _showComingSoonMessage() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Coming soon')));
+  Future<void> _showCommentsPopup(ExploreRecipe recipe) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return ChangeNotifierProvider(
+          create: (_) => ExploreRecipeDetailViewModel(
+            recipeId: recipe.id,
+            getRecipeDetailUseCase: sl(),
+            submitRecipeRatingUseCase: sl(),
+            addRecipeCommentUseCase: sl(),
+            incrementRecipeViewCountUseCase: sl(),
+            toggleRecipeCommentLikeUseCase: sl(),
+            addRecipeCommentReplyUseCase: sl(),
+            toggleRecipeReplyLikeUseCase: sl(),
+            addRecipeReplyToReplyUseCase: sl(),
+            watchRecipeDetailUseCase: sl(),
+            toggleCreatorFollowUseCase: sl(),
+            updateRecipeVisibilityUseCase: sl(),
+            toggleFavouriteUseCase: sl(),
+          ),
+          child: const _ExploreCommentsDialog(),
+        );
+      },
+    );
   }
 
   @override
@@ -127,7 +149,7 @@ class _ExplorePageViewState extends State<_ExplorePageView>
                 viewModel: viewModel,
                 mealPlanSelection: widget.mealPlanSelection,
                 onExploreNow: () => _selectTab(ExploreRecipeTab.all),
-                onComingSoonTap: _showComingSoonMessage,
+                onCommentTap: _showCommentsPopup,
               ),
             ),
           ],
@@ -175,17 +197,118 @@ class _ExplorePageViewState extends State<_ExplorePageView>
   }
 }
 
+class _ExploreCommentsDialog extends StatelessWidget {
+  const _ExploreCommentsDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<ExploreRecipeDetailViewModel>();
+    final recipe = viewModel.recipe;
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.78,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Comments',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Expanded(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: _ExploreCommentsDialogBody(
+                      viewModel: viewModel,
+                      recipe: recipe,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExploreCommentsDialogBody extends StatelessWidget {
+  final ExploreRecipeDetailViewModel viewModel;
+  final ExploreRecipe? recipe;
+
+  const _ExploreCommentsDialogBody({
+    required this.viewModel,
+    required this.recipe,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (viewModel.isLoading) {
+      return const LoadingDialog(message: 'Loading comments...', inline: true);
+    }
+
+    final error = viewModel.errorMessage;
+    if (error != null || recipe == null) {
+      return Padding(
+        padding: const EdgeInsets.all(18),
+        child: Text(
+          error ?? 'Comments unavailable',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      );
+    }
+
+    return ExploreCommentsPanel(
+      viewModel: viewModel,
+      recipe: recipe!,
+      isSubmitting: viewModel.isSubmittingCommunityAction,
+      onAddComment: (content) => viewModel.addComment(content),
+      onToggleLike: (commentId) => viewModel.toggleCommentLike(commentId),
+      onReply: (commentId, content) =>
+          viewModel.addCommentReply(commentId: commentId, content: content),
+      onToggleReplyLike: (replyPath) => viewModel.toggleReplyLike(replyPath),
+      onReplyToReply: (replyPath, content) =>
+          viewModel.addReplyToReply(replyPath: replyPath, content: content),
+    );
+  }
+}
+
 class _ExploreContent extends StatelessWidget {
   final ExploreViewModel viewModel;
   final MealPlanSelectionArgs? mealPlanSelection;
   final VoidCallback onExploreNow;
-  final VoidCallback onComingSoonTap;
+  final ValueChanged<ExploreRecipe> onCommentTap;
 
   const _ExploreContent({
     required this.viewModel,
     this.mealPlanSelection,
     required this.onExploreNow,
-    required this.onComingSoonTap,
+    required this.onCommentTap,
   });
 
   @override
@@ -233,9 +356,7 @@ class _ExploreContent extends StatelessWidget {
       onRefresh: viewModel.loadRecipes,
       child: ExploreRecipeGridView(
         recipes: recipes,
-        disabledRecipeIds:
-            mealPlanSelection?.existingRecipeIds.toSet() ?? const {},
-        onComingSoonTap: onComingSoonTap,
+        onCommentTap: onCommentTap,
         onFavouriteTap: viewModel.toggleFavourite,
         onImageLongPress: (recipe) => _showRecipeImage(context, recipe),
         onRecipeTap: (recipe) {

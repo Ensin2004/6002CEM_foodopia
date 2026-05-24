@@ -9,6 +9,7 @@ class LibraryProfileUsersViewModel extends ChangeNotifier {
   final GetLibraryFollowersUseCase _getFollowersUseCase;
   final GetLibraryFollowingUseCase _getFollowingUseCase;
   final bool showFollowers;
+  final String? ownerUid;
 
   List<LibraryProfileUser> _users = const [];
   bool _isLoading = true;
@@ -18,6 +19,7 @@ class LibraryProfileUsersViewModel extends ChangeNotifier {
     required GetLibraryFollowersUseCase getFollowersUseCase,
     required GetLibraryFollowingUseCase getFollowingUseCase,
     required this.showFollowers,
+    this.ownerUid,
   }) : _getFollowersUseCase = getFollowersUseCase,
        _getFollowingUseCase = getFollowingUseCase {
     Future.microtask(loadUsers);
@@ -33,8 +35,8 @@ class LibraryProfileUsersViewModel extends ChangeNotifier {
     notifyListeners();
 
     final result = showFollowers
-        ? await _getFollowersUseCase.execute()
-        : await _getFollowingUseCase.execute();
+        ? await _getFollowersUseCase.execute(ownerUid: ownerUid)
+        : await _getFollowingUseCase.execute(ownerUid: ownerUid);
 
     result.ifRight((users) {
       _users = users;

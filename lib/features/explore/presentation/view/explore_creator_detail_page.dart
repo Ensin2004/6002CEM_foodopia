@@ -187,6 +187,24 @@ class _CreatorBody extends StatelessWidget {
               creator: creator,
               isUpdatingFollow: viewModel.isUpdatingFollow,
               onFollowTap: viewModel.toggleFollow,
+              onFollowersTap: () {
+                context.push(
+                  AppRouter.libraryProfileUsers,
+                  extra: LibraryProfileUsersArgs(
+                    showFollowers: true,
+                    ownerUid: creator.summary.uid,
+                  ),
+                );
+              },
+              onFollowingTap: () {
+                context.push(
+                  AppRouter.libraryProfileUsers,
+                  extra: LibraryProfileUsersArgs(
+                    showFollowers: false,
+                    ownerUid: creator.summary.uid,
+                  ),
+                );
+              },
             ),
           ),
           SliverToBoxAdapter(
@@ -215,11 +233,15 @@ class _CreatorHeader extends StatelessWidget {
   final ExploreCreatorDetail creator;
   final bool isUpdatingFollow;
   final Future<bool> Function() onFollowTap;
+  final VoidCallback onFollowersTap;
+  final VoidCallback onFollowingTap;
 
   const _CreatorHeader({
     required this.creator,
     required this.isUpdatingFollow,
     required this.onFollowTap,
+    required this.onFollowersTap,
+    required this.onFollowingTap,
   });
 
   @override
@@ -330,6 +352,7 @@ class _CreatorHeader extends StatelessWidget {
                   child: _CreatorMetric(
                     value: _compactCount(summary.followerCount),
                     label: 'Followers',
+                    onTap: onFollowersTap,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -337,6 +360,7 @@ class _CreatorHeader extends StatelessWidget {
                   child: _CreatorMetric(
                     value: '${creator.followingCount}',
                     label: 'Following',
+                    onTap: onFollowingTap,
                   ),
                 ),
               ],
@@ -351,43 +375,51 @@ class _CreatorHeader extends StatelessWidget {
 class _CreatorMetric extends StatelessWidget {
   final String value;
   final String label;
+  final VoidCallback? onTap;
 
-  const _CreatorMetric({required this.value, required this.label});
+  const _CreatorMetric({required this.value, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
+    return Material(
+      color: Colors.white.withValues(alpha: 0.9),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.text.titleLarge?.copyWith(
-                color: context.colors.primary,
-                fontWeight: FontWeight.w900,
-                height: 1,
-              ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.titleLarge?.copyWith(
+                    color: context.colors.primary,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.text.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -418,7 +450,7 @@ class _RecipeGrid extends StatelessWidget {
 
     return ExploreRecipeSliverGrid(
       recipes: recipes,
-      onComingSoonTap: onComingSoonTap,
+      onCommentTap: (_) => onComingSoonTap(),
       onFavouriteTap: onFavouriteTap,
       onImageLongPress: onImageLongPress,
       onRecipeTap: (recipe) {

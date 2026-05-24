@@ -63,8 +63,9 @@ class LibraryArgs {
 
 class LibraryProfileUsersArgs {
   final bool showFollowers;
+  final String? ownerUid;
 
-  const LibraryProfileUsersArgs({required this.showFollowers});
+  const LibraryProfileUsersArgs({required this.showFollowers, this.ownerUid});
 }
 
 /// Typed arguments for explore creator detail route.

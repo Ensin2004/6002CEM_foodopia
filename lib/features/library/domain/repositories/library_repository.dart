@@ -9,9 +9,13 @@ import '../entities/library_recipe.dart';
 abstract class LibraryRepository {
   Future<Either<Failure, LibraryProfile>> getProfile();
 
-  Future<Either<Failure, List<LibraryProfileUser>>> getFollowers();
+  Future<Either<Failure, List<LibraryProfileUser>>> getFollowers({
+    String? ownerUid,
+  });
 
-  Future<Either<Failure, List<LibraryProfileUser>>> getFollowing();
+  Future<Either<Failure, List<LibraryProfileUser>>> getFollowing({
+    String? ownerUid,
+  });
 
   Future<Either<Failure, List<LibraryRecipe>>> getRecipes();
 

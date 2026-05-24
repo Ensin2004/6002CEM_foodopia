@@ -88,36 +88,7 @@ class ExploreRecipeCard extends StatelessWidget {
                       Positioned(
                         left: 8,
                         top: 8,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.88),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 11,
-                              vertical: 6,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.visibility,
-                                  size: 16,
-                                  color: AppColors.primary,
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  _compactCount(recipe.totalViews),
-                                  style: textTheme.labelMedium?.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        child: _ViewsBadge(count: recipe.totalViews),
                       ),
                     ],
                   ),
@@ -125,7 +96,7 @@ class ExploreRecipeCard extends StatelessWidget {
                 Expanded(
                   flex: 3,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -305,6 +276,41 @@ class _ImageIconButton extends StatelessWidget {
   }
 }
 
+class _ViewsBadge extends StatelessWidget {
+  final int count;
+
+  const _ViewsBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.visibility, size: 16, color: AppColors.primary),
+            const SizedBox(width: 5),
+            Text(
+              _compactCount(count),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.labelMedium?.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CountWithIcon extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -343,4 +349,12 @@ class _CountWithIcon extends StatelessWidget {
       ),
     );
   }
+}
+
+String _compactCount(int value) {
+  if (value >= 1000) {
+    final compact = value / 1000;
+    return '${compact.toStringAsFixed(compact >= 10 ? 0 : 1)}k';
+  }
+  return '$value';
 }
