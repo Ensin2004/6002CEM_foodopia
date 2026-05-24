@@ -418,14 +418,6 @@ class LibraryRemoteDataSource {
     return '';
   }
 
-  String _recipeCreatorUid(Map<String, dynamic> data) {
-    return _firstNotBlank([
-      data['creatorUid']?.toString(),
-      data['creatorId']?.toString(),
-      data['userId']?.toString(),
-    ]);
-  }
-
   static bool _isNotBlank(String value) => value.trim().isNotEmpty;
 
   int? _intValue(Object? value) {

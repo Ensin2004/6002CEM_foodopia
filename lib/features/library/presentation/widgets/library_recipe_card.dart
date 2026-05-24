@@ -70,40 +70,40 @@ class LibraryRecipeCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      left: 8,
-                      top: 8,
-                      child: _ViewsBadge(count: recipe.totalViews),
-                    ),
-                    Positioned(
-                      left: 8,
-                      bottom: 8,
-                      child: _StatusBadge(recipe: recipe),
-                    ),
-                  ],
+                      Positioned(
+                        left: 8,
+                        top: 8,
+                        child: _ViewsBadge(count: recipe.totalViews),
+                      ),
+                      Positioned(
+                        left: 8,
+                        bottom: 8,
+                        child: _StatusBadge(recipe: recipe),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                flex: 3,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: 20,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                recipe.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: textTheme.labelLarge?.copyWith(
-                                  color: colors.onSurface,
-                                  height: 1.15,
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 20,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  recipe.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.labelLarge?.copyWith(
+                                    color: colors.onSurface,
+                                    height: 1.15,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -170,24 +170,19 @@ class LibraryRecipeCard extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                              const SizedBox(width: 6),
+                              _FavouriteIconButton(
+                                isFavourite: recipe.isFollowingAuthor,
+                                onTap: onFavouriteTap,
+                              ),
+                              const SizedBox(width: 4),
                               _CountWithIcon(
                                 icon: Icons.chat_bubble,
                                 label: _compactCount(recipe.commentCount),
                                 onTap: onComingSoonTap,
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            _FavouriteIconButton(
-                              isFavourite: recipe.isFollowingAuthor,
-                              onTap: onFavouriteTap,
-                            ),
-                            const SizedBox(width: 4),
-                            _CountWithIcon(
-                              icon: Icons.chat_bubble,
-                              label: _compactCount(recipe.commentCount),
-                              onTap: onComingSoonTap,
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -196,28 +191,6 @@ class LibraryRecipeCard extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AlreadyAddedBadge extends StatelessWidget {
-  const _AlreadyAddedBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.64),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        'Added',
-        style: context.text.labelSmall?.copyWith(
-          color: Colors.white,
-          fontWeight: FontWeight.w800,
         ),
       ),
     );

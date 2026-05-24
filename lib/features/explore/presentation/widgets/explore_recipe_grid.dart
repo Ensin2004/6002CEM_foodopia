@@ -38,7 +38,6 @@ class ExploreRecipeGridView extends StatelessWidget {
           recipe: recipes[index],
           onCommentTap: onCommentTap,
           disabled: disabledRecipeIds.contains(recipes[index].id),
-          onComingSoonTap: onComingSoonTap,
           onFavouriteTap: onFavouriteTap,
           onImageLongPress: onImageLongPress,
           onRecipeTap: onRecipeTap,
@@ -81,6 +80,7 @@ class ExploreRecipeSliverGrid extends StatelessWidget {
           return _ExploreRecipeGridItem(
             recipe: recipes[index],
             onCommentTap: onCommentTap,
+            disabled: disabledRecipeIds.contains(recipes[index].id),
             onFavouriteTap: onFavouriteTap,
             onImageLongPress: onImageLongPress,
             onRecipeTap: onRecipeTap,
@@ -97,6 +97,7 @@ class _ExploreRecipeGridItem extends StatelessWidget {
   final ValueChanged<String> onFavouriteTap;
   final ValueChanged<ExploreRecipe> onImageLongPress;
   final ValueChanged<ExploreRecipe> onRecipeTap;
+  final bool disabled;
 
   const _ExploreRecipeGridItem({
     required this.recipe,
@@ -104,6 +105,7 @@ class _ExploreRecipeGridItem extends StatelessWidget {
     required this.onFavouriteTap,
     required this.onImageLongPress,
     required this.onRecipeTap,
+    this.disabled = false,
   });
 
   @override
@@ -114,6 +116,7 @@ class _ExploreRecipeGridItem extends StatelessWidget {
       onFavouriteTap: () => onFavouriteTap(recipe.id),
       onImageLongPress: () => onImageLongPress(recipe),
       onTap: disabled ? null : () => onRecipeTap(recipe),
+      disabled: disabled,
     );
   }
 }
