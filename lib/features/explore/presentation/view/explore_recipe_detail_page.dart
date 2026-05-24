@@ -13,6 +13,8 @@ import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
+import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../viewmodel/explore_recipe_detail_viewmodel.dart';
 
@@ -20,12 +22,14 @@ class ExploreRecipeDetailPage extends StatelessWidget {
   final String recipeId;
   final bool showLibraryActions;
   final bool isPublished;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const ExploreRecipeDetailPage({
     super.key,
     required this.recipeId,
     this.showLibraryActions = false,
     this.isPublished = true,
+    this.mealPlanSelection,
   });
 
   @override
@@ -45,10 +49,12 @@ class ExploreRecipeDetailPage extends StatelessWidget {
         toggleCreatorFollowUseCase: sl(),
         updateRecipeVisibilityUseCase: sl(),
         toggleFavouriteUseCase: sl(),
+        saveRecipeMealPlanUseCase: sl<SaveRecipeMealPlanUseCase>(),
       ),
       child: _ExploreRecipeDetailView(
         showLibraryActions: showLibraryActions,
         isPublished: isPublished,
+        mealPlanSelection: mealPlanSelection,
       ),
     );
   }
@@ -57,10 +63,12 @@ class ExploreRecipeDetailPage extends StatelessWidget {
 class _ExploreRecipeDetailView extends StatefulWidget {
   final bool showLibraryActions;
   final bool isPublished;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const _ExploreRecipeDetailView({
     required this.showLibraryActions,
     required this.isPublished,
+    this.mealPlanSelection,
   });
 
   @override
@@ -122,6 +130,114 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _confirmVisibilityChange(
+    ExploreRecipeDetailViewModel viewModel,
+  ) async {
+    final nextPublished = !_isPublished;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            nextPublished ? 'Publish recipe?' : 'Make recipe private?',
+          ),
+          content: Text(
+            nextPublished
+                ? 'This recipe will be visible to other users in Explore.'
+                : 'This recipe will be hidden from Explore but remain in your library.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(nextPublished ? 'Publish' : 'Make Private'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => LoadingDialog(
+        message: nextPublished ? 'Publishing recipe...' : 'Updating recipe...',
+      ),
+    );
+
+    final success = await viewModel.updateVisibility(
+      isPublished: nextPublished,
+    );
+
+    if (!mounted) return;
+    rootNavigator.pop();
+
+    if (success) {
+      setState(() => _isPublished = nextPublished);
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? nextPublished
+                      ? 'Recipe published.'
+                      : 'Recipe is now private.'
+                : viewModel.communityActionErrorMessage ??
+                      'Unable to update recipe visibility.',
+          ),
+        ),
+      );
+  }
+
+  Future<void> _selectForMealPlan(
+    ExploreRecipeDetailViewModel viewModel,
+  ) async {
+    final selection = widget.mealPlanSelection;
+    if (selection == null) return;
+    final recipeId = viewModel.recipe?.id;
+    if (recipeId != null && selection.existingRecipeIds.contains(recipeId)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('This recipe is already added.')),
+        );
+      return;
+    }
+
+    final success = await viewModel.saveToMealPlan(
+      userId: selection.userId,
+      date: selection.selectedDate,
+      mealCategory: AddMealCategoryOption(
+        id: selection.mealCategoryId,
+        name: selection.mealCategoryName,
+      ),
+      source: selection.source,
+    );
+    if (!mounted) return;
+
+    final message = success
+        ? 'Meal plan added.'
+        : viewModel.communityActionErrorMessage ?? 'Unable to add meal plan.';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+    if (!success) return;
+
+    context.go(
+      AppRouter.mealPlan,
+      extra: MealPlanArgs(initialTabIndex: 0, userId: selection.userId),
+    );
+  }
+
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChanged);
@@ -132,6 +248,11 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<ExploreRecipeDetailViewModel>();
+    final alreadyAdded =
+        widget.mealPlanSelection?.existingRecipeIds.contains(
+          viewModel.recipe?.id ?? '',
+        ) ??
+        false;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -143,6 +264,17 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         ),
         actions: widget.showLibraryActions
             ? [
+                IconButton(
+                  tooltip: _isPublished ? 'Make private' : 'Publish recipe',
+                  onPressed: viewModel.recipe == null
+                      ? null
+                      : () => _confirmVisibilityChange(viewModel),
+                  icon: Icon(
+                    _isPublished
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+                ),
                 IconButton(
                   tooltip: 'Edit recipe',
                   onPressed: viewModel.recipe == null
@@ -160,7 +292,28 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         showLibraryActions: widget.showLibraryActions,
         isPublished: _isPublished,
         onFavouriteTap: () => _toggleFavourite(viewModel),
+        isMealPlanSelection: widget.mealPlanSelection != null,
       ),
+      bottomNavigationBar: widget.mealPlanSelection == null
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: PrimaryButton(
+                  text: alreadyAdded
+                      ? 'Already Added'
+                      : viewModel.isSavingMealPlan
+                      ? 'Adding...'
+                      : 'Select',
+                  onPressed:
+                      viewModel.recipe == null ||
+                          viewModel.isSavingMealPlan ||
+                          alreadyAdded
+                      ? null
+                      : () => _selectForMealPlan(viewModel),
+                ),
+              ),
+            ),
     );
   }
 }
@@ -172,6 +325,7 @@ class _DetailBody extends StatelessWidget {
   final VoidCallback onFavouriteTap;
   final bool showLibraryActions;
   final bool isPublished;
+  final bool isMealPlanSelection;
 
   const _DetailBody({
     required this.viewModel,
@@ -180,6 +334,7 @@ class _DetailBody extends StatelessWidget {
     required this.onFavouriteTap,
     required this.showLibraryActions,
     required this.isPublished,
+    required this.isMealPlanSelection,
   });
 
   @override
@@ -224,6 +379,7 @@ class _DetailBody extends StatelessWidget {
             recipe: recipe,
             onComingSoonTap: onComingSoonTap,
             isPublished: isPublished,
+            showStartCooking: !isMealPlanSelection,
           ),
         ),
       ],
@@ -515,6 +671,7 @@ class _SelectedTabContent extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
+  final bool showStartCooking;
   final bool isPublished;
 
   const _SelectedTabContent({
@@ -522,6 +679,7 @@ class _SelectedTabContent extends StatelessWidget {
     required this.recipe,
     required this.onComingSoonTap,
     required this.isPublished,
+    required this.showStartCooking,
   });
 
   @override
@@ -532,6 +690,7 @@ class _SelectedTabContent extends StatelessWidget {
           viewModel: viewModel,
           recipe: recipe,
           onComingSoonTap: onComingSoonTap,
+          showStartCooking: showStartCooking,
         );
       case ExploreRecipeDetailTab.nutrition:
         return _NutritionTab(recipe: recipe, onServingTap: onComingSoonTap);
@@ -550,11 +709,13 @@ class _RecipeTab extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
+  final bool showStartCooking;
 
   const _RecipeTab({
     required this.viewModel,
     required this.recipe,
     required this.onComingSoonTap,
+    required this.showStartCooking,
   });
 
   @override
@@ -599,7 +760,11 @@ class _RecipeTab extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         if (viewModel.selectedMethodTab == ExploreRecipeMethodTab.ingredients)
-          _IngredientsList(recipe: recipe, onUnitTap: onComingSoonTap)
+          _IngredientsList(
+            recipe: recipe,
+            onUnitTap: onComingSoonTap,
+            showStartCooking: showStartCooking,
+          )
         else
           _InstructionsList(recipe: recipe),
       ],
@@ -610,8 +775,13 @@ class _RecipeTab extends StatelessWidget {
 class _IngredientsList extends StatelessWidget {
   final ExploreRecipe recipe;
   final VoidCallback onUnitTap;
+  final bool showStartCooking;
 
-  const _IngredientsList({required this.recipe, required this.onUnitTap});
+  const _IngredientsList({
+    required this.recipe,
+    required this.onUnitTap,
+    required this.showStartCooking,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -700,12 +870,14 @@ class _IngredientsList extends StatelessWidget {
             ),
           );
         }),
-        const SizedBox(height: 6),
-        PrimaryButton(
-          onPressed: () {},
-          text: 'Start Cooking',
-          verticalPadding: 14,
-        ),
+        if (showStartCooking) ...[
+          const SizedBox(height: 6),
+          PrimaryButton(
+            onPressed: () {},
+            text: 'Start Cooking',
+            verticalPadding: 14,
+          ),
+        ],
       ],
     );
   }

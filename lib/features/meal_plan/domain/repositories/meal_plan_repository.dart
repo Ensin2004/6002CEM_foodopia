@@ -8,8 +8,11 @@ import '../entities/meal_plan_dashboard.dart';
 import '../entities/meal_plan_inspiration_input.dart';
 
 abstract class MealPlanRepository {
-  Future<Either<Failure, MealPlanDashboard>> getDashboard();
-  Future<Either<Failure, MealPlanWeather>> getTodayWeather();
+  Future<Either<Failure, MealPlanDashboard>> getDashboard({
+    required String userId,
+    required DateTime selectedDate,
+  });
+  Future<Either<Failure, MealPlanWeather>> getWeatherForDate(DateTime date);
   Future<Either<Failure, MealPlanPreferenceSummary>> getPreferences(String uid);
   Future<Either<Failure, List<MealPlanPreferenceOption>>>
   getInspirationPreferenceOptions(String categoryId);
@@ -32,6 +35,13 @@ abstract class MealPlanRepository {
     required AddMealCategoryOption mealCategory,
     required List<AddMealAiRecipe> recipes,
     required AddMealAiGenerationRequest request,
+  });
+  Future<Either<Failure, void>> saveRecipeMealPlan({
+    required String userId,
+    required DateTime date,
+    required AddMealCategoryOption mealCategory,
+    required AddMealAiRecipe recipe,
+    required String source,
   });
   Future<Either<Failure, ManageGroceryListDetail>> getManageGroceryListDetail(
     String listId,

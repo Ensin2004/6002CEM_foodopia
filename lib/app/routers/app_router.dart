@@ -527,6 +527,12 @@ class AppRouter {
         name: 'explore',
         path: explore,
         builder: (context, state) {
+          final selection = state.extra is MealPlanSelectionArgs
+              ? state.extra as MealPlanSelectionArgs
+              : null;
+          if (selection != null) {
+            return ExplorePage(showAppBar: true, mealPlanSelection: selection);
+          }
           final userEntity = user;
           if (userEntity == null) {
             return const ExplorePage();
@@ -545,7 +551,10 @@ class AppRouter {
         path: exploreRecipeDetail,
         builder: (context, state) {
           final args = state.extra as ExploreRecipeDetailArgs?;
-          return ExploreRecipeDetailPage(recipeId: args?.recipeId ?? '');
+          return ExploreRecipeDetailPage(
+            recipeId: args?.recipeId ?? '',
+            mealPlanSelection: args?.mealPlanSelection,
+          );
         },
       ),
 
@@ -575,6 +584,16 @@ class AppRouter {
         builder: (context, state) {
           final extra = state.extra;
           final args = extra is MealPlanArgs ? extra : null;
+          final userEntity = user;
+          if (userEntity != null) {
+            return MainPage(
+              user: userEntity,
+              role: userEntity.role.name,
+              initialIndex: 3,
+              initialMealPlanTabIndex: args?.initialTabIndex ?? 0,
+            );
+          }
+
           return MealPlanPage(
             initialTabIndex: args?.initialTabIndex ?? 0,
             userId:
@@ -590,6 +609,9 @@ class AppRouter {
           final args = state.extra as AddMealPlanArgs?;
           return AddMealPlanPage(
             mealType: args?.mealType ?? 'Breakfast',
+            mealCategoryId: args?.mealCategoryId ?? 'breakfast',
+            selectedDate: args?.selectedDate ?? DateTime.now(),
+            existingRecipeIds: args?.existingRecipeIds ?? const [],
             userId:
                 args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
           );
@@ -603,6 +625,8 @@ class AppRouter {
           final args = state.extra as GenerateAiMealArgs?;
           return GenerateAiMealPage(
             mealType: args?.mealType ?? 'Breakfast',
+            mealCategoryId: args?.mealCategoryId,
+            selectedDate: args?.selectedDate,
             userId:
                 args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
             initialRequest: args?.initialRequest,
@@ -632,11 +656,16 @@ class AppRouter {
         name: 'library',
         path: library,
         builder: (context, state) {
-          final args = state.extra as LibraryArgs?;
+          final extra = state.extra;
+          final args = extra is LibraryArgs ? extra : null;
+          final selection = extra is MealPlanSelectionArgs
+              ? extra
+              : args?.mealPlanSelection;
           return LibraryPage(
             showAppBar: true,
             focusedRecipeId: args?.focusedRecipeId,
             focusedRecipeIsPublished: args?.focusedRecipeIsPublished,
+            mealPlanSelection: selection,
           );
         },
       ),
@@ -650,6 +679,7 @@ class AppRouter {
             recipeId: args?.recipeId ?? '',
             showLibraryActions: args?.isSelfPublished ?? false,
             isPublished: args?.isPublished ?? true,
+            mealPlanSelection: args?.mealPlanSelection,
           );
         },
       ),

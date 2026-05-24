@@ -13,19 +13,26 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/box/app_tip_box.dart';
+import '../../../../../core/widgets/buttons/secondary_button.dart';
 import '../../../../../core/widgets/custom_app_bar.dart';
 import '../../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../../domain/entities/add_meal_ai_plan.dart';
+import '../../../domain/entities/meal_plan_inspiration_input.dart';
 import '../../../domain/usecases/generate_ai_meal_ideas_usecase.dart';
 import '../../../domain/usecases/get_add_meal_ai_plan_usecase.dart';
+import '../../../domain/usecases/get_meal_plan_default_ingredients_usecase.dart';
+import '../../../domain/usecases/get_meal_plan_inspiration_options_usecase.dart';
 import '../../../domain/usecases/get_meal_categories_usecase.dart';
 import '../../../domain/usecases/save_ai_meal_plan_usecase.dart';
+import '../../../domain/usecases/search_meal_plan_ingredients_usecase.dart';
 import '../../viewmodel/generate_ai_meal_viewmodel.dart';
 
 class GenerateAiMealPage extends StatelessWidget {
   final String userId;
   final String mealType;
+  final String? mealCategoryId;
+  final DateTime? selectedDate;
   final AddMealAiGenerationRequest? initialRequest;
   final bool autoGenerate;
 
@@ -33,6 +40,8 @@ class GenerateAiMealPage extends StatelessWidget {
     super.key,
     required this.userId,
     required this.mealType,
+    this.mealCategoryId,
+    this.selectedDate,
     this.initialRequest,
     this.autoGenerate = false,
   });
@@ -43,12 +52,19 @@ class GenerateAiMealPage extends StatelessWidget {
       create: (_) => GenerateAiMealViewModel(
         userId: userId,
         mealType: mealType,
+        mealCategoryId: mealCategoryId,
+        selectedDate: selectedDate,
         initialRequest: initialRequest,
         autoGenerate: autoGenerate,
         getPlanUseCase: sl<GetAddMealAiPlanUseCase>(),
         generateIdeasUseCase: sl<GenerateAiMealIdeasUseCase>(),
         getMealCategoriesUseCase: sl<GetMealCategoriesUseCase>(),
         saveAiMealPlanUseCase: sl<SaveAiMealPlanUseCase>(),
+        getDefaultIngredientsUseCase:
+            sl<GetMealPlanDefaultIngredientsUseCase>(),
+        getInspirationOptionsUseCase:
+            sl<GetMealPlanInspirationOptionsUseCase>(),
+        searchIngredientsUseCase: sl<SearchMealPlanIngredientsUseCase>(),
       ),
       child: const _GenerateAiMealView(),
     );
@@ -135,7 +151,7 @@ class _GenerateAiMealView extends StatelessWidget {
             ),
           ),
           if (viewModel.isGenerating) ...[
-            const Positioned.fill(child: ColoredBox(color: Color(0x66000000))),
+            const Positioned.fill(child: ColoredBox(color: Colors.white)),
             const Positioned.fill(
               child: LoadingDialog(
                 message: 'Generating AI recipes and images...',
@@ -220,54 +236,19 @@ class _FactorStep extends StatelessWidget {
           style: context.text.bodySmall,
         ),
         const SizedBox(height: AppSpacing.sm),
-        _ExpandableFactorCard(
-          icon: Icons.wb_cloudy_outlined,
-          title: 'Weather',
-          subtitle: '${plan.weather.condition} - ${plan.weather.temperature}C',
-          selectedLabels: [plan.weather.summary],
-          children: [_SelectedSummaryText(plan.weather.summary)],
-        ),
-        _ExpandableFactorCard(
+        const _WeatherFactorCard(),
+        const _IngredientFactorCard(
+          type: _IngredientFactorType.include,
           icon: Icons.shopping_cart_outlined,
           title: 'Ingredients to Include',
-          subtitle: 'Enter ingredients you have and want AI to include.',
-          selectedLabels: context
-              .watch<GenerateAiMealViewModel>()
-              .selectedIngredientsToInclude,
-          children: [
-            _InlineTextInput(
-              hintText: 'e.g. eggs, chicken, oats, spinach ...',
-              onChanged: context
-                  .read<GenerateAiMealViewModel>()
-                  .updateIngredientIncludeText,
-            ),
-          ],
+          subtitle: 'Search USDA foods or add ingredients AI should include.',
         ),
         _MealPreferenceFactorCard(plan: plan),
-        _ExpandableFactorCard(
+        const _IngredientFactorCard(
+          type: _IngredientFactorType.avoid,
           icon: Icons.block,
           title: 'Ingredients to Avoid',
-          subtitle: 'Choose ingredients you want AI to avoid.',
-          selectedLabels: context
-              .watch<GenerateAiMealViewModel>()
-              .selectedIngredientsToAvoid,
-          children: [
-            if (plan.preferences.dislikes.isNotEmpty) ...[
-              _SectionLabel('From Settings'),
-              const SizedBox(height: AppSpacing.xs),
-              _ChipWrap(
-                values: plan.preferences.dislikes,
-                selectedValues: plan.preferences.dislikes,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-            _InlineTextInput(
-              hintText: 'e.g. peanuts, seafood, mushrooms ...',
-              onChanged: context
-                  .read<GenerateAiMealViewModel>()
-                  .updateIngredientAvoidText,
-            ),
-          ],
+          subtitle: 'Dislikes from settings are selected by default.',
         ),
         _DishPreferenceFactorCard(plan: plan),
         const _CookingPreferenceFactorCard(),
@@ -281,6 +262,659 @@ class _FactorStep extends StatelessWidget {
   }
 }
 
+class _WeatherFactorCard extends StatelessWidget {
+  const _WeatherFactorCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+    final weather = viewModel.selectedWeatherSnapshot;
+
+    return _ExpandableFactorCard(
+      icon: Icons.wb_cloudy_outlined,
+      title: 'Weather',
+      subtitle: '${weather.condition} - ${weather.temperature}C',
+      selectedLabels: [weather.summary],
+      children: [
+        DropdownButtonFormField<String>(
+          initialValue: viewModel.selectedWeatherCategoryId,
+          isExpanded: true,
+          style: context.text.bodyMedium,
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: 10,
+            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+          ),
+          items: [
+            for (final category in viewModel.weatherCategories)
+              DropdownMenuItem(value: category.id, child: Text(category.label)),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              context.read<GenerateAiMealViewModel>().selectWeatherCategory(
+                value,
+              );
+            }
+          },
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _SelectedSummaryText(weather.summary),
+      ],
+    );
+  }
+}
+
+enum _IngredientFactorType { include, avoid }
+
+class _IngredientFactorCard extends StatelessWidget {
+  final _IngredientFactorType type;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _IngredientFactorCard({
+    required this.type,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+    final selected = type == _IngredientFactorType.include
+        ? viewModel.selectedIngredientsToInclude
+        : viewModel.selectedIngredientsToAvoid;
+
+    return _ExpandableFactorCard(
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
+      selectedLabels: selected,
+      children: [
+        _IngredientPreviewPanel(
+          type: type,
+          selected: selected,
+          defaultValues: type == _IngredientFactorType.include
+              ? viewModel.defaultIngredientsToInclude
+              : viewModel.defaultIngredientsToAvoid,
+          onRemove: type == _IngredientFactorType.include
+              ? context
+                    .read<GenerateAiMealViewModel>()
+                    .toggleIngredientToInclude
+              : context.read<GenerateAiMealViewModel>().toggleIngredientToAvoid,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: _AddFactorAction(
+            label: selected.isEmpty ? 'Add ingredient' : 'Edit ingredients',
+            onTap: () => _showIngredientSheet(context, type),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showIngredientSheet(BuildContext context, _IngredientFactorType type) {
+    final viewModel = context.read<GenerateAiMealViewModel>();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => ChangeNotifierProvider.value(
+        value: viewModel,
+        child: _IngredientPickerSheet(type: type),
+      ),
+    );
+  }
+}
+
+class _AddFactorAction extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _AddFactorAction({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.add_circle_outline,
+              size: 18,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: context.text.labelLarge?.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IngredientPreviewPanel extends StatelessWidget {
+  final _IngredientFactorType type;
+  final List<String> selected;
+  final List<String> defaultValues;
+  final ValueChanged<String> onRemove;
+
+  const _IngredientPreviewPanel({
+    required this.type,
+    required this.selected,
+    required this.defaultValues,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isAvoid = type == _IngredientFactorType.avoid;
+    final selectedSet = selected.map((item) => item.toLowerCase()).toSet();
+    final inactiveDefaults = defaultValues
+        .where((item) => !selectedSet.contains(item.toLowerCase()))
+        .toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAF8),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isAvoid
+                    ? Icons.shield_outlined
+                    : Icons.shopping_basket_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  isAvoid
+                      ? 'Selected for AI to avoid'
+                      : 'Selected for AI to include',
+                  style: context.text.bodySmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              _CountBadge(count: selected.length),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (selected.isEmpty)
+            Text(
+              isAvoid
+                  ? 'No allergies or dislikes selected for this request.'
+                  : 'No ingredients selected for this request.',
+              style: context.text.bodySmall,
+            )
+          else
+            _RemovableChipWrap(
+              values: selected,
+              danger: isAvoid,
+              onRemove: onRemove,
+            ),
+          if (inactiveDefaults.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Deselected defaults: ${inactiveDefaults.take(3).join(', ')}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CountBadge extends StatelessWidget {
+  final int count;
+
+  const _CountBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '$count',
+        style: context.text.bodySmall?.copyWith(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _RemovableChipWrap extends StatelessWidget {
+  final List<String> values;
+  final bool danger;
+  final ValueChanged<String> onRemove;
+
+  const _RemovableChipWrap({
+    required this.values,
+    required this.danger,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: [
+        for (final value in values)
+          InputChip(
+            label: Text(value),
+            onDeleted: () => onRemove(value),
+            deleteIcon: const Icon(Icons.close, size: 16),
+            visualDensity: VisualDensity.compact,
+            backgroundColor: danger
+                ? AppColors.error.withValues(alpha: 0.08)
+                : AppColors.primary.withValues(alpha: 0.1),
+            side: BorderSide(
+              color: danger
+                  ? AppColors.error.withValues(alpha: 0.25)
+                  : AppColors.primary.withValues(alpha: 0.25),
+            ),
+            labelStyle: context.text.bodySmall?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _IngredientPickerSheet extends StatefulWidget {
+  final _IngredientFactorType type;
+
+  const _IngredientPickerSheet({required this.type});
+
+  @override
+  State<_IngredientPickerSheet> createState() => _IngredientPickerSheetState();
+}
+
+class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final isAvoid = widget.type == _IngredientFactorType.avoid;
+    final selected = isAvoid
+        ? viewModel.selectedIngredientsToAvoid
+        : viewModel.selectedIngredientsToInclude;
+    final toggle = isAvoid
+        ? viewModel.toggleIngredientToAvoid
+        : viewModel.toggleIngredientToInclude;
+    final addCustom = isAvoid
+        ? viewModel.addIngredientToAvoid
+        : viewModel.addIngredientToInclude;
+    final query = _controller.text.trim();
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.lg + bottomInset,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.78,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              isAvoid ? 'Ingredients to avoid' : 'Ingredients to include',
+              style: context.text.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              isAvoid
+                  ? 'Saved allergies and dislikes are selected for this request only.'
+                  : 'Suggested ingredients are selected by default and can be adjusted.',
+              style: context.text.bodyMedium?.copyWith(height: 1.35),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: _controller,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search USDA foods or add custom ingredient',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    addCustom(_controller.text);
+                    _controller.clear();
+                    viewModel.searchFoods('');
+                  },
+                  icon: const Icon(Icons.add),
+                ),
+              ),
+              onChanged: viewModel.searchFoods,
+              onSubmitted: addCustom,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Expanded(
+              child: ListView(
+                children: [
+                  _IngredientSheetSection(
+                    title: 'Selected',
+                    icon: Icons.check_circle_outline,
+                    child: selected.isEmpty
+                        ? Text(
+                            'No ingredients selected yet.',
+                            style: context.text.bodyMedium,
+                          )
+                        : _ChipWrap(
+                            values: selected,
+                            selectedValues: selected,
+                            danger: isAvoid,
+                            onSelected: toggle,
+                          ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  if (isAvoid) ...[
+                    _IngredientSheetSection(
+                      title: 'From Settings',
+                      icon: Icons.person_outline,
+                      child: viewModel.savedIngredientsToAvoid.isEmpty
+                          ? Text(
+                              'No allergies or dislikes saved in settings.',
+                              style: context.text.bodyMedium,
+                            )
+                          : _ChipWrap(
+                              values: viewModel.savedIngredientsToAvoid,
+                              selectedValues: selected,
+                              danger: true,
+                              onSelected: toggle,
+                            ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _IngredientSheetSection(
+                      title: 'Allergen defaults',
+                      icon: Icons.warning_amber_outlined,
+                      child: _ConfigOptionChips(
+                        isLoading: viewModel.isFactorOptionsLoading,
+                        emptyMessage: 'No allergens available yet.',
+                        options: viewModel.allergyOptions,
+                        selectedValues: selected,
+                        danger: true,
+                        onSelected: toggle,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _IngredientSheetSection(
+                      title: 'Dislike defaults',
+                      icon: Icons.block,
+                      child: _ConfigOptionChips(
+                        isLoading: viewModel.isFactorOptionsLoading,
+                        emptyMessage: 'No dislikes available yet.',
+                        options: viewModel.dislikeOptions,
+                        selectedValues: selected,
+                        danger: true,
+                        onSelected: toggle,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.md),
+                  _IngredientSheetSection(
+                    title: 'USDA search results',
+                    icon: Icons.search,
+                    child: viewModel.isFoodSearching
+                        ? const LoadingDialog(
+                            inline: true,
+                            message: 'Searching foods...',
+                          )
+                        : query.length < 2
+                        ? Text(
+                            'Type at least 2 characters to search.',
+                            style: context.text.bodyMedium,
+                          )
+                        : viewModel.foodSearchResults.isEmpty
+                        ? Text(
+                            'No results found.',
+                            style: context.text.bodyMedium,
+                          )
+                        : _IngredientSearchResultChips(
+                            ingredients: viewModel.foodSearchResults,
+                            selectedValues: selected,
+                            danger: isAvoid,
+                            onSelected: (item) => toggle(item.name),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 48,
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Done'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IngredientSearchResultChips extends StatelessWidget {
+  final List<MealPlanInspirationIngredient> ingredients;
+  final List<String> selectedValues;
+  final bool danger;
+  final ValueChanged<MealPlanInspirationIngredient> onSelected;
+
+  const _IngredientSearchResultChips({
+    required this.ingredients,
+    required this.selectedValues,
+    required this.danger,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedSet = selectedValues
+        .map((item) => item.toLowerCase())
+        .toSet();
+
+    return Wrap(
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: [
+        for (final ingredient in ingredients)
+          InkWell(
+            onTap: () => onSelected(ingredient),
+            borderRadius: BorderRadius.circular(12),
+            child: _SmallChip(
+              label: ingredient.name,
+              selected: selectedSet.contains(ingredient.name.toLowerCase()),
+              danger: danger,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _IngredientSheetSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Widget child;
+
+  const _IngredientSheetSection({
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 17, color: const Color(0xFF8A6400)),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  title,
+                  style: context.text.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ConfigOptionChips extends StatelessWidget {
+  final bool isLoading;
+  final String emptyMessage;
+  final List<MealPlanPreferenceOption> options;
+  final List<String> selectedValues;
+  final bool danger;
+  final ValueChanged<String> onSelected;
+
+  const _ConfigOptionChips({
+    required this.isLoading,
+    required this.emptyMessage,
+    required this.options,
+    required this.selectedValues,
+    required this.danger,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const LoadingDialog(inline: true, message: 'Loading defaults...');
+    }
+    if (options.isEmpty) {
+      return Text(emptyMessage, style: context.text.bodyMedium);
+    }
+
+    return _ChipWrap(
+      values: options.map((item) => item.name).toList(),
+      selectedValues: selectedValues,
+      danger: danger,
+      onSelected: onSelected,
+    );
+  }
+}
+
 class _MealPreferenceFactorCard extends StatelessWidget {
   final AddMealAiPlan plan;
 
@@ -289,21 +923,31 @@ class _MealPreferenceFactorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<GenerateAiMealViewModel>();
-    const options = ['No Preference', 'Vegetarian', 'Low Carb', 'High Protein'];
+    final options = {
+      ...viewModel.mealPreferenceOptions.map((item) => item.name),
+      ...viewModel.selectedMealPreferences,
+    }.toList();
 
     return _ExpandableFactorCard(
       icon: Icons.favorite,
       title: 'Meal Preferences',
-      subtitle: 'Selected from Settings',
-      selectedLabels: [viewModel.selectedMealPreference],
+      subtitle: 'Values from Settings can be adjusted for this request.',
+      selectedLabels: viewModel.selectedMealPreferences.isEmpty
+          ? const ['No Preference']
+          : viewModel.selectedMealPreferences,
       children: [
-        _ChipWrap(
-          values: options,
-          selectedValues: [viewModel.selectedMealPreference],
-          onSelected: context
-              .read<GenerateAiMealViewModel>()
-              .selectMealPreference,
-        ),
+        if (viewModel.isFactorOptionsLoading)
+          const LoadingDialog(inline: true, message: 'Loading preferences...')
+        else if (options.isEmpty)
+          Text('No meal preferences available.', style: context.text.bodySmall)
+        else
+          _ChipWrap(
+            values: options,
+            selectedValues: viewModel.selectedMealPreferences,
+            onSelected: context
+                .read<GenerateAiMealViewModel>()
+                .toggleMealPreference,
+          ),
       ],
     );
   }
@@ -331,7 +975,7 @@ class _DishPreferenceFactorCard extends StatelessWidget {
         const SizedBox(height: AppSpacing.xs),
         _ChipWrap(values: plan.dishPreferences, selectedValues: const []),
         const SizedBox(height: AppSpacing.sm),
-        _InlineTextInput(
+        _WordLimitedTextInput(
           hintText: 'Type dish to include, e.g. grilled rice bowl',
           onChanged: context
               .read<GenerateAiMealViewModel>()
@@ -346,7 +990,7 @@ class _DishPreferenceFactorCard extends StatelessWidget {
           danger: true,
         ),
         const SizedBox(height: AppSpacing.sm),
-        _InlineTextInput(
+        _WordLimitedTextInput(
           hintText: 'Type dish to avoid, e.g. spicy soup',
           onChanged: context
               .read<GenerateAiMealViewModel>()
@@ -380,18 +1024,14 @@ class _CookingPreferenceFactorCard extends StatelessWidget {
           onChanged: context.read<GenerateAiMealViewModel>().updateCookingTime,
         ),
         const SizedBox(height: AppSpacing.md),
-        _OptionGroup(
-          title: 'Difficulty',
-          options: const ['Any', 'Easy', 'Medium', 'Hard'],
-          selected: viewModel.selectedDifficulty,
+        _DifficultyLevelPicker(
+          selectedLevel: viewModel.selectedDifficultyLevel,
           onSelected: context.read<GenerateAiMealViewModel>().selectDifficulty,
         ),
         const SizedBox(height: AppSpacing.md),
-        _OptionGroup(
-          title: 'Serving Size',
-          options: const ['Any', '1 serving', '2 servings', '4 servings'],
-          selected: viewModel.selectedServingSize,
-          onSelected: context.read<GenerateAiMealViewModel>().selectServingSize,
+        _ServingSizeInput(
+          servings: viewModel.selectedServingCount,
+          onChanged: context.read<GenerateAiMealViewModel>().selectServingSize,
         ),
       ],
     );
@@ -782,6 +1422,22 @@ class _ReviewStep extends StatelessWidget {
                   );
                 },
         ),
+        const SizedBox(height: AppSpacing.sm),
+        OutlinedButton(
+          onPressed: selectedRecipes.isEmpty
+              ? null
+              : () {
+                  context.push(
+                    AppRouter.addRecipeBasicInfo,
+                    extra: AddRecipeBasicInfoArgs(
+                      aiRecipe: selectedRecipes.first,
+                      aiRequest: viewModel.generationRequest,
+                      userId: viewModel.userId,
+                    ),
+                  );
+                },
+          child: const Text('Add to Recipe'),
+        ),
       ],
     );
   }
@@ -930,33 +1586,54 @@ class _ExpandableFactorCardState extends State<_ExpandableFactorCard> {
   }
 }
 
-class _InlineTextInput extends StatelessWidget {
+class _WordLimitedTextInput extends StatefulWidget {
   final String hintText;
   final ValueChanged<String> onChanged;
 
-  const _InlineTextInput({required this.hintText, required this.onChanged});
+  const _WordLimitedTextInput({
+    required this.hintText,
+    required this.onChanged,
+  });
+
+  @override
+  State<_WordLimitedTextInput> createState() => _WordLimitedTextInputState();
+}
+
+class _WordLimitedTextInputState extends State<_WordLimitedTextInput> {
+  static const _maxWords = 30;
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final count = _wordCount(_controller.text);
+
     return TextField(
-      onChanged: onChanged,
+      controller: _controller,
+      onChanged: (value) {
+        final limited = _limitWords(value);
+        if (limited != value) {
+          _controller.value = TextEditingValue(
+            text: limited,
+            selection: TextSelection.collapsed(offset: limited.length),
+          );
+        }
+        widget.onChanged(limited);
+        setState(() {});
+      },
       minLines: 1,
-      maxLines: 2,
+      maxLines: 3,
       style: context.text.bodySmall?.copyWith(color: AppColors.textPrimary),
       decoration: InputDecoration(
-        hintText: hintText,
+        hintText: widget.hintText,
+        helperText: '$count/$_maxWords words',
         hintStyle: context.text.bodySmall?.copyWith(
           color: AppColors.textSecondary.withValues(alpha: 0.65),
-        ),
-        suffixIcon: TextButton(
-          onPressed: () {},
-          child: Text(
-            '+ Add',
-            style: context.text.bodySmall?.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
         ),
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
@@ -975,32 +1652,81 @@ class _InlineTextInput extends StatelessWidget {
       ),
     );
   }
+
+  int _wordCount(String value) {
+    return value.trim().isEmpty ? 0 : value.trim().split(RegExp(r'\s+')).length;
+  }
+
+  String _limitWords(String value) {
+    final words = value.trim().split(RegExp(r'\s+'));
+    if (value.trim().isEmpty || words.length <= _maxWords) return value;
+    return words.take(_maxWords).join(' ');
+  }
 }
 
-class _OptionGroup extends StatelessWidget {
-  final String title;
-  final List<String> options;
-  final String selected;
-  final ValueChanged<String> onSelected;
+class _DifficultyLevelPicker extends StatelessWidget {
+  final int selectedLevel;
+  final ValueChanged<int> onSelected;
 
-  const _OptionGroup({
-    required this.title,
-    required this.options,
-    required this.selected,
+  const _DifficultyLevelPicker({
+    required this.selectedLevel,
     required this.onSelected,
   });
 
   @override
   Widget build(BuildContext context) {
+    const levels = ['Novice', 'Beginner', 'Intermediate', 'Advanced', 'Master'];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionLabel(title),
+        _SectionLabel('Difficulty Level'),
         const SizedBox(height: AppSpacing.xs),
-        _ChipWrap(
-          values: options,
-          selectedValues: [selected],
-          onSelected: onSelected,
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: levels.asMap().entries.map((entry) {
+              final levelValue = entry.key + 1;
+              final selected = levelValue <= selectedLevel;
+              return Expanded(
+                child: InkWell(
+                  onTap: () => onSelected(levelValue),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.restaurant_menu_rounded,
+                        size: 24,
+                        color: selected
+                            ? AppColors.secondary
+                            : AppColors.textSecondary.withValues(alpha: 0.5),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          entry.value,
+                          maxLines: 1,
+                          style: context.text.bodySmall?.copyWith(
+                            fontSize: 9,
+                            color: selected
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary.withValues(
+                                    alpha: 0.5,
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ],
     );
@@ -1029,6 +1755,49 @@ class _CookingMinutesInput extends StatelessWidget {
           decoration: InputDecoration(
             hintText: 'e.g. 30',
             suffixText: 'minutes',
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.primary),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ServingSizeInput extends StatelessWidget {
+  final int servings;
+  final ValueChanged<String> onChanged;
+
+  const _ServingSizeInput({required this.servings, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionLabel('Servings'),
+        const SizedBox(height: AppSpacing.xs),
+        TextFormField(
+          initialValue: servings.toString(),
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          onChanged: onChanged,
+          style: context.text.bodySmall?.copyWith(color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'e.g. 1',
+            suffixText: 'servings',
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
@@ -1168,14 +1937,24 @@ class _RecipeResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<GenerateAiMealViewModel>();
     final selected = viewModel.isRecipeSelected(recipe.id);
+    final borderColor = selected ? AppColors.primary : AppColors.border;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       padding: AppSpacing.cardPadding,
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
+        color: selected ? const Color(0xFFEFFAF1) : Colors.white,
+        border: Border.all(color: borderColor, width: selected ? 1.4 : 1),
         borderRadius: BorderRadius.circular(8),
+        boxShadow: selected
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  blurRadius: 14,
+                  offset: const Offset(0, 7),
+                ),
+              ]
+            : null,
       ),
       child: Column(
         children: [
@@ -1200,15 +1979,15 @@ class _RecipeResultCard extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: () => context
-                    .read<GenerateAiMealViewModel>()
-                    .toggleRecipe(recipe.id),
-                icon: Icon(
-                  selected ? Icons.bookmark : Icons.bookmark_border,
-                  color: selected ? AppColors.primary : AppColors.textSecondary,
+              if (selected)
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check, color: Colors.white, size: 16),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -1244,21 +2023,14 @@ class _RecipeResultCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: ElevatedButton(
+                child: SecondaryButton(
                   onPressed: () {
-                    final request = context
-                        .read<GenerateAiMealViewModel>()
-                        .sourceRequest;
-                    context.push(
-                      AppRouter.addRecipeBasicInfo,
-                      extra: AddRecipeBasicInfoArgs(
-                        aiRecipe: recipe,
-                        aiRequest: request,
-                        userId: context.read<GenerateAiMealViewModel>().userId,
-                      ),
+                    context.read<GenerateAiMealViewModel>().toggleRecipe(
+                      recipe.id,
                     );
                   },
-                  child: const Text('Select'),
+                  text: selected ? 'Selected' : 'Select',
+                  verticalPadding: 12,
                 ),
               ),
             ],
@@ -1519,8 +2291,11 @@ class _SmallChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeColor = danger ? AppColors.error : AppColors.primary;
-    final inactiveColor = danger
+    final selectedFill = danger
         ? AppColors.error.withValues(alpha: 0.08)
+        : const Color(0xFFEAF7EC);
+    final inactiveColor = danger
+        ? AppColors.error.withValues(alpha: 0.035)
         : Colors.white;
 
     return Container(
@@ -1529,7 +2304,7 @@ class _SmallChip extends StatelessWidget {
         vertical: 3,
       ),
       decoration: BoxDecoration(
-        color: selected ? const Color(0xFFEAF7EC) : inactiveColor,
+        color: selected ? selectedFill : inactiveColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: selected

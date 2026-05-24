@@ -71,6 +71,123 @@ class OpenMeteoWeatherService {
     );
   }
 
+  Future<OpenMeteoWeather> getWeatherForDate({
+    required double latitude,
+    required double longitude,
+    required DateTime date,
+  }) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(date.year, date.month, date.day);
+    final daysAhead = target.difference(today).inDays;
+    if (target.isBefore(DateTime(1940))) {
+      throw RangeError(
+        'No temperature available because historical weather starts from 1940.',
+      );
+    }
+    if (daysAhead < 0) {
+      return getHistoricalWeatherForDate(
+        latitude: latitude,
+        longitude: longitude,
+        date: target,
+      );
+    }
+    if (daysAhead > 16) {
+      throw RangeError(
+        'No temperature available because this date is too far ahead to forecast.',
+      );
+    }
+    if (daysAhead == 0) {
+      return getTodayWeather(latitude: latitude, longitude: longitude);
+    }
+
+    final formattedDate = _dateParam(target);
+    final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
+      'latitude': latitude.toString(),
+      'longitude': longitude.toString(),
+      'daily':
+          'weather_code,temperature_2m_max,temperature_2m_min,uv_index_max',
+      'timezone': 'auto',
+      'start_date': formattedDate,
+      'end_date': formattedDate,
+    });
+
+    final response = await client.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Weather API failed: ${response.statusCode}');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final daily = data['daily'] as Map<String, dynamic>?;
+    if (daily == null) {
+      throw Exception('Weather API returned incomplete forecast data');
+    }
+
+    final minTemp = _firstRequiredInt(daily['temperature_2m_min']);
+    final maxTemp = _firstRequiredInt(daily['temperature_2m_max']);
+    final weatherCode = _firstRequiredInt(daily['weather_code']);
+    final condition = _conditionForCode(weatherCode);
+    final uvIndex = _firstRequiredInt(daily['uv_index_max']);
+
+    return OpenMeteoWeather(
+      currentTemp: ((minTemp + maxTemp) / 2).round(),
+      minTemp: minTemp,
+      maxTemp: maxTemp,
+      condition: condition,
+      summary:
+          '${_summaryForCondition(condition)} Forecast range: $minTemp-$maxTemp C.',
+      humidity: 0,
+      windSpeed: 0,
+      uvIndex: _uvLabel(uvIndex),
+    );
+  }
+
+  Future<OpenMeteoWeather> getHistoricalWeatherForDate({
+    required double latitude,
+    required double longitude,
+    required DateTime date,
+  }) async {
+    final formattedDate = _dateParam(date);
+    final uri = Uri.https('archive-api.open-meteo.com', '/v1/archive', {
+      'latitude': latitude.toString(),
+      'longitude': longitude.toString(),
+      'daily':
+          'weather_code,temperature_2m_max,temperature_2m_min,temperature_2m_mean',
+      'timezone': 'auto',
+      'start_date': formattedDate,
+      'end_date': formattedDate,
+    });
+
+    final response = await client.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Historical weather API failed: ${response.statusCode}');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final daily = data['daily'] as Map<String, dynamic>?;
+    if (daily == null) {
+      throw Exception('Historical weather API returned incomplete data');
+    }
+
+    final minTemp = _firstRequiredInt(daily['temperature_2m_min']);
+    final maxTemp = _firstRequiredInt(daily['temperature_2m_max']);
+    final meanTemp = _firstRequiredInt(daily['temperature_2m_mean']);
+    final weatherCode = _firstRequiredInt(daily['weather_code']);
+    final condition = _conditionForCode(weatherCode);
+
+    return OpenMeteoWeather(
+      currentTemp: meanTemp,
+      minTemp: minTemp,
+      maxTemp: maxTemp,
+      condition: condition,
+      summary:
+          'Historical weather for ${_dateParam(date)}. Range: $minTemp-$maxTemp C.',
+      humidity: 0,
+      windSpeed: 0,
+      uvIndex: 'Historical',
+    );
+  }
+
   int _firstRequiredInt(dynamic value) {
     if (value is List && value.isNotEmpty) {
       return _requiredInt(value.first);
@@ -120,5 +237,11 @@ class OpenMeteoWeatherService {
     if (value <= 5) return 'Moderate';
     if (value <= 7) return 'High';
     return 'Very High';
+  }
+
+  String _dateParam(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
   }
 }
