@@ -1012,8 +1012,7 @@ class ExploreRemoteDataSource {
       shouldNotifyFollowers =
           isPublished &&
           _stringValue(data['visibility']) != 'public' &&
-          data['isFinalized'] != false &&
-          data['publicNotificationSentAt'] == null;
+          data['isFinalized'] != false;
       recipeTitle = _stringValue(data['name'], fallback: 'a new recipe');
       final creatorUid = _stringValue(data['creatorId']).isNotEmpty
           ? _stringValue(data['creatorId'])

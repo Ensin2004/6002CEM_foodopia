@@ -233,6 +233,7 @@ class StatisticsRemoteDataSource {
         _RecipeNutritionStat(
           id: recipeId,
           name: _stringValue(recipeData['name'], fallback: 'Untitled Recipe'),
+          imageUrl: _firstMediaUrl(recipeData['media']),
           date: date,
           nutrition: nutrition,
         ),
@@ -259,6 +260,7 @@ class StatisticsRemoteDataSource {
         _RecipeNutritionStat(
           id: recipe.id,
           name: recipe.name,
+          imageUrl: recipe.imageUrl,
           date: recipe.publishedAt,
           nutrition: await _recipeNutrition(recipeRef),
         ),
@@ -353,6 +355,7 @@ class StatisticsRemoteDataSource {
               proteinGram: item.nutrition.proteinGram,
               fatGram: item.nutrition.fatGram,
               icon: _iconForRecipe(item.name),
+              imageUrl: item.imageUrl,
             ),
           )
           .toList();
@@ -398,6 +401,7 @@ class StatisticsRemoteDataSource {
               proteinGram: item.nutrition.proteinGram,
               fatGram: item.nutrition.fatGram,
               icon: _iconForRecipe(item.name),
+              imageUrl: item.imageUrl,
             ),
           )
           .toList();
@@ -812,6 +816,16 @@ class StatisticsRemoteDataSource {
     final text = value?.toString().trim() ?? '';
     return text.isEmpty ? fallback : text;
   }
+
+  String? _firstMediaUrl(Object? value) {
+    if (value is Iterable) {
+      for (final item in value) {
+        final url = item?.toString().trim() ?? '';
+        if (url.isNotEmpty) return url;
+      }
+    }
+    return null;
+  }
 }
 
 class _CommunityRecipeStat {
@@ -907,12 +921,14 @@ class _CommunityRecipeStat {
 class _RecipeNutritionStat {
   final String id;
   final String name;
+  final String? imageUrl;
   final DateTime date;
   final _RecipeNutrition nutrition;
 
   const _RecipeNutritionStat({
     required this.id,
     required this.name,
+    this.imageUrl,
     required this.date,
     required this.nutrition,
   });

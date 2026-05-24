@@ -49,6 +49,7 @@ class CaloriesPostedItem {
   final int proteinGram;
   final int fatGram;
   final IconData icon;
+  final String? imageUrl;
 
   const CaloriesPostedItem({
     required this.recipeName,
@@ -57,5 +58,6 @@ class CaloriesPostedItem {
     required this.proteinGram,
     this.fatGram = 0,
     required this.icon,
+    this.imageUrl,
   });
 }

@@ -19,8 +19,8 @@ import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_review.dart';
-import '../../domain/usecases/finalize_add_recipe_usecase.dart';
 import '../../domain/usecases/complete_add_recipe_usecase.dart';
+import '../../domain/usecases/finalize_add_recipe_usecase.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
@@ -62,13 +62,10 @@ class AddRecipeReviewPage extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => AddRecipeReviewViewModel(
-            getReviewUseCase: sl<GetAddRecipeReviewUseCase>(),
-            finalizeRecipeUseCase: sl<FinalizeAddRecipeUseCase>(),
-          )..loadReview(recipeId),
           create: (_) {
             final viewModel = AddRecipeReviewViewModel(
               getReviewUseCase: sl<GetAddRecipeReviewUseCase>(),
+              finalizeRecipeUseCase: sl<FinalizeAddRecipeUseCase>(),
               deleteRecipeUseCase: sl(),
             );
             if (aiReview == null) {
@@ -203,24 +200,6 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
       appBar: CustomAppBar(
-        title: "New Recipe",
-        actions: [
-          Consumer<AddRecipeVisibilityViewModel>(
-            builder: (context, visibilityViewModel, _) {
-              return RecipeVisibilityActionButton(
-                visibility: visibilityViewModel.visibility,
-                isSaving: visibilityViewModel.isSaving,
-                onChanged: (value) async {
-                  final success = await visibilityViewModel.updateVisibility(
-                    recipeId: recipeId,
-                    value: value,
-                  );
-                  if (!context.mounted || success) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        visibilityViewModel.errorMessage ??
-                            "Unable to update visibility.",
         title: widget.aiReview == null ? "New Recipe" : "Customize AI Recipe",
         actions: widget.aiReview == null
             ? [
@@ -388,16 +367,6 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                   ReviewSectionRow(
                     icon: Icons.eco_rounded,
                     title: "Ingredients",
-                    onEdit: () => context.push(
-                      AppRouter.addRecipeIngredients,
-                      extra: AddRecipeIngredientsArgs(
-                        recipeId: recipeId,
-                        visibility: context
-                            .read<AddRecipeVisibilityViewModel>()
-                            .visibility,
-                        returnToReview: true,
-                      ),
-                    ),
                     onEdit: widget.aiReview == null
                         ? () => context.pushReplacement(
                             AppRouter.addRecipeIngredients,
@@ -418,16 +387,6 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                   ReviewSectionRow(
                     icon: Icons.menu_book_rounded,
                     title: "Instructions",
-                    onEdit: () => context.push(
-                      AppRouter.addRecipeInstructions,
-                      extra: AddRecipeInstructionsArgs(
-                        recipeId: recipeId,
-                        visibility: context
-                            .read<AddRecipeVisibilityViewModel>()
-                            .visibility,
-                        returnToReview: true,
-                      ),
-                    ),
                     onEdit: widget.aiReview == null
                         ? () => context.pushReplacement(
                             AppRouter.addRecipeInstructions,
@@ -453,36 +412,12 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                 AppSpacing.lg,
               ),
               child: PrimaryButton(
-                text: viewModel.isSaving ? "Saving..." : "Save",
-                onPressed: viewModel.isSaving
-                    ? null
-                    : () async {
-                        final success = await viewModel.finalizeRecipe(
-                          recipeId,
-                        );
-                        if (!context.mounted) return;
-                        if (!success) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                viewModel.errorMessage ??
-                                    "Unable to save recipe.",
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Recipe saved.")),
-                        );
-                      },
                 text: widget.aiReview == null ? "Save" : "Add Recipe",
-                isLoading: _isSavingAiDraft,
-                onPressed: _isSavingAiDraft
+                isLoading: viewModel.isSaving || _isSavingAiDraft,
+                onPressed: viewModel.isSaving || _isSavingAiDraft
                     ? null
                     : widget.aiReview == null
-                    ? () => _finishSavedRecipe(context)
+                    ? () => _finishSavedRecipe(context, viewModel)
                     : () => _saveAiDraft(context),
               ),
             ),
@@ -492,9 +427,22 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
-  void _finishSavedRecipe(BuildContext context) {
-    final visibility = context.read<AddRecipeVisibilityViewModel>().visibility;
+  Future<void> _finishSavedRecipe(
+    BuildContext context,
+    AddRecipeReviewViewModel viewModel,
+  ) async {
+    final success = await viewModel.finalizeRecipe(widget.recipeId);
+    if (!context.mounted) return;
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(viewModel.errorMessage ?? "Unable to save recipe."),
+        ),
+      );
+      return;
+    }
 
+    final visibility = context.read<AddRecipeVisibilityViewModel>().visibility;
     context.go(
       Uri(
         path: AppRouter.home,

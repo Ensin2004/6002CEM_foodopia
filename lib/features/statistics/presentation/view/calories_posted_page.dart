@@ -606,7 +606,7 @@ class _PostMealRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _FoodIcon(icon: post.icon),
+          _FoodIcon(icon: post.icon, imageUrl: post.imageUrl),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
@@ -781,21 +781,33 @@ class _SectionCard extends StatelessWidget {
 
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
+  final String? imageUrl;
 
-  const _FoodIcon({required this.icon});
+  const _FoodIcon({required this.icon, this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
+    final url = imageUrl?.trim() ?? '';
     return Container(
       width: 32,
       height: 32,
+      clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: const Color(0xFFECE7CF),
         shape: BoxShape.circle,
         border: Border.all(color: const Color(0xFFD7C98D)),
       ),
-      child: Icon(icon, color: const Color(0xFF6D642C), size: 18),
+      child: url.isNotEmpty
+          ? Image.network(
+              url,
+              width: 32,
+              height: 32,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Icon(icon, color: const Color(0xFF6D642C), size: 18),
+            )
+          : Icon(icon, color: const Color(0xFF6D642C), size: 18),
     );
   }
 }

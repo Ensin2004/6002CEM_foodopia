@@ -2,21 +2,18 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/add_recipe_review.dart';
-import '../../domain/usecases/finalize_add_recipe_usecase.dart';
 import '../../domain/usecases/delete_add_recipe_usecase.dart';
+import '../../domain/usecases/finalize_add_recipe_usecase.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 
 class AddRecipeReviewViewModel extends ChangeNotifier {
   final GetAddRecipeReviewUseCase getReviewUseCase;
   final FinalizeAddRecipeUseCase finalizeRecipeUseCase;
-
-  AddRecipeReview? review;
-  bool isLoading = true;
-  bool isSaving = false;
   final DeleteAddRecipeUseCase deleteRecipeUseCase;
 
   AddRecipeReview? review;
   bool isLoading = true;
+  bool isSaving = false;
   bool isDeleting = false;
   String? errorMessage;
 
@@ -55,6 +52,10 @@ class AddRecipeReviewViewModel extends ChangeNotifier {
     }
 
     isSaving = false;
+    notifyListeners();
+    return success;
+  }
+
   Future<bool> deleteRecipe(String recipeId) async {
     isDeleting = true;
     errorMessage = null;

@@ -438,8 +438,7 @@ class AddRecipeRemoteDataSource {
 
     if (visibility == 'public' &&
         previousVisibility != 'public' &&
-        _isFinalizedRecipe(snapshot.data()) &&
-        !_hasSentPublicNotification(snapshot.data())) {
+        _isFinalizedRecipe(snapshot.data())) {
       final data = snapshot.data() ?? const <String, dynamic>{};
       final recipeOwnerUid = _recipeOwnerUid(
         data,
@@ -698,6 +697,7 @@ class AddRecipeRemoteDataSource {
       'status': 'saved',
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await finalizeRecipe(recipeId);
   }
 
   Future<List<String>> _resolveOptionNames({

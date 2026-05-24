@@ -45,6 +45,7 @@ class CaloriesMealItem {
   final int proteinGram;
   final int fatGram;
   final IconData icon;
+  final String? imageUrl;
 
   const CaloriesMealItem({
     required this.name,
@@ -53,5 +54,6 @@ class CaloriesMealItem {
     required this.proteinGram,
     this.fatGram = 0,
     required this.icon,
+    this.imageUrl,
   });
 }
