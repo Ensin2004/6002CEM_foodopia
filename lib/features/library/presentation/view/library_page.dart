@@ -24,6 +24,7 @@ class LibraryPage extends StatelessWidget {
   final VoidCallback? onExploreNow;
   final String? focusedRecipeId;
   final bool? focusedRecipeIsPublished;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const LibraryPage({
     super.key,
@@ -31,6 +32,7 @@ class LibraryPage extends StatelessWidget {
     this.onExploreNow,
     this.focusedRecipeId,
     this.focusedRecipeIsPublished,
+    this.mealPlanSelection,
   });
 
   @override
@@ -50,6 +52,7 @@ class LibraryPage extends StatelessWidget {
         onExploreNow: onExploreNow,
         focusedRecipeId: focusedRecipeId,
         initialTab: initialTab,
+        mealPlanSelection: mealPlanSelection,
       ),
     );
 
@@ -57,7 +60,15 @@ class LibraryPage extends StatelessWidget {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: const CustomAppBar(title: 'Library'),
+      appBar: CustomAppBar(
+        title: mealPlanSelection == null ? 'Library' : 'Add from Your Library',
+        leading: mealPlanSelection == null
+            ? null
+            : IconButton(
+                onPressed: () => context.pop(),
+                icon: const Icon(Icons.chevron_left),
+              ),
+      ),
       body: page,
     );
   }
@@ -67,11 +78,13 @@ class _LibraryPageView extends StatefulWidget {
   final VoidCallback? onExploreNow;
   final String? focusedRecipeId;
   final LibraryRecipeTab initialTab;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const _LibraryPageView({
     this.onExploreNow,
     this.focusedRecipeId,
     required this.initialTab,
+    this.mealPlanSelection,
   });
 
   @override
@@ -192,6 +205,7 @@ class _LibraryPageViewState extends State<_LibraryPageView>
       onEditProfileTap: _showEditProfileSheet,
       onFavouriteTap: _toggleFavourite,
       focusedRecipeId: _focusedRecipeId,
+      mealPlanSelection: widget.mealPlanSelection,
     );
   }
 }
@@ -204,6 +218,7 @@ class _LibraryContent extends StatelessWidget {
   final VoidCallback onEditProfileTap;
   final ValueChanged<String> onFavouriteTap;
   final String? focusedRecipeId;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const _LibraryContent({
     required this.viewModel,
@@ -213,6 +228,7 @@ class _LibraryContent extends StatelessWidget {
     required this.onEditProfileTap,
     required this.onFavouriteTap,
     this.focusedRecipeId,
+    this.mealPlanSelection,
   });
 
   @override
@@ -275,9 +291,15 @@ class _LibraryContent extends StatelessWidget {
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final recipe = recipes[index];
+                  final disabled =
+                      mealPlanSelection?.existingRecipeIds.contains(
+                        recipe.id,
+                      ) ??
+                      false;
                   return LibraryRecipeCard(
                     recipe: recipe,
                     isHighlighted: recipe.id == focusedRecipeId,
+                    disabled: disabled,
                     onComingSoonTap: onComingSoonTap,
                     onFavouriteTap: () => onFavouriteTap(recipe.id),
                     onTap: () async {
@@ -287,6 +309,7 @@ class _LibraryContent extends StatelessWidget {
                           recipeId: recipe.id,
                           isSelfPublished: recipe.isSelfPublished,
                           isPublished: recipe.isPublished,
+                          mealPlanSelection: mealPlanSelection,
                         ),
                       );
                       if (!context.mounted) return;

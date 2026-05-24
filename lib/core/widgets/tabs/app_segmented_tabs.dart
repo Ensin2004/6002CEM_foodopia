@@ -22,32 +22,35 @@ class AppSegmentedTabs extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final shouldScroll = isScrollable ?? tabs.length > 3;
 
-    return Padding(
-      padding: margin,
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: margin,
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+            ),
           ),
-        ),
-        child: TabBar(
-          controller: controller,
-          isScrollable: shouldScroll,
-          indicatorColor: colorScheme.primary,
-          indicatorSize: TabBarIndicatorSize.tab,
-          indicatorWeight: 2,
-          dividerColor: Colors.transparent,
-          labelColor: colorScheme.primary,
-          unselectedLabelColor: Colors.black54,
-          labelStyle: context.text.labelLarge?.copyWith(
-            fontWeight: FontWeight.w700,
+          child: TabBar(
+            controller: controller,
+            isScrollable: shouldScroll,
+            indicatorColor: colorScheme.primary,
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorWeight: 2,
+            dividerColor: Colors.transparent,
+            labelColor: colorScheme.primary,
+            unselectedLabelColor: Colors.black54,
+            labelStyle: context.text.labelLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+            unselectedLabelStyle: context.text.labelLarge?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+            tabs: tabs.map((label) => Tab(text: label)).toList(),
           ),
-          unselectedLabelStyle: context.text.labelLarge?.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
-          tabs: tabs.map((label) => Tab(text: label)).toList(),
         ),
       ),
     );

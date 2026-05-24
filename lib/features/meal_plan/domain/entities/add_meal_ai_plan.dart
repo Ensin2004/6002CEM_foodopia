@@ -32,7 +32,9 @@ class AddMealAiGenerationRequest {
   final List<String> dishIncludes;
   final List<String> dishAvoids;
   final int cookingTime;
+  final int difficultyLevel;
   final String difficulty;
+  final int servingCount;
   final String servingSize;
 
   const AddMealAiGenerationRequest({
@@ -45,7 +47,9 @@ class AddMealAiGenerationRequest {
     required this.dishIncludes,
     required this.dishAvoids,
     required this.cookingTime,
+    required this.difficultyLevel,
     required this.difficulty,
+    required this.servingCount,
     required this.servingSize,
   });
 }

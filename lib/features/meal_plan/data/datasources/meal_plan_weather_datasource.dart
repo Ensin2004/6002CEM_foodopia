@@ -9,10 +9,11 @@ class MealPlanWeatherDataSource {
 
   const MealPlanWeatherDataSource({required this.weatherService});
 
-  Future<MealPlanWeatherModel> getTodayWeather() async {
-    final weather = await weatherService.getTodayWeather(
+  Future<MealPlanWeatherModel> getWeatherForDate(DateTime date) async {
+    final weather = await weatherService.getWeatherForDate(
       latitude: _latitude,
       longitude: _longitude,
+      date: date,
     );
 
     return MealPlanWeatherModel(

@@ -10,11 +10,23 @@ import '../../domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../domain/usecases/get_meal_plan_weather_usecase.dart';
 import '../../domain/usecases/search_meal_plan_ingredients_usecase.dart';
 
-enum MealPlanFilter { all, breakfast, lunch, dinner }
-
 enum GroceryListTabFilter { active, past }
 
+class MealPlanFilterOption {
+  final String id;
+  final String label;
+  final int count;
+
+  const MealPlanFilterOption({
+    required this.id,
+    required this.label,
+    required this.count,
+  });
+}
+
 class MealPlanViewModel extends ChangeNotifier {
+  static const String allFilterId = 'all';
+
   final GetMealPlanDashboardUseCase _getDashboardUseCase;
   final GetMealPlanWeatherUseCase _getWeatherUseCase;
   final GetMealPlanPreferencesUseCase _getPreferencesUseCase;
@@ -23,8 +35,9 @@ class MealPlanViewModel extends ChangeNotifier {
   final String userId;
 
   MealPlanDashboard? _dashboard;
+  DateTime _selectedDate = DateTime.now();
   MealPlanPreferenceSummary? _preferences;
-  MealPlanFilter _selectedFilter = MealPlanFilter.all;
+  String _selectedFilterId = allFilterId;
   GroceryListTabFilter _selectedGroceryListTab = GroceryListTabFilter.active;
   bool _isLoading = true;
   bool _isWeatherLoading = false;
@@ -66,7 +79,7 @@ class MealPlanViewModel extends ChangeNotifier {
 
   MealPlanDashboard? get dashboard => _dashboard;
   MealPlanPreferenceSummary? get preferences => _preferences;
-  MealPlanFilter get selectedFilter => _selectedFilter;
+  String get selectedFilterId => _selectedFilterId;
   GroceryListTabFilter get selectedGroceryListTab => _selectedGroceryListTab;
   bool get isLoading => _isLoading;
   bool get isWeatherLoading => _isWeatherLoading;
@@ -112,25 +125,29 @@ class MealPlanViewModel extends ChangeNotifier {
 
   List<MealPlanSection> get filteredSections {
     final sections = _dashboard?.sections ?? const <MealPlanSection>[];
-    if (_selectedFilter == MealPlanFilter.all) return sections;
-    final filterLabel = _selectedFilter.name.toLowerCase();
+    if (_selectedFilterId == allFilterId) return sections;
     return sections
-        .where((section) => section.mealType.toLowerCase() == filterLabel)
+        .where((section) => _filterIdForSection(section) == _selectedFilterId)
         .toList();
   }
 
-  int mealCountFor(MealPlanFilter filter) {
+  List<MealPlanFilterOption> get filterOptions {
     final sections = _dashboard?.sections ?? const <MealPlanSection>[];
-    if (filter == MealPlanFilter.all) {
-      return sections.fold<int>(
-        0,
-        (count, section) => count + section.meals.length,
-      );
-    }
+    final totalCount = sections.fold<int>(
+      0,
+      (count, section) => count + section.meals.length,
+    );
 
-    return sections
-        .where((section) => section.mealType.toLowerCase() == filter.name)
-        .fold<int>(0, (count, section) => count + section.meals.length);
+    return [
+      MealPlanFilterOption(id: allFilterId, label: 'All', count: totalCount),
+      ...sections.map(
+        (section) => MealPlanFilterOption(
+          id: _filterIdForSection(section),
+          label: section.mealType,
+          count: section.meals.length,
+        ),
+      ),
+    ];
   }
 
   List<GroceryListSummary> get filteredGroceryLists {
@@ -147,9 +164,9 @@ class MealPlanViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
-  void selectFilter(MealPlanFilter filter) {
-    if (_selectedFilter == filter) return;
-    _selectedFilter = filter;
+  void selectFilter(String filterId) {
+    if (_selectedFilterId == filterId) return;
+    _selectedFilterId = filterId;
     _notifyIfActive();
   }
 
@@ -158,11 +175,15 @@ class MealPlanViewModel extends ChangeNotifier {
     _errorMessage = null;
     _notifyIfActive();
 
-    final result = await _getDashboardUseCase.execute();
+    final result = await _getDashboardUseCase.execute(
+      userId: userId,
+      selectedDate: _selectedDate,
+    );
     if (_isDisposed) return;
 
     result.ifRight((dashboard) {
       _dashboard = dashboard;
+      _normalizeSelectedFilter();
       _isWeatherLoading = true;
     });
     result.ifLeft((failure) {
@@ -175,6 +196,11 @@ class MealPlanViewModel extends ChangeNotifier {
     await refreshWeather();
     await loadPreferences();
     await loadInspirationInputs();
+  }
+
+  Future<void> selectDate(DateTime date) async {
+    _selectedDate = DateTime(date.year, date.month, date.day);
+    await loadDashboard();
   }
 
   Future<void> loadPreferences() async {
@@ -209,7 +235,9 @@ class MealPlanViewModel extends ChangeNotifier {
     _weatherErrorMessage = null;
     _notifyIfActive();
 
-    final result = await _getWeatherUseCase.execute();
+    final result = await _getWeatherUseCase.execute(
+      currentDashboard.selectedDate,
+    );
     if (_isDisposed) return;
 
     result.ifRight((weather) {
@@ -410,6 +438,24 @@ class MealPlanViewModel extends ChangeNotifier {
       ),
       ...source,
     ];
+  }
+
+  String _filterIdForSection(MealPlanSection section) {
+    final categoryId = section.mealCategoryId.trim();
+    if (categoryId.isNotEmpty) return categoryId;
+    return section.mealType.trim().toLowerCase().replaceAll(
+      RegExp(r'\s+'),
+      '_',
+    );
+  }
+
+  void _normalizeSelectedFilter() {
+    if (_selectedFilterId == allFilterId) return;
+    final sections = _dashboard?.sections ?? const <MealPlanSection>[];
+    final exists = sections.any(
+      (section) => _filterIdForSection(section) == _selectedFilterId,
+    );
+    if (!exists) _selectedFilterId = allFilterId;
   }
 
   void _notifyIfActive() {

@@ -55,6 +55,7 @@ class PlanningTabMainView extends StatelessWidget {
           MealPlanCalendar(
             selectedDate: selectedDate,
             days: dashboard.monthDays,
+            onDateSelected: viewModel.selectDate,
           ),
           const SizedBox(height: AppSpacing.lg),
           Text("Today's Meal Plan", style: context.text.titleMedium),
@@ -100,12 +101,22 @@ class _WeatherBox extends StatelessWidget {
     return AppInfoBox(
       icon: Icons.wb_sunny_outlined,
       title: '${currentWeather.condition} • ${currentWeather.currentTemp}°C',
-      message: currentWeather.summary,
+      message: '${currentWeather.summary} ${_mealHintFor(currentWeather)}',
       backgroundColor: const Color(0xFFEFFAF1),
       iconBackgroundColor: const Color(0xFFD9F5DD),
       iconColor: AppColors.primary,
     );
   }
+}
+
+String _mealHintFor(MealPlanWeather weather) {
+  if (weather.currentTemp >= 30) {
+    return 'Light meals and hydrating ingredients are a good fit today.';
+  }
+  if (weather.condition.toLowerCase().contains('rain')) {
+    return 'Warm bowls and comforting dishes fit the weather well.';
+  }
+  return 'Balanced meals should work nicely with today\'s weather.';
 }
 
 class _MealFilters extends StatelessWidget {
@@ -114,22 +125,19 @@ class _MealFilters extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<MealPlanViewModel>();
-    final filters = MealPlanFilter.values;
+    final filters = viewModel.filterOptions;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: filters.map((filter) {
-          final label = filter == MealPlanFilter.all
-              ? 'All'
-              : '${filter.name[0].toUpperCase()}${filter.name.substring(1)}';
+        children: filters.map((option) {
           return Padding(
             padding: const EdgeInsets.only(right: AppSpacing.sm),
             child: AppFilterChip(
-              label: '$label (${viewModel.mealCountFor(filter)})',
-              selected: viewModel.selectedFilter == filter,
+              label: '${option.label} (${option.count})',
+              selected: viewModel.selectedFilterId == option.id,
               onTap: () =>
-                  context.read<MealPlanViewModel>().selectFilter(filter),
+                  context.read<MealPlanViewModel>().selectFilter(option.id),
             ),
           );
         }).toList(),

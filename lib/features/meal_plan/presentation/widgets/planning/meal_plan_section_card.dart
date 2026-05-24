@@ -7,6 +7,7 @@ import '../../../../../app/routers/router_args.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
+import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
 
@@ -20,6 +21,11 @@ class MealPlanSectionCard extends StatelessWidget {
     final mealLabel = section.meals.length == 1
         ? '1 meal'
         : '${section.meals.length} meals';
+    final remainingCount = (5 - section.meals.length).clamp(0, 5);
+    final existingRecipeIds = section.meals
+        .map((meal) => meal.recipeId)
+        .where((id) => id.trim().isNotEmpty)
+        .toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -64,32 +70,109 @@ class MealPlanSectionCard extends StatelessWidget {
         children: [
           ...section.meals.map((meal) => _MealRow(meal: meal)),
           const SizedBox(height: AppSpacing.sm),
+          _MealLimitStatus(
+            remainingCount: remainingCount,
+            mealType: section.mealType,
+          ),
+          const SizedBox(height: AppSpacing.sm),
           SizedBox(
             width: double.infinity,
-            height: 34,
             child: OutlinedButton(
-              onPressed: () {
-                final userId = context.read<MealPlanViewModel>().userId;
-                context.push(
-                  AppRouter.addMealPlan,
-                  extra: AddMealPlanArgs(
-                    userId: userId,
-                    mealType: section.mealType,
-                  ),
-                );
-              },
+              onPressed: remainingCount <= 0
+                  ? null
+                  : () {
+                      final userId = context.read<MealPlanViewModel>().userId;
+                      final selectedDate = context
+                          .read<MealPlanViewModel>()
+                          .dashboard
+                          ?.selectedDate;
+                      context.push(
+                        AppRouter.addMealPlan,
+                        extra: AddMealPlanArgs(
+                          userId: userId,
+                          mealType: section.mealType,
+                          mealCategoryId: section.mealCategoryId,
+                          selectedDate: selectedDate,
+                          existingRecipeIds: existingRecipeIds,
+                        ),
+                      );
+                    },
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.border),
+                backgroundColor: remainingCount <= 0
+                    ? AppColors.background
+                    : Colors.white,
+                side: BorderSide(
+                  color: remainingCount <= 0
+                      ? AppColors.border.withValues(alpha: 0.72)
+                      : AppColors.border,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.md,
+                  horizontal: AppSpacing.md,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
               child: Text(
-                '+ Add ${section.mealType} Meal',
+                remainingCount <= 0
+                    ? '${section.mealType} limit reached'
+                    : '+ Add ${section.mealType} Meal',
                 style: context.text.bodySmall?.copyWith(
-                  color: AppColors.primary,
+                  color: remainingCount <= 0
+                      ? AppColors.textSecondary
+                      : AppColors.primary,
                   fontWeight: FontWeight.w800,
                 ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MealLimitStatus extends StatelessWidget {
+  final int remainingCount;
+  final String mealType;
+
+  const _MealLimitStatus({
+    required this.remainingCount,
+    required this.mealType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isFull = remainingCount <= 0;
+    final color = isFull ? AppColors.textSecondary : AppColors.primary;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isFull ? 0.08 : 0.10),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isFull ? Icons.lock_outline : Icons.restaurant_menu,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(
+              isFull
+                  ? '$mealType is full for this date'
+                  : '$remainingCount of 5 slots available',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -115,8 +198,8 @@ class _MealRow extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              meal.imagePath,
+            child: AppRemoteOrAssetImage(
+              imagePath: meal.imagePath,
               width: 48,
               height: 48,
               fit: BoxFit.cover,

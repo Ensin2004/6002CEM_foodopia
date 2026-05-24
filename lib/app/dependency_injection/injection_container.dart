@@ -69,6 +69,7 @@ import '../../features/explore/domain/usecases/watch_explore_recipe_detail_useca
 import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_inspiration_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_preferences_datasource.dart';
+import '../../features/meal_plan/data/datasources/meal_plan_remote_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
 import '../../features/meal_plan/data/repositories/meal_plan_repository_impl.dart';
 import '../../features/meal_plan/domain/repositories/meal_plan_repository.dart';
@@ -83,6 +84,7 @@ import '../../features/meal_plan/domain/usecases/get_meal_plan_inspiration_optio
 import '../../features/meal_plan/domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_weather_usecase.dart';
 import '../../features/meal_plan/domain/usecases/save_ai_meal_plan_usecase.dart';
+import '../../features/meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/search_meal_plan_ingredients_usecase.dart';
 import '../../features/notifications/data/datasources/notification_local_datasource.dart';
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
@@ -398,10 +400,12 @@ void _initMealPlanFeature() {
       openAiMealIdeaService: sl(),
     ),
   );
+  sl.registerLazySingleton(() => MealPlanRemoteDataSource(firestore: sl()));
 
   sl.registerLazySingleton<MealPlanRepository>(
     () => MealPlanRepositoryImpl(
       mockDataSource: sl(),
+      remoteDataSource: sl(),
       weatherDataSource: sl(),
       preferencesDataSource: sl(),
       inspirationDataSource: sl(),
@@ -419,6 +423,7 @@ void _initMealPlanFeature() {
   sl.registerLazySingleton(() => GenerateAiMealIdeasUseCase(sl()));
   sl.registerLazySingleton(() => GetMealCategoriesUseCase(sl()));
   sl.registerLazySingleton(() => SaveAiMealPlanUseCase(sl()));
+  sl.registerLazySingleton(() => SaveRecipeMealPlanUseCase(sl()));
   sl.registerLazySingleton(() => GetManageGroceryListDetailUseCase(sl()));
 }
 

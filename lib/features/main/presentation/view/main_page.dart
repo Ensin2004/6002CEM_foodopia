@@ -29,6 +29,7 @@ class MainPage extends StatelessWidget {
   final String? focusedRecipeId;
   final bool? focusedRecipeIsPublished;
   final String? libraryRefreshToken;
+  final int initialMealPlanTabIndex;
 
   /// Creates a main page instance.
   const MainPage({
@@ -39,6 +40,7 @@ class MainPage extends StatelessWidget {
     this.focusedRecipeId,
     this.focusedRecipeIsPublished,
     this.libraryRefreshToken,
+    this.initialMealPlanTabIndex = 0,
   });
 
   /// Builds the widget tree for this component.
@@ -50,6 +52,7 @@ class MainPage extends StatelessWidget {
         user: user,
         repository: sl(),
         initialIndex: initialIndex,
+        initialMealPlanTabIndex: initialMealPlanTabIndex,
       ),
       child: _MainPageView(
         initialIndex: initialIndex,

@@ -9,7 +9,10 @@ class GetMealPlanDashboardUseCase {
 
   const GetMealPlanDashboardUseCase(this.repository);
 
-  Future<Either<Failure, MealPlanDashboard>> execute() {
-    return repository.getDashboard();
+  Future<Either<Failure, MealPlanDashboard>> execute({
+    required String userId,
+    required DateTime selectedDate,
+  }) {
+    return repository.getDashboard(userId: userId, selectedDate: selectedDate);
   }
 }

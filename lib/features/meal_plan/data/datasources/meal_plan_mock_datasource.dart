@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../models/meal_plan_dashboard_model.dart';
-import '../../domain/entities/add_meal_ai_plan.dart';
 import '../../domain/entities/add_grocery_list_plan.dart';
 import '../../domain/entities/manage_grocery_list_detail.dart';
+import '../../domain/entities/meal_plan_dashboard.dart';
 
 class MealPlanMockDataSource {
-  Future<MealPlanDashboardModel> getDashboard() async {
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    return MealPlanDashboardModel.mock();
-  }
-
   Future<AddGroceryListPlan> getAddGroceryListPlan() async {
     await Future<void>.delayed(const Duration(milliseconds: 180));
     final today = DateTime.now();
@@ -62,74 +56,89 @@ class MealPlanMockDataSource {
     );
   }
 
-  Future<AddMealAiPlan> getAddMealAiPlan({
-    required String mealType,
-    required AddMealPreferenceSnapshot preferences,
-  }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 220));
+  Future<List<GroceryListSummary>> getGroceryListSummaries() async {
+    await Future<void>.delayed(const Duration(milliseconds: 120));
     final today = DateTime.now();
-
-    const berryBowl = AddMealAiRecipe(
-      id: 'berry_yogurt_bowl',
-      title: 'Berry Yogurt Bowl',
-      durationLabel: '20 mins',
-      difficultyLabel: 'Easy',
-      servingLabel: '2 servings',
-      imagePath: 'assets/images/meal1.png',
-      description: 'Creamy yogurt with fresh berries, granola and honey.',
-      reasons: [
-        'Light and refreshing for warm weather',
-        'High in protein and antioxidants',
-        'Quick and easy to prepare',
-      ],
-      categoryName: 'Breakfast',
-    );
-    const avocadoToast = AddMealAiRecipe(
-      id: 'avocado_egg_toast',
-      title: 'Avocado Egg Toast',
-      durationLabel: '20 mins',
-      difficultyLabel: 'Easy',
-      servingLabel: '2 servings',
-      imagePath: 'assets/images/meal2.png',
-      description: 'Creamy avocado with soft eggs on toasted grain bread.',
-      reasons: [
-        'Fits vegetarian preferences',
-        'Fresh ingredients match sunny weather',
-        'Balanced protein and healthy fats',
-      ],
-      categoryName: 'Breakfast',
-    );
-    const quinoaBowl = AddMealAiRecipe(
-      id: 'quinoa_veggie_bowl',
-      title: 'Quinoa Veggie Bowl',
-      durationLabel: '25 mins',
-      difficultyLabel: 'Easy',
-      servingLabel: '2 servings',
-      imagePath: 'assets/images/meal3.png',
-      description: 'Warm quinoa, grilled vegetables and lemon herb dressing.',
-      reasons: [
-        'Plant-forward and filling',
-        'Avoids common disliked ingredients',
-        'Works well for light meal planning',
-      ],
-      categoryName: 'Main Dish',
-    );
-
-    return AddMealAiPlan(
-      planningDate: DateTime(today.year, today.month, today.day),
-      mealType: mealType,
-      weather: const AddMealWeather(
-        temperature: 30,
-        condition: 'Sunny',
-        summary: 'A warm day! Great for fresh & light meals.',
+    return [
+      GroceryListSummary(
+        id: 'weekly_groceries',
+        title: 'Weekly Groceries',
+        itemCount: 18,
+        startDate: DateTime(today.year, today.month, 1),
+        endDate: DateTime(today.year, today.month, 7),
+        status: GroceryListStatus.active,
+        isDefault: true,
+        categories: const ['Produce', 'Meat', 'Dairy'],
+        extraCategoryCount: 3,
       ),
-      preferences: preferences,
-      ingredientsToInclude: const ['Eggs', 'Chicken', 'Oats', 'Spinach'],
-      ingredientsToAvoid: preferences.dislikes,
-      dishPreferences: const ['Dry Meals', 'Rice-Based', 'Noodles', 'Grilled'],
-      topMatches: const [berryBowl, avocadoToast],
-      aiIdeas: const [berryBowl, avocadoToast, quinoaBowl],
-    );
+      GroceryListSummary(
+        id: 'healthy_meal_prep',
+        title: 'Healthy Meal Prep',
+        itemCount: 12,
+        startDate: DateTime(today.year, today.month, 8),
+        endDate: DateTime(today.year, today.month, 14),
+        status: GroceryListStatus.active,
+        categories: const ['Produce', 'Pantry', 'Dairy'],
+        extraCategoryCount: 3,
+      ),
+      GroceryListSummary(
+        id: 'weekend_essentials',
+        title: 'Weekend Essentials',
+        itemCount: 9,
+        startDate: DateTime(today.year, today.month, 15),
+        endDate: DateTime(today.year, today.month, 17),
+        status: GroceryListStatus.active,
+        categories: const ['Produce', 'Snacks', 'Drinks'],
+        extraCategoryCount: 3,
+      ),
+      GroceryListSummary(
+        id: 'bbq_party',
+        title: 'BBQ Party',
+        itemCount: 24,
+        startDate: DateTime(today.year, today.month, 20),
+        endDate: DateTime(today.year, today.month, 20),
+        status: GroceryListStatus.active,
+        categories: const ['Meat', 'Produce', 'Drinks'],
+        extraCategoryCount: 3,
+      ),
+      GroceryListSummary(
+        id: 'april_family_meals',
+        title: 'April Family Meals',
+        itemCount: 16,
+        startDate: DateTime(today.year, today.month - 1, 8),
+        endDate: DateTime(today.year, today.month - 1, 14),
+        status: GroceryListStatus.past,
+        categories: const ['Produce', 'Pantry', 'Dairy'],
+        extraCategoryCount: 2,
+      ),
+      GroceryListSummary(
+        id: 'quick_breakfast_run',
+        title: 'Quick Breakfast Run',
+        itemCount: 7,
+        startDate: DateTime(today.year, today.month - 1, 22),
+        endDate: DateTime(today.year, today.month - 1, 22),
+        status: GroceryListStatus.past,
+        categories: const ['Bakery', 'Fruit', 'Dairy'],
+        extraCategoryCount: 1,
+      ),
+    ];
+  }
+
+  List<GroceryListGroup> getGroceryGroups() {
+    return const [
+      GroceryListGroup(
+        title: 'Produce',
+        items: ['Avocado', 'Cherry tomatoes', 'Lettuce', 'Lemon'],
+      ),
+      GroceryListGroup(
+        title: 'Protein',
+        items: ['Eggs', 'Chicken breast', 'Salmon fillet'],
+      ),
+      GroceryListGroup(
+        title: 'Pantry',
+        items: ['Wholegrain bread', 'Quinoa', 'Olive oil'],
+      ),
+    ];
   }
 
   Future<ManageGroceryListDetail> getManageGroceryListDetail(

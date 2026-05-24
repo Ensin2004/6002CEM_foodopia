@@ -10,11 +10,17 @@ import '../../../../../core/widgets/custom_app_bar.dart';
 
 class AddMealPlanPage extends StatelessWidget {
   final String mealType;
+  final String mealCategoryId;
+  final DateTime selectedDate;
+  final List<String> existingRecipeIds;
   final String userId;
 
   const AddMealPlanPage({
     super.key,
     required this.mealType,
+    required this.mealCategoryId,
+    required this.selectedDate,
+    required this.existingRecipeIds,
     required this.userId,
   });
 
@@ -45,8 +51,18 @@ class AddMealPlanPage extends StatelessWidget {
               imagePath: 'assets/images/meal1.png',
               description:
                   'Browse and add popular dishes shared by other Foodopia cooks to your meal plan.',
-              enabled: false,
-              onTap: () {},
+              enabled: true,
+              onTap: () => context.push(
+                AppRouter.explore,
+                extra: MealPlanSelectionArgs(
+                  userId: userId,
+                  selectedDate: selectedDate,
+                  mealCategoryId: mealCategoryId,
+                  mealCategoryName: mealType,
+                  source: 'method1_explore_community_recipes',
+                  existingRecipeIds: existingRecipeIds,
+                ),
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             _AddMealOptionCard(
@@ -54,8 +70,20 @@ class AddMealPlanPage extends StatelessWidget {
               imagePath: 'assets/images/meal2.png',
               description:
                   'Quickly schedule meals using your personal collection of saved or self-created recipes.',
-              enabled: false,
-              onTap: () {},
+              enabled: true,
+              onTap: () => context.push(
+                AppRouter.library,
+                extra: LibraryArgs(
+                  mealPlanSelection: MealPlanSelectionArgs(
+                    userId: userId,
+                    selectedDate: selectedDate,
+                    mealCategoryId: mealCategoryId,
+                    mealCategoryName: mealType,
+                    source: 'method2_add_from_your_library',
+                    existingRecipeIds: existingRecipeIds,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             _AddMealOptionCard(
@@ -67,7 +95,12 @@ class AddMealPlanPage extends StatelessWidget {
               enabled: true,
               onTap: () => context.push(
                 AppRouter.generateAiMeal,
-                extra: GenerateAiMealArgs(userId: userId, mealType: mealType),
+                extra: GenerateAiMealArgs(
+                  userId: userId,
+                  mealType: mealType,
+                  selectedDate: selectedDate,
+                  mealCategoryId: mealCategoryId,
+                ),
               ),
             ),
           ],
