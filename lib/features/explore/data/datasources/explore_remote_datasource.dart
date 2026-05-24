@@ -1124,15 +1124,9 @@ class ExploreRemoteDataSource {
     if (recipeOwnerUid.isEmpty) return;
     try {
       final creatorName = await _currentUserName();
-      final followerSnapshot = await firestore
-          .collectionGroup('followingCreators')
-          .where('creatorUid', isEqualTo: recipeOwnerUid)
-          .get();
+      final followerUids = await _getFollowerUids(recipeOwnerUid);
 
-      for (final doc in followerSnapshot.docs) {
-        final userDocRef = doc.reference.parent.parent;
-        final followerUid = userDocRef?.id ?? '';
-        if (followerUid.isEmpty || followerUid == recipeOwnerUid) continue;
+      for (final followerUid in followerUids) {
         await _notifyUser(
           receiverUid: followerUid,
           type: 'newRecipe',
@@ -1143,6 +1137,29 @@ class ExploreRemoteDataSource {
     } on FirebaseException {
       // Best-effort notification fan-out.
     }
+  }
+
+  Future<List<String>> _getFollowerUids(String recipeOwnerUid) async {
+    final followerUids = <String>[];
+    final usersSnapshot = await firestore.collection('users').get();
+
+    for (final userDoc in usersSnapshot.docs) {
+      final followerUid = userDoc.id;
+      if (followerUid.isEmpty || followerUid == recipeOwnerUid) continue;
+
+      final followingDoc = await firestore
+          .collection('users')
+          .doc(followerUid)
+          .collection('followingCreators')
+          .doc(recipeOwnerUid)
+          .get();
+
+      if (followingDoc.exists) {
+        followerUids.add(followerUid);
+      }
+    }
+
+    return followerUids;
   }
 
   String _dateLabel(DateTime date) {
