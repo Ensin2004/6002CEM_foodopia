@@ -98,7 +98,7 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }) async {
     try {
       return Right(
-        await localDataSource.getCaloriesIntake(
+        await remoteDataSource.getUserCaloriesIntake(
           startDate: startDate,
           endDate: endDate,
         ),
@@ -166,7 +166,7 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }) async {
     try {
       return Right(
-        await localDataSource.getCaloriesPosted(
+        await remoteDataSource.getUserCaloriesPosted(
           startDate: startDate,
           endDate: endDate,
         ),

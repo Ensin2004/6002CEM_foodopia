@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../domain/entities/calories_intake_statistics.dart';
+import '../../domain/entities/calories_posted_statistics.dart';
 import '../../domain/entities/post_analytic_statistics.dart';
 import '../../domain/entities/post_difficulty_statistics.dart';
 import '../../domain/entities/recipe_performance_statistics.dart';
@@ -200,6 +202,274 @@ class StatisticsRemoteDataSource {
     return doc.exists ? 1 : 0;
   }
 
+  Future<List<_RecipeNutritionStat>> _getUserSavedRecipeNutrition(
+    String uid,
+    ({DateTime start, DateTime end}) range,
+  ) async {
+    final savedSnapshot = await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('saved_recipes')
+        .get();
+    final items = <_RecipeNutritionStat>[];
+
+    for (final savedDoc in savedSnapshot.docs) {
+      final savedData = savedDoc.data();
+      final recipeId = _stringValue(
+        savedData['recipeId'],
+        fallback: savedDoc.id,
+      );
+      if (recipeId.isEmpty) continue;
+      final date = _dateTime(savedData['createdAt']);
+      if (date.isBefore(range.start) || date.isAfter(range.end)) continue;
+
+      final recipeDoc = await firestore
+          .collection('recipes')
+          .doc(recipeId)
+          .get();
+      final recipeData = recipeDoc.data() ?? const <String, dynamic>{};
+      final nutrition = await _recipeNutrition(recipeDoc.reference);
+      items.add(
+        _RecipeNutritionStat(
+          id: recipeId,
+          name: _stringValue(recipeData['name'], fallback: 'Untitled Recipe'),
+          date: date,
+          nutrition: nutrition,
+        ),
+      );
+    }
+
+    return items..sort((left, right) => left.date.compareTo(right.date));
+  }
+
+  Future<List<_RecipeNutritionStat>> _getUserPostedRecipeNutrition(
+    String uid,
+    ({DateTime start, DateTime end}) range,
+  ) async {
+    final recipes = await _getUserSharedRecipes(uid);
+    final items = <_RecipeNutritionStat>[];
+
+    for (final recipe in recipes) {
+      if (recipe.publishedAt.isBefore(range.start) ||
+          recipe.publishedAt.isAfter(range.end)) {
+        continue;
+      }
+      final recipeRef = firestore.collection('recipes').doc(recipe.id);
+      items.add(
+        _RecipeNutritionStat(
+          id: recipe.id,
+          name: recipe.name,
+          date: recipe.publishedAt,
+          nutrition: await _recipeNutrition(recipeRef),
+        ),
+      );
+    }
+
+    return items..sort((left, right) => left.date.compareTo(right.date));
+  }
+
+  Future<_RecipeNutrition> _recipeNutrition(
+    DocumentReference<Map<String, dynamic>> recipeRef,
+  ) async {
+    try {
+      final ingredients = await recipeRef.collection('ingredients').get();
+      var calories = 0.0;
+      var carbohydrate = 0.0;
+      var protein = 0.0;
+      var fat = 0.0;
+
+      for (final ingredient in ingredients.docs) {
+        final nutrients = ingredient.data()['nutrients'];
+        if (nutrients is! Map) continue;
+        calories += _nutrientValue(nutrients, const ['calories', 'energy']);
+        carbohydrate += _nutrientValue(nutrients, const [
+          'carbohydrates',
+          'carbohydrate',
+          'totalCarbohydrate',
+          'carbohydrateByDifference',
+        ]);
+        protein += _nutrientValue(nutrients, const ['protein', 'proteins']);
+        fat += _nutrientValue(nutrients, const [
+          'fat',
+          'fats',
+          'totalFat',
+          'totalLipid',
+        ]);
+      }
+
+      return _RecipeNutrition(
+        caloriesKcal: calories.round(),
+        carbohydrateGram: carbohydrate.round(),
+        proteinGram: protein.round(),
+        fatGram: fat.round(),
+      );
+    } on FirebaseException {
+      return const _RecipeNutrition.zero();
+    }
+  }
+
+  double _nutrientValue(Map<dynamic, dynamic> nutrients, List<String> keys) {
+    for (final key in keys) {
+      final value = _valueForInsensitiveKey(nutrients, key);
+      final parsed = _numberFromNutrient(value);
+      if (parsed != null) return parsed;
+    }
+    return 0;
+  }
+
+  Object? _valueForInsensitiveKey(Map<dynamic, dynamic> map, String key) {
+    final target = key.toLowerCase();
+    for (final entry in map.entries) {
+      final entryKey = entry.key.toString().toLowerCase();
+      if (entryKey == target) return entry.value;
+    }
+    return null;
+  }
+
+  double? _numberFromNutrient(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is Map) {
+      for (final key in const ['value', 'amount']) {
+        final parsed = _numberFromNutrient(value[key]);
+        if (parsed != null) return parsed;
+      }
+    }
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  CaloriesIntakeStatistics _buildCaloriesIntakeStatistics({
+    required List<_RecipeNutritionStat> recipes,
+    required ({DateTime start, DateTime end}) range,
+  }) {
+    final grouped = _groupNutritionByDay(recipes);
+    final days = grouped.entries.map((entry) {
+      final items = entry.value;
+      final meals = items
+          .map(
+            (item) => CaloriesMealItem(
+              name: item.name,
+              caloriesKcal: item.nutrition.caloriesKcal,
+              carbohydrateGram: item.nutrition.carbohydrateGram,
+              proteinGram: item.nutrition.proteinGram,
+              fatGram: item.nutrition.fatGram,
+              icon: _iconForRecipe(item.name),
+            ),
+          )
+          .toList();
+      return CaloriesDailyIntake(
+        date: entry.key,
+        weekdayLabel: DateFormat('EEE').format(entry.key),
+        totalPlannedMeal: meals.length,
+        totalCaloriesKcal: _sumNutrition(items, (item) => item.caloriesKcal),
+        totalCarbohydrateGram: _sumNutrition(
+          items,
+          (item) => item.carbohydrateGram,
+        ),
+        totalProteinGram: _sumNutrition(items, (item) => item.proteinGram),
+        totalFatGram: _sumNutrition(items, (item) => item.fatGram),
+        meals: meals,
+      );
+    }).toList();
+
+    return CaloriesIntakeStatistics(
+      dateRange: _formatRange(range.start, range.end),
+      totalMeal: recipes.length,
+      averageCaloriesKcal: _averageNutrition(
+        recipes,
+        (item) => item.caloriesKcal,
+      ),
+      dailyIntakes: days,
+    );
+  }
+
+  CaloriesPostedStatistics _buildCaloriesPostedStatistics({
+    required List<_RecipeNutritionStat> recipes,
+    required ({DateTime start, DateTime end}) range,
+  }) {
+    final grouped = _groupNutritionByDay(recipes);
+    final days = grouped.entries.map((entry) {
+      final items = entry.value;
+      final posts = items
+          .map(
+            (item) => CaloriesPostedItem(
+              recipeName: item.name,
+              caloriesKcal: item.nutrition.caloriesKcal,
+              carbohydrateGram: item.nutrition.carbohydrateGram,
+              proteinGram: item.nutrition.proteinGram,
+              fatGram: item.nutrition.fatGram,
+              icon: _iconForRecipe(item.name),
+            ),
+          )
+          .toList();
+      return CaloriesPostedDay(
+        date: entry.key,
+        weekdayLabel: DateFormat('EEE').format(entry.key),
+        totalPost: posts.length,
+        totalCaloriesKcal: _sumNutrition(items, (item) => item.caloriesKcal),
+        totalCarbohydrateGram: _sumNutrition(
+          items,
+          (item) => item.carbohydrateGram,
+        ),
+        totalProteinGram: _sumNutrition(items, (item) => item.proteinGram),
+        totalFatGram: _sumNutrition(items, (item) => item.fatGram),
+        posts: posts,
+      );
+    }).toList();
+
+    return CaloriesPostedStatistics(
+      dateRange: _formatRange(range.start, range.end),
+      totalPost: recipes.length,
+      averageCaloriesKcal: _averageNutrition(
+        recipes,
+        (item) => item.caloriesKcal,
+      ),
+      averageCarbohydrateGram: _averageNutrition(
+        recipes,
+        (item) => item.carbohydrateGram,
+      ),
+      averageProteinGram: _averageNutrition(
+        recipes,
+        (item) => item.proteinGram,
+      ),
+      averageFatGram: _averageNutrition(recipes, (item) => item.fatGram),
+      dailyPosts: days,
+    );
+  }
+
+  Map<DateTime, List<_RecipeNutritionStat>> _groupNutritionByDay(
+    List<_RecipeNutritionStat> recipes,
+  ) {
+    final grouped = <DateTime, List<_RecipeNutritionStat>>{};
+    for (final recipe in recipes) {
+      final day = DateTime(
+        recipe.date.year,
+        recipe.date.month,
+        recipe.date.day,
+      );
+      grouped.putIfAbsent(day, () => <_RecipeNutritionStat>[]).add(recipe);
+    }
+    return Map.fromEntries(
+      grouped.entries.toList()
+        ..sort((left, right) => left.key.compareTo(right.key)),
+    );
+  }
+
+  int _sumNutrition(
+    List<_RecipeNutritionStat> recipes,
+    int Function(_RecipeNutrition nutrition) value,
+  ) {
+    return recipes.fold<int>(0, (total, item) => total + value(item.nutrition));
+  }
+
+  int _averageNutrition(
+    List<_RecipeNutritionStat> recipes,
+    int Function(_RecipeNutrition nutrition) value,
+  ) {
+    if (recipes.isEmpty) return 0;
+    final total = _sumNutrition(recipes, value);
+    return (total / recipes.length).round();
+  }
+
   Future<List<_CommunityRecipeStat>> _getUserSharedRecipes(String uid) async {
     final docsById = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
 
@@ -336,6 +606,32 @@ class StatisticsRemoteDataSource {
   bool _isSharedRecipe(Map<String, dynamic> data) {
     final visibility = data['visibility']?.toString().trim().toLowerCase();
     return visibility == 'public';
+  }
+
+  Future<CaloriesIntakeStatistics> getUserCaloriesIntake({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final range = _resolveRange(startDate, endDate);
+    final uid = auth.currentUser?.uid ?? '';
+    final savedRecipes = uid.isEmpty
+        ? <_RecipeNutritionStat>[]
+        : await _getUserSavedRecipeNutrition(uid, range);
+
+    return _buildCaloriesIntakeStatistics(recipes: savedRecipes, range: range);
+  }
+
+  Future<CaloriesPostedStatistics> getUserCaloriesPosted({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final range = _resolveRange(startDate, endDate);
+    final uid = auth.currentUser?.uid ?? '';
+    final recipes = uid.isEmpty
+        ? <_RecipeNutritionStat>[]
+        : await _getUserPostedRecipeNutrition(uid, range);
+
+    return _buildCaloriesPostedStatistics(recipes: recipes, range: range);
   }
 
   List<StatisticsHeroSlide> _buildCommunitySlides(
@@ -476,6 +772,13 @@ class StatisticsRemoteDataSource {
     return '${formatter.format(start)} - ${formatter.format(end)}';
   }
 
+  DateTime _dateTime(Object? value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return DateTime.tryParse(value?.toString() ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
   IconData _iconForRecipe(String name) {
     final lowerName = name.toLowerCase();
     if (lowerName.contains('rice')) return Icons.rice_bowl;
@@ -599,4 +902,38 @@ class _CommunityRecipeStat {
     }
     return const [];
   }
+}
+
+class _RecipeNutritionStat {
+  final String id;
+  final String name;
+  final DateTime date;
+  final _RecipeNutrition nutrition;
+
+  const _RecipeNutritionStat({
+    required this.id,
+    required this.name,
+    required this.date,
+    required this.nutrition,
+  });
+}
+
+class _RecipeNutrition {
+  final int caloriesKcal;
+  final int carbohydrateGram;
+  final int proteinGram;
+  final int fatGram;
+
+  const _RecipeNutrition({
+    required this.caloriesKcal,
+    required this.carbohydrateGram,
+    required this.proteinGram,
+    required this.fatGram,
+  });
+
+  const _RecipeNutrition.zero()
+    : caloriesKcal = 0,
+      carbohydrateGram = 0,
+      proteinGram = 0,
+      fatGram = 0;
 }
