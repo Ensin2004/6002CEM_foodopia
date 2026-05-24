@@ -12,7 +12,7 @@ import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../viewmodel/explore_viewmodel.dart';
 import '../widgets/explore_empty_state.dart';
-import '../widgets/explore_recipe_card.dart';
+import '../widgets/explore_recipe_grid.dart';
 
 class ExplorePage extends StatelessWidget {
   const ExplorePage({super.key});
@@ -203,39 +203,17 @@ class _ExploreContent extends StatelessWidget {
       );
     }
 
-    final width = MediaQuery.sizeOf(context).width;
-    final crossAxisCount = width >= 900
-        ? 4
-        : width >= 600
-        ? 3
-        : 2;
-
     return RefreshIndicator(
       onRefresh: viewModel.loadRecipes,
-      child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        physics: const AlwaysScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          mainAxisExtent: width < 380 ? 258 : 282,
-        ),
-        itemCount: recipes.length,
-        itemBuilder: (context, index) {
-          final recipe = recipes[index];
-          return ExploreRecipeCard(
-            recipe: recipe,
-            onComingSoonTap: onComingSoonTap,
-            onFavouriteTap: () => viewModel.toggleFavourite(recipe.id),
-            onImageLongPress: () => _showRecipeImage(context, recipe),
-            onTap: () {
-              context.push(
-                AppRouter.exploreRecipeDetail,
-                extra: ExploreRecipeDetailArgs(recipeId: recipe.id),
-              );
-            },
+      child: ExploreRecipeGridView(
+        recipes: recipes,
+        onComingSoonTap: onComingSoonTap,
+        onFavouriteTap: viewModel.toggleFavourite,
+        onImageLongPress: (recipe) => _showRecipeImage(context, recipe),
+        onRecipeTap: (recipe) {
+          context.push(
+            AppRouter.exploreRecipeDetail,
+            extra: ExploreRecipeDetailArgs(recipeId: recipe.id),
           );
         },
       ),

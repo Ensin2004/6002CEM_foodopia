@@ -89,9 +89,9 @@ class MainViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
-  /// Handles the go to favorites operation.
-  void goToFavorites() {
-    _navigationEvent = MainNavigationEvent.goToFavorites;
+  /// Handles the go to statistics operation.
+  void goToStatistics() {
+    _navigationEvent = MainNavigationEvent.goToStatistics;
     _notifyIfActive();
   }
 

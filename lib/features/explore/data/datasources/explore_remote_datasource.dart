@@ -463,25 +463,55 @@ class ExploreRemoteDataSource {
   ) async {
     final snapshot = await recipe.collection('ingredients').get();
 
-    return snapshot.docs.map((doc) {
-      final data = doc.data();
-      final amount = _doubleValue(data['amount']);
-      final unit = _stringValue(data['unitId']).isNotEmpty
-          ? _stringValue(data['unitId'])
-          : _stringValue(data['customUnitId']);
+    return Future.wait(
+      snapshot.docs.map((doc) async {
+        final data = doc.data();
+        final amount = _doubleValue(data['amount']);
+        final unit = await _resolveIngredientUnitName(
+          customUnitId: _stringValue(data['customUnitId']),
+          unitId: _stringValue(data['unitId']),
+        );
 
-      return ExploreIngredient(
-        name: _stringValue(data['name'], fallback: 'Ingredient'),
-        amount: '${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 1)} $unit'
-            .trim(),
-        calories: '',
-        imagePath: _stringValue(
-          data['image'],
-          fallback: 'assets/images/meal1.png',
-        ),
-        nutritionPercent: 0,
-      );
-    }).toList();
+        return ExploreIngredient(
+          name: _stringValue(data['name'], fallback: 'Ingredient'),
+          amount: '${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 1)} $unit'
+              .trim(),
+          calories: '',
+          imagePath: _stringValue(
+            data['image'],
+            fallback: 'assets/images/meal1.png',
+          ),
+          nutritionPercent: 0,
+        );
+      }).toList(),
+    );
+  }
+
+  Future<String> _resolveIngredientUnitName({
+    required String customUnitId,
+    required String unitId,
+  }) async {
+    if (customUnitId.isNotEmpty) {
+      final doc = await firestore
+          .collection('custom')
+          .doc('custom_units')
+          .collection('items')
+          .doc(customUnitId)
+          .get();
+      return _stringValue(doc.data()?['name'], fallback: customUnitId);
+    }
+
+    if (unitId.isNotEmpty) {
+      final doc = await firestore
+          .collection('app_config')
+          .doc('ingredient_units')
+          .collection('items')
+          .doc(unitId)
+          .get();
+      return _stringValue(doc.data()?['name'], fallback: unitId);
+    }
+
+    return '';
   }
 
   Future<List<ExploreInstructionSection>> _getInstructionSections(

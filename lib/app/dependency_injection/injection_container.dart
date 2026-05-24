@@ -31,6 +31,7 @@ import 'package:http/http.dart' as http;
 // Core
 import '../../core/services/network_info.dart';
 import '../../core/services/food_search_service.dart';
+import '../../core/services/openai_meal_idea_service.dart';
 import '../../core/services/open_meteo_weather_service.dart';
 
 // Auth Feature - Data Layer
@@ -52,6 +53,8 @@ import '../../features/explore/domain/usecases/get_explore_recipes_usecase.dart'
 import '../../features/library/data/datasources/library_remote_datasource.dart';
 import '../../features/library/data/repositories/library_repository_impl.dart';
 import '../../features/library/domain/repositories/library_repository.dart';
+import '../../features/library/domain/usecases/get_library_followers_usecase.dart';
+import '../../features/library/domain/usecases/get_library_following_usecase.dart';
 import '../../features/library/domain/usecases/get_library_profile_usecase.dart';
 import '../../features/library/domain/usecases/get_library_recipe_detail_usecase.dart';
 import '../../features/library/domain/usecases/get_library_recipes_usecase.dart';
@@ -66,16 +69,23 @@ import '../../features/explore/domain/usecases/update_recipe_visibility_usecase.
 import '../../features/explore/domain/usecases/watch_explore_recipes_usecase.dart';
 import '../../features/explore/domain/usecases/watch_explore_recipe_detail_usecase.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
+import '../../features/meal_plan/data/datasources/meal_plan_inspiration_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_preferences_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
 import '../../features/meal_plan/data/repositories/meal_plan_repository_impl.dart';
 import '../../features/meal_plan/domain/repositories/meal_plan_repository.dart';
 import '../../features/meal_plan/domain/usecases/get_add_grocery_list_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_add_meal_ai_plan_usecase.dart';
+import '../../features/meal_plan/domain/usecases/generate_ai_meal_ideas_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_manage_grocery_list_detail_usecase.dart';
+import '../../features/meal_plan/domain/usecases/get_meal_categories_usecase.dart';
+import '../../features/meal_plan/domain/usecases/get_meal_plan_default_ingredients_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_dashboard_usecase.dart';
+import '../../features/meal_plan/domain/usecases/get_meal_plan_inspiration_options_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_meal_plan_weather_usecase.dart';
+import '../../features/meal_plan/domain/usecases/save_ai_meal_plan_usecase.dart';
+import '../../features/meal_plan/domain/usecases/search_meal_plan_ingredients_usecase.dart';
 import '../../features/notifications/data/datasources/notification_local_datasource.dart';
 import '../../features/notifications/data/datasources/notification_remote_datasource.dart';
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
@@ -92,10 +102,12 @@ import '../../features/recipe/data/datasources/add_recipe_remote_datasource.dart
 import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart';
 import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
 import '../../features/recipe/domain/usecases/finalize_add_recipe_usecase.dart';
+import '../../features/recipe/domain/usecases/complete_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_setup_usecase.dart';
+import '../../features/recipe/domain/usecases/delete_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../features/recipe/domain/usecases/save_add_recipe_instructions_usecase.dart';
@@ -293,6 +305,8 @@ void _initRecipeFeature() {
   sl.registerLazySingleton(() => GetAddRecipeReviewUseCase(sl()));
   sl.registerLazySingleton(() => FinalizeAddRecipeUseCase(sl()));
   sl.registerLazySingleton(() => UpdateAddRecipeVisibilityUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteAddRecipeUseCase(sl()));
+  sl.registerLazySingleton(() => CompleteAddRecipeUseCase(sl()));
 }
 
 void _initStatisticsFeature() {
@@ -361,6 +375,8 @@ void _initLibraryFeature() {
 
   sl.registerLazySingleton(() => GetLibraryRecipesUseCase(sl()));
   sl.registerLazySingleton(() => GetLibraryProfileUseCase(sl()));
+  sl.registerLazySingleton(() => GetLibraryFollowersUseCase(sl()));
+  sl.registerLazySingleton(() => GetLibraryFollowingUseCase(sl()));
   sl.registerLazySingleton(() => GetLibraryRecipeDetailUseCase(sl()));
   sl.registerLazySingleton(() => ToggleLibraryRecipeFavouriteUseCase(sl()));
   sl.registerLazySingleton(() => UpdateLibraryProfileUseCase(sl()));
@@ -395,20 +411,34 @@ void _initMealPlanFeature() {
   sl.registerLazySingleton(
     () => MealPlanWeatherDataSource(weatherService: sl()),
   );
+  sl.registerLazySingleton(
+    () => MealPlanInspirationDataSource(
+      firestore: sl(),
+      foodSearchService: sl(),
+      openAiMealIdeaService: sl(),
+    ),
+  );
 
   sl.registerLazySingleton<MealPlanRepository>(
     () => MealPlanRepositoryImpl(
       mockDataSource: sl(),
       weatherDataSource: sl(),
       preferencesDataSource: sl(),
+      inspirationDataSource: sl(),
     ),
   );
 
   sl.registerLazySingleton(() => GetMealPlanDashboardUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlanWeatherUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlanPreferencesUseCase(sl()));
+  sl.registerLazySingleton(() => GetMealPlanDefaultIngredientsUseCase(sl()));
+  sl.registerLazySingleton(() => SearchMealPlanIngredientsUseCase(sl()));
+  sl.registerLazySingleton(() => GetMealPlanInspirationOptionsUseCase(sl()));
   sl.registerLazySingleton(() => GetAddGroceryListPlanUseCase(sl()));
   sl.registerLazySingleton(() => GetAddMealAiPlanUseCase(sl()));
+  sl.registerLazySingleton(() => GenerateAiMealIdeasUseCase(sl()));
+  sl.registerLazySingleton(() => GetMealCategoriesUseCase(sl()));
+  sl.registerLazySingleton(() => SaveAiMealPlanUseCase(sl()));
   sl.registerLazySingleton(() => GetManageGroceryListDetailUseCase(sl()));
 }
 
@@ -491,6 +521,7 @@ Future<void> _initExternal() async {
   ); // Push notifications
   sl.registerLazySingleton(() => http.Client());
   sl.registerLazySingleton(() => FoodSearchService(client: sl()));
+  sl.registerLazySingleton(() => OpenAiMealIdeaService(client: sl()));
   sl.registerLazySingleton(() => OpenMeteoWeatherService(client: sl()));
 
   // --------------------------------------------------------------------------

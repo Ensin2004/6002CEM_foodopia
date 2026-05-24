@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/add_recipe_review.dart';
 import '../../domain/usecases/finalize_add_recipe_usecase.dart';
+import '../../domain/usecases/delete_add_recipe_usecase.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 
 class AddRecipeReviewViewModel extends ChangeNotifier {
@@ -12,11 +13,17 @@ class AddRecipeReviewViewModel extends ChangeNotifier {
   AddRecipeReview? review;
   bool isLoading = true;
   bool isSaving = false;
+  final DeleteAddRecipeUseCase deleteRecipeUseCase;
+
+  AddRecipeReview? review;
+  bool isLoading = true;
+  bool isDeleting = false;
   String? errorMessage;
 
   AddRecipeReviewViewModel({
     required this.getReviewUseCase,
     required this.finalizeRecipeUseCase,
+    required this.deleteRecipeUseCase,
   });
 
   Future<void> loadReview(String recipeId) async {
@@ -48,6 +55,18 @@ class AddRecipeReviewViewModel extends ChangeNotifier {
     }
 
     isSaving = false;
+  Future<bool> deleteRecipe(String recipeId) async {
+    isDeleting = true;
+    errorMessage = null;
+    notifyListeners();
+
+    final result = await deleteRecipeUseCase.execute(recipeId);
+    final success = result.isRight();
+    if (!success) {
+      errorMessage = result.left?.message ?? 'Unable to delete recipe.';
+    }
+
+    isDeleting = false;
     notifyListeners();
     return success;
   }

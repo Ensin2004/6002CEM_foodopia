@@ -26,6 +26,9 @@ class MainPage extends StatelessWidget {
   final UserEntity user;
   final String role;
   final int initialIndex;
+  final String? focusedRecipeId;
+  final bool? focusedRecipeIsPublished;
+  final String? libraryRefreshToken;
 
   /// Creates a main page instance.
   const MainPage({
@@ -33,6 +36,9 @@ class MainPage extends StatelessWidget {
     required this.user,
     required this.role,
     this.initialIndex = 0,
+    this.focusedRecipeId,
+    this.focusedRecipeIsPublished,
+    this.libraryRefreshToken,
   });
 
   /// Builds the widget tree for this component.
@@ -45,27 +51,83 @@ class MainPage extends StatelessWidget {
         repository: sl(),
         initialIndex: initialIndex,
       ),
-      child: const _MainPageView(),
+      child: _MainPageView(
+        initialIndex: initialIndex,
+        focusedRecipeId: focusedRecipeId,
+        focusedRecipeIsPublished: focusedRecipeIsPublished,
+        libraryRefreshToken: libraryRefreshToken,
+      ),
     );
   }
 }
 
 /// Defines behavior for main page view.
 class _MainPageView extends StatefulWidget {
+  final int initialIndex;
+  final String? focusedRecipeId;
+  final bool? focusedRecipeIsPublished;
+  final String? libraryRefreshToken;
+
   /// Handles the main page view operation.
-  const _MainPageView();
+  const _MainPageView({
+    required this.initialIndex,
+    this.focusedRecipeId,
+    this.focusedRecipeIsPublished,
+    this.libraryRefreshToken,
+  });
 
   @override
   State<_MainPageView> createState() => _MainPageViewState();
 }
 
 class _MainPageViewState extends State<_MainPageView> {
+  String? _focusedRecipeId;
+  bool? _focusedRecipeIsPublished;
+
   @override
   void initState() {
     super.initState();
+    _focusedRecipeId = widget.focusedRecipeId;
+    _focusedRecipeIsPublished = widget.focusedRecipeIsPublished;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _applyRouteTab();
       _checkUserSetup();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant _MainPageView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final focusChanged =
+        oldWidget.focusedRecipeId != widget.focusedRecipeId ||
+        oldWidget.focusedRecipeIsPublished != widget.focusedRecipeIsPublished;
+    final refreshChanged =
+        oldWidget.libraryRefreshToken != widget.libraryRefreshToken;
+    if (oldWidget.initialIndex != widget.initialIndex ||
+        focusChanged ||
+        refreshChanged) {
+      _focusedRecipeId = widget.focusedRecipeId;
+      _focusedRecipeIsPublished = widget.focusedRecipeIsPublished;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _applyRouteTab());
+    }
+  }
+
+  void _applyRouteTab() {
+    if (!mounted) return;
+    final viewModel = context.read<MainViewModel>();
+    if (viewModel.selectedIndex == widget.initialIndex) return;
+    viewModel.onTabTapped(widget.initialIndex);
+  }
+
+  void _handleBottomNavTap(MainViewModel viewModel, int index) {
+    if (index != 4 && _focusedRecipeId != null) {
+      setState(() {
+        _focusedRecipeId = null;
+        _focusedRecipeIsPublished = null;
+      });
+    }
+
+    viewModel.onTabTapped(index);
   }
 
   Future<void> _checkUserSetup() async {
@@ -108,7 +170,7 @@ class _MainPageViewState extends State<_MainPageView> {
         isAdmin: isAdmin,
         profileImageUrl: viewModel.profileImageUrl,
         onSettingsTap: viewModel.goToSettings,
-        onFavoritesTap: isAdmin ? null : viewModel.goToFavorites,
+        onStatisticsTap: isAdmin ? null : viewModel.goToStatistics,
         onNotificationsTap: isAdmin ? null : viewModel.goToNotifications,
       ),
       body: _buildBody(context, viewModel),
@@ -142,7 +204,14 @@ class _MainPageViewState extends State<_MainPageView> {
             userId: viewModel.user.uid,
           );
         case 4:
-          return LibraryPage(onExploreNow: () => viewModel.onTabTapped(1));
+          return LibraryPage(
+            key: ValueKey(
+              _focusedRecipeId ?? widget.libraryRefreshToken ?? 'library',
+            ),
+            onExploreNow: () => viewModel.onTabTapped(1),
+            focusedRecipeId: _focusedRecipeId,
+            focusedRecipeIsPublished: _focusedRecipeIsPublished,
+          );
         default:
           return HomePage(
             userName: viewModel.user.name ?? 'Foodie',
@@ -217,7 +286,7 @@ class _MainPageViewState extends State<_MainPageView> {
         selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Colors.grey,
         backgroundColor: Theme.of(context).colorScheme.surface,
-        onTap: viewModel.onTabTapped,
+        onTap: (index) => _handleBottomNavTap(viewModel, index),
         type: BottomNavigationBarType.fixed,
         items: isAdmin
             ? const [
@@ -294,10 +363,10 @@ class _MainPageViewState extends State<_MainPageView> {
               viewModel.refreshProfile();
             });
         break;
-      case MainNavigationEvent.goToFavorites:
-        ScaffoldMessenger.of(context).showSnackBar(
-          /// Creates a snack bar instance.
-          const SnackBar(content: Text('Favorites - Coming Soon')),
+      case MainNavigationEvent.goToStatistics:
+        context.push(
+          AppRouter.statistics,
+          extra: StatisticsArgs(isAdmin: viewModel.isAdmin),
         );
         break;
       case MainNavigationEvent.goToNotifications:
@@ -313,7 +382,6 @@ class _MainPageViewState extends State<_MainPageView> {
         );
         break;
       case MainNavigationEvent.goToProfile:
-      case MainNavigationEvent.goToStatistics:
         break;
     }
   }

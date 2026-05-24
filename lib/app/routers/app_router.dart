@@ -21,6 +21,7 @@ import '../../features/explore/presentation/view/explore_page.dart';
 import '../../features/explore/presentation/view/explore_creator_detail_page.dart';
 import '../../features/explore/presentation/view/explore_recipe_detail_page.dart';
 import '../../features/library/presentation/view/library_page.dart';
+import '../../features/library/presentation/view/library_profile_users_page.dart';
 import '../../features/meal_plan/presentation/view/add_grocery_list_page.dart';
 import '../../features/meal_plan/presentation/view/manage_grocery_list_page.dart';
 import '../../features/meal_plan/presentation/view/meal_plan_page.dart';
@@ -82,6 +83,7 @@ class AppRouter {
   static const String explore = '/explore';
   static const String exploreRecipeDetail = '/explore/recipe';
   static const String libraryRecipeDetail = '/library/recipe';
+  static const String libraryProfileUsers = '/library/profile-users';
   static const String exploreCreatorDetail = '/explore/creator';
   static const String mealPlan = '/meal-plan';
   static const String addMealPlan = '/meal-plan/planning/add-meal';
@@ -178,6 +180,12 @@ class AppRouter {
       return home;
     }
 
+    return null;
+  }
+
+  static bool? _boolQuery(String? value) {
+    if (value == 'true') return true;
+    if (value == 'false') return false;
     return null;
   }
 
@@ -302,6 +310,20 @@ class AppRouter {
         path: home,
         builder: (context, state) {
           final args = state.extra as HomeArgs?;
+          final tabIndex =
+              int.tryParse(state.uri.queryParameters['tab'] ?? '') ??
+              args?.initialTabIndex ??
+              0;
+          final focusedRecipeId =
+              args?.focusedRecipeId ??
+              state.uri.queryParameters['focusedRecipeId'];
+          final focusedRecipeIsPublished =
+              args?.focusedRecipeIsPublished ??
+              _boolQuery(state.uri.queryParameters['focusedRecipeIsPublished']);
+          final libraryRefreshToken =
+              args?.libraryRefreshToken ??
+              state.uri.queryParameters['createdAt'] ??
+              state.uri.queryParameters['deletedAt'];
           // Handles null user gracefully
           final userEntity = args?.user ?? user;
           if (userEntity == null) {
@@ -315,8 +337,11 @@ class AppRouter {
           /// Handles the main page operation.
           return MainPage(
             user: userEntity,
-            role: args?.role ?? 'user',
-            initialIndex: args?.initialTabIndex ?? 0,
+            role: args?.role ?? userEntity.role.name,
+            initialIndex: tabIndex,
+            focusedRecipeId: focusedRecipeId,
+            focusedRecipeIsPublished: focusedRecipeIsPublished,
+            libraryRefreshToken: libraryRefreshToken,
           );
         },
       ),
@@ -433,9 +458,14 @@ class AppRouter {
         builder: (context, state) {
           final args = state.extra as AddRecipeBasicInfoArgs?;
           return AddRecipeBasicInfoPage(
-            key: ValueKey(args?.recipeId),
+            key: ValueKey(
+              args?.recipeId ?? args?.draftId ?? args?.aiRecipe?.id,
+            ),
             recipeId: args?.recipeId,
             returnToReview: args?.returnToReview ?? false,
+            initialAiRecipe: args?.aiRecipe,
+            initialAiRequest: args?.aiRequest,
+            userId: args?.userId,
           );
         },
       ),
@@ -449,6 +479,10 @@ class AppRouter {
             recipeId: args.recipeId,
             initialVisibility: args.visibility,
             returnToReview: args.returnToReview,
+            initialAiRecipe: args.aiRecipe,
+            initialAiRequest: args.aiRequest,
+            userId: args.userId,
+            aiDraftBasicInfo: args.aiDraftBasicInfo,
           );
         },
       ),
@@ -462,6 +496,11 @@ class AppRouter {
             recipeId: args.recipeId,
             initialVisibility: args.visibility,
             returnToReview: args.returnToReview,
+            initialAiRecipe: args.aiRecipe,
+            initialAiRequest: args.aiRequest,
+            userId: args.userId,
+            aiDraftBasicInfo: args.aiDraftBasicInfo,
+            aiDraftIngredients: args.aiDraftIngredients,
           );
         },
       ),
@@ -471,7 +510,16 @@ class AppRouter {
         path: addRecipeReview,
         builder: (context, state) {
           final args = state.extra as AddRecipeReviewArgs;
-          return AddRecipeReviewPage(recipeId: args.recipeId);
+          return AddRecipeReviewPage(
+            recipeId: args.recipeId,
+            initialAiRecipe: args.aiRecipe,
+            initialAiRequest: args.aiRequest,
+            userId: args.userId,
+            aiDraftBasicInfo: args.aiDraftBasicInfo,
+            aiDraftIngredients: args.aiDraftIngredients,
+            aiDraftInstructions: args.aiDraftInstructions,
+            aiDraftUseSections: args.aiDraftUseSections,
+          );
         },
       ),
 
@@ -511,6 +559,17 @@ class AppRouter {
       ),
 
       GoRoute(
+        name: 'libraryProfileUsers',
+        path: libraryProfileUsers,
+        builder: (context, state) {
+          final args = state.extra as LibraryProfileUsersArgs?;
+          return LibraryProfileUsersPage(
+            showFollowers: args?.showFollowers ?? true,
+          );
+        },
+      ),
+
+      GoRoute(
         name: 'mealPlan',
         path: mealPlan,
         builder: (context, state) {
@@ -546,6 +605,8 @@ class AppRouter {
             mealType: args?.mealType ?? 'Breakfast',
             userId:
                 args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+            initialRequest: args?.initialRequest,
+            autoGenerate: args?.autoGenerate ?? false,
           );
         },
       ),
@@ -570,7 +631,14 @@ class AppRouter {
       GoRoute(
         name: 'library',
         path: library,
-        builder: (context, state) => const LibraryPage(showAppBar: true),
+        builder: (context, state) {
+          final args = state.extra as LibraryArgs?;
+          return LibraryPage(
+            showAppBar: true,
+            focusedRecipeId: args?.focusedRecipeId,
+            focusedRecipeIsPublished: args?.focusedRecipeIsPublished,
+          );
+        },
       ),
 
       GoRoute(

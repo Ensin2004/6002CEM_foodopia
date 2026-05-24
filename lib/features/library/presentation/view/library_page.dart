@@ -22,19 +22,37 @@ import '../widgets/library_recipe_card.dart';
 class LibraryPage extends StatelessWidget {
   final bool showAppBar;
   final VoidCallback? onExploreNow;
+  final String? focusedRecipeId;
+  final bool? focusedRecipeIsPublished;
 
-  const LibraryPage({super.key, this.showAppBar = false, this.onExploreNow});
+  const LibraryPage({
+    super.key,
+    this.showAppBar = false,
+    this.onExploreNow,
+    this.focusedRecipeId,
+    this.focusedRecipeIsPublished,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final initialTab = focusedRecipeIsPublished == false
+        ? LibraryRecipeTab.private
+        : LibraryRecipeTab.public;
     final page = ChangeNotifierProvider(
       create: (_) => LibraryViewModel(
         getProfileUseCase: sl(),
+        getFollowersUseCase: sl(),
+        getFollowingUseCase: sl(),
         getRecipesUseCase: sl(),
         toggleFavouriteUseCase: sl(),
         updateProfileUseCase: sl(),
+        initialTab: initialTab,
       ),
-      child: _LibraryPageView(onExploreNow: onExploreNow),
+      child: _LibraryPageView(
+        onExploreNow: onExploreNow,
+        focusedRecipeId: focusedRecipeId,
+        initialTab: initialTab,
+      ),
     );
 
     if (!showAppBar) return page;
@@ -49,8 +67,14 @@ class LibraryPage extends StatelessWidget {
 
 class _LibraryPageView extends StatefulWidget {
   final VoidCallback? onExploreNow;
+  final String? focusedRecipeId;
+  final LibraryRecipeTab initialTab;
 
-  const _LibraryPageView({this.onExploreNow});
+  const _LibraryPageView({
+    this.onExploreNow,
+    this.focusedRecipeId,
+    required this.initialTab,
+  });
 
   @override
   State<_LibraryPageView> createState() => _LibraryPageViewState();
@@ -59,19 +83,46 @@ class _LibraryPageView extends StatefulWidget {
 class _LibraryPageViewState extends State<_LibraryPageView>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  String? _focusedRecipeId;
 
   @override
   void initState() {
     super.initState();
+    _focusedRecipeId = widget.focusedRecipeId;
     _tabController = TabController(
       length: LibraryRecipeTab.values.length,
       vsync: this,
+      initialIndex: LibraryRecipeTab.values.indexOf(widget.initialTab),
     );
     _tabController.addListener(_handleTabChanged);
   }
 
+  @override
+  void didUpdateWidget(covariant _LibraryPageView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final focusChanged = oldWidget.focusedRecipeId != widget.focusedRecipeId;
+    final tabChanged = oldWidget.initialTab != widget.initialTab;
+    if (!focusChanged && !tabChanged) return;
+
+    _focusedRecipeId = widget.focusedRecipeId;
+    final nextIndex = LibraryRecipeTab.values.indexOf(widget.initialTab);
+    if (_tabController.index != nextIndex) {
+      _tabController.animateTo(nextIndex);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final viewModel = context.read<LibraryViewModel>();
+      viewModel.selectTab(widget.initialTab);
+      viewModel.loadLibrary();
+    });
+  }
+
   void _handleTabChanged() {
     if (_tabController.indexIsChanging) return;
+    if (_focusedRecipeId != null) {
+      setState(() => _focusedRecipeId = null);
+    }
     context.read<LibraryViewModel>().selectTab(
       LibraryRecipeTab.values[_tabController.index],
     );
@@ -142,6 +193,15 @@ class _LibraryPageViewState extends State<_LibraryPageView>
       onComingSoonTap: _showComingSoonMessage,
       onEditProfileTap: _showEditProfileSheet,
       onFavouriteTap: _toggleFavourite,
+      onFollowersTap: () => context.push(
+        AppRouter.libraryProfileUsers,
+        extra: const LibraryProfileUsersArgs(showFollowers: true),
+      ),
+      onFollowingTap: () => context.push(
+        AppRouter.libraryProfileUsers,
+        extra: const LibraryProfileUsersArgs(showFollowers: false),
+      ),
+      focusedRecipeId: _focusedRecipeId,
     );
   }
 }
@@ -153,6 +213,9 @@ class _LibraryContent extends StatelessWidget {
   final VoidCallback onComingSoonTap;
   final VoidCallback onEditProfileTap;
   final ValueChanged<String> onFavouriteTap;
+  final VoidCallback onFollowersTap;
+  final VoidCallback onFollowingTap;
+  final String? focusedRecipeId;
 
   const _LibraryContent({
     required this.viewModel,
@@ -161,6 +224,9 @@ class _LibraryContent extends StatelessWidget {
     required this.onComingSoonTap,
     required this.onEditProfileTap,
     required this.onFavouriteTap,
+    required this.onFollowersTap,
+    required this.onFollowingTap,
+    this.focusedRecipeId,
   });
 
   @override
@@ -188,7 +254,7 @@ class _LibraryContent extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final recipes = viewModel.visibleRecipes;
+    final recipes = _focusedFirst(viewModel.visibleRecipes);
 
     return SafeArea(
       top: false,
@@ -201,6 +267,8 @@ class _LibraryContent extends StatelessWidget {
               postCount: viewModel.postCount,
               onMoreTap: onComingSoonTap,
               onEditProfileTap: onEditProfileTap,
+              onFollowersTap: onFollowersTap,
+              onFollowingTap: onFollowingTap,
             ),
           ),
           SliverToBoxAdapter(child: _LibraryTabs(tabController: tabController)),
@@ -225,6 +293,7 @@ class _LibraryContent extends StatelessWidget {
                   final recipe = recipes[index];
                   return LibraryRecipeCard(
                     recipe: recipe,
+                    isHighlighted: recipe.id == focusedRecipeId,
                     onComingSoonTap: onComingSoonTap,
                     onFavouriteTap: () => onFavouriteTap(recipe.id),
                     onTap: () async {
@@ -247,6 +316,20 @@ class _LibraryContent extends StatelessWidget {
       ),
     );
   }
+
+  List<LibraryRecipe> _focusedFirst(List<LibraryRecipe> recipes) {
+    final focusedId = focusedRecipeId;
+    if (focusedId == null || focusedId.isEmpty) return recipes;
+
+    final focusedIndex = recipes.indexWhere((recipe) => recipe.id == focusedId);
+    if (focusedIndex <= 0) return recipes;
+
+    return [
+      recipes[focusedIndex],
+      ...recipes.take(focusedIndex),
+      ...recipes.skip(focusedIndex + 1),
+    ];
+  }
 }
 
 class _LibraryProfileHeader extends StatelessWidget {
@@ -254,12 +337,16 @@ class _LibraryProfileHeader extends StatelessWidget {
   final int postCount;
   final VoidCallback onMoreTap;
   final VoidCallback onEditProfileTap;
+  final VoidCallback onFollowersTap;
+  final VoidCallback onFollowingTap;
 
   const _LibraryProfileHeader({
     required this.profile,
     required this.postCount,
     required this.onMoreTap,
     required this.onEditProfileTap,
+    required this.onFollowersTap,
+    required this.onFollowingTap,
   });
 
   @override
@@ -297,12 +384,6 @@ class _LibraryProfileHeader extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.verified,
-                          color: AppColors.primary,
-                          size: 22,
-                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -316,6 +397,7 @@ class _LibraryProfileHeader extends StatelessWidget {
                           child: _ProfileStat(
                             value: profile.followersCount,
                             label: 'Followers',
+                            onTap: onFollowersTap,
                           ),
                         ),
                         _StatDivider(height: compact ? 34 : 40),
@@ -323,6 +405,7 @@ class _LibraryProfileHeader extends StatelessWidget {
                           child: _ProfileStat(
                             value: profile.followingCount,
                             label: 'Following',
+                            onTap: onFollowingTap,
                           ),
                         ),
                       ],
@@ -540,39 +623,18 @@ class _ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: size,
-          height: size,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.primary, width: 2),
-          ),
-          child: CircleAvatar(
-            backgroundColor: context.colors.surfaceContainerHighest,
-            backgroundImage: _imageProvider(imageUrl),
-          ),
-        ),
-        Positioned(
-          right: -1,
-          bottom: -1,
-          child: Container(
-            padding: const EdgeInsets.all(2),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.verified,
-              color: AppColors.primary,
-              size: 22,
-            ),
-          ),
-        ),
-      ],
+    return Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.primary, width: 2),
+      ),
+      child: CircleAvatar(
+        backgroundColor: context.colors.surfaceContainerHighest,
+        backgroundImage: _imageProvider(imageUrl),
+      ),
     );
   }
 }
@@ -580,34 +642,42 @@ class _ProfileAvatar extends StatelessWidget {
 class _ProfileStat extends StatelessWidget {
   final int value;
   final String label;
+  final VoidCallback? onTap;
 
-  const _ProfileStat({required this.value, required this.label});
+  const _ProfileStat({required this.value, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FittedBox(
-          child: Text(
-            _compactCount(value),
-            maxLines: 1,
-            style: context.text.titleLarge?.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w800,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FittedBox(
+              child: Text(
+                _compactCount(value),
+                maxLines: 1,
+                style: context.text.titleLarge?.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: context.text.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

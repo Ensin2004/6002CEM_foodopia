@@ -1,6 +1,10 @@
 import 'dart:io';
 
 import '../../features/auth/domain/entities/user_entity.dart';
+import '../../features/meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../features/recipe/domain/entities/add_recipe_basic_info.dart';
+import '../../features/recipe/domain/entities/add_recipe_ingredient.dart';
+import '../../features/recipe/domain/entities/add_recipe_instruction.dart';
 import '../../features/settings/domain/entities/faq_item.dart';
 import '../../features/settings/domain/entities/help_center_issue.dart';
 
@@ -38,6 +42,20 @@ class LibraryRecipeDetailArgs {
   });
 }
 
+/// Typed arguments for library route.
+class LibraryArgs {
+  final String? focusedRecipeId;
+  final bool? focusedRecipeIsPublished;
+
+  const LibraryArgs({this.focusedRecipeId, this.focusedRecipeIsPublished});
+}
+
+class LibraryProfileUsersArgs {
+  final bool showFollowers;
+
+  const LibraryProfileUsersArgs({required this.showFollowers});
+}
+
 /// Typed arguments for explore creator detail route.
 class ExploreCreatorDetailArgs {
   final String creatorUid;
@@ -63,9 +81,20 @@ class AddGroceryListArgs {
 /// Typed arguments for the add recipe basic info route.
 class AddRecipeBasicInfoArgs {
   final String? recipeId;
+  final String? draftId;
   final bool returnToReview;
+  final AddMealAiRecipe? aiRecipe;
+  final AddMealAiGenerationRequest? aiRequest;
+  final String? userId;
 
-  const AddRecipeBasicInfoArgs({this.recipeId, this.returnToReview = false});
+  const AddRecipeBasicInfoArgs({
+    this.recipeId,
+    this.draftId,
+    this.returnToReview = false,
+    this.aiRecipe,
+    this.aiRequest,
+    this.userId,
+  });
 }
 
 /// Typed arguments for the add recipe ingredients route.
@@ -73,11 +102,19 @@ class AddRecipeIngredientsArgs {
   final String recipeId;
   final String visibility;
   final bool returnToReview;
+  final AddMealAiRecipe? aiRecipe;
+  final AddMealAiGenerationRequest? aiRequest;
+  final String? userId;
+  final AddRecipeBasicInfo? aiDraftBasicInfo;
 
   const AddRecipeIngredientsArgs({
     required this.recipeId,
     this.visibility = 'private',
     this.returnToReview = false,
+    this.aiRecipe,
+    this.aiRequest,
+    this.userId,
+    this.aiDraftBasicInfo,
   });
 }
 
@@ -86,19 +123,45 @@ class AddRecipeInstructionsArgs {
   final String recipeId;
   final String visibility;
   final bool returnToReview;
+  final AddMealAiRecipe? aiRecipe;
+  final AddMealAiGenerationRequest? aiRequest;
+  final String? userId;
+  final AddRecipeBasicInfo? aiDraftBasicInfo;
+  final List<AddRecipeIngredient> aiDraftIngredients;
 
   const AddRecipeInstructionsArgs({
     required this.recipeId,
     this.visibility = 'private',
     this.returnToReview = false,
+    this.aiRecipe,
+    this.aiRequest,
+    this.userId,
+    this.aiDraftBasicInfo,
+    this.aiDraftIngredients = const [],
   });
 }
 
 /// Typed arguments for the add recipe review route.
 class AddRecipeReviewArgs {
   final String recipeId;
+  final AddMealAiRecipe? aiRecipe;
+  final AddMealAiGenerationRequest? aiRequest;
+  final String? userId;
+  final AddRecipeBasicInfo? aiDraftBasicInfo;
+  final List<AddRecipeIngredient> aiDraftIngredients;
+  final List<AddRecipeInstruction> aiDraftInstructions;
+  final bool aiDraftUseSections;
 
-  const AddRecipeReviewArgs({required this.recipeId});
+  const AddRecipeReviewArgs({
+    required this.recipeId,
+    this.aiRecipe,
+    this.aiRequest,
+    this.userId,
+    this.aiDraftBasicInfo,
+    this.aiDraftIngredients = const [],
+    this.aiDraftInstructions = const [],
+    this.aiDraftUseSections = false,
+  });
 }
 
 /// Typed arguments for add meal planning route.
@@ -113,8 +176,15 @@ class AddMealPlanArgs {
 class GenerateAiMealArgs {
   final String? userId;
   final String mealType;
+  final AddMealAiGenerationRequest? initialRequest;
+  final bool autoGenerate;
 
-  const GenerateAiMealArgs({this.userId, required this.mealType});
+  const GenerateAiMealArgs({
+    this.userId,
+    required this.mealType,
+    this.initialRequest,
+    this.autoGenerate = false,
+  });
 }
 
 /// Typed arguments for manage grocery list route.
@@ -140,15 +210,21 @@ class StatisticsDetailArgs {
 
 /// Typed arguments for user_home route
 class HomeArgs {
-  final UserEntity user;
-  final String role;
+  final UserEntity? user;
+  final String? role;
   final int initialTabIndex;
+  final String? focusedRecipeId;
+  final bool? focusedRecipeIsPublished;
+  final String? libraryRefreshToken;
 
   /// Creates a user_home args instance.
   const HomeArgs({
-    required this.user,
-    required this.role,
+    this.user,
+    this.role,
     this.initialTabIndex = 0,
+    this.focusedRecipeId,
+    this.focusedRecipeIsPublished,
+    this.libraryRefreshToken,
   });
 }
 
