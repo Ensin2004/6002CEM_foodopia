@@ -25,9 +25,6 @@ class LibraryRemoteDataSource {
     ]);
     final imageUrl = _firstNotBlank([
       data['profileImage']?.toString(),
-      data['profileImageUrl']?.toString(),
-      data['photoUrl']?.toString(),
-      auth.currentUser?.photoURL,
       'assets/images/onboarding1.png',
     ]);
 
@@ -38,9 +35,46 @@ class LibraryRemoteDataSource {
         'Hi, I am $name, a recipe developer',
       ]),
       imageUrl: imageUrl,
-      followersCount: _intValue(data['followersCount']) ?? 0,
-      followingCount: _intValue(data['followingCount']) ?? 0,
+      followersCount:
+          _intValue(data['followersCount']) ??
+          _intValue(data['followerCount']) ??
+          0,
+      followingCount: await _followingCount(uid, data),
     );
+  }
+
+  Future<List<LibraryProfileUser>> getFollowers({String? ownerUid}) async {
+    final uid = _targetUid(ownerUid);
+    final usersSnapshot = await firestore.collection('users').get();
+
+    final followerIds = <String>{};
+    await Future.wait(
+      usersSnapshot.docs.where((doc) => doc.id != uid).map((doc) async {
+        final followDoc = await doc.reference
+            .collection('followingCreators')
+            .doc(uid)
+            .get();
+        if (followDoc.exists) followerIds.add(doc.id);
+      }),
+    );
+
+    return _getProfileUsers(followerIds);
+  }
+
+  Future<List<LibraryProfileUser>> getFollowing({String? ownerUid}) async {
+    final uid = _targetUid(ownerUid);
+    final snapshot = await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('followingCreators')
+        .get();
+
+    final creatorIds = snapshot.docs
+        .map((doc) => doc.data()['creatorUid']?.toString() ?? doc.id)
+        .where((id) => _isNotBlank(id) && id != uid)
+        .toSet();
+
+    return _getProfileUsers(creatorIds);
   }
 
   Future<void> updateProfile({
@@ -68,7 +102,6 @@ class LibraryRemoteDataSource {
 
     if (imageUrl != null && imageUrl.isNotEmpty) {
       data['profileImage'] = imageUrl;
-      data['profileImageUrl'] = imageUrl;
     }
 
     await firestore
@@ -79,6 +112,58 @@ class LibraryRemoteDataSource {
     if (imageUrl != null && imageUrl.isNotEmpty) {
       await auth.currentUser?.updatePhotoURL(imageUrl);
     }
+  }
+
+  Future<int> _followingCount(String uid, Map<String, dynamic> data) async {
+    final storedCount =
+        _intValue(data['followingCount']) ?? _intValue(data['following']);
+    if (storedCount != null && storedCount > 0) return storedCount;
+
+    final snapshot = await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('followingCreators')
+        .count()
+        .get();
+    return snapshot.count ?? 0;
+  }
+
+  Future<List<LibraryProfileUser>> _getProfileUsers(Set<String> uids) async {
+    if (uids.isEmpty) return const [];
+
+    final users = <LibraryProfileUser>[];
+    for (final chunk in _chunks(uids.toList(), 10)) {
+      final snapshot = await firestore
+          .collection('users')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      users.addAll(snapshot.docs.map(_profileUserFromSnapshot));
+    }
+
+    users.sort((first, second) => first.name.compareTo(second.name));
+    return users;
+  }
+
+  LibraryProfileUser _profileUserFromSnapshot(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? const <String, dynamic>{};
+    return LibraryProfileUser(
+      uid: doc.id,
+      name: _firstNotBlank([
+        data['name']?.toString(),
+        data['displayName']?.toString(),
+        'Foodopia User',
+      ]),
+      imageUrl: _firstNotBlank([
+        data['profileImage']?.toString(),
+        'assets/images/onboarding1.png',
+      ]),
+      followerCount:
+          _intValue(data['followersCount']) ??
+          _intValue(data['followerCount']) ??
+          0,
+    );
   }
 
   Future<List<LibraryRecipeModel>> getRecipes() async {
@@ -142,17 +227,23 @@ class LibraryRemoteDataSource {
     return uid;
   }
 
+  String _targetUid(String? ownerUid) {
+    final uid = ownerUid?.trim();
+    if (uid != null && uid.isNotEmpty) return uid;
+    return _currentUid();
+  }
+
   Future<List<LibraryRecipeModel>> _getSelfRecipes(String uid) async {
     final snapshot = await firestore
         .collection('recipes')
         .where('creatorUid', isEqualTo: uid)
         .get();
 
-    return snapshot.docs
-        .map(
-          (doc) => _recipeFromSnapshot(doc, uid: uid, isFollowingAuthor: false),
-        )
-        .toList();
+    return Future.wait(
+      snapshot.docs.map(
+        (doc) => _recipeFromSnapshot(doc, uid: uid, isFollowingAuthor: false),
+      ),
+    );
   }
 
   Future<List<LibraryRecipeModel>> _getFollowedRecipes(String uid) async {
@@ -167,8 +258,11 @@ class LibraryRemoteDataSource {
           .get();
 
       recipes.addAll(
-        snapshot.docs.map(
-          (doc) => _recipeFromSnapshot(doc, uid: uid, isFollowingAuthor: true),
+        await Future.wait(
+          snapshot.docs.map(
+            (doc) =>
+                _recipeFromSnapshot(doc, uid: uid, isFollowingAuthor: true),
+          ),
         ),
       );
     }
@@ -215,13 +309,14 @@ class LibraryRemoteDataSource {
     return ids;
   }
 
-  LibraryRecipeModel _recipeFromSnapshot(
+  Future<LibraryRecipeModel> _recipeFromSnapshot(
     DocumentSnapshot<Map<String, dynamic>> doc, {
     required String uid,
     required bool isFollowingAuthor,
-  }) {
+  }) async {
     final data = doc.data() ?? const <String, dynamic>{};
     final creatorUid = data['creatorUid']?.toString() ?? '';
+    final creatorData = await _getUserData(creatorUid);
     final media = _stringList(data['media']);
     final categories = _stringList(data['categories']).isNotEmpty
         ? _stringList(data['categories'])
@@ -251,12 +346,13 @@ class LibraryRemoteDataSource {
       author: _firstNotBlank([
         data['creatorName']?.toString(),
         data['author']?.toString(),
+        creatorData['name']?.toString(),
+        creatorData['displayName']?.toString(),
         'You',
       ]),
       publishedAtLabel: _formatPublishedAt(createdAt),
       authorAvatarPath: _firstNotBlank([
-        data['creatorAvatar']?.toString(),
-        data['authorAvatarPath']?.toString(),
+        creatorData['profileImage']?.toString(),
         'assets/images/onboarding1.png',
       ]),
       imagePath: imagePath,
@@ -295,6 +391,13 @@ class LibraryRemoteDataSource {
       ),
       relatedRecipes: const [],
     );
+  }
+
+  Future<Map<String, dynamic>> _getUserData(String uid) async {
+    if (!_isNotBlank(uid)) return const <String, dynamic>{};
+
+    final doc = await firestore.collection('users').doc(uid).get();
+    return doc.data() ?? const <String, dynamic>{};
   }
 
   List<String> _stringList(Object? value) {

@@ -13,6 +13,39 @@ import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../../domain/entities/add_meal_ai_plan.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
 
+const _quickInspirationItems = [
+  MealPlanQuickInspiration(
+    title: 'What can I cook with what I have?',
+    subtitle: 'Use ingredients you already have.',
+    imagePath: 'assets/images/meal3.png',
+  ),
+  MealPlanQuickInspiration(
+    title: 'Surprise me!',
+    subtitle: 'Get AI-picked recipes for you.',
+    imagePath: 'assets/images/meal2.png',
+  ),
+  MealPlanQuickInspiration(
+    title: 'Healthy Ideas',
+    subtitle: 'Nutritious and balanced meals.',
+    imagePath: 'assets/images/meal1.png',
+  ),
+  MealPlanQuickInspiration(
+    title: 'Quick & Easy',
+    subtitle: 'Recipes you can make in no time.',
+    imagePath: 'assets/images/meal3.png',
+  ),
+  MealPlanQuickInspiration(
+    title: 'Rainy Day Comfort',
+    subtitle: 'Warm bowls and cozy meal ideas.',
+    imagePath: 'assets/images/meal1.png',
+  ),
+  MealPlanQuickInspiration(
+    title: 'High Protein Picks',
+    subtitle: 'Filling meals with simple prep.',
+    imagePath: 'assets/images/meal2.png',
+  ),
+];
+
 class InspirationTabMainView extends StatelessWidget {
   final MealPlanDashboard dashboard;
 
@@ -99,8 +132,10 @@ class InspirationTabMainView extends StatelessWidget {
                   dishIncludes: const [],
                   dishAvoids: const [],
                   cookingTime: 30,
+                  difficultyLevel: 1,
                   difficulty: 'Any',
-                  servingSize: 'Any',
+                  servingCount: 1,
+                  servingSize: '1 serving',
                 );
                 context.push(
                   AppRouter.generateAiMeal,
@@ -134,7 +169,7 @@ class InspirationTabMainView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          _QuickInspirationGrid(items: dashboard.quickInspirations),
+          _QuickInspirationGrid(items: _quickInspirationItems),
         ],
       ),
     );

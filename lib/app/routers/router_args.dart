@@ -25,8 +25,12 @@ class AuthenticatedRouteArgs {
 /// Typed arguments for explore recipe detail route.
 class ExploreRecipeDetailArgs {
   final String recipeId;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
-  const ExploreRecipeDetailArgs({required this.recipeId});
+  const ExploreRecipeDetailArgs({
+    required this.recipeId,
+    this.mealPlanSelection,
+  });
 }
 
 /// Typed arguments for library recipe detail route.
@@ -34,11 +38,13 @@ class LibraryRecipeDetailArgs {
   final String recipeId;
   final bool isSelfPublished;
   final bool isPublished;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const LibraryRecipeDetailArgs({
     required this.recipeId,
     required this.isSelfPublished,
     required this.isPublished,
+    this.mealPlanSelection,
   });
 }
 
@@ -46,8 +52,20 @@ class LibraryRecipeDetailArgs {
 class LibraryArgs {
   final String? focusedRecipeId;
   final bool? focusedRecipeIsPublished;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
-  const LibraryArgs({this.focusedRecipeId, this.focusedRecipeIsPublished});
+  const LibraryArgs({
+    this.focusedRecipeId,
+    this.focusedRecipeIsPublished,
+    this.mealPlanSelection,
+  });
+}
+
+class LibraryProfileUsersArgs {
+  final bool showFollowers;
+  final String? ownerUid;
+
+  const LibraryProfileUsersArgs({required this.showFollowers, this.ownerUid});
 }
 
 /// Typed arguments for explore creator detail route.
@@ -162,20 +180,52 @@ class AddRecipeReviewArgs {
 class AddMealPlanArgs {
   final String? userId;
   final String mealType;
+  final String? mealCategoryId;
+  final DateTime? selectedDate;
+  final List<String> existingRecipeIds;
 
-  const AddMealPlanArgs({this.userId, required this.mealType});
+  const AddMealPlanArgs({
+    this.userId,
+    required this.mealType,
+    this.mealCategoryId,
+    this.selectedDate,
+    this.existingRecipeIds = const [],
+  });
+}
+
+/// Typed arguments for selecting an existing recipe into a meal plan.
+class MealPlanSelectionArgs {
+  final String userId;
+  final DateTime selectedDate;
+  final String mealCategoryId;
+  final String mealCategoryName;
+  final String source;
+  final List<String> existingRecipeIds;
+
+  const MealPlanSelectionArgs({
+    required this.userId,
+    required this.selectedDate,
+    required this.mealCategoryId,
+    required this.mealCategoryName,
+    required this.source,
+    this.existingRecipeIds = const [],
+  });
 }
 
 /// Typed arguments for generate AI meal route.
 class GenerateAiMealArgs {
   final String? userId;
   final String mealType;
+  final String? mealCategoryId;
+  final DateTime? selectedDate;
   final AddMealAiGenerationRequest? initialRequest;
   final bool autoGenerate;
 
   const GenerateAiMealArgs({
     this.userId,
     required this.mealType,
+    this.mealCategoryId,
+    this.selectedDate,
     this.initialRequest,
     this.autoGenerate = false,
   });

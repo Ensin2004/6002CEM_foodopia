@@ -8,6 +8,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 import 'app/dependency_injection/injection_container.dart';
 import 'app/app.dart';
+import 'core/services/fcm_notification_service.dart';
 import 'core/services/shared_prefs_manager.dart';
 import 'features/auth/data/models/user_model.dart';
 import 'features/auth/domain/entities/user_entity.dart';
@@ -71,6 +72,10 @@ Future<void> main() async {
 
   final isLoggedIn =
       currentUser != null && currentUser.emailVerified && userEntity != null;
+
+  if (isLoggedIn) {
+    await FcmNotificationService.initialize();
+  }
 
   // Debug prints
   print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

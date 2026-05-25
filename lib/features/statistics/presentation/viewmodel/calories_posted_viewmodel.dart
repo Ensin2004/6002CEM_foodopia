@@ -32,6 +32,9 @@ class CaloriesPostedViewModel extends ChangeNotifier {
       dateRange: current.dateRange,
       totalPost: current.totalPost,
       averageCaloriesKcal: current.averageCaloriesKcal,
+      averageCarbohydrateGram: current.averageCarbohydrateGram,
+      averageProteinGram: current.averageProteinGram,
+      averageFatGram: current.averageFatGram,
       dailyPosts: sortedDays,
     );
   }

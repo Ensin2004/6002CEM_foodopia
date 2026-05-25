@@ -35,20 +35,6 @@ class _PostAnalyticView extends StatefulWidget {
 }
 
 class _PostAnalyticViewState extends State<_PostAnalyticView> {
-  late final PageController _pageController;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<PostAnalyticViewModel>();
@@ -78,8 +64,6 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
         onRetry: viewModel.loadStatistics,
       );
     }
-
-    final pageHeight = MediaQuery.sizeOf(context).width < 360 ? 790.0 : 760.0;
 
     return SafeArea(
       top: false,
@@ -126,33 +110,50 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
-            SizedBox(
-              height: pageHeight,
-              child: PageView(
-                controller: _pageController,
-                onPageChanged: viewModel.selectPage,
-                children: [
-                  _RatedPostPage(
-                    posts: viewModel.sortedPosts,
-                    sortOrder: viewModel.sortOrder,
-                    onSortChanged: viewModel.setSortOrder,
-                  ),
-                  _CategoryRatingPage(
-                    categories: viewModel.sortedCategories,
-                    sortOrder: viewModel.sortOrder,
-                    expandedIndex: viewModel.expandedCategoryIndex,
-                    onSortChanged: viewModel.setSortOrder,
-                    onToggle: viewModel.toggleCategory,
-                  ),
-                ],
-              ),
+            _PageTabs(
+              selectedIndex: viewModel.selectedPageIndex,
+              onSelected: (index) => _goToPage(index, viewModel),
             ),
             const SizedBox(height: AppSpacing.md),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragEnd: (details) =>
+                  _handleSwipe(details, viewModel),
+              child: viewModel.selectedPageIndex == 0
+                  ? _RatedPostPage(
+                      posts: viewModel.sortedPosts,
+                      sortOrder: viewModel.sortOrder,
+                      onSortChanged: viewModel.setSortOrder,
+                    )
+                  : _CategoryRatingPage(
+                      categories: viewModel.sortedCategories,
+                      sortOrder: viewModel.sortOrder,
+                      expandedIndex: viewModel.expandedCategoryIndex,
+                      onSortChanged: viewModel.setSortOrder,
+                      onToggle: viewModel.toggleCategory,
+                    ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
             _PageDots(count: 2, selectedIndex: viewModel.selectedPageIndex),
           ],
         ),
       ),
     );
+  }
+
+  void _goToPage(int index, PostAnalyticViewModel viewModel) {
+    viewModel.selectPage(index);
+  }
+
+  void _handleSwipe(DragEndDetails details, PostAnalyticViewModel viewModel) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity.abs() < 220) return;
+
+    final nextIndex = velocity < 0
+        ? viewModel.selectedPageIndex + 1
+        : viewModel.selectedPageIndex - 1;
+    if (nextIndex < 0 || nextIndex > 1) return;
+    viewModel.selectPage(nextIndex);
   }
 }
 
@@ -178,6 +179,7 @@ class _RatedPostPage extends StatelessWidget {
               value: post.rating.round(),
               icon: post.icon,
               color: const Color(0xFF21AEEA),
+              imageUrl: post.imageUrl,
             ),
           )
           .toList(),
@@ -218,6 +220,7 @@ class _CategoryRatingPage extends StatelessWidget {
               value: category.averageRating.round(),
               icon: category.icon,
               color: const Color(0xFF21AEEA),
+              markerText: category.name,
             ),
           )
           .toList(),
@@ -395,7 +398,7 @@ class _CategorySection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
             child: Row(
               children: [
-                _FoodIcon(icon: category.icon),
+                _FoodIcon(icon: category.icon, label: category.name),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -458,7 +461,7 @@ class _PostRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         children: [
-          _FoodIcon(icon: post.icon),
+          _FoodIcon(icon: post.icon, imageUrl: post.imageUrl),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -738,10 +741,86 @@ class _PageDots extends StatelessWidget {
   }
 }
 
+class _PageTabs extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  const _PageTabs({required this.selectedIndex, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F7F7),
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          _PageTabButton(
+            label: 'Rated Post',
+            selected: selectedIndex == 0,
+            onTap: () => onSelected(0),
+          ),
+          _PageTabButton(
+            label: 'Category',
+            selected: selectedIndex == 1,
+            onTap: () => onSelected(1),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PageTabButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PageTabButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.bodySmall?.copyWith(
+              color: selected ? AppColors.primary : AppColors.textSecondary,
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
+  final String? imageUrl;
+  final String? label;
 
-  const _FoodIcon({required this.icon});
+  const _FoodIcon({required this.icon, this.imageUrl, this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -754,8 +833,57 @@ class _FoodIcon extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: const Color(0xFFD7C98D)),
       ),
-      child: Icon(icon, size: 18, color: const Color(0xFF6D642C)),
+      child: _buildContent(context),
     );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    if (imageUrl?.isNotEmpty == true) {
+      return ClipOval(
+        child: Image.network(
+          imageUrl!,
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              Icon(icon, size: 18, color: const Color(0xFF6D642C)),
+        ),
+      );
+    }
+
+    final text = _circleText(label);
+    if (text.isNotEmpty) {
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          maxLines: 1,
+          style: context.text.bodySmall?.copyWith(
+            color: const Color(0xFF6D642C),
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      );
+    }
+
+    return Icon(icon, size: 18, color: const Color(0xFF6D642C));
+  }
+
+  String _circleText(String? value) {
+    final words = value
+        ?.trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+    if (words == null || words.isEmpty) return '';
+    if (words.length == 1) {
+      final word = words.first;
+      return word.length <= 2
+          ? word.toUpperCase()
+          : word.substring(0, 2).toUpperCase();
+    }
+    return words.take(2).map((word) => word[0].toUpperCase()).join();
   }
 }
 

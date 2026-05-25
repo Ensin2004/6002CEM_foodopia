@@ -22,6 +22,7 @@ import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../viewmodel/add_recipe_instructions_viewmodel.dart';
 import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/discard_recipe_changes_dialog.dart';
 import '../widgets/instructions/flat_instruction_list.dart';
 import '../widgets/label.dart';
 import '../widgets/instructions/instruction_mode_button.dart';
@@ -112,6 +113,8 @@ class _AddRecipeInstructionsViewState
   bool _useSections = false;
   String? _seededRecipeId;
   String? _requestedRecipeId;
+  String? _initialFormSignature;
+  bool _didSaveChanges = false;
 
   @override
   void initState() {
@@ -168,150 +171,189 @@ class _AddRecipeInstructionsViewState
       _seedFromReview(viewModel);
     }
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.white,
-      appBar: CustomAppBar(
-        title: widget.initialAiRecipe == null
-            ? "New Recipe"
-            : "Customize AI Recipe",
-        actions: [
-          Consumer<AddRecipeVisibilityViewModel>(
-            builder: (context, visibilityViewModel, _) {
-              return RecipeVisibilityActionButton(
-                visibility: visibilityViewModel.visibility,
-                isSaving: visibilityViewModel.isSaving,
-                onChanged: (value) async {
-                  final success = await visibilityViewModel.updateVisibility(
-                    recipeId: widget.recipeId,
-                    value: value,
-                  );
-                  if (!context.mounted || success) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        visibilityViewModel.errorMessage ??
-                            "Unable to update visibility.",
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Progress Bar
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.md,
-              ),
-              child: AppStepProgressBar(
-                totalSteps: 4,
-                currentStep: 3,
-                labels: ["Basic Info", "Ingredients", "Instructions", "Review"],
-              ),
-            ),
+    _initialFormSignature ??= _formSignature();
 
-            // Label, Tips, Button
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                AppSpacing.sm,
-                horizontalPadding,
-                0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Label(text: "Instructions", isRequired: true),
-                  const SizedBox(height: 2),
-                  Text(
-                    "Add step by step instructions for your recipe",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodySmall,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InstructionModeButton(
-                          title: "No Sections",
-                          subtitle: "Simple step by step",
-                          icon: Icons.format_align_justify_rounded,
-                          selected: !_useSections,
-                          onTap: () => setState(() => _useSections = false),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack(context);
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        backgroundColor: Colors.white,
+        appBar: CustomAppBar(
+          title: widget.initialAiRecipe == null
+              ? "New Recipe"
+              : "Customize AI Recipe",
+          leading: IconButton(
+            onPressed: () => _handleBack(context),
+            icon: const Icon(Icons.arrow_back),
+          ),
+          actions: [
+            Consumer<AddRecipeVisibilityViewModel>(
+              builder: (context, visibilityViewModel, _) {
+                return RecipeVisibilityActionButton(
+                  visibility: visibilityViewModel.visibility,
+                  isSaving: visibilityViewModel.isSaving,
+                  onChanged: (value) => confirmRecipeVisibilityChange(
+                    context: context,
+                    currentVisibility: visibilityViewModel.visibility,
+                    nextVisibility: value,
+                    onConfirmed: (visibility) =>
+                        visibilityViewModel.updateVisibility(
+                          recipeId: widget.recipeId,
+                          value: visibility,
                         ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: InstructionModeButton(
-                          title: "Use Sections",
-                          subtitle: "Group steps by section",
-                          icon: Icons.format_align_right_rounded,
-                          selected: _useSections,
-                          onTap: () => setState(() => _useSections = true),
-                        ),
-                      ),
-                    ],
+                    errorMessage: () => visibilityViewModel.errorMessage,
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                ],
-              ),
-            ),
-            Expanded(
-              child: _useSections
-                  ? SectionInstructionList(
-                      sections: _sections,
-                      horizontalPadding: horizontalPadding,
-                      onPickImage: _pickStepImage,
-                      onAddStep: _addSectionStep,
-                      onRemoveStep: _removeSectionStep,
-                      onAddSection: _addSection,
-                      onRemoveSection: _removeSection,
-                      onReorderStep: _reorderSectionStep,
-                      onReorderSection: _reorderSection,
-                    )
-                  : FlatInstructionList(
-                      steps: _steps,
-                      horizontalPadding: horizontalPadding,
-                      onPickImage: _pickStepImage,
-                      onAddStep: _addFlatStep,
-                      onRemoveStep: _removeFlatStep,
-                      onReorderStep: _reorderFlatStep,
-                    ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                AppSpacing.lg,
-                horizontalPadding,
-                AppSpacing.lg,
-              ),
-              child: PrimaryButton(
-                text: widget.initialAiRecipe != null
-                    ? "Next"
-                    : widget.returnToReview
-                    ? "Save & Review"
-                    : "Save & Continue",
-                isLoading: viewModel.isSaving,
-                onPressed: viewModel.isSaving || !_canSave
-                    ? null
-                    : () => _handleNext(context, viewModel),
-              ),
+                );
+              },
             ),
           ],
         ),
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Progress Bar
+              const Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                ),
+                child: AppStepProgressBar(
+                  totalSteps: 4,
+                  currentStep: 3,
+                  labels: [
+                    "Basic Info",
+                    "Ingredients",
+                    "Instructions",
+                    "Review",
+                  ],
+                ),
+              ),
+
+              // Label, Tips, Button
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  AppSpacing.sm,
+                  horizontalPadding,
+                  0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Label(text: "Instructions", isRequired: true),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Add step by step instructions for your recipe",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodySmall,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InstructionModeButton(
+                            title: "No Sections",
+                            subtitle: "Simple step by step",
+                            icon: Icons.format_align_justify_rounded,
+                            selected: !_useSections,
+                            onTap: () => setState(() => _useSections = false),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: InstructionModeButton(
+                            title: "Use Sections",
+                            subtitle: "Group steps by section",
+                            icon: Icons.format_align_right_rounded,
+                            selected: _useSections,
+                            onTap: () => setState(() => _useSections = true),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: _useSections
+                    ? SectionInstructionList(
+                        sections: _sections,
+                        horizontalPadding: horizontalPadding,
+                        onPickImage: _pickStepImage,
+                        onAddStep: _addSectionStep,
+                        onRemoveStep: _removeSectionStep,
+                        onAddSection: _addSection,
+                        onRemoveSection: _removeSection,
+                        onReorderStep: _reorderSectionStep,
+                        onReorderSection: _reorderSection,
+                      )
+                    : FlatInstructionList(
+                        steps: _steps,
+                        horizontalPadding: horizontalPadding,
+                        onPickImage: _pickStepImage,
+                        onAddStep: _addFlatStep,
+                        onRemoveStep: _removeFlatStep,
+                        onReorderStep: _reorderFlatStep,
+                      ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  AppSpacing.lg,
+                  horizontalPadding,
+                  AppSpacing.lg,
+                ),
+                child: PrimaryButton(
+                  text: widget.initialAiRecipe != null
+                      ? "Next"
+                      : widget.returnToReview
+                      ? "Save & Review"
+                      : "Save & Continue",
+                  isLoading: viewModel.isSaving,
+                  onPressed: viewModel.isSaving || !_canSave
+                      ? null
+                      : () => _handleNext(context, viewModel),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  Future<void> _handleBack(BuildContext context) async {
+    if (!_hasUnsavedChanges()) {
+      _leaveEditPage(context);
+      return;
+    }
+
+    final discard = await confirmDiscardRecipeChanges(context);
+    if (!context.mounted || !discard) return;
+    _leaveEditPage(context);
+  }
+
+  void _leaveEditPage(BuildContext context) {
+    if (widget.returnToReview) {
+      context.pushReplacement(
+        AppRouter.addRecipeReview,
+        extra: AddRecipeReviewArgs(recipeId: widget.recipeId),
+      );
+      return;
+    }
+
+    if (context.canPop()) {
+      context.pop();
+    }
   }
 
   // Image Picker Helper
@@ -441,6 +483,7 @@ class _AddRecipeInstructionsViewState
       return;
     }
 
+    _didSaveChanges = true;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("Recipe instructions saved.")));
@@ -536,6 +579,39 @@ class _AddRecipeInstructionsViewState
   void _refreshFormState() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  bool _hasUnsavedChanges() {
+    return !_didSaveChanges && _initialFormSignature != _formSignature();
+  }
+
+  String _formSignature() {
+    final flatSteps = _steps
+        .map(
+          (step) => [
+            step.descriptionController.text.trim(),
+            step.imageFile?.path ?? '',
+            step.existingImageUrl ?? '',
+          ].join('|'),
+        )
+        .join('::');
+    final sections = _sections
+        .map(
+          (section) => [
+            section.titleController.text.trim(),
+            section.steps
+                .map(
+                  (step) => [
+                    step.descriptionController.text.trim(),
+                    step.imageFile?.path ?? '',
+                    step.existingImageUrl ?? '',
+                  ].join('|'),
+                )
+                .join('::'),
+          ].join('||'),
+        )
+        .join('::::');
+    return '$_useSections::$flatSteps::$sections';
   }
 
   // Review Helper

@@ -5,19 +5,21 @@ import 'explore_recipe_card.dart';
 
 class ExploreRecipeGridView extends StatelessWidget {
   final List<ExploreRecipe> recipes;
-  final VoidCallback onComingSoonTap;
+  final ValueChanged<ExploreRecipe> onCommentTap;
   final ValueChanged<String> onFavouriteTap;
   final ValueChanged<ExploreRecipe> onImageLongPress;
   final ValueChanged<ExploreRecipe> onRecipeTap;
+  final Set<String> disabledRecipeIds;
   final EdgeInsetsGeometry padding;
 
   const ExploreRecipeGridView({
     super.key,
     required this.recipes,
-    required this.onComingSoonTap,
+    required this.onCommentTap,
     required this.onFavouriteTap,
     required this.onImageLongPress,
     required this.onRecipeTap,
+    this.disabledRecipeIds = const {},
     this.padding = const EdgeInsets.fromLTRB(12, 10, 12, 24),
   });
 
@@ -34,7 +36,8 @@ class ExploreRecipeGridView extends StatelessWidget {
       itemBuilder: (context, index) {
         return _ExploreRecipeGridItem(
           recipe: recipes[index],
-          onComingSoonTap: onComingSoonTap,
+          onCommentTap: onCommentTap,
+          disabled: disabledRecipeIds.contains(recipes[index].id),
           onFavouriteTap: onFavouriteTap,
           onImageLongPress: onImageLongPress,
           onRecipeTap: onRecipeTap,
@@ -46,19 +49,21 @@ class ExploreRecipeGridView extends StatelessWidget {
 
 class ExploreRecipeSliverGrid extends StatelessWidget {
   final List<ExploreRecipe> recipes;
-  final VoidCallback onComingSoonTap;
+  final ValueChanged<ExploreRecipe> onCommentTap;
   final ValueChanged<String> onFavouriteTap;
   final ValueChanged<ExploreRecipe> onImageLongPress;
   final ValueChanged<ExploreRecipe> onRecipeTap;
+  final Set<String> disabledRecipeIds;
   final EdgeInsetsGeometry padding;
 
   const ExploreRecipeSliverGrid({
     super.key,
     required this.recipes,
-    required this.onComingSoonTap,
+    required this.onCommentTap,
     required this.onFavouriteTap,
     required this.onImageLongPress,
     required this.onRecipeTap,
+    this.disabledRecipeIds = const {},
     this.padding = const EdgeInsets.fromLTRB(16, 12, 16, 24),
   });
 
@@ -74,7 +79,8 @@ class ExploreRecipeSliverGrid extends StatelessWidget {
         itemBuilder: (context, index) {
           return _ExploreRecipeGridItem(
             recipe: recipes[index],
-            onComingSoonTap: onComingSoonTap,
+            onCommentTap: onCommentTap,
+            disabled: disabledRecipeIds.contains(recipes[index].id),
             onFavouriteTap: onFavouriteTap,
             onImageLongPress: onImageLongPress,
             onRecipeTap: onRecipeTap,
@@ -87,27 +93,30 @@ class ExploreRecipeSliverGrid extends StatelessWidget {
 
 class _ExploreRecipeGridItem extends StatelessWidget {
   final ExploreRecipe recipe;
-  final VoidCallback onComingSoonTap;
+  final ValueChanged<ExploreRecipe> onCommentTap;
   final ValueChanged<String> onFavouriteTap;
   final ValueChanged<ExploreRecipe> onImageLongPress;
   final ValueChanged<ExploreRecipe> onRecipeTap;
+  final bool disabled;
 
   const _ExploreRecipeGridItem({
     required this.recipe,
-    required this.onComingSoonTap,
+    required this.onCommentTap,
     required this.onFavouriteTap,
     required this.onImageLongPress,
     required this.onRecipeTap,
+    this.disabled = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return ExploreRecipeCard(
       recipe: recipe,
-      onComingSoonTap: onComingSoonTap,
+      onComingSoonTap: () => onCommentTap(recipe),
       onFavouriteTap: () => onFavouriteTap(recipe.id),
       onImageLongPress: () => onImageLongPress(recipe),
-      onTap: () => onRecipeTap(recipe),
+      onTap: disabled ? null : () => onRecipeTap(recipe),
+      disabled: disabled,
     );
   }
 }

@@ -137,10 +137,12 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
                   final chart = statistics.charts[index].sorted(
                     viewModel.sortOrder,
                   );
-                  return _FoodAnalyticChartCard(
-                    chart: chart,
-                    sortOrder: viewModel.sortOrder,
-                    onSortChanged: viewModel.setSortOrder,
+                  return SingleChildScrollView(
+                    child: _FoodAnalyticChartCard(
+                      chart: chart,
+                      sortOrder: viewModel.sortOrder,
+                      onSortChanged: viewModel.setSortOrder,
+                    ),
                   );
                 },
               ),

@@ -24,6 +24,30 @@ class LibraryRepositoryImpl implements LibraryRepository {
   }
 
   @override
+  Future<Either<Failure, List<LibraryProfileUser>>> getFollowers({
+    String? ownerUid,
+  }) async {
+    try {
+      final followers = await remoteDataSource.getFollowers(ownerUid: ownerUid);
+      return Right(followers);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<LibraryProfileUser>>> getFollowing({
+    String? ownerUid,
+  }) async {
+    try {
+      final following = await remoteDataSource.getFollowing(ownerUid: ownerUid);
+      return Right(following);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, List<LibraryRecipe>>> getRecipes() async {
     try {
       final recipes = await remoteDataSource.getRecipes();

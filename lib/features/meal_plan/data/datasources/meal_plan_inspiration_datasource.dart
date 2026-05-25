@@ -51,28 +51,12 @@ class MealPlanInspirationDataSource {
   }
 
   Future<List<MealPlanInspirationIngredient>> getDefaultIngredients() async {
-    try {
-      final options = await getPreferenceOptions('ingredients');
-      if (options.isNotEmpty) {
-        return options
-            .map(
-              (item) =>
-                  MealPlanInspirationIngredient(id: item.id, name: item.name),
-            )
-            .toList();
-      }
-    } catch (_) {
-      // Fallback keeps the inspiration tab usable while admin defaults are empty.
-    }
-
-    return const [
-      MealPlanInspirationIngredient(id: 'eggs', name: 'Eggs'),
-      MealPlanInspirationIngredient(id: 'chicken', name: 'Chicken'),
-      MealPlanInspirationIngredient(id: 'oats', name: 'Oats'),
-      MealPlanInspirationIngredient(id: 'spinach', name: 'Spinach'),
-      MealPlanInspirationIngredient(id: 'rice', name: 'Rice'),
-      MealPlanInspirationIngredient(id: 'tomato', name: 'Tomato'),
-    ];
+    final options = await getPreferenceOptions('ingredients');
+    return options
+        .map(
+          (item) => MealPlanInspirationIngredient(id: item.id, name: item.name),
+        )
+        .toList();
   }
 
   Future<List<MealPlanInspirationIngredient>> searchIngredients(
@@ -136,6 +120,22 @@ class MealPlanInspirationDataSource {
         'You can add maximum 5 ${mealCategory.name} recipes for this date.',
       );
     }
+    final existingRecipeIds = existing.docs
+        .map((doc) => doc.data()['recipeId']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    String? duplicatedRecipe;
+    for (final recipe in recipes) {
+      if (existingRecipeIds.contains(recipe.id)) {
+        duplicatedRecipe = recipe.title;
+        break;
+      }
+    }
+    if (duplicatedRecipe != null) {
+      throw StateError(
+        '$duplicatedRecipe is already added to ${mealCategory.name} for this date.',
+      );
+    }
 
     final batch = firestore.batch();
     final collection = firestore.collection('meal_plans');
@@ -149,7 +149,8 @@ class MealPlanInspirationDataSource {
         'recipeId': recipe.id,
         'recipeName': recipe.title,
         'recipeImage': recipe.imagePath,
-        'source': 'ai_generated',
+        'source': 'method3_generate_with_ai',
+        'creationMethod': 'method3_generate_with_ai',
         'servings': _servingsFromLabel(recipe.servingLabel),
         'calories': recipe.calories,
         'weatherSnapshot': {
@@ -172,7 +173,10 @@ class MealPlanInspirationDataSource {
         'dishPreference': request.dishIncludes.join(', '),
         'dishAvoidance': request.dishAvoids,
         'cookingTime': request.cookingTime,
+        'preparationTime': request.cookingTime,
+        'difficultyLevel': request.difficultyLevel,
         'difficulty': request.difficulty,
+        'servings': request.servingCount,
         'aiPromptSummary': recipe.description,
         'generatedRecipe': {
           'title': recipe.title,

@@ -21,17 +21,27 @@ class MealPlanDashboard {
     required this.groceryGroups,
   });
 
-  MealPlanDashboard copyWith({MealPlanWeather? weather}) {
+  MealPlanDashboard copyWith({
+    DateTime? selectedDate,
+    MealPlanWeather? weather,
+    MealPlanSummary? summary,
+    List<MealPlanDay>? monthDays,
+    List<MealPlanSection>? sections,
+    List<MealPlanInspiration>? inspirations,
+    List<MealPlanQuickInspiration>? quickInspirations,
+    List<GroceryListSummary>? groceryLists,
+    List<GroceryListGroup>? groceryGroups,
+  }) {
     return MealPlanDashboard(
-      selectedDate: selectedDate,
+      selectedDate: selectedDate ?? this.selectedDate,
       weather: weather ?? this.weather,
-      summary: summary,
-      monthDays: monthDays,
-      sections: sections,
-      inspirations: inspirations,
-      quickInspirations: quickInspirations,
-      groceryLists: groceryLists,
-      groceryGroups: groceryGroups,
+      summary: summary ?? this.summary,
+      monthDays: monthDays ?? this.monthDays,
+      sections: sections ?? this.sections,
+      inspirations: inspirations ?? this.inspirations,
+      quickInspirations: quickInspirations ?? this.quickInspirations,
+      groceryLists: groceryLists ?? this.groceryLists,
+      groceryGroups: groceryGroups ?? this.groceryGroups,
     );
   }
 }
@@ -74,18 +84,29 @@ class MealPlanDay {
 
 class MealPlanSection {
   final String mealType;
+  final String mealCategoryId;
   final List<MealPlanMeal> meals;
 
-  const MealPlanSection({required this.mealType, required this.meals});
+  const MealPlanSection({
+    required this.mealType,
+    this.mealCategoryId = '',
+    required this.meals,
+  });
 }
 
 class MealPlanMeal {
+  final String id;
+  final String recipeId;
+  final String source;
   final String title;
   final String servingLabel;
   final String durationLabel;
   final String imagePath;
 
   const MealPlanMeal({
+    this.id = '',
+    this.recipeId = '',
+    this.source = '',
     required this.title,
     required this.servingLabel,
     required this.durationLabel,

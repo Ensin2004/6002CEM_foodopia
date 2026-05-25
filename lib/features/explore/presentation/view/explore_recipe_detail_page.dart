@@ -13,6 +13,8 @@ import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
+import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../viewmodel/explore_recipe_detail_viewmodel.dart';
 
@@ -20,12 +22,14 @@ class ExploreRecipeDetailPage extends StatelessWidget {
   final String recipeId;
   final bool showLibraryActions;
   final bool isPublished;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const ExploreRecipeDetailPage({
     super.key,
     required this.recipeId,
     this.showLibraryActions = false,
     this.isPublished = true,
+    this.mealPlanSelection,
   });
 
   @override
@@ -45,10 +49,12 @@ class ExploreRecipeDetailPage extends StatelessWidget {
         toggleCreatorFollowUseCase: sl(),
         updateRecipeVisibilityUseCase: sl(),
         toggleFavouriteUseCase: sl(),
+        saveRecipeMealPlanUseCase: sl<SaveRecipeMealPlanUseCase>(),
       ),
       child: _ExploreRecipeDetailView(
         showLibraryActions: showLibraryActions,
         isPublished: isPublished,
+        mealPlanSelection: mealPlanSelection,
       ),
     );
   }
@@ -57,10 +63,12 @@ class ExploreRecipeDetailPage extends StatelessWidget {
 class _ExploreRecipeDetailView extends StatefulWidget {
   final bool showLibraryActions;
   final bool isPublished;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const _ExploreRecipeDetailView({
     required this.showLibraryActions,
     required this.isPublished,
+    this.mealPlanSelection,
   });
 
   @override
@@ -190,6 +198,46 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       );
   }
 
+  Future<void> _selectForMealPlan(
+    ExploreRecipeDetailViewModel viewModel,
+  ) async {
+    final selection = widget.mealPlanSelection;
+    if (selection == null) return;
+    final recipeId = viewModel.recipe?.id;
+    if (recipeId != null && selection.existingRecipeIds.contains(recipeId)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('This recipe is already added.')),
+        );
+      return;
+    }
+
+    final success = await viewModel.saveToMealPlan(
+      userId: selection.userId,
+      date: selection.selectedDate,
+      mealCategory: AddMealCategoryOption(
+        id: selection.mealCategoryId,
+        name: selection.mealCategoryName,
+      ),
+      source: selection.source,
+    );
+    if (!mounted) return;
+
+    final message = success
+        ? 'Meal plan added.'
+        : viewModel.communityActionErrorMessage ?? 'Unable to add meal plan.';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+    if (!success) return;
+
+    context.go(
+      AppRouter.mealPlan,
+      extra: MealPlanArgs(initialTabIndex: 0, userId: selection.userId),
+    );
+  }
+
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChanged);
@@ -200,6 +248,11 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<ExploreRecipeDetailViewModel>();
+    final alreadyAdded =
+        widget.mealPlanSelection?.existingRecipeIds.contains(
+          viewModel.recipe?.id ?? '',
+        ) ??
+        false;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -209,21 +262,28 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
           onPressed: () => context.pop(),
           icon: const Icon(Icons.chevron_left),
         ),
-        actions: [
-          IconButton(
-            onPressed: viewModel.recipe == null
-                ? null
-                : () => _toggleFavourite(viewModel),
-            icon: Icon(
-              viewModel.recipe?.isFavourite == true
-                  ? Icons.favorite
-                  : Icons.favorite_border,
-              color: viewModel.recipe?.isFavourite == true
-                  ? AppColors.favourite
-                  : null,
-            ),
-          ),
-        ],
+        actions: widget.showLibraryActions
+            ? [
+                IconButton(
+                  tooltip: _isPublished ? 'Make private' : 'Publish recipe',
+                  onPressed: viewModel.recipe == null
+                      ? null
+                      : () => _confirmVisibilityChange(viewModel),
+                  icon: Icon(
+                    _isPublished
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Edit recipe',
+                  onPressed: viewModel.recipe == null
+                      ? null
+                      : () => _openRecipeReview(viewModel),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+              ]
+            : null,
       ),
       body: _DetailBody(
         viewModel: viewModel,
@@ -231,9 +291,29 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         onComingSoonTap: _showComingSoonMessage,
         showLibraryActions: widget.showLibraryActions,
         isPublished: _isPublished,
-        onEditTap: () => _openRecipeReview(viewModel),
-        onVisibilityTap: () => _confirmVisibilityChange(viewModel),
+        onFavouriteTap: () => _toggleFavourite(viewModel),
+        isMealPlanSelection: widget.mealPlanSelection != null,
       ),
+      bottomNavigationBar: widget.mealPlanSelection == null
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: PrimaryButton(
+                  text: alreadyAdded
+                      ? 'Already Added'
+                      : viewModel.isSavingMealPlan
+                      ? 'Adding...'
+                      : 'Select',
+                  onPressed:
+                      viewModel.recipe == null ||
+                          viewModel.isSavingMealPlan ||
+                          alreadyAdded
+                      ? null
+                      : () => _selectForMealPlan(viewModel),
+                ),
+              ),
+            ),
     );
   }
 }
@@ -242,19 +322,19 @@ class _DetailBody extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final TabController tabController;
   final VoidCallback onComingSoonTap;
-  final VoidCallback onEditTap;
-  final VoidCallback onVisibilityTap;
+  final VoidCallback onFavouriteTap;
   final bool showLibraryActions;
   final bool isPublished;
+  final bool isMealPlanSelection;
 
   const _DetailBody({
     required this.viewModel,
     required this.tabController,
     required this.onComingSoonTap,
-    required this.onEditTap,
-    required this.onVisibilityTap,
+    required this.onFavouriteTap,
     required this.showLibraryActions,
     required this.isPublished,
+    required this.isMealPlanSelection,
   });
 
   @override
@@ -282,16 +362,14 @@ class _DetailBody extends StatelessWidget {
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: EdgeInsets.zero,
       children: [
-        _HeroImage(
-          recipe: recipe,
-          showLibraryActions: showLibraryActions,
-          isPublished: isPublished,
-          onEditTap: onEditTap,
-          onVisibilityTap: onVisibilityTap,
-        ),
+        _HeroImage(recipe: recipe),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: _RecipeHeader(recipe: recipe, isPublished: isPublished),
+          child: _RecipeHeader(
+            recipe: recipe,
+            isPublished: isPublished,
+            onFavouriteTap: onFavouriteTap,
+          ),
         ),
         _TopTabs(tabController: tabController),
         Padding(
@@ -301,6 +379,7 @@ class _DetailBody extends StatelessWidget {
             recipe: recipe,
             onComingSoonTap: onComingSoonTap,
             isPublished: isPublished,
+            showStartCooking: !isMealPlanSelection,
           ),
         ),
       ],
@@ -310,18 +389,8 @@ class _DetailBody extends StatelessWidget {
 
 class _HeroImage extends StatefulWidget {
   final ExploreRecipe recipe;
-  final bool showLibraryActions;
-  final bool isPublished;
-  final VoidCallback onEditTap;
-  final VoidCallback onVisibilityTap;
 
-  const _HeroImage({
-    required this.recipe,
-    required this.showLibraryActions,
-    required this.isPublished,
-    required this.onEditTap,
-    required this.onVisibilityTap,
-  });
+  const _HeroImage({required this.recipe});
 
   @override
   State<_HeroImage> createState() => _HeroImageState();
@@ -382,28 +451,6 @@ class _HeroImageState extends State<_HeroImage> {
             ),
           ),
         ),
-        if (widget.showLibraryActions) ...[
-          Positioned(
-            left: 8,
-            top: 8,
-            child: _LibraryImageActionButton(
-              label: 'Edit',
-              foregroundColor: AppColors.textPrimary,
-              onTap: widget.onEditTap,
-            ),
-          ),
-          Positioned(
-            right: 8,
-            top: 8,
-            child: _LibraryImageActionButton(
-              label: widget.isPublished ? 'Private' : 'Publish',
-              foregroundColor: widget.isPublished
-                  ? AppColors.error
-                  : AppColors.primary,
-              onTap: widget.onVisibilityTap,
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -449,47 +496,16 @@ class _HeroImageState extends State<_HeroImage> {
   }
 }
 
-class _LibraryImageActionButton extends StatelessWidget {
-  final String label;
-  final Color foregroundColor;
-  final VoidCallback onTap;
-
-  const _LibraryImageActionButton({
-    required this.label,
-    required this.foregroundColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.92),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: context.text.bodySmall?.copyWith(
-              color: foregroundColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _RecipeHeader extends StatelessWidget {
   final ExploreRecipe recipe;
   final bool isPublished;
+  final VoidCallback onFavouriteTap;
 
-  const _RecipeHeader({required this.recipe, required this.isPublished});
+  const _RecipeHeader({
+    required this.recipe,
+    required this.isPublished,
+    required this.onFavouriteTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -498,11 +514,33 @@ class _RecipeHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          recipe.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: textTheme.titleLarge,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                recipe.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleLarge,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: recipe.isFavourite
+                  ? 'Remove from favourites'
+                  : 'Add to favourites',
+              onPressed: onFavouriteTap,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 42, height: 42),
+              visualDensity: VisualDensity.compact,
+              icon: Icon(
+                recipe.isFavourite ? Icons.favorite : Icons.favorite_border,
+                size: 26,
+                color: recipe.isFavourite ? AppColors.favourite : null,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 4),
         Text(
@@ -633,6 +671,7 @@ class _SelectedTabContent extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
+  final bool showStartCooking;
   final bool isPublished;
 
   const _SelectedTabContent({
@@ -640,6 +679,7 @@ class _SelectedTabContent extends StatelessWidget {
     required this.recipe,
     required this.onComingSoonTap,
     required this.isPublished,
+    required this.showStartCooking,
   });
 
   @override
@@ -650,6 +690,7 @@ class _SelectedTabContent extends StatelessWidget {
           viewModel: viewModel,
           recipe: recipe,
           onComingSoonTap: onComingSoonTap,
+          showStartCooking: showStartCooking,
         );
       case ExploreRecipeDetailTab.nutrition:
         return _NutritionTab(recipe: recipe, onServingTap: onComingSoonTap);
@@ -668,11 +709,13 @@ class _RecipeTab extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
+  final bool showStartCooking;
 
   const _RecipeTab({
     required this.viewModel,
     required this.recipe,
     required this.onComingSoonTap,
+    required this.showStartCooking,
   });
 
   @override
@@ -717,7 +760,11 @@ class _RecipeTab extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         if (viewModel.selectedMethodTab == ExploreRecipeMethodTab.ingredients)
-          _IngredientsList(recipe: recipe, onUnitTap: onComingSoonTap)
+          _IngredientsList(
+            recipe: recipe,
+            onUnitTap: onComingSoonTap,
+            showStartCooking: showStartCooking,
+          )
         else
           _InstructionsList(recipe: recipe),
       ],
@@ -728,8 +775,13 @@ class _RecipeTab extends StatelessWidget {
 class _IngredientsList extends StatelessWidget {
   final ExploreRecipe recipe;
   final VoidCallback onUnitTap;
+  final bool showStartCooking;
 
-  const _IngredientsList({required this.recipe, required this.onUnitTap});
+  const _IngredientsList({
+    required this.recipe,
+    required this.onUnitTap,
+    required this.showStartCooking,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -818,12 +870,14 @@ class _IngredientsList extends StatelessWidget {
             ),
           );
         }),
-        const SizedBox(height: 6),
-        PrimaryButton(
-          onPressed: () {},
-          text: 'Start Cooking',
-          verticalPadding: 14,
-        ),
+        if (showStartCooking) ...[
+          const SizedBox(height: 6),
+          PrimaryButton(
+            onPressed: () {},
+            text: 'Start Cooking',
+            verticalPadding: 14,
+          ),
+        ],
       ],
     );
   }
@@ -1466,7 +1520,7 @@ class _CommunityTab extends StatelessWidget {
                 _submitRating(context, viewModel, rating),
           )
         else
-          _CommentsPanel(
+          ExploreCommentsPanel(
             viewModel: viewModel,
             recipe: recipe,
             isSubmitting: viewModel.isSubmittingCommunityAction,
@@ -1560,7 +1614,7 @@ class _RelatedRecipeCard extends StatelessWidget {
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: AppColors.secondary, width: 1.6),
               ),
               child: ClipOval(
                 child: AppRemoteOrAssetImage(
@@ -2081,7 +2135,7 @@ class _RatingStars extends StatelessWidget {
   }
 }
 
-class _CommentsPanel extends StatefulWidget {
+class ExploreCommentsPanel extends StatefulWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final bool isSubmitting;
@@ -2091,7 +2145,8 @@ class _CommentsPanel extends StatefulWidget {
   final ValueChanged<String> onToggleReplyLike;
   final Future<bool> Function(String replyPath, String content) onReplyToReply;
 
-  const _CommentsPanel({
+  const ExploreCommentsPanel({
+    super.key,
     required this.viewModel,
     required this.recipe,
     required this.isSubmitting,
@@ -2103,10 +2158,10 @@ class _CommentsPanel extends StatefulWidget {
   });
 
   @override
-  State<_CommentsPanel> createState() => _CommentsPanelState();
+  State<ExploreCommentsPanel> createState() => _ExploreCommentsPanelState();
 }
 
-class _CommentsPanelState extends State<_CommentsPanel> {
+class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
   final _commentController = TextEditingController();
 
   @override
@@ -2153,44 +2208,6 @@ class _CommentsPanelState extends State<_CommentsPanel> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _commentController,
-            minLines: 1,
-            maxLines: 3,
-            enabled: !widget.isSubmitting,
-            textInputAction: TextInputAction.send,
-            onSubmitted: (_) => _submitComment(),
-            decoration: InputDecoration(
-              hintText: 'Add a comment',
-              filled: true,
-              fillColor: AppColors.background,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.55),
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.55),
-                ),
-              ),
-              suffixIcon: IconButton(
-                onPressed: widget.isSubmitting ? null : _submitComment,
-                icon: Icon(
-                  Icons.send,
-                  color: AppColors.textSecondary.withValues(alpha: 0.45),
-                ),
-              ),
-            ),
-          ),
-          if (widget.isSubmitting)
-            const Padding(
-              padding: EdgeInsets.only(top: 10),
-              child: LoadingDialog(message: 'Posting comment...', inline: true),
-            ),
           const SizedBox(height: 12),
           if (comments.isEmpty)
             Padding(
@@ -2208,6 +2225,57 @@ class _CommentsPanelState extends State<_CommentsPanel> {
                 onReplyToReply: widget.onReplyToReply,
               );
             }),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _commentController,
+            minLines: 1,
+            maxLines: 3,
+            enabled: !widget.isSubmitting,
+            textInputAction: TextInputAction.send,
+            onSubmitted: (_) => _submitComment(),
+            decoration: InputDecoration(
+              hintText: 'Add a comment',
+              prefixIcon: Icon(
+                Icons.chat_bubble_outline,
+                color: AppColors.textSecondary.withValues(alpha: 0.45),
+              ),
+              filled: true,
+              fillColor: context.colors.surfaceContainerHighest.withValues(
+                alpha: 0.46,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 13,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: context.colors.primary,
+                  width: 1.4,
+                ),
+              ),
+              suffixIcon: IconButton(
+                onPressed: widget.isSubmitting ? null : _submitComment,
+                icon: Icon(
+                  Icons.send,
+                  color: AppColors.textSecondary.withValues(alpha: 0.45),
+                ),
+              ),
+            ),
+          ),
+          if (widget.isSubmitting)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
+              child: LoadingDialog(message: 'Posting comment...', inline: true),
+            ),
         ],
       ),
     );
@@ -2293,20 +2361,24 @@ class _CommentTileState extends State<_CommentTile> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Text(
-                          comment.author,
-                          style: textTheme.titleMedium?.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w800,
+                        Flexible(
+                          child: Text(
+                            comment.author,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.titleMedium?.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           comment.timeAgo,
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: Colors.grey.shade400,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -2316,49 +2388,29 @@ class _CommentTileState extends State<_CommentTile> {
                 ],
               ),
               const SizedBox(height: 10),
-              Text(
-                comment.content,
-                style: textTheme.bodyLarge?.copyWith(
-                  color: AppColors.textPrimary.withValues(alpha: 0.82),
-                  fontWeight: FontWeight.w700,
-                  height: 1.35,
-                ),
-              ),
-              const SizedBox(height: 6),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InkWell(
-                    onTap: widget.isSubmitting ? null : widget.onToggleLike,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 2,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${comment.likes}',
-                            style: textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Icon(
-                            comment.isLiked
-                                ? Icons.thumb_up
-                                : Icons.thumb_up_alt_outlined,
-                            size: 18,
-                            color: comment.isLiked
-                                ? context.colors.primary
-                                : AppColors.textSecondary,
-                          ),
-                        ],
+                  Expanded(
+                    child: Text(
+                      comment.content,
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: AppColors.textPrimary.withValues(alpha: 0.82),
+                        fontWeight: FontWeight.w700,
+                        height: 1.35,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
+                  _LikeIconButton(
+                    isLiked: comment.isLiked,
+                    onTap: widget.isSubmitting ? null : widget.onToggleLike,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
                   TextButton(
                     onPressed: widget.isSubmitting
                         ? null
@@ -2370,6 +2422,11 @@ class _CommentTileState extends State<_CommentTile> {
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     child: const Text('Reply'),
+                  ),
+                  const Spacer(),
+                  _LikeCountLabel(
+                    likes: comment.likes,
+                    onTap: widget.isSubmitting ? null : widget.onToggleLike,
                   ),
                 ],
               ),
@@ -2414,6 +2471,60 @@ class _CommentTileState extends State<_CommentTile> {
                 ),
               ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LikeIconButton extends StatelessWidget {
+  final bool isLiked;
+  final VoidCallback? onTap;
+  final double iconSize;
+
+  const _LikeIconButton({
+    required this.isLiked,
+    required this.onTap,
+    this.iconSize = 18,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Icon(
+          isLiked ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
+          size: iconSize,
+          color: isLiked ? context.colors.primary : AppColors.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+class _LikeCountLabel extends StatelessWidget {
+  final int likes;
+  final VoidCallback? onTap;
+
+  const _LikeCountLabel({required this.likes, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Text(
+          '$likes',
+          style: context.text.bodySmall?.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+            height: 1,
           ),
         ),
       ),
@@ -2474,20 +2585,24 @@ class _ReplyTileState extends State<_ReplyTile> {
               AppRemoteOrAssetAvatar(radius: 16, imagePath: reply.avatarPath),
               const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      reply.author,
-                      style: textTheme.labelLarge?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w800,
+                    Flexible(
+                      child: Text(
+                        reply.author,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelLarge?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 7),
                     Text(
                       reply.timeAgo,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
+                      style: textTheme.labelSmall?.copyWith(
+                        color: Colors.grey.shade400,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -2497,51 +2612,32 @@ class _ReplyTileState extends State<_ReplyTile> {
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            reply.content,
-            style: textTheme.bodyMedium?.copyWith(
-              color: AppColors.textPrimary.withValues(alpha: 0.82),
-              fontWeight: FontWeight.w700,
-              height: 1.32,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  reply.content,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary.withValues(alpha: 0.82),
+                    fontWeight: FontWeight.w700,
+                    height: 1.32,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              _LikeIconButton(
+                isLiked: reply.isLiked,
+                iconSize: 17,
+                onTap: widget.isSubmitting
+                    ? null
+                    : () => widget.onToggleLike(reply.documentPath),
+              ),
+            ],
           ),
           const SizedBox(height: 2),
           Row(
             children: [
-              InkWell(
-                onTap: widget.isSubmitting
-                    ? null
-                    : () => widget.onToggleLike(reply.documentPath),
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 2,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        '${reply.likes}',
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Icon(
-                        reply.isLiked
-                            ? Icons.thumb_up
-                            : Icons.thumb_up_alt_outlined,
-                        size: 17,
-                        color: reply.isLiked
-                            ? context.colors.primary
-                            : AppColors.textSecondary,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
               TextButton(
                 onPressed: widget.isSubmitting
                     ? null
@@ -2553,6 +2649,13 @@ class _ReplyTileState extends State<_ReplyTile> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: const Text('Reply'),
+              ),
+              const Spacer(),
+              _LikeCountLabel(
+                likes: reply.likes,
+                onTap: widget.isSubmitting
+                    ? null
+                    : () => widget.onToggleLike(reply.documentPath),
               ),
             ],
           ),
