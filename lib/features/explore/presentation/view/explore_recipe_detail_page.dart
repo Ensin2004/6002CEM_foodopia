@@ -787,6 +787,7 @@ class _IngredientsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = context.text;
     final colors = context.colors;
+    final ingredientGroups = _groupIngredientsByCategory(recipe.ingredients);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -794,87 +795,32 @@ class _IngredientsList extends StatelessWidget {
         Text('Ingredients List', style: textTheme.titleMedium),
         Text('${recipe.ingredients.length} items', style: textTheme.bodyMedium),
         const SizedBox(height: 10),
-        ...recipe.ingredients.map((ingredient) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
-              boxShadow: [
-                BoxShadow(
-                  color: colors.onSurface.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+        ...ingredientGroups.expand(
+          (group) => <Widget>[
+            Padding(
+              padding: const EdgeInsets.only(top: 6, bottom: 8),
+              child: Text(
+                group.name,
+                style: textTheme.labelLarge?.copyWith(
+                  color: colors.primary,
+                  fontWeight: FontWeight.w800,
                 ),
-              ],
+              ),
             ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: AppRemoteOrAssetImage(
-                    imagePath: ingredient.imagePath,
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        ingredient.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.labelLarge,
-                      ),
-                      Text(ingredient.calories, style: textTheme.bodySmall),
-                    ],
-                  ),
-                ),
-                InkWell(
-                  onTap: onUnitTap,
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    width: 86,
-                    height: 34,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            ingredient.amount,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.bodySmall,
-                          ),
-                        ),
-                        const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: AppColors.textSecondary,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            ...group.ingredients.map(
+              (ingredient) => _IngredientListItem(
+                ingredient: ingredient,
+                onUnitTap: onUnitTap,
+              ),
             ),
-          );
-        }),
+          ],
+        ),
         if (showStartCooking) ...[
           const SizedBox(height: 6),
           PrimaryButton(
             onPressed: () {},
-            text: 'Start Cooking',
+            text:
+                'Start Cooking (Total Calorie: ${recipe.nutrition.calories} kcal)',
             verticalPadding: 14,
           ),
         ],
@@ -1021,6 +967,8 @@ class _NutritionTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = context.text;
     final nutrition = recipe.nutrition;
+    final totalMacroGrams =
+        nutrition.carbsGrams + nutrition.proteinGrams + nutrition.fatGrams;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1096,16 +1044,19 @@ class _NutritionTab extends StatelessWidget {
                         _MacroRow(
                           label: 'Carbohydrate',
                           grams: nutrition.carbsGrams,
+                          totalGrams: totalMacroGrams,
                           color: AppColors.primary,
                         ),
                         _MacroRow(
                           label: 'Protein',
                           grams: nutrition.proteinGrams,
+                          totalGrams: totalMacroGrams,
                           color: AppColors.error,
                         ),
                         _MacroRow(
                           label: 'Fat',
                           grams: nutrition.fatGrams,
+                          totalGrams: totalMacroGrams,
                           color: AppColors.secondary,
                         ),
                       ],
@@ -1145,6 +1096,120 @@ class _NutritionTab extends StatelessWidget {
   }
 }
 
+class _IngredientListItem extends StatelessWidget {
+  final ExploreIngredient ingredient;
+  final VoidCallback onUnitTap;
+
+  const _IngredientListItem({
+    required this.ingredient,
+    required this.onUnitTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+    final colors = context.colors;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: colors.onSurface.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: AppRemoteOrAssetImage(
+              imagePath: ingredient.imagePath,
+              width: 50,
+              height: 50,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ingredient.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelLarge,
+                ),
+                Text(ingredient.calories, style: textTheme.bodySmall),
+              ],
+            ),
+          ),
+          InkWell(
+            onTap: onUnitTap,
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              width: 86,
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      ingredient.amount,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+List<_IngredientCategoryGroup> _groupIngredientsByCategory(
+  List<ExploreIngredient> ingredients,
+) {
+  final groups = <String, _IngredientCategoryGroup>{};
+
+  for (final ingredient in ingredients) {
+    final name = ingredient.ingredientCategoryName.trim().isEmpty
+        ? 'Uncategorized'
+        : ingredient.ingredientCategoryName.trim();
+    groups.putIfAbsent(name, () => _IngredientCategoryGroup(name, []));
+    groups[name]!.ingredients.add(ingredient);
+  }
+
+  return groups.values.toList();
+}
+
+class _IngredientCategoryGroup {
+  final String name;
+  final List<ExploreIngredient> ingredients;
+
+  const _IngredientCategoryGroup(this.name, this.ingredients);
+}
+
 class _NutritionPanel extends StatelessWidget {
   final Widget child;
 
@@ -1168,18 +1233,20 @@ class _NutritionPanel extends StatelessWidget {
 class _MacroRow extends StatelessWidget {
   final String label;
   final int grams;
+  final int totalGrams;
   final Color color;
 
   const _MacroRow({
     required this.label,
     required this.grams,
+    required this.totalGrams,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     final textTheme = context.text;
-    final value = (grams / 40).clamp(0.0, 1.0);
+    final value = totalGrams <= 0 ? 0.0 : (grams / totalGrams).clamp(0.0, 1.0);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1305,6 +1372,7 @@ class _IngredientNutritionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = context.text;
+    final percent = (ingredient.nutritionPercent * 100).round();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
@@ -1336,7 +1404,7 @@ class _IngredientNutritionRow extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      ingredient.calories,
+                      percent <= 0 ? ingredient.calories : '$percent%',
                       maxLines: 1,
                       overflow: TextOverflow.visible,
                       style: textTheme.bodySmall,
