@@ -55,6 +55,7 @@ class AddRecipeReviewIngredient {
   final String unit;
   final int? usdaId;
   final Map<String, dynamic>? nutrients;
+  final String? ingredientCategoryId;
 
   const AddRecipeReviewIngredient({
     required this.name,
@@ -63,6 +64,7 @@ class AddRecipeReviewIngredient {
     required this.unit,
     this.usdaId,
     this.nutrients,
+    this.ingredientCategoryId,
   });
 }
 

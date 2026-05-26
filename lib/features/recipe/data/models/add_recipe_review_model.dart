@@ -39,16 +39,31 @@ class AddRecipeReviewModel extends AddRecipeReview {
       servings: _intValue(recipe['servings']),
       allergens: allergens,
       visibility: recipe['visibility'] == 'public' ? 'public' : 'private',
-      nutrients: const AddRecipeReviewNutrients(
-        calories: '500 kcal',
-        carbohydrates: '62 g',
-        proteins: '18 g',
-        fats: '24 g',
-      ),
+      nutrients: _nutrientsFromRecipe(recipe['totalNutrients']),
       ingredients: ingredients,
       instructions: instructions,
       instructionUseSection: recipe['instructionUseSection'] == true,
     );
+  }
+
+  static AddRecipeReviewNutrients _nutrientsFromRecipe(dynamic value) {
+    final nutrients = value is Map ? value : const {};
+    return AddRecipeReviewNutrients(
+      calories: _formatNutrient(nutrients['calories'], suffix: 'kcal'),
+      carbohydrates: _formatNutrient(nutrients['carbohydrates'], suffix: 'g'),
+      proteins: _formatNutrient(nutrients['protein'], suffix: 'g'),
+      fats: _formatNutrient(nutrients['fat'], suffix: 'g'),
+    );
+  }
+
+  static String _formatNutrient(dynamic value, {required String suffix}) {
+    final number = _doubleValue(value);
+    if (number == null) return '-';
+    final rounded = number.roundToDouble();
+    final text = (number - rounded).abs() < 0.05
+        ? rounded.toInt().toString()
+        : number.toStringAsFixed(1);
+    return '$text $suffix';
   }
 
   static List<String> _stringList(dynamic value) {
@@ -60,5 +75,11 @@ class AddRecipeReviewModel extends AddRecipeReview {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static double? _doubleValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is Map) return _doubleValue(value['value'] ?? value['amount']);
+    return double.tryParse(value?.toString() ?? '');
   }
 }

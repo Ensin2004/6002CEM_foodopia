@@ -30,6 +30,7 @@ import 'package:http/http.dart' as http;
 // ============================================================================
 // Core
 import '../../core/services/network_info.dart';
+import '../../core/services/openai_ingredient_data_service.dart';
 import '../../core/services/food_search_service.dart';
 import '../../core/services/openai_meal_idea_service.dart';
 import '../../core/services/open_meteo_weather_service.dart';
@@ -287,11 +288,13 @@ Future<void> initDependencies() async {
 }
 
 void _initRecipeFeature() {
+  sl.registerLazySingleton(() => OpenAiIngredientDataService(client: sl()));
   sl.registerLazySingleton(
     () => AddRecipeRemoteDataSource(
       firestore: sl(),
       auth: sl(),
       foodSearchService: sl(),
+      ingredientAiDataSource: sl(),
     ),
   );
   sl.registerLazySingleton<AddRecipeRepository>(
