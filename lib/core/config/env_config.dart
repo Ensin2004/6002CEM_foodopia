@@ -29,11 +29,15 @@ class EnvConfig {
   static const String openAiApiKey = String.fromEnvironment('OPENAI_API_KEY');
   static const String openAiRecipeModel = String.fromEnvironment(
     'OPENAI_RECIPE_MODEL',
-    defaultValue: 'gpt-5-mini',
+    defaultValue: 'gpt-4o-mini',
+  );
+  static const String openAiIngredientModel = String.fromEnvironment(
+    'OPENAI_INGREDIENT_MODEL',
+    defaultValue: 'gpt-4o-mini',
   );
   static const String openAiImageModel = String.fromEnvironment(
     'OPENAI_IMAGE_MODEL',
-    defaultValue: 'gpt-image-1-mini',
+    defaultValue: 'gpt-image-2',
   );
 
   // Firebase Configuration (already in the google-services.json)

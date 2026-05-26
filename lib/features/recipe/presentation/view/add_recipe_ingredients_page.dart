@@ -398,6 +398,8 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       row.nameController.text = selected.name;
       row.usdaId = selected.usdaId;
       row.usdaNutrients = selected.isCustom ? null : nutrients;
+      row.ingredientCategoryId = null;
+      row.markAnalysisCurrent();
     });
   }
 
@@ -529,7 +531,12 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
             unitId: row.isCustomUnit ? "" : row.unitId,
             customUnit: row.isCustomUnit ? row.unitName : "",
             usdaId: row.usdaId,
-            usdaNutrients: row.usdaNutrients,
+            usdaNutrients: row.hasAnalysisInputChanged
+                ? null
+                : row.usdaNutrients,
+            ingredientCategoryId: row.hasAnalysisInputChanged
+                ? null
+                : row.ingredientCategoryId,
           ),
         )
         .toList();
@@ -562,6 +569,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
             row.unitName,
             row.isCustomUnit.toString(),
             row.usdaId?.toString() ?? '',
+            row.ingredientCategoryId ?? '',
           ].join('|'),
         )
         .join('::');
@@ -597,6 +605,8 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
             }
             row.usdaId = item.usdaId;
             row.usdaNutrients = item.nutrients;
+            row.ingredientCategoryId = item.ingredientCategoryId;
+            row.markAnalysisCurrent();
           }
           row.addListener(_refreshFormState);
           return row;
@@ -638,6 +648,8 @@ class IngredientRowState {
   bool isCustomUnit = false;
   int? usdaId;
   Map<String, dynamic>? usdaNutrients;
+  String? ingredientCategoryId;
+  String? _analysisSignature;
 
   IngredientRowState();
 
@@ -653,6 +665,10 @@ class IngredientRowState {
   String get unitDisplayName => unitName;
 
   String get unitValueForSave => isCustomUnit ? unitName : unitId;
+
+  bool get hasAnalysisInputChanged {
+    return _analysisSignature != null && _analysisSignature != _inputSignature;
+  }
 
   bool get isComplete {
     return nameController.text.trim().isNotEmpty &&
@@ -686,9 +702,23 @@ class IngredientRowState {
     isCustomUnit = false;
     usdaId = null;
     usdaNutrients = null;
+    ingredientCategoryId = null;
+    _analysisSignature = null;
     for (final listener in _listeners) {
       listener();
     }
+  }
+
+  void markAnalysisCurrent() {
+    _analysisSignature = _inputSignature;
+  }
+
+  String get _inputSignature {
+    return [
+      nameController.text.trim().toLowerCase(),
+      amountController.text.trim(),
+      unitValueForSave.trim().toLowerCase(),
+    ].join('|');
   }
 
   void dispose() {
