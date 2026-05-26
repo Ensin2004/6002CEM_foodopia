@@ -9,13 +9,12 @@ import '../../../domain/entities/add_recipe_review.dart';
 class ReviewIngredientItem extends StatelessWidget {
   final AddRecipeReviewIngredient ingredient;
 
-  const ReviewIngredientItem({
-    super.key,
-    required this.ingredient,
-  });
+  const ReviewIngredientItem({super.key, required this.ingredient});
 
   @override
   Widget build(BuildContext context) {
+    final calories = _caloriesLabel(ingredient.nutrients);
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: const BoxDecoration(
@@ -59,6 +58,15 @@ class ReviewIngredientItem extends StatelessWidget {
                     color: AppColors.textSecondary,
                   ),
                 ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  calories,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ],
             ),
           ),
@@ -67,7 +75,10 @@ class ReviewIngredientItem extends StatelessWidget {
     );
   }
 
-  Future<void> _showExpandedImage(BuildContext context, String imagePath) async {
+  Future<void> _showExpandedImage(
+    BuildContext context,
+    String imagePath,
+  ) async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -102,5 +113,23 @@ class ReviewIngredientItem extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _caloriesLabel(Map<String, dynamic>? nutrients) {
+    final calories = _numericValue(nutrients?['calories']);
+    if (calories == null) return 'Calories: -';
+    return 'Calories: ${_formatNumber(calories)} kcal';
+  }
+
+  double? _numericValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is Map) return _numericValue(value['value'] ?? value['amount']);
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  String _formatNumber(double value) {
+    final rounded = value.roundToDouble();
+    if ((value - rounded).abs() < 0.05) return rounded.toInt().toString();
+    return value.toStringAsFixed(1);
   }
 }

@@ -72,6 +72,8 @@ class ExploreIngredient {
   final String calories;
   final String imagePath;
   final double nutritionPercent;
+  final String ingredientCategoryId;
+  final String ingredientCategoryName;
 
   const ExploreIngredient({
     required this.name,
@@ -79,6 +81,8 @@ class ExploreIngredient {
     required this.calories,
     required this.imagePath,
     required this.nutritionPercent,
+    this.ingredientCategoryId = '',
+    this.ingredientCategoryName = '',
   });
 }
 
