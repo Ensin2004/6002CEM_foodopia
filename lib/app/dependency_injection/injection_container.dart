@@ -68,13 +68,13 @@ import '../../features/explore/domain/usecases/toggle_creator_follow_usecase.dar
 import '../../features/explore/domain/usecases/update_recipe_visibility_usecase.dart';
 import '../../features/explore/domain/usecases/watch_explore_recipes_usecase.dart';
 import '../../features/explore/domain/usecases/watch_explore_recipe_detail_usecase.dart';
-import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_inspiration_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_preferences_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_remote_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
 import '../../features/meal_plan/data/repositories/meal_plan_repository_impl.dart';
 import '../../features/meal_plan/domain/repositories/meal_plan_repository.dart';
+import '../../features/meal_plan/domain/usecases/create_grocery_list_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_add_grocery_list_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_add_meal_ai_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/generate_ai_meal_ideas_usecase.dart';
@@ -88,6 +88,9 @@ import '../../features/meal_plan/domain/usecases/get_meal_plan_weather_usecase.d
 import '../../features/meal_plan/domain/usecases/save_ai_meal_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/search_meal_plan_ingredients_usecase.dart';
+import '../../features/meal_plan/domain/usecases/update_grocery_item_bought_usecase.dart';
+import '../../features/meal_plan/domain/usecases/update_grocery_list_usecase.dart';
+import '../../features/meal_plan/domain/usecases/update_weekly_grocery_week_start_day_usecase.dart';
 import '../../features/notifications/data/datasources/notification_local_datasource.dart';
 import '../../features/notifications/data/datasources/notification_remote_datasource.dart';
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
@@ -406,7 +409,6 @@ void _initNotificationsFeature() {
 }
 
 void _initMealPlanFeature() {
-  sl.registerLazySingleton(() => MealPlanMockDataSource());
   sl.registerLazySingleton(
     () => MealPlanPreferencesDataSource(firestore: sl()),
   );
@@ -424,7 +426,6 @@ void _initMealPlanFeature() {
 
   sl.registerLazySingleton<MealPlanRepository>(
     () => MealPlanRepositoryImpl(
-      mockDataSource: sl(),
       remoteDataSource: sl(),
       weatherDataSource: sl(),
       preferencesDataSource: sl(),
@@ -439,12 +440,16 @@ void _initMealPlanFeature() {
   sl.registerLazySingleton(() => SearchMealPlanIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlanInspirationOptionsUseCase(sl()));
   sl.registerLazySingleton(() => GetAddGroceryListPlanUseCase(sl()));
+  sl.registerLazySingleton(() => CreateGroceryListUseCase(sl()));
   sl.registerLazySingleton(() => GetAddMealAiPlanUseCase(sl()));
   sl.registerLazySingleton(() => GenerateAiMealIdeasUseCase(sl()));
   sl.registerLazySingleton(() => GetMealCategoriesUseCase(sl()));
   sl.registerLazySingleton(() => SaveAiMealPlanUseCase(sl()));
   sl.registerLazySingleton(() => SaveRecipeMealPlanUseCase(sl()));
   sl.registerLazySingleton(() => GetManageGroceryListDetailUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateGroceryItemBoughtUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateGroceryListUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateWeeklyGroceryWeekStartDayUseCase(sl()));
 }
 
 void _initUserSetupFeature() {

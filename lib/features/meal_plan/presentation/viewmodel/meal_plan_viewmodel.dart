@@ -9,6 +9,7 @@ import '../../domain/usecases/get_meal_plan_inspiration_options_usecase.dart';
 import '../../domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../domain/usecases/get_meal_plan_weather_usecase.dart';
 import '../../domain/usecases/search_meal_plan_ingredients_usecase.dart';
+import '../../domain/usecases/update_weekly_grocery_week_start_day_usecase.dart';
 
 enum GroceryListTabFilter { active, past }
 
@@ -32,6 +33,8 @@ class MealPlanViewModel extends ChangeNotifier {
   final GetMealPlanPreferencesUseCase _getPreferencesUseCase;
   final SearchMealPlanIngredientsUseCase _searchIngredientsUseCase;
   final GetMealPlanInspirationOptionsUseCase _getInspirationOptionsUseCase;
+  final UpdateWeeklyGroceryWeekStartDayUseCase
+  _updateWeeklyGroceryWeekStartDayUseCase;
   final String userId;
 
   MealPlanDashboard? _dashboard;
@@ -46,6 +49,7 @@ class MealPlanViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? _weatherErrorMessage;
   String? _preferencesErrorMessage;
+  String? _groceryActionErrorMessage;
   String _selectedWeatherCategoryId =
       WeatherCategoryService.categories.first.id;
   final List<MealPlanInspirationIngredient> _selectedIngredients = [];
@@ -69,11 +73,15 @@ class MealPlanViewModel extends ChangeNotifier {
     required GetMealPlanPreferencesUseCase getPreferencesUseCase,
     required SearchMealPlanIngredientsUseCase searchIngredientsUseCase,
     required GetMealPlanInspirationOptionsUseCase getInspirationOptionsUseCase,
+    required UpdateWeeklyGroceryWeekStartDayUseCase
+    updateWeeklyGroceryWeekStartDayUseCase,
   }) : _getDashboardUseCase = getDashboardUseCase,
        _getWeatherUseCase = getWeatherUseCase,
        _getPreferencesUseCase = getPreferencesUseCase,
        _searchIngredientsUseCase = searchIngredientsUseCase,
-       _getInspirationOptionsUseCase = getInspirationOptionsUseCase {
+       _getInspirationOptionsUseCase = getInspirationOptionsUseCase,
+       _updateWeeklyGroceryWeekStartDayUseCase =
+           updateWeeklyGroceryWeekStartDayUseCase {
     Future.microtask(loadDashboard);
   }
 
@@ -87,6 +95,7 @@ class MealPlanViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String? get weatherErrorMessage => _weatherErrorMessage;
   String? get preferencesErrorMessage => _preferencesErrorMessage;
+  String? get groceryActionErrorMessage => _groceryActionErrorMessage;
   List<WeatherCategory> get weatherCategories =>
       WeatherCategoryService.categories;
   String get selectedWeatherCategoryId => _selectedWeatherCategoryId;
@@ -158,10 +167,47 @@ class MealPlanViewModel extends ChangeNotifier {
     return lists.where((list) => list.status == status).toList();
   }
 
+  GroceryListSummary? get currentWeeklyGroceryList {
+    final lists = _dashboard?.groceryLists ?? const <GroceryListSummary>[];
+    for (final list in lists) {
+      if (list.isWeekly && list.status == GroceryListStatus.active) {
+        return list;
+      }
+    }
+    return null;
+  }
+
+  List<GroceryListSummary> get filteredCustomGroceryLists {
+    return filteredGroceryLists.where((list) => !list.isWeekly).toList();
+  }
+
+  List<GroceryListSummary> get filteredWeeklyHistory {
+    return filteredGroceryLists.where((list) => list.isWeekly).toList();
+  }
+
   void selectGroceryListTab(GroceryListTabFilter tab) {
     if (_selectedGroceryListTab == tab) return;
     _selectedGroceryListTab = tab;
     _notifyIfActive();
+  }
+
+  Future<void> updateWeeklyGroceryWeekStartDay(String weekStartDay) async {
+    _groceryActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _updateWeeklyGroceryWeekStartDayUseCase.execute(
+      userId: userId,
+      weekStartDay: weekStartDay,
+    );
+    if (_isDisposed) return;
+
+    result.ifLeft((failure) {
+      _groceryActionErrorMessage = failure.message;
+    });
+    result.ifRight((_) {
+      _groceryActionErrorMessage = null;
+    });
+    await loadDashboard();
   }
 
   void selectFilter(String filterId) {

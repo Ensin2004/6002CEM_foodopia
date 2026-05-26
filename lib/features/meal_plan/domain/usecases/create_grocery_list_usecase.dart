@@ -4,12 +4,12 @@ import '../../../../core/error/failures.dart';
 import '../entities/add_grocery_list_plan.dart';
 import '../repositories/meal_plan_repository.dart';
 
-class GetAddGroceryListPlanUseCase {
+class CreateGroceryListUseCase {
   final MealPlanRepository repository;
 
-  const GetAddGroceryListPlanUseCase(this.repository);
+  const CreateGroceryListUseCase(this.repository);
 
-  Future<Either<Failure, AddGroceryListPlan>> execute(String userId) {
-    return repository.getAddGroceryListPlan(userId);
+  Future<Either<Failure, String>> execute(CreateGroceryListRequest request) {
+    return repository.createGroceryList(request);
   }
 }

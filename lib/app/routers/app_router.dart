@@ -639,7 +639,13 @@ class AppRouter {
       GoRoute(
         name: 'addGroceryList',
         path: addGroceryList,
-        builder: (context, state) => const AddGroceryListPage(),
+        builder: (context, state) {
+          final args = state.extra as AddGroceryListArgs?;
+          return AddGroceryListPage(
+            userId:
+                args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+          );
+        },
       ),
 
       GoRoute(

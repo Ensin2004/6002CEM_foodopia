@@ -168,6 +168,8 @@ class GroceryListGroup {
 
 enum GroceryListStatus { active, past }
 
+enum GroceryListType { weekly, custom }
+
 class GroceryListSummary {
   final String id;
   final String title;
@@ -175,6 +177,8 @@ class GroceryListSummary {
   final DateTime startDate;
   final DateTime endDate;
   final GroceryListStatus status;
+  final GroceryListType type;
+  final String weekStartDay;
   final bool isDefault;
   final List<String> categories;
   final int extraCategoryCount;
@@ -186,8 +190,12 @@ class GroceryListSummary {
     required this.startDate,
     required this.endDate,
     required this.status,
+    this.type = GroceryListType.custom,
+    this.weekStartDay = 'monday',
     this.isDefault = false,
     this.categories = const [],
     this.extraCategoryCount = 0,
   });
+
+  bool get isWeekly => type == GroceryListType.weekly;
 }
