@@ -432,6 +432,51 @@ class MealPlanRemoteDataSource {
         });
   }
 
+  Future<void> addGroceryItem(AddGroceryItemRequest request) async {
+    final trimmedName = request.name.trim();
+    if (trimmedName.isEmpty) throw StateError('Ingredient name is required.');
+
+    final listRef = firestore.collection('grocery_lists').doc(request.listId);
+    final listDoc = await listRef.get();
+    if (!listDoc.exists) throw StateError('Grocery list not found.');
+
+    final itemRef = listRef.collection('items').doc();
+    final category = request.categoryName.trim().isEmpty
+        ? 'Uncategorized'
+        : request.categoryName.trim();
+
+    // Manual items keep category names so no app config entry is required.
+    await itemRef.set({
+      'ingredientName': trimmedName,
+      'ingredientCategoryId': '',
+      'categoryName': category,
+      'amount': request.amount < 0 ? 0 : request.amount,
+      'unit': request.unit.trim(),
+      'relatedMealPlanIds': request.relatedMealPlanIds,
+      'relatedRecipeIds': const <String>[],
+      'isBought': false,
+      'boughtAt': null,
+      'isManual': true,
+      'sortOrder': 9999,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await _refreshGroceryListTotals(listRef);
+  }
+
+  Future<void> deleteGroceryItem({
+    required String listId,
+    required String itemId,
+  }) async {
+    final listRef = firestore.collection('grocery_lists').doc(listId);
+    final itemRef = listRef.collection('items').doc(itemId);
+    final itemDoc = await itemRef.get();
+    if (!itemDoc.exists) throw StateError('Grocery item not found.');
+
+    await itemRef.delete();
+    await _refreshGroceryListTotals(listRef);
+  }
+
   Future<void> updateGroceryList({
     required String listId,
     required String name,
@@ -490,6 +535,28 @@ class MealPlanRemoteDataSource {
       );
     }
     await batch.commit();
+  }
+
+  Future<void> _refreshGroceryListTotals(
+    DocumentReference<Map<String, dynamic>> listRef,
+  ) async {
+    // Summary counters stay aligned with the items subcollection.
+    final items = await listRef.collection('items').get();
+    final categories = items.docs
+        .map((doc) {
+          final data = doc.data();
+          final id = data['ingredientCategoryId']?.toString() ?? '';
+          if (id.isNotEmpty) return id;
+          return data['categoryName']?.toString().trim() ?? 'Uncategorized';
+        })
+        .where((value) => value.isNotEmpty)
+        .toSet();
+
+    await listRef.set({
+      'totalItems': items.docs.length,
+      'totalCategories': categories.length,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<List<AddMealCategoryOption>> getMealCategories() async {
@@ -568,6 +635,9 @@ class MealPlanRemoteDataSource {
       'durationLabel': recipe.durationLabel,
       'difficultyLabel': recipe.difficultyLabel,
       'calories': recipe.calories,
+      'carbohydrates': recipe.carbohydrates,
+      'fat': recipe.fat,
+      'protein': recipe.protein,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -864,6 +934,7 @@ class MealPlanRemoteDataSource {
               .map((item) => item.toEntity())
               .toList();
           return ManageGroceryTimelineMeal(
+            mealPlanId: meal.id,
             title: meal.recipeName,
             mealType: meal.mealType,
             imagePath: meal.recipeImage,
@@ -1067,6 +1138,9 @@ class MealPlanRemoteDataSource {
         'Available in the recipe database',
       ],
       calories: _intValue(data['calories']) ?? 0,
+      carbohydrates: _doubleValue(data['carbohydrates']),
+      fat: _doubleValue(data['fat']),
+      protein: _doubleValue(data['protein']),
       categoryName: categories.isEmpty ? 'Recipe' : categories.join(', '),
     );
   }
@@ -1215,6 +1289,7 @@ class _GroceryItemDraft {
 class _GroceryItemRecord {
   final String id;
   final String name;
+  final String categoryId;
   final String categoryName;
   final double amount;
   final String unit;
@@ -1224,6 +1299,7 @@ class _GroceryItemRecord {
   const _GroceryItemRecord({
     required this.id,
     required this.name,
+    required this.categoryId,
     required this.categoryName,
     required this.amount,
     required this.unit,
@@ -1243,6 +1319,7 @@ class _GroceryItemRecord {
           data['ingredientName']?.toString() ??
           data['name']?.toString() ??
           'Ingredient',
+      categoryId: categoryId,
       categoryName:
           categoryNames[categoryId] ??
           data['categoryName']?.toString() ??
@@ -1260,6 +1337,8 @@ class _GroceryItemRecord {
     return ManageGroceryItem(
       id: id,
       name: name,
+      categoryId: categoryId,
+      categoryName: categoryName,
       quantityLabel: _displayQuantity(amount, unit),
       emoji: _displayEmoji(name),
       bought: bought,

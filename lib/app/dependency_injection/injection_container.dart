@@ -75,7 +75,9 @@ import '../../features/meal_plan/data/datasources/meal_plan_remote_datasource.da
 import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
 import '../../features/meal_plan/data/repositories/meal_plan_repository_impl.dart';
 import '../../features/meal_plan/domain/repositories/meal_plan_repository.dart';
+import '../../features/meal_plan/domain/usecases/add_grocery_item_usecase.dart';
 import '../../features/meal_plan/domain/usecases/create_grocery_list_usecase.dart';
+import '../../features/meal_plan/domain/usecases/delete_grocery_item_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_add_grocery_list_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_add_meal_ai_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/generate_ai_meal_ideas_usecase.dart';
@@ -450,6 +452,8 @@ void _initMealPlanFeature() {
   sl.registerLazySingleton(() => SaveAiMealPlanUseCase(sl()));
   sl.registerLazySingleton(() => SaveRecipeMealPlanUseCase(sl()));
   sl.registerLazySingleton(() => GetManageGroceryListDetailUseCase(sl()));
+  sl.registerLazySingleton(() => AddGroceryItemUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteGroceryItemUseCase(sl()));
   sl.registerLazySingleton(() => UpdateGroceryItemBoughtUseCase(sl()));
   sl.registerLazySingleton(() => UpdateGroceryListUseCase(sl()));
   sl.registerLazySingleton(() => UpdateWeeklyGroceryWeekStartDayUseCase(sl()));

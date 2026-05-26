@@ -209,44 +209,96 @@ class _WeeklyGroceriesCard extends StatelessWidget {
   }
 }
 
-class _GrocerySearchRow extends StatelessWidget {
+class _GrocerySearchRow extends StatefulWidget {
   const _GrocerySearchRow();
 
   @override
+  State<_GrocerySearchRow> createState() => _GrocerySearchRowState();
+}
+
+class _GrocerySearchRowState extends State<_GrocerySearchRow> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: context.read<MealPlanViewModel>().grocerySearchQuery,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final query = context.watch<MealPlanViewModel>().grocerySearchQuery;
+    if (_controller.text != query) {
+      _controller.value = TextEditingValue(
+        text: query,
+        selection: TextSelection.collapsed(offset: query.length),
+      );
+    }
+
     return Row(
       children: [
-        const Icon(Icons.tune, color: AppColors.textPrimary, size: 22),
+        IconButton(
+          tooltip: 'Active lists',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => context
+              .read<MealPlanViewModel>()
+              .selectGroceryListTab(GroceryListTabFilter.active),
+          icon: const Icon(Icons.tune, color: AppColors.textPrimary, size: 22),
+        ),
         const SizedBox(width: AppSpacing.sm),
-        const Icon(Icons.filter_alt, color: AppColors.textPrimary, size: 22),
+        IconButton(
+          tooltip: 'Past lists',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => context
+              .read<MealPlanViewModel>()
+              .selectGroceryListTab(GroceryListTabFilter.past),
+          icon: const Icon(
+            Icons.filter_alt,
+            color: AppColors.textPrimary,
+            size: 22,
+          ),
+        ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F8F8),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.search,
-                  color: AppColors.textSecondary.withValues(alpha: 0.35),
-                  size: 22,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: Text(
-                    'Search name, brand, category, ...',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary.withValues(alpha: 0.35),
+          child: TextField(
+            controller: _controller,
+            onChanged: context
+                .read<MealPlanViewModel>()
+                .updateGrocerySearchQuery,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search name, category, date...',
+              prefixIcon: Icon(
+                Icons.search,
+                color: AppColors.textSecondary.withValues(alpha: 0.45),
+              ),
+              suffixIcon: query.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear search',
+                      onPressed: context
+                          .read<MealPlanViewModel>()
+                          .clearGrocerySearchQuery,
+                      icon: const Icon(Icons.close, size: 18),
                     ),
-                  ),
-                ),
-              ],
+              filled: true,
+              fillColor: const Color(0xFFF8F8F8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 0,
+              ),
             ),
           ),
         ),

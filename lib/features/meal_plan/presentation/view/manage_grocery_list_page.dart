@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
+import '../../../../app/routers/app_router.dart';
+import '../../../../app/routers/router_args.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
@@ -11,6 +13,8 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../domain/entities/manage_grocery_list_detail.dart';
+import '../../domain/usecases/add_grocery_item_usecase.dart';
+import '../../domain/usecases/delete_grocery_item_usecase.dart';
 import '../../domain/usecases/get_manage_grocery_list_detail_usecase.dart';
 import '../../domain/usecases/update_grocery_item_bought_usecase.dart';
 import '../../domain/usecases/update_grocery_list_usecase.dart';
@@ -27,6 +31,8 @@ class ManageGroceryListPage extends StatelessWidget {
       create: (_) => ManageGroceryListViewModel(
         listId: listId,
         getDetailUseCase: sl<GetManageGroceryListDetailUseCase>(),
+        addGroceryItemUseCase: sl<AddGroceryItemUseCase>(),
+        deleteGroceryItemUseCase: sl<DeleteGroceryItemUseCase>(),
         updateItemBoughtUseCase: sl<UpdateGroceryItemBoughtUseCase>(),
         updateGroceryListUseCase: sl<UpdateGroceryListUseCase>(),
       ),
@@ -95,6 +101,10 @@ class _ManageContent extends StatelessWidget {
               _ListMode(detail: detail)
             else
               _TimelineMode(detail: detail),
+            if (viewModel.actionErrorMessage != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              _InlineActionError(message: viewModel.actionErrorMessage!),
+            ],
           ],
         ),
         if (viewModel.viewMode == ManageGroceryViewMode.list)
@@ -356,6 +366,176 @@ class _EditGroceryListDialogState extends State<_EditGroceryListDialog> {
   }
 }
 
+class _AddGroceryItemDialog extends StatefulWidget {
+  final List<String> relatedMealPlanIds;
+
+  const _AddGroceryItemDialog({this.relatedMealPlanIds = const []});
+
+  @override
+  State<_AddGroceryItemDialog> createState() => _AddGroceryItemDialogState();
+}
+
+class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _amountController;
+  late final TextEditingController _unitController;
+  late final TextEditingController _categoryController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _amountController = TextEditingController();
+    _unitController = TextEditingController();
+    _categoryController = TextEditingController(text: 'Uncategorized');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _amountController.dispose();
+    _unitController.dispose();
+    _categoryController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<ManageGroceryListViewModel>();
+
+    return AlertDialog(
+      title: Text('Add Ingredient', style: context.text.titleMedium),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Ingredient name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _amountController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Quantity',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: TextField(
+                    controller: _unitController,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Unit',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: _categoryController,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(
+                labelText: 'Category',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (viewModel.actionErrorMessage != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                viewModel.actionErrorMessage!,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.bodySmall?.copyWith(
+                  color: Colors.red.shade700,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: viewModel.isSaving
+              ? null
+              : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: viewModel.isSaving ? null : _saveItem,
+          child: Text(viewModel.isSaving ? 'Adding...' : 'Add'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _saveItem() async {
+    final saved = await context.read<ManageGroceryListViewModel>().addItem(
+      name: _nameController.text,
+      amountText: _amountController.text,
+      unit: _unitController.text,
+      categoryName: _categoryController.text,
+      relatedMealPlanIds: widget.relatedMealPlanIds,
+    );
+    if (saved && mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+}
+
+Future<void> _showAddIngredientDialog(
+  BuildContext context, {
+  List<String> relatedMealPlanIds = const [],
+}) async {
+  await showDialog<void>(
+    context: context,
+    builder: (_) => ChangeNotifierProvider.value(
+      value: context.read<ManageGroceryListViewModel>(),
+      child: _AddGroceryItemDialog(relatedMealPlanIds: relatedMealPlanIds),
+    ),
+  );
+}
+
+class _InlineActionError extends StatelessWidget {
+  final String message;
+
+  const _InlineActionError({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: AppSpacing.cardPadding,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F0),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.18)),
+      ),
+      child: Text(
+        message,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+        style: context.text.bodySmall?.copyWith(color: Colors.red.shade700),
+      ),
+    );
+  }
+}
+
 class _HeaderMetric extends StatelessWidget {
   final IconData icon;
   final String value;
@@ -440,27 +620,31 @@ class _ListMode extends StatelessWidget {
                 style: context.text.titleMedium,
               ),
             ),
-            Text(
-              'View Plan',
-              style: context.text.bodyMedium?.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w800,
+            InkWell(
+              onTap: () => context.push(
+                AppRouter.mealPlan,
+                extra: const MealPlanArgs(initialTabIndex: 0),
+              ),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xs,
+                  vertical: AppSpacing.xs,
+                ),
+                child: Text(
+                  'View Plan',
+                  style: context.text.bodyMedium?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ),
             const Icon(Icons.chevron_right, color: AppColors.primary),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        SizedBox(
-          height: 112,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: detail.upcomingMeals.length,
-            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
-            itemBuilder: (context, index) =>
-                _UpcomingMealCard(meal: detail.upcomingMeals[index]),
-          ),
-        ),
+        _UpcomingMealsCarousel(meals: detail.upcomingMeals),
         const SizedBox(height: AppSpacing.xl),
         ...detail.categories.map(
           (category) => _GroceryCategoryCard(category: category),
@@ -470,70 +654,219 @@ class _ListMode extends StatelessWidget {
   }
 }
 
+class _UpcomingMealsCarousel extends StatelessWidget {
+  final List<ManageUpcomingMeal> meals;
+
+  const _UpcomingMealsCarousel({required this.meals});
+
+  @override
+  Widget build(BuildContext context) {
+    if (meals.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: AppSpacing.cardPadding,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F8F8),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8F8EB),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.restaurant_menu,
+                color: AppColors.primary,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                'No meals are linked to this grocery list yet.',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.bodyMedium,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Compact cards reduce image letterboxing while staying readable.
+        final cardWidth = (constraints.maxWidth * 0.52).clamp(172.0, 202.0);
+        return SizedBox(
+          height: 104,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: meals.length,
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
+            itemBuilder: (context, index) =>
+                _UpcomingMealCard(meal: meals[index], width: cardWidth),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _UpcomingMealCard extends StatelessWidget {
   final ManageUpcomingMeal meal;
+  final double width;
 
-  const _UpcomingMealCard({required this.meal});
+  const _UpcomingMealCard({required this.meal, required this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        elevation: 0,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Row(
+            children: [
+              Container(
+                width: 88,
+                height: double.infinity,
+                padding: const EdgeInsets.all(5),
+                color: const Color(0xFFF6F7F6),
+                child: _MealImage(
+                  path: meal.imagePath,
+                  width: 78,
+                  height: 94,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.sm,
+                    AppSpacing.xs,
+                    AppSpacing.sm,
+                    AppSpacing.xs,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _MealPill(
+                        icon: Icons.calendar_today,
+                        label: DateFormat('d MMM').format(meal.date),
+                      ),
+                      Text(
+                        meal.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.bodySmall?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      _MealPill(
+                        icon: _mealTypeIcon(meal.mealType),
+                        label: meal.mealType,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  IconData _mealTypeIcon(String mealType) {
+    final value = mealType.toLowerCase();
+    if (value.contains('breakfast')) return Icons.wb_sunny_outlined;
+    if (value.contains('lunch')) return Icons.wb_twilight_outlined;
+    if (value.contains('dinner')) return Icons.nights_stay_outlined;
+    return Icons.restaurant_outlined;
+  }
+}
+
+class _MealPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _MealPill({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 152,
-      padding: const EdgeInsets.all(6),
+      constraints: const BoxConstraints(maxWidth: 124),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(6),
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: _MealImage(path: meal.imagePath, width: 64, height: 86),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F8EB),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    DateFormat('d MMM').format(meal.date),
-                    style: context.text.bodySmall?.copyWith(
-                      color: AppColors.primary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  meal.mealType,
-                  style: context.text.bodySmall?.copyWith(fontSize: 10),
-                ),
-                Text(
-                  meal.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.bodySmall?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+          Icon(icon, color: AppColors.primary, size: 13),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall?.copyWith(
+                color: AppColors.primary,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
+
+IconData _ingredientCategoryIcon(String category) {
+  final value = category.toLowerCase();
+  if (value.contains('dairy') || value.contains('drink')) {
+    return Icons.local_drink_outlined;
+  }
+  if (value.contains('meat') ||
+      value.contains('protein') ||
+      value.contains('seafood')) {
+    return Icons.set_meal_outlined;
+  }
+  if (value.contains('bakery') ||
+      value.contains('bread') ||
+      value.contains('grain')) {
+    return Icons.bakery_dining_outlined;
+  }
+  if (value.contains('snack')) return Icons.cookie_outlined;
+  if (value.contains('spice') || value.contains('sauce')) {
+    return Icons.soup_kitchen_outlined;
+  }
+  if (value.contains('frozen')) return Icons.ac_unit_outlined;
+  return Icons.eco_outlined;
 }
 
 class _GroceryCategoryCard extends StatelessWidget {
@@ -565,7 +898,24 @@ class _GroceryCategoryCard extends StatelessWidget {
           left: BorderSide(color: AppColors.border),
           right: BorderSide(color: AppColors.border),
         ),
-        title: Text(category.title, style: context.text.titleMedium),
+        title: Row(
+          children: [
+            Icon(
+              _ingredientCategoryIcon(category.title),
+              color: AppColors.primary,
+              size: 20,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                category.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.titleMedium,
+              ),
+            ),
+          ],
+        ),
         trailing: Text(
           '${visibleItems.length} items',
           style: context.text.labelLarge?.copyWith(color: AppColors.primary),
@@ -592,8 +942,6 @@ class _GroceryItemRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, 8),
       child: Row(
         children: [
-          Text(item.emoji, style: const TextStyle(fontSize: 28)),
-          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -615,6 +963,16 @@ class _GroceryItemRow extends StatelessWidget {
             onChanged: (_) => context
                 .read<ManageGroceryListViewModel>()
                 .toggleBought(item.id),
+          ),
+          IconButton(
+            tooltip: 'Delete ingredient',
+            visualDensity: VisualDensity.compact,
+            onPressed: viewModel.isSaving
+                ? null
+                : () => context.read<ManageGroceryListViewModel>().deleteItem(
+                    item.id,
+                  ),
+            icon: const Icon(Icons.delete_outline, size: 18),
           ),
         ],
       ),
@@ -867,13 +1225,8 @@ class _TimelineMeal extends StatelessWidget {
                           ),
                         ),
                         if (isExpanded) ...[
-                          ...meal.ingredients.map(
-                            (item) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.sm,
-                              ),
-                              child: _TimelineIngredient(item: item),
-                            ),
+                          _GroupedTimelineIngredients(
+                            ingredients: meal.ingredients,
                           ),
                           Padding(
                             padding: const EdgeInsets.fromLTRB(
@@ -886,7 +1239,10 @@ class _TimelineMeal extends StatelessWidget {
                               width: double.infinity,
                               height: 30,
                               child: OutlinedButton(
-                                onPressed: () {},
+                                onPressed: () => _showAddIngredientDialog(
+                                  context,
+                                  relatedMealPlanIds: [meal.mealPlanId],
+                                ),
                                 style: OutlinedButton.styleFrom(
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -919,15 +1275,111 @@ class _TimelineMeal extends StatelessWidget {
   }
 }
 
+class _GroupedTimelineIngredients extends StatelessWidget {
+  final List<ManageGroceryItem> ingredients;
+
+  const _GroupedTimelineIngredients({required this.ingredients});
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<ManageGroceryListViewModel>();
+    final grouped = <String, _TimelineIngredientGroup>{};
+    for (final item in ingredients) {
+      if (!viewModel.shouldShowItem(item.id)) continue;
+      final key = item.categoryId.isEmpty ? item.categoryName : item.categoryId;
+      grouped
+          .putIfAbsent(
+            key,
+            () => _TimelineIngredientGroup(title: item.categoryName),
+          )
+          .items
+          .add(item);
+    }
+    final categories = grouped.values.toList()
+      ..sort((first, second) => first.title.compareTo(second.title));
+
+    return Column(
+      children: categories
+          .map(
+            (group) => _TimelineIngredientCategory(
+              title: group.title,
+              ingredients: group.items,
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _TimelineIngredientGroup {
+  final String title;
+  final List<ManageGroceryItem> items = [];
+
+  _TimelineIngredientGroup({required this.title});
+}
+
+class _TimelineIngredientCategory extends StatelessWidget {
+  final String title;
+  final List<ManageGroceryItem> ingredients;
+
+  const _TimelineIngredientCategory({
+    required this.title,
+    required this.ingredients,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        0,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _ingredientCategoryIcon(title),
+                color: AppColors.primary,
+                size: 16,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.bodySmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              _CountBadge(label: '${ingredients.length} items'),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ...ingredients.map((item) => _TimelineIngredient(item: item)),
+        ],
+      ),
+    );
+  }
+}
+
 class _MealImage extends StatelessWidget {
   final String path;
   final double width;
   final double height;
+  final BoxFit fit;
 
   const _MealImage({
     required this.path,
     required this.width,
     required this.height,
+    this.fit = BoxFit.cover,
   });
 
   @override
@@ -938,7 +1390,7 @@ class _MealImage extends StatelessWidget {
         path,
         width: width,
         height: height,
-        fit: BoxFit.cover,
+        fit: fit,
         errorBuilder: (_, __, ___) =>
             _ImageFallback(width: width, height: height),
       );
@@ -947,7 +1399,7 @@ class _MealImage extends StatelessWidget {
       path,
       width: width,
       height: height,
-      fit: BoxFit.cover,
+      fit: fit,
       errorBuilder: (_, __, ___) =>
           _ImageFallback(width: width, height: height),
     );
@@ -988,12 +1440,19 @@ class _TimelineIngredient extends StatelessWidget {
           onChanged: (_) =>
               context.read<ManageGroceryListViewModel>().toggleBought(item.id),
         ),
-        Text(item.emoji),
-        const SizedBox(width: AppSpacing.sm),
         Expanded(child: Text(item.name, style: context.text.bodySmall)),
         Text(item.quantityLabel, style: context.text.bodySmall),
         const SizedBox(width: AppSpacing.sm),
-        const Icon(Icons.delete_outline, size: 16),
+        IconButton(
+          tooltip: 'Delete ingredient',
+          visualDensity: VisualDensity.compact,
+          onPressed: viewModel.isSaving
+              ? null
+              : () => context.read<ManageGroceryListViewModel>().deleteItem(
+                  item.id,
+                ),
+          icon: const Icon(Icons.delete_outline, size: 16),
+        ),
       ],
     );
   }
@@ -1032,16 +1491,20 @@ class _AddIngredientBar extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Container(
-            height: 44,
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            onTap: () => _showAddIngredientDialog(context),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 44,
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text('Add Ingredient', style: context.text.bodyMedium),
             ),
-            child: Text('Add Ingredient', style: context.text.bodyMedium),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -1049,7 +1512,7 @@ class _AddIngredientBar extends StatelessWidget {
           width: 88,
           height: 44,
           child: ElevatedButton(
-            onPressed: () {},
+            onPressed: () => _showAddIngredientDialog(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,

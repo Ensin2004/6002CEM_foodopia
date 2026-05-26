@@ -253,6 +253,31 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
   }
 
   @override
+  Future<Either<Failure, void>> addGroceryItem(
+    AddGroceryItemRequest request,
+  ) async {
+    try {
+      await remoteDataSource.addGroceryItem(request);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteGroceryItem({
+    required String listId,
+    required String itemId,
+  }) async {
+    try {
+      await remoteDataSource.deleteGroceryItem(listId: listId, itemId: itemId);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> updateGroceryItemBought({
     required String listId,
     required String itemId,

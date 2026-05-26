@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/manage_grocery_list_detail.dart';
+import '../../domain/usecases/add_grocery_item_usecase.dart';
+import '../../domain/usecases/delete_grocery_item_usecase.dart';
 import '../../domain/usecases/get_manage_grocery_list_detail_usecase.dart';
 import '../../domain/usecases/update_grocery_item_bought_usecase.dart';
 import '../../domain/usecases/update_grocery_list_usecase.dart';
@@ -11,6 +13,8 @@ enum ManageGroceryViewMode { list, timeline }
 class ManageGroceryListViewModel extends ChangeNotifier {
   final String listId;
   final GetManageGroceryListDetailUseCase _getDetailUseCase;
+  final AddGroceryItemUseCase _addGroceryItemUseCase;
+  final DeleteGroceryItemUseCase _deleteGroceryItemUseCase;
   final UpdateGroceryItemBoughtUseCase _updateItemBoughtUseCase;
   final UpdateGroceryListUseCase _updateGroceryListUseCase;
 
@@ -29,9 +33,13 @@ class ManageGroceryListViewModel extends ChangeNotifier {
   ManageGroceryListViewModel({
     required this.listId,
     required GetManageGroceryListDetailUseCase getDetailUseCase,
+    required AddGroceryItemUseCase addGroceryItemUseCase,
+    required DeleteGroceryItemUseCase deleteGroceryItemUseCase,
     required UpdateGroceryItemBoughtUseCase updateItemBoughtUseCase,
     required UpdateGroceryListUseCase updateGroceryListUseCase,
   }) : _getDetailUseCase = getDetailUseCase,
+       _addGroceryItemUseCase = addGroceryItemUseCase,
+       _deleteGroceryItemUseCase = deleteGroceryItemUseCase,
        _updateItemBoughtUseCase = updateItemBoughtUseCase,
        _updateGroceryListUseCase = updateGroceryListUseCase {
     Future.microtask(loadDetail);
@@ -114,6 +122,77 @@ class ManageGroceryListViewModel extends ChangeNotifier {
   }
 
   bool isBought(String itemId) => _boughtItemIds.contains(itemId);
+
+  // Manual item input stays UI-free for MVVM separation.
+  Future<bool> addItem({
+    required String name,
+    required String amountText,
+    required String unit,
+    required String categoryName,
+    List<String> relatedMealPlanIds = const [],
+  }) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      _actionErrorMessage = 'Ingredient name is required.';
+      _notifyIfActive();
+      return false;
+    }
+
+    final amount = double.tryParse(amountText.trim());
+    if (amountText.trim().isNotEmpty && amount == null) {
+      _actionErrorMessage = 'Quantity must be a number.';
+      _notifyIfActive();
+      return false;
+    }
+
+    _isSaving = true;
+    _actionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _addGroceryItemUseCase.execute(
+      AddGroceryItemRequest(
+        listId: listId,
+        name: trimmedName,
+        amount: amount ?? 0,
+        unit: unit,
+        categoryName: categoryName,
+        relatedMealPlanIds: relatedMealPlanIds,
+      ),
+    );
+    if (_isDisposed) return false;
+
+    var saved = false;
+    result.ifRight((_) => saved = true);
+    result.ifLeft((failure) => _actionErrorMessage = failure.message);
+    _isSaving = false;
+    _notifyIfActive();
+
+    if (saved) {
+      await loadDetail();
+    }
+    return saved;
+  }
+
+  // Detail reload keeps category counts and timeline grouping fresh.
+  Future<void> deleteItem(String itemId) async {
+    _isSaving = true;
+    _actionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _deleteGroceryItemUseCase.execute(
+      listId: listId,
+      itemId: itemId,
+    );
+    if (_isDisposed) return;
+
+    result.ifLeft((failure) => _actionErrorMessage = failure.message);
+    _isSaving = false;
+    _notifyIfActive();
+
+    if (result.isRight()) {
+      await loadDetail();
+    }
+  }
 
   bool isTimelineDayExpanded(DateTime date) {
     return !_collapsedTimelineDayKeys.contains(_dayKey(date));

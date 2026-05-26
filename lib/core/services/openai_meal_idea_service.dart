@@ -96,7 +96,13 @@ Cooking time: ${request.cookingTime}
 Difficulty: ${request.difficulty}
 Serving size: ${request.servingSize}
 
-Each idea needs: name, recipe category, short description, prep time label, difficulty label, serving label, calories estimate, 3 recommendation reasons, 4-8 ingredients with amount/unit, 5-8 cooking instructions, and a food photography image prompt.
+Each idea needs: name, recipe category, short description, prep time label, difficulty label, serving label, AI-estimated nutrition, 3 recommendation reasons, 4-8 ingredients with amount/unit, 5-8 cooking instructions, and a food photography image prompt.
+
+Nutrition rules:
+- Use AI estimates only. Do not use or reference USDA data.
+- Recipe nutrition is for the full suggested serving label.
+- Ingredient nutrition is for the provided ingredient amount and unit.
+- Use kcal for calories and grams for carbohydrates, fat, and protein.
 ''';
   }
 
@@ -123,6 +129,10 @@ Each idea needs: name, recipe category, short description, prep time label, diff
             name: item['name']?.toString().trim() ?? '',
             amount: (item['amount'] as num?)?.toDouble() ?? 0,
             unit: item['unit']?.toString().trim() ?? '',
+            calories: _numberValue(item['calories']),
+            carbohydrates: _numberValue(item['carbohydrates']),
+            fat: _numberValue(item['fat']),
+            protein: _numberValue(item['protein']),
           ),
         )
         .where((item) => item.name.isNotEmpty)
@@ -146,9 +156,17 @@ Each idea needs: name, recipe category, short description, prep time label, diff
           .where((item) => item.trim().isNotEmpty)
           .toList(),
       calories: (json['calories'] as num?)?.round() ?? 0,
+      carbohydrates: _numberValue(json['carbohydrates']),
+      fat: _numberValue(json['fat']),
+      protein: _numberValue(json['protein']),
       imagePrompt: json['imagePrompt']?.toString().trim() ?? title,
       categoryName: json['categoryName']?.toString().trim() ?? 'Main Dish',
     );
+  }
+
+  double _numberValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   Future<AddMealAiRecipe> _withGeneratedImage(AddMealAiRecipe recipe) async {
@@ -195,6 +213,9 @@ Each idea needs: name, recipe category, short description, prep time label, diff
         ingredients: recipe.ingredients,
         instructions: recipe.instructions,
         calories: recipe.calories,
+        carbohydrates: recipe.carbohydrates,
+        fat: recipe.fat,
+        protein: recipe.protein,
         imagePrompt: recipe.imagePrompt,
         categoryName: recipe.categoryName,
       );
@@ -223,6 +244,9 @@ const Map<String, dynamic> _recipeSchema = {
           'difficultyLabel',
           'servingLabel',
           'calories',
+          'carbohydrates',
+          'fat',
+          'protein',
           'reasons',
           'ingredients',
           'instructions',
@@ -236,6 +260,9 @@ const Map<String, dynamic> _recipeSchema = {
           'difficultyLabel': {'type': 'string'},
           'servingLabel': {'type': 'string'},
           'calories': {'type': 'integer'},
+          'carbohydrates': {'type': 'number'},
+          'fat': {'type': 'number'},
+          'protein': {'type': 'number'},
           'reasons': {
             'type': 'array',
             'items': {'type': 'string'},
@@ -245,11 +272,23 @@ const Map<String, dynamic> _recipeSchema = {
             'items': {
               'type': 'object',
               'additionalProperties': false,
-              'required': ['name', 'amount', 'unit'],
+              'required': [
+                'name',
+                'amount',
+                'unit',
+                'calories',
+                'carbohydrates',
+                'fat',
+                'protein',
+              ],
               'properties': {
                 'name': {'type': 'string'},
                 'amount': {'type': 'number'},
                 'unit': {'type': 'string'},
+                'calories': {'type': 'number'},
+                'carbohydrates': {'type': 'number'},
+                'fat': {'type': 'number'},
+                'protein': {'type': 'number'},
               },
             },
           },

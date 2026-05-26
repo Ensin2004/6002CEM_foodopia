@@ -27,8 +27,61 @@ const _iconOptions = {
   'cake': Icons.cake_outlined,
   'cupcake': Icons.bakery_dining,
   'drink': Icons.local_drink_outlined,
+  'sauce': Icons.soup_kitchen_outlined,
+  'vegetables': Icons.eco_outlined,
+  'poultry': Icons.kebab_dining_outlined,
+  'oils': Icons.oil_barrel_outlined,
+  'nuts_seeds': Icons.spa_outlined,
+  'seafood': Icons.set_meal_outlined,
+  'legumes': Icons.grass_outlined,
+  'beverages': Icons.local_drink_outlined,
+  'herbs_spices': Icons.local_florist_outlined,
+  'eggs': Icons.egg_alt_outlined,
+  'dairy': Icons.icecream_outlined,
+  'processed_foods': Icons.fastfood_outlined,
+  'sweeteners': Icons.hive_outlined,
+  'fruits': Icons.local_pizza_outlined,
+  'meat': Icons.dinner_dining_outlined,
+  'grains': Icons.rice_bowl_outlined,
   'more': Icons.apps,
 };
+
+const _ingredientCategoryIconKeys = {
+  'others': 'more',
+  'sauces & condiments': 'sauce',
+  'vegetables': 'vegetables',
+  'poultry': 'poultry',
+  'oils & fats': 'oils',
+  'nuts & seeds': 'nuts_seeds',
+  'seafood': 'seafood',
+  'legumes': 'legumes',
+  'beverages': 'beverages',
+  'herbs & spices': 'herbs_spices',
+  'eggs': 'eggs',
+  'dairy': 'dairy',
+  'processed foods': 'processed_foods',
+  'sweeteners': 'sweeteners',
+  'fruits': 'fruits',
+  'meat': 'meat',
+  'grains': 'grains',
+};
+
+IconData _iconForManageItem(
+  AdminManageCategory category,
+  AdminManageItem item,
+) {
+  final savedIcon = _iconOptions[item.iconKey];
+  if (savedIcon != null) return savedIcon;
+
+  if (category.id == 'ingredient_categories') {
+    final defaultIconKey =
+        _ingredientCategoryIconKeys[item.name.trim().toLowerCase()];
+    final defaultIcon = _iconOptions[defaultIconKey];
+    if (defaultIcon != null) return defaultIcon;
+  }
+
+  return category.icon;
+}
 
 /// Admin manage screen following the high-fidelity prototype.
 class AdminManagePage extends StatelessWidget {
@@ -324,7 +377,7 @@ class _ManageItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.read<AdminManageViewModel>();
-    final icon = _iconOptions[item.iconKey] ?? category.icon;
+    final icon = _iconForManageItem(category, item);
 
     return Card(
       elevation: 0,
@@ -435,7 +488,7 @@ class _AdminManageFormPage extends StatefulWidget {
 class _AdminManageFormPageState extends State<_AdminManageFormPage> {
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
-  String _iconKey = 'sunny';
+  String? _iconKey;
   bool _isActive = true;
 
   @override
@@ -446,7 +499,8 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
     _descriptionController = TextEditingController(
       text: item?.description ?? '',
     );
-    _iconKey = item?.iconKey ?? 'sunny';
+    final savedIconKey = item?.iconKey ?? '';
+    _iconKey = savedIconKey.isEmpty ? null : savedIconKey;
     _isActive = item?.isActive ?? true;
   }
 
@@ -497,7 +551,7 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
             maxLines: 5,
           ),
           const SizedBox(height: 24),
-          const AdminManageFormLabel('Category Icon'),
+          const AdminManageFormLabel('Category Icon (Optional)'),
           const SizedBox(height: 8),
           AdminManageIconGrid(
             iconOptions: _iconOptions,
@@ -559,7 +613,7 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
       id: widget.item?.id,
       name: _nameController.text,
       description: _descriptionController.text,
-      iconKey: _iconKey,
+      iconKey: _iconKey ?? '',
       sortOrder: sortOrder,
       isActive: _isActive,
     );

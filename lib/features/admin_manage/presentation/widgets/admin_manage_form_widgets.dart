@@ -18,8 +18,8 @@ class AdminManageFormLabel extends StatelessWidget {
 
 class AdminManageIconGrid extends StatelessWidget {
   final Map<String, IconData> iconOptions;
-  final String selectedKey;
-  final ValueChanged<String> onSelected;
+  final String? selectedKey;
+  final ValueChanged<String?> onSelected;
   final Color selectedColor;
   final Color selectedIconColor;
 
@@ -44,7 +44,7 @@ class AdminManageIconGrid extends StatelessWidget {
         final selected = entry.key == selectedKey;
 
         return InkWell(
-          onTap: () => onSelected(entry.key),
+          onTap: () => onSelected(selected ? null : entry.key),
           borderRadius: BorderRadius.circular(8),
           child: Container(
             decoration: BoxDecoration(

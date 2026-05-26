@@ -272,21 +272,6 @@ class _IconPicker extends StatelessWidget {
               ),
             );
           }),
-          Container(
-            width: 42,
-            height: 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: const Icon(
-              Icons.add,
-              color: AppColors.textPrimary,
-              size: 20,
-            ),
-          ),
         ],
       ),
     );

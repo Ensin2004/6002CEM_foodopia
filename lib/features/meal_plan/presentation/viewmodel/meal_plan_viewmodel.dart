@@ -50,6 +50,7 @@ class MealPlanViewModel extends ChangeNotifier {
   String? _weatherErrorMessage;
   String? _preferencesErrorMessage;
   String? _groceryActionErrorMessage;
+  String _grocerySearchQuery = '';
   String _selectedWeatherCategoryId =
       WeatherCategoryService.categories.first.id;
   final List<MealPlanInspirationIngredient> _selectedIngredients = [];
@@ -96,6 +97,7 @@ class MealPlanViewModel extends ChangeNotifier {
   String? get weatherErrorMessage => _weatherErrorMessage;
   String? get preferencesErrorMessage => _preferencesErrorMessage;
   String? get groceryActionErrorMessage => _groceryActionErrorMessage;
+  String get grocerySearchQuery => _grocerySearchQuery;
   List<WeatherCategory> get weatherCategories =>
       WeatherCategoryService.categories;
   String get selectedWeatherCategoryId => _selectedWeatherCategoryId;
@@ -164,7 +166,17 @@ class MealPlanViewModel extends ChangeNotifier {
     final status = _selectedGroceryListTab == GroceryListTabFilter.active
         ? GroceryListStatus.active
         : GroceryListStatus.past;
-    return lists.where((list) => list.status == status).toList();
+    final query = _grocerySearchQuery.trim().toLowerCase();
+    return lists.where((list) {
+      if (list.status != status) return false;
+      if (query.isEmpty) return true;
+      final dateText = '${list.startDate} ${list.endDate}'.toLowerCase();
+      final categoryText = list.categories.join(' ').toLowerCase();
+      return list.title.toLowerCase().contains(query) ||
+          categoryText.contains(query) ||
+          dateText.contains(query) ||
+          list.weekStartDay.toLowerCase().contains(query);
+    }).toList();
   }
 
   GroceryListSummary? get currentWeeklyGroceryList {
@@ -188,6 +200,17 @@ class MealPlanViewModel extends ChangeNotifier {
   void selectGroceryListTab(GroceryListTabFilter tab) {
     if (_selectedGroceryListTab == tab) return;
     _selectedGroceryListTab = tab;
+    _notifyIfActive();
+  }
+
+  void updateGrocerySearchQuery(String query) {
+    _grocerySearchQuery = query;
+    _notifyIfActive();
+  }
+
+  void clearGrocerySearchQuery() {
+    if (_grocerySearchQuery.isEmpty) return;
+    _grocerySearchQuery = '';
     _notifyIfActive();
   }
 

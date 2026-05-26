@@ -51,6 +51,11 @@ abstract class MealPlanRepository {
   Future<Either<Failure, ManageGroceryListDetail>> getManageGroceryListDetail(
     String listId,
   );
+  Future<Either<Failure, void>> addGroceryItem(AddGroceryItemRequest request);
+  Future<Either<Failure, void>> deleteGroceryItem({
+    required String listId,
+    required String itemId,
+  });
   Future<Either<Failure, void>> updateGroceryItemBought({
     required String listId,
     required String itemId,

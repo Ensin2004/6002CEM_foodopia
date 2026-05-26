@@ -1975,6 +1975,12 @@ class _RecipeResultCard extends StatelessWidget {
                       '${recipe.durationLabel}   ${recipe.difficultyLabel}',
                       style: context.text.bodySmall,
                     ),
+                    Text(
+                      _nutritionSummary(recipe),
+                      style: context.text.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     Text(recipe.description, style: context.text.bodySmall),
                   ],
                 ),
@@ -2071,6 +2077,12 @@ class _ReviewRecipeCard extends StatelessWidget {
                   '${recipe.durationLabel} | ${recipe.difficultyLabel} | ${recipe.servingLabel}',
                   style: context.text.bodySmall,
                 ),
+                Text(
+                  _nutritionSummary(recipe),
+                  style: context.text.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(recipe.description, style: context.text.bodySmall),
               ],
@@ -2088,6 +2100,20 @@ class _ReviewRecipeCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _nutritionSummary(AddMealAiRecipe recipe) {
+  final macros = [
+    '${recipe.calories} kcal',
+    'C ${_macroValue(recipe.carbohydrates)}g',
+    'P ${_macroValue(recipe.protein)}g',
+    'F ${_macroValue(recipe.fat)}g',
+  ];
+  return macros.join(' | ');
+}
+
+String _macroValue(double value) {
+  return value.toStringAsFixed(value % 1 == 0 ? 0 : 1);
 }
 
 class _DateScroller extends StatelessWidget {
