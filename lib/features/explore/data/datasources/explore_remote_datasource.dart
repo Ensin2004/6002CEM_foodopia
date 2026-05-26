@@ -462,11 +462,17 @@ class ExploreRemoteDataSource {
     DocumentReference<Map<String, dynamic>> recipe,
   ) async {
     final snapshot = await recipe.collection('ingredients').get();
+    final categoryIds = snapshot.docs
+        .map((doc) => _stringValue(doc.data()['ingredient_categories_id']))
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final categoryNames = await _resolveIngredientCategoryNames(categoryIds);
 
     return Future.wait(
       snapshot.docs.map((doc) async {
         final data = doc.data();
         final amount = _doubleValue(data['amount']);
+        final categoryId = _stringValue(data['ingredient_categories_id']);
         final unit = await _resolveIngredientUnitName(
           customUnitId: _stringValue(data['customUnitId']),
           unitId: _stringValue(data['unitId']),
@@ -482,9 +488,31 @@ class ExploreRemoteDataSource {
             fallback: 'assets/images/meal1.png',
           ),
           nutritionPercent: 0,
+          ingredientCategoryId: categoryId,
+          ingredientCategoryName: categoryNames[categoryId] ?? '',
         );
       }).toList(),
     );
+  }
+
+  Future<Map<String, String>> _resolveIngredientCategoryNames(
+    Set<String> categoryIds,
+  ) async {
+    if (categoryIds.isEmpty) return const {};
+
+    final entries = await Future.wait(
+      categoryIds.map((id) async {
+        final doc = await firestore
+            .collection('app_config')
+            .doc('ingredient_categories')
+            .collection('items')
+            .doc(id)
+            .get();
+        return MapEntry(id, _stringValue(doc.data()?['name'], fallback: id));
+      }),
+    );
+
+    return Map.fromEntries(entries);
   }
 
   Future<String> _resolveIngredientUnitName({
