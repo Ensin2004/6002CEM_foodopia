@@ -213,6 +213,7 @@ class AddRecipeRemoteDataSource {
     };
     final categoryIds = categories.map((item) => item.id).toSet();
     final othersCategoryId = _getOthersCategoryId(categories);
+    final recipeNutrients = _emptyNutrients();
     final batch = firestore.batch();
 
     for (final doc in existingIngredients.docs) {
@@ -238,6 +239,8 @@ class AddRecipeRemoteDataSource {
           ? analysis!.ingredientCategoryId
           : othersCategoryId;
       final nutrients = _normalizedNutrients(ingredient.usdaNutrients);
+      final ingredientNutrients = nutrients ?? analysis?.nutrients;
+      _addNutrients(recipeNutrients, ingredientNutrients);
 
       final model = AddRecipeIngredientModel(
         name: ingredient.name,
@@ -246,14 +249,17 @@ class AddRecipeRemoteDataSource {
         unitId: ingredient.unitId.isEmpty ? null : ingredient.unitId,
         customUnitId: customUnitId,
         usdaId: ingredient.usdaId,
-        nutrients: nutrients ?? analysis?.nutrients,
+        nutrients: ingredientNutrients,
         ingredientCategoryId: categoryId,
       );
 
       batch.set(ingredientCollection.doc(), model.toFirestore());
     }
 
-    batch.update(recipeRef, {'updatedAt': FieldValue.serverTimestamp()});
+    batch.update(recipeRef, {
+      'totalNutrients': recipeNutrients,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
 
     await batch.commit();
   }
@@ -363,6 +369,20 @@ class AddRecipeRemoteDataSource {
       return _numericValue(value['value'] ?? value['amount']);
     }
     return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  Map<String, dynamic> _emptyNutrients() {
+    return {'calories': 0.0, 'carbohydrates': 0.0, 'fat': 0.0, 'protein': 0.0};
+  }
+
+  void _addNutrients(
+    Map<String, dynamic> total,
+    Map<String, dynamic>? nutrients,
+  ) {
+    if (nutrients == null) return;
+    for (final key in const ['calories', 'carbohydrates', 'fat', 'protein']) {
+      total[key] = _numericValue(total[key]) + _numericValue(nutrients[key]);
+    }
   }
 
   Future<String> _saveCustomUnit(String name) async {
