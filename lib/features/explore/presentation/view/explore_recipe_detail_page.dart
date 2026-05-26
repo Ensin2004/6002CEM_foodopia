@@ -819,7 +819,8 @@ class _IngredientsList extends StatelessWidget {
           const SizedBox(height: 6),
           PrimaryButton(
             onPressed: () {},
-            text: 'Start Cooking',
+            text:
+                'Start Cooking (Total Calorie: ${recipe.nutrition.calories} kcal)',
             verticalPadding: 14,
           ),
         ],
@@ -966,6 +967,8 @@ class _NutritionTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = context.text;
     final nutrition = recipe.nutrition;
+    final totalMacroGrams =
+        nutrition.carbsGrams + nutrition.proteinGrams + nutrition.fatGrams;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1041,16 +1044,19 @@ class _NutritionTab extends StatelessWidget {
                         _MacroRow(
                           label: 'Carbohydrate',
                           grams: nutrition.carbsGrams,
+                          totalGrams: totalMacroGrams,
                           color: AppColors.primary,
                         ),
                         _MacroRow(
                           label: 'Protein',
                           grams: nutrition.proteinGrams,
+                          totalGrams: totalMacroGrams,
                           color: AppColors.error,
                         ),
                         _MacroRow(
                           label: 'Fat',
                           grams: nutrition.fatGrams,
+                          totalGrams: totalMacroGrams,
                           color: AppColors.secondary,
                         ),
                       ],
@@ -1227,18 +1233,20 @@ class _NutritionPanel extends StatelessWidget {
 class _MacroRow extends StatelessWidget {
   final String label;
   final int grams;
+  final int totalGrams;
   final Color color;
 
   const _MacroRow({
     required this.label,
     required this.grams,
+    required this.totalGrams,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     final textTheme = context.text;
-    final value = (grams / 40).clamp(0.0, 1.0);
+    final value = totalGrams <= 0 ? 0.0 : (grams / totalGrams).clamp(0.0, 1.0);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1364,6 +1372,7 @@ class _IngredientNutritionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = context.text;
+    final percent = (ingredient.nutritionPercent * 100).round();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
@@ -1395,7 +1404,7 @@ class _IngredientNutritionRow extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      ingredient.calories,
+                      percent <= 0 ? ingredient.calories : '$percent%',
                       maxLines: 1,
                       overflow: TextOverflow.visible,
                       style: textTheme.bodySmall,

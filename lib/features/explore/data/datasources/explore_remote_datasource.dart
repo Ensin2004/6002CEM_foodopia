@@ -269,8 +269,12 @@ class ExploreRemoteDataSource {
       customIds: _stringList(data['customAllergenIds']),
     );
     final media = _stringList(data['media']);
+    final nutrition = _nutritionFromData(data['totalNutrients']);
     final ingredients = includeCommunity
-        ? await _getIngredients(doc.reference)
+        ? await _getIngredients(
+            doc.reference,
+            totalCalories: nutrition.calories,
+          )
         : const <ExploreIngredient>[];
     final instructions = includeCommunity
         ? await _getInstructionSections(doc.reference)
@@ -326,14 +330,19 @@ class ExploreRemoteDataSource {
       isCreatedByCurrentUser: isCurrentUserCreator,
       ingredients: ingredients,
       instructionSections: instructions,
-      nutrition: const ExploreNutrition(
-        calories: 0,
-        carbsGrams: 0,
-        proteinGrams: 0,
-        fatGrams: 0,
-      ),
+      nutrition: nutrition,
       community: community,
       relatedRecipes: relatedRecipes,
+    );
+  }
+
+  ExploreNutrition _nutritionFromData(dynamic value) {
+    final nutrients = value is Map ? value : const {};
+    return ExploreNutrition(
+      calories: _numericValue(nutrients['calories'])?.round() ?? 0,
+      carbsGrams: _numericValue(nutrients['carbohydrates'])?.round() ?? 0,
+      proteinGrams: _numericValue(nutrients['protein'])?.round() ?? 0,
+      fatGrams: _numericValue(nutrients['fat'])?.round() ?? 0,
     );
   }
 
@@ -459,8 +468,9 @@ class ExploreRemoteDataSource {
   }
 
   Future<List<ExploreIngredient>> _getIngredients(
-    DocumentReference<Map<String, dynamic>> recipe,
-  ) async {
+    DocumentReference<Map<String, dynamic>> recipe, {
+    required int totalCalories,
+  }) async {
     final snapshot = await recipe.collection('ingredients').get();
     final categoryIds = snapshot.docs
         .map((doc) => _stringValue(doc.data()['ingredient_categories_id']))
@@ -473,6 +483,7 @@ class ExploreRemoteDataSource {
         final data = doc.data();
         final amount = _doubleValue(data['amount']);
         final categoryId = _stringValue(data['ingredient_categories_id']);
+        final calories = _caloriesValue(data['nutrients']);
         final unit = await _resolveIngredientUnitName(
           customUnitId: _stringValue(data['customUnitId']),
           unitId: _stringValue(data['unitId']),
@@ -482,12 +493,14 @@ class ExploreRemoteDataSource {
           name: _stringValue(data['name'], fallback: 'Ingredient'),
           amount: '${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 1)} $unit'
               .trim(),
-          calories: '',
+          calories: _caloriesLabel(calories),
           imagePath: _stringValue(
             data['image'],
             fallback: 'assets/images/meal1.png',
           ),
-          nutritionPercent: 0,
+          nutritionPercent: totalCalories <= 0
+              ? 0
+              : (calories / totalCalories).clamp(0.0, 1.0),
           ingredientCategoryId: categoryId,
           ingredientCategoryName: categoryNames[categoryId] ?? '',
         );
@@ -513,6 +526,30 @@ class ExploreRemoteDataSource {
     );
 
     return Map.fromEntries(entries);
+  }
+
+  double _caloriesValue(dynamic nutrients) {
+    final calories = nutrients is Map
+        ? _numericValue(nutrients['calories'])
+        : null;
+    return calories ?? 0;
+  }
+
+  String _caloriesLabel(double calories) {
+    if (calories <= 0) return '';
+    return '${_formatNumber(calories)} kcal';
+  }
+
+  double? _numericValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is Map) return _numericValue(value['value'] ?? value['amount']);
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  String _formatNumber(double value) {
+    final rounded = value.roundToDouble();
+    if ((value - rounded).abs() < 0.05) return rounded.toInt().toString();
+    return value.toStringAsFixed(1);
   }
 
   Future<String> _resolveIngredientUnitName({
