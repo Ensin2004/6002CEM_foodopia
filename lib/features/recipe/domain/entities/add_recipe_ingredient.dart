@@ -9,6 +9,7 @@ class AddRecipeIngredient {
   final String customUnit;
   final int? usdaId;
   final Map<String, dynamic>? usdaNutrients;
+  final String? ingredientCategoryId;
 
   const AddRecipeIngredient({
     required this.name,
@@ -19,5 +20,6 @@ class AddRecipeIngredient {
     required this.customUnit,
     this.usdaId,
     this.usdaNutrients,
+    this.ingredientCategoryId,
   });
 }

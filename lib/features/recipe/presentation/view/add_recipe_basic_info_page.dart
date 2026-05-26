@@ -267,7 +267,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
               Expanded(
                 child: ListView(
                   keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.manual,
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                   padding: EdgeInsets.fromLTRB(
                     horizontalPadding,
                     AppSpacing.sm,

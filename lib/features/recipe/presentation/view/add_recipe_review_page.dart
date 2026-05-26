@@ -124,6 +124,7 @@ class AddRecipeReviewPage extends StatelessWidget {
               unit: item.customUnit.isNotEmpty ? item.customUnit : item.unitId,
               usdaId: item.usdaId,
               nutrients: item.usdaNutrients,
+              ingredientCategoryId: item.ingredientCategoryId,
             ),
           )
           .toList(),

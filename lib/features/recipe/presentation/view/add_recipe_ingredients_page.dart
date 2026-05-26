@@ -398,6 +398,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       row.nameController.text = selected.name;
       row.usdaId = selected.usdaId;
       row.usdaNutrients = selected.isCustom ? null : nutrients;
+      row.ingredientCategoryId = null;
     });
   }
 
@@ -530,6 +531,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
             customUnit: row.isCustomUnit ? row.unitName : "",
             usdaId: row.usdaId,
             usdaNutrients: row.usdaNutrients,
+            ingredientCategoryId: row.ingredientCategoryId,
           ),
         )
         .toList();
@@ -562,6 +564,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
             row.unitName,
             row.isCustomUnit.toString(),
             row.usdaId?.toString() ?? '',
+            row.ingredientCategoryId ?? '',
           ].join('|'),
         )
         .join('::');
@@ -597,6 +600,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
             }
             row.usdaId = item.usdaId;
             row.usdaNutrients = item.nutrients;
+            row.ingredientCategoryId = item.ingredientCategoryId;
           }
           row.addListener(_refreshFormState);
           return row;
@@ -638,6 +642,7 @@ class IngredientRowState {
   bool isCustomUnit = false;
   int? usdaId;
   Map<String, dynamic>? usdaNutrients;
+  String? ingredientCategoryId;
 
   IngredientRowState();
 
@@ -686,6 +691,7 @@ class IngredientRowState {
     isCustomUnit = false;
     usdaId = null;
     usdaNutrients = null;
+    ingredientCategoryId = null;
     for (final listener in _listeners) {
       listener();
     }

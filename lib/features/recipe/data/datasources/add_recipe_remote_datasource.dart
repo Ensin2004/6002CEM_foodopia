@@ -2,8 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/services/cloudinary_service.dart';
+import '../../../../core/services/openai_ingredient_data_service.dart';
 import '../../../../core/services/fcm_sender.dart';
 import '../../../../core/services/food_search_service.dart';
+import '../../domain/entities/add_recipe_ingredient_data.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_food_search_result.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
@@ -21,11 +23,13 @@ class AddRecipeRemoteDataSource {
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
   final FoodSearchService foodSearchService;
+  final OpenAiIngredientDataService ingredientAiDataSource;
 
   const AddRecipeRemoteDataSource({
     required this.firestore,
     required this.auth,
     required this.foodSearchService,
+    required this.ingredientAiDataSource,
   });
 
   Future<AddRecipeSetupModel> getSetup() async {
@@ -192,13 +196,31 @@ class AddRecipeRemoteDataSource {
     final recipeRef = firestore.collection('recipes').doc(recipeId);
     final ingredientCollection = recipeRef.collection('ingredients');
     final existingIngredients = await ingredientCollection.get();
+    final categories = await _getActiveIngredientCategories();
+    if (categories.isEmpty) {
+      throw StateError('No active ingredient categories configured.');
+    }
+    final unitNames = await _resolveIngredientUnitNames(ingredients);
+    final analysisItems = await ingredientAiDataSource.analyzeIngredients(
+      ingredients: _ingredientAnalysisInputs(
+        ingredients: ingredients,
+        unitNames: unitNames,
+      ),
+      categories: categories,
+    );
+    final analysisByIndex = {
+      for (final item in analysisItems) item.index: item,
+    };
+    final categoryIds = categories.map((item) => item.id).toSet();
+    final othersCategoryId = _getOthersCategoryId(categories);
     final batch = firestore.batch();
 
     for (final doc in existingIngredients.docs) {
       batch.delete(doc.reference);
     }
 
-    for (final ingredient in ingredients) {
+    for (var index = 0; index < ingredients.length; index++) {
+      final ingredient = ingredients[index];
       String? imageUrl = ingredient.existingImageUrl;
       if (ingredient.imageFile != null) {
         imageUrl = await CloudinaryService.uploadIngredientImage(
@@ -208,6 +230,14 @@ class AddRecipeRemoteDataSource {
       final customUnitId = ingredient.customUnit.isNotEmpty
           ? await _saveCustomUnit(ingredient.customUnit)
           : null;
+      final analysis = analysisByIndex[index];
+      final existingCategoryId = ingredient.ingredientCategoryId?.trim() ?? '';
+      final categoryId = categoryIds.contains(existingCategoryId)
+          ? existingCategoryId
+          : categoryIds.contains(analysis?.ingredientCategoryId)
+          ? analysis!.ingredientCategoryId
+          : othersCategoryId;
+      final nutrients = _normalizedNutrients(ingredient.usdaNutrients);
 
       final model = AddRecipeIngredientModel(
         name: ingredient.name,
@@ -216,7 +246,8 @@ class AddRecipeRemoteDataSource {
         unitId: ingredient.unitId.isEmpty ? null : ingredient.unitId,
         customUnitId: customUnitId,
         usdaId: ingredient.usdaId,
-        nutrients: ingredient.usdaNutrients,
+        nutrients: nutrients ?? analysis?.nutrients,
+        ingredientCategoryId: categoryId,
       );
 
       batch.set(ingredientCollection.doc(), model.toFirestore());
@@ -225,6 +256,113 @@ class AddRecipeRemoteDataSource {
     batch.update(recipeRef, {'updatedAt': FieldValue.serverTimestamp()});
 
     await batch.commit();
+  }
+
+  Future<List<AddRecipeIngredientCategory>> _getActiveIngredientCategories() async {
+    final snapshot = await firestore
+        .collection('app_config')
+        .doc('ingredient_categories')
+        .collection('items')
+        .get();
+
+    return snapshot.docs
+        .map((doc) {
+          final data = doc.data();
+          final isActive = data['isActive'] is bool
+              ? data['isActive'] as bool
+              : false;
+          final name = data['name']?.toString().trim() ?? '';
+          if (!isActive || name.isEmpty) return null;
+          return AddRecipeIngredientCategory(id: doc.id, name: name);
+        })
+        .whereType<AddRecipeIngredientCategory>()
+        .toList();
+  }
+
+  List<AddRecipeIngredientDataInput> _ingredientAnalysisInputs({
+    required List<AddRecipeIngredient> ingredients,
+    required Map<String, String> unitNames,
+  }) {
+    return [
+      for (var index = 0; index < ingredients.length; index++)
+        AddRecipeIngredientDataInput(
+          index: index,
+          name: ingredients[index].name,
+          amount: ingredients[index].amount,
+          unit: ingredients[index].customUnit.trim().isNotEmpty
+              ? ingredients[index].customUnit.trim()
+              : unitNames[ingredients[index].unitId] ??
+                    ingredients[index].unitId,
+          usdaNutrients: _normalizedNutrients(ingredients[index].usdaNutrients),
+        ),
+    ];
+  }
+
+  Future<Map<String, String>> _resolveIngredientUnitNames(
+    List<AddRecipeIngredient> ingredients,
+  ) async {
+    final ids = ingredients
+        .map((ingredient) => ingredient.unitId.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final names = <String, String>{};
+
+    for (final id in ids) {
+      final doc = await firestore
+          .collection('app_config')
+          .doc('ingredient_units')
+          .collection('items')
+          .doc(id)
+          .get();
+      final name = doc.data()?['name']?.toString().trim() ?? '';
+      names[id] = name.isEmpty ? id : name;
+    }
+
+    return names;
+  }
+
+  String? _getOthersCategoryId(List<AddRecipeIngredientCategory> categories) {
+    for (final category in categories) {
+      if (category.name.trim().toLowerCase() == 'others') {
+        return category.id;
+      }
+    }
+    return categories.isEmpty ? null : categories.first.id;
+  }
+
+  Map<String, dynamic>? _normalizedNutrients(Map<String, dynamic>? nutrients) {
+    if (nutrients == null || nutrients.isEmpty) return null;
+
+    final normalized = {
+      'calories': _nutrientValue(nutrients, const ['calories', 'calorie', 'energy']),
+      'carbohydrates': _nutrientValue(nutrients, const ['carbohydrates', 'carbohydrate', 'carbs']),
+      'fat': _nutrientValue(nutrients, const ['fat', 'fats', 'totalFat']),
+      'protein': _nutrientValue(nutrients, const ['protein', 'proteins']),
+    };
+
+    if (normalized.values.every((value) => value == 0)) return null;
+    return normalized;
+  }
+
+  double _nutrientValue(Map<String, dynamic> nutrients, List<String> keys) {
+    for (final entry in nutrients.entries) {
+      final normalizedKey = entry.key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+      for (final key in keys) {
+        final targetKey = key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+        if (normalizedKey == targetKey || normalizedKey.contains(targetKey)) {
+          return _numericValue(entry.value);
+        }
+      }
+    }
+    return 0;
+  }
+
+  double _numericValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is Map) {
+      return _numericValue(value['value'] ?? value['amount']);
+    }
+    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   Future<String> _saveCustomUnit(String name) async {
@@ -391,6 +529,9 @@ class AddRecipeRemoteDataSource {
           nutrients: data['nutrients'] is Map<String, dynamic>
               ? data['nutrients'] as Map<String, dynamic>
               : null,
+          ingredientCategoryId: data['ingredient_categories_id']
+              ?.toString()
+              .trim(),
         ),
       );
     }
