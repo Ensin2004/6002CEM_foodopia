@@ -382,11 +382,21 @@ class MealPlanRemoteDataSource {
     final mealDocs = await _getMealPlanDocs(mealPlanIds);
     final mealSnapshots = await _buildMealSnapshots(mealDocs);
     final itemsSnapshot = await doc.reference.collection('items').get();
-    final categoryNames = await _resolveIngredientCategoryNames(itemsSnapshot);
+    final categoryOverrides = await _resolveMissingGroceryItemCategories(
+      itemsSnapshot,
+    );
+    final categoryNames = await _resolveIngredientCategoryNames(
+      itemsSnapshot,
+      categoryOverrides,
+    );
     final items =
         itemsSnapshot.docs
             .map(
-              (itemDoc) => _GroceryItemRecord.fromDoc(itemDoc, categoryNames),
+              (itemDoc) => _GroceryItemRecord.fromDoc(
+                itemDoc,
+                categoryNames,
+                categoryOverrides[itemDoc.id],
+              ),
             )
             .toList()
           ..sort((first, second) => first.name.compareTo(second.name));
@@ -825,9 +835,13 @@ class MealPlanRemoteDataSource {
   ) {
     if (ingredients is! Iterable) return const [];
     return ingredients.whereType<Map>().map((item) {
+      final categoryId = _ingredientCategoryIdFrom(item) ?? '';
       return _GroceryItemDraft(
         ingredientName: item['name']?.toString() ?? 'Ingredient',
-        ingredientCategoryId: item['categoryId']?.toString() ?? '',
+        ingredientCategoryId: categoryId,
+        categoryName:
+            item['categoryName']?.toString().trim() ??
+            _categoryNameForIngredient(item['name']?.toString() ?? ''),
         amount: _doubleValue(item['amount']),
         unit: item['unit']?.toString() ?? '',
         relatedMealPlanIds: [mealPlanId],
@@ -843,9 +857,13 @@ class MealPlanRemoteDataSource {
     Map<String, dynamic> ingredient,
     String unit,
   ) {
+    final categoryId = _ingredientCategoryIdFrom(ingredient) ?? '';
     return _GroceryItemDraft(
       ingredientName: ingredient['name']?.toString() ?? 'Ingredient',
-      ingredientCategoryId: ingredient['categoryId']?.toString() ?? '',
+      ingredientCategoryId: categoryId,
+      categoryName:
+          ingredient['categoryName']?.toString().trim() ??
+          _categoryNameForIngredient(ingredient['name']?.toString() ?? ''),
       amount: _doubleValue(ingredient['amount']),
       unit: unit,
       relatedMealPlanIds: [mealPlanId],
@@ -994,11 +1012,16 @@ class MealPlanRemoteDataSource {
 
   Future<Map<String, String>> _resolveIngredientCategoryNames(
     QuerySnapshot<Map<String, dynamic>> itemsSnapshot,
+    Map<String, _ResolvedGroceryCategory> categoryOverrides,
   ) async {
-    final ids = itemsSnapshot.docs
-        .map((doc) => doc.data()['ingredientCategoryId']?.toString() ?? '')
-        .where((id) => id.isNotEmpty)
-        .toSet();
+    final ids = <String>{};
+    for (final doc in itemsSnapshot.docs) {
+      final categoryId =
+          _ingredientCategoryIdFrom(doc.data()) ??
+          categoryOverrides[doc.id]?.id ??
+          '';
+      if (categoryId.isNotEmpty) ids.add(categoryId);
+    }
     final names = <String, String>{};
     for (final id in ids) {
       final doc = await firestore
@@ -1011,6 +1034,61 @@ class MealPlanRemoteDataSource {
       names[id] = name.isEmpty ? 'Uncategorized' : name;
     }
     return names;
+  }
+
+  Future<Map<String, _ResolvedGroceryCategory>>
+  _resolveMissingGroceryItemCategories(
+    QuerySnapshot<Map<String, dynamic>> itemsSnapshot,
+  ) async {
+    final overrides = <String, _ResolvedGroceryCategory>{};
+    for (final itemDoc in itemsSnapshot.docs) {
+      final data = itemDoc.data();
+      final existingId = _ingredientCategoryIdFrom(data) ?? '';
+      final existingName = data['categoryName']?.toString().trim() ?? '';
+      if (existingId.isNotEmpty || existingName.isNotEmpty) continue;
+
+      final ingredientName =
+          data['ingredientName']?.toString() ?? data['name']?.toString() ?? '';
+      final recipeIds = _stringList(
+        data['relatedRecipeIds'] ?? data['recipeIds'] ?? data['recipeId'],
+      );
+      final resolved = await _resolveCategoryFromRelatedRecipes(
+        ingredientName,
+        recipeIds,
+      );
+      overrides[itemDoc.id] =
+          resolved ??
+          _ResolvedGroceryCategory(
+            id: '',
+            name: _categoryNameForIngredient(ingredientName),
+          );
+    }
+    return overrides;
+  }
+
+  Future<_ResolvedGroceryCategory?> _resolveCategoryFromRelatedRecipes(
+    String ingredientName,
+    List<String> recipeIds,
+  ) async {
+    final normalizedName = ingredientName.trim().toLowerCase();
+    if (normalizedName.isEmpty) return null;
+
+    for (final recipeId in recipeIds) {
+      final snapshot = await firestore
+          .collection('recipes')
+          .doc(recipeId)
+          .collection('ingredients')
+          .get();
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final name = data['name']?.toString().trim().toLowerCase() ?? '';
+        if (name != normalizedName) continue;
+        final categoryId = _ingredientCategoryIdFrom(data) ?? '';
+        if (categoryId.isEmpty) continue;
+        return _ResolvedGroceryCategory(id: categoryId, name: '');
+      }
+    }
+    return null;
   }
 
   Future<String> _resolveIngredientUnitName({
@@ -1059,6 +1137,67 @@ class MealPlanRemoteDataSource {
         .doc('grocery')
         .get();
     return _normalizeWeekStartDay(doc.data()?['weekStartDay']?.toString());
+  }
+
+  String? _ingredientCategoryIdFrom(Map<dynamic, dynamic> data) {
+    final values = [
+      data['ingredientCategoryId'],
+      data['ingredient_categories_id'],
+      data['categoryId'],
+    ];
+    for (final value in values) {
+      final text = value?.toString().trim() ?? '';
+      if (text.isNotEmpty) return text;
+    }
+    return null;
+  }
+
+  String _categoryNameForIngredient(String ingredientName) {
+    final value = ingredientName.toLowerCase();
+    if (value.contains('milk') ||
+        value.contains('cheese') ||
+        value.contains('yogurt') ||
+        value.contains('butter') ||
+        value.contains('cream')) {
+      return 'Dairy';
+    }
+    if (value.contains('chicken') ||
+        value.contains('beef') ||
+        value.contains('pork') ||
+        value.contains('fish') ||
+        value.contains('egg') ||
+        value.contains('tofu')) {
+      return 'Protein';
+    }
+    if (value.contains('rice') ||
+        value.contains('bread') ||
+        value.contains('pasta') ||
+        value.contains('noodle') ||
+        value.contains('flour')) {
+      return 'Grains';
+    }
+    if (value.contains('apple') ||
+        value.contains('banana') ||
+        value.contains('orange') ||
+        value.contains('berry') ||
+        value.contains('fruit')) {
+      return 'Fruits';
+    }
+    if (value.contains('tomato') ||
+        value.contains('carrot') ||
+        value.contains('onion') ||
+        value.contains('lettuce') ||
+        value.contains('vegetable')) {
+      return 'Vegetables';
+    }
+    if (value.contains('oil') ||
+        value.contains('salt') ||
+        value.contains('pepper') ||
+        value.contains('sauce') ||
+        value.contains('spice')) {
+      return 'Pantry';
+    }
+    return 'Uncategorized';
   }
 
   String _normalizeWeekStartDay(String? value) {
@@ -1225,6 +1364,7 @@ class MealPlanRemoteDataSource {
 class _GroceryItemDraft {
   final String ingredientName;
   final String ingredientCategoryId;
+  final String categoryName;
   final double amount;
   final String unit;
   final List<String> relatedMealPlanIds;
@@ -1234,6 +1374,7 @@ class _GroceryItemDraft {
   const _GroceryItemDraft({
     required this.ingredientName,
     required this.ingredientCategoryId,
+    required this.categoryName,
     required this.amount,
     required this.unit,
     required this.relatedMealPlanIds,
@@ -1245,6 +1386,7 @@ class _GroceryItemDraft {
     return _GroceryItemDraft(
       ingredientName: ingredientName,
       ingredientCategoryId: ingredientCategoryId,
+      categoryName: categoryName.isNotEmpty ? categoryName : other.categoryName,
       amount: amount + other.amount,
       unit: unit,
       relatedMealPlanIds: {
@@ -1263,6 +1405,7 @@ class _GroceryItemDraft {
     return {
       'ingredientName': ingredientName,
       'ingredientCategoryId': ingredientCategoryId,
+      'categoryName': categoryName,
       'amount': amount,
       'unit': unit,
       'relatedMealPlanIds': relatedMealPlanIds,
@@ -1277,6 +1420,7 @@ class _GroceryItemDraft {
     return {
       'ingredientName': ingredientName,
       'ingredientCategoryId': ingredientCategoryId,
+      'categoryName': categoryName,
       'amount': amount,
       'unit': unit,
       'relatedMealPlanIds': relatedMealPlanIds,
@@ -1310,20 +1454,30 @@ class _GroceryItemRecord {
   factory _GroceryItemRecord.fromDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
     Map<String, String> categoryNames,
+    _ResolvedGroceryCategory? categoryOverride,
   ) {
     final data = doc.data();
-    final categoryId = data['ingredientCategoryId']?.toString() ?? '';
+    final categoryId =
+        data['ingredientCategoryId']?.toString().trim().isNotEmpty == true
+        ? data['ingredientCategoryId'].toString().trim()
+        : data['ingredient_categories_id']?.toString().trim().isNotEmpty == true
+        ? data['ingredient_categories_id'].toString().trim()
+        : data['categoryId']?.toString().trim().isNotEmpty == true
+        ? data['categoryId'].toString().trim()
+        : categoryOverride?.id ?? '';
+    final name =
+        data['ingredientName']?.toString() ??
+        data['name']?.toString() ??
+        'Ingredient';
     return _GroceryItemRecord(
       id: doc.id,
-      name:
-          data['ingredientName']?.toString() ??
-          data['name']?.toString() ??
-          'Ingredient',
+      name: name,
       categoryId: categoryId,
       categoryName:
           categoryNames[categoryId] ??
+          categoryOverride?.name ??
           data['categoryName']?.toString() ??
-          'Uncategorized',
+          _fallbackCategoryName(name),
       amount: data['amount'] is num ? (data['amount'] as num).toDouble() : 0,
       unit: data['unit']?.toString() ?? '',
       relatedMealPlanIds: _stringListFromValue(
@@ -1381,6 +1535,54 @@ class _GroceryItemRecord {
     if (value.contains('carrot')) return '\u{1F955}';
     return '\u{1F96C}';
   }
+
+  static String _fallbackCategoryName(String name) {
+    final value = name.toLowerCase();
+    if (value.contains('milk') ||
+        value.contains('cheese') ||
+        value.contains('yogurt') ||
+        value.contains('butter')) {
+      return 'Dairy';
+    }
+    if (value.contains('chicken') ||
+        value.contains('beef') ||
+        value.contains('pork') ||
+        value.contains('fish') ||
+        value.contains('egg')) {
+      return 'Protein';
+    }
+    if (value.contains('rice') ||
+        value.contains('bread') ||
+        value.contains('pasta') ||
+        value.contains('flour')) {
+      return 'Grains';
+    }
+    if (value.contains('tomato') ||
+        value.contains('carrot') ||
+        value.contains('onion') ||
+        value.contains('lettuce')) {
+      return 'Vegetables';
+    }
+    if (value.contains('apple') ||
+        value.contains('banana') ||
+        value.contains('orange')) {
+      return 'Fruits';
+    }
+    if (value.contains('oil') ||
+        value.contains('salt') ||
+        value.contains('pepper') ||
+        value.contains('sauce')) {
+      return 'Pantry';
+    }
+    return 'Uncategorized';
+  }
+}
+
+class _ResolvedGroceryCategory {
+  final String id;
+  final String name;
+
+  const _ResolvedGroceryCategory({required this.id, required this.name});
 }
 
 class _MealPlanSnapshot {

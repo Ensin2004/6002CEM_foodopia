@@ -17,32 +17,32 @@ const _quickInspirationItems = [
   MealPlanQuickInspiration(
     title: 'What can I cook with what I have?',
     subtitle: 'Use ingredients you already have.',
-    imagePath: 'assets/images/meal3.png',
+    imagePath: 'assets/images/inspiration_what_can_i_cook_with_what_i_have.png',
   ),
   MealPlanQuickInspiration(
     title: 'Surprise me!',
     subtitle: 'Get AI-picked recipes for you.',
-    imagePath: 'assets/images/meal2.png',
+    imagePath: 'assets/images/inspiration_surprise_me.png',
   ),
   MealPlanQuickInspiration(
     title: 'Healthy Ideas',
     subtitle: 'Nutritious and balanced meals.',
-    imagePath: 'assets/images/meal1.png',
+    imagePath: 'assets/images/inspiration_healthy_ideas.png',
   ),
   MealPlanQuickInspiration(
     title: 'Quick & Easy',
     subtitle: 'Recipes you can make in no time.',
-    imagePath: 'assets/images/meal3.png',
+    imagePath: 'assets/images/inspiration_quick_and_easy.png',
   ),
   MealPlanQuickInspiration(
     title: 'Rainy Day Comfort',
     subtitle: 'Warm bowls and cozy meal ideas.',
-    imagePath: 'assets/images/meal1.png',
+    imagePath: 'assets/images/inspiration_rainy_day_comfort.png',
   ),
   MealPlanQuickInspiration(
     title: 'High Protein Picks',
     subtitle: 'Filling meals with simple prep.',
-    imagePath: 'assets/images/meal2.png',
+    imagePath: 'assets/images/inspiration_high_protein_picks.png',
   ),
 ];
 

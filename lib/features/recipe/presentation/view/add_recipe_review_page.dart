@@ -43,6 +43,9 @@ class AddRecipeReviewPage extends StatelessWidget {
   final List<AddRecipeIngredient> aiDraftIngredients;
   final List<AddRecipeInstruction> aiDraftInstructions;
   final bool aiDraftUseSections;
+  final bool hideProgressBar;
+  final bool hideAppBar;
+  final VoidCallback? onAiDraftReviewed;
 
   const AddRecipeReviewPage({
     super.key,
@@ -54,6 +57,9 @@ class AddRecipeReviewPage extends StatelessWidget {
     this.aiDraftIngredients = const [],
     this.aiDraftInstructions = const [],
     this.aiDraftUseSections = false,
+    this.hideProgressBar = false,
+    this.hideAppBar = false,
+    this.onAiDraftReviewed,
   });
 
   @override
@@ -88,6 +94,9 @@ class AddRecipeReviewPage extends StatelessWidget {
         aiDraftIngredients: aiDraftIngredients,
         aiDraftInstructions: aiDraftInstructions,
         aiDraftUseSections: aiDraftUseSections,
+        hideProgressBar: hideProgressBar,
+        hideAppBar: hideAppBar,
+        onAiDraftReviewed: onAiDraftReviewed,
       ),
     );
   }
@@ -96,10 +105,18 @@ class AddRecipeReviewPage extends StatelessWidget {
     final basicInfo = aiDraftBasicInfo;
     final aiRecipe = initialAiRecipe;
     if (aiRecipe == null || basicInfo == null) return null;
+    final media = [
+      ...basicInfo.existingMediaUrls,
+      if (basicInfo.existingMediaUrls.isEmpty &&
+          aiRecipe.imageBase64?.isNotEmpty == true)
+        'data:image/png;base64,${aiRecipe.imageBase64!}'
+      else if (basicInfo.existingMediaUrls.isEmpty)
+        aiRecipe.imagePath,
+    ].where((item) => item.trim().isNotEmpty).toList();
 
     return AddRecipeReview(
       recipeId: '',
-      media: basicInfo.existingMediaUrls,
+      media: media,
       recipeName: basicInfo.recipeName,
       description: basicInfo.description,
       otherNames: basicInfo.otherNames,
@@ -111,9 +128,9 @@ class AddRecipeReviewPage extends StatelessWidget {
       visibility: basicInfo.visibility,
       nutrients: AddRecipeReviewNutrients(
         calories: aiRecipe.calories > 0 ? '${aiRecipe.calories} kcal' : '-',
-        carbohydrates: '-',
-        proteins: '-',
-        fats: '-',
+        carbohydrates: _formatMacro(aiRecipe.carbohydrates),
+        proteins: _formatMacro(aiRecipe.protein),
+        fats: _formatMacro(aiRecipe.fat),
       ),
       ingredients: aiDraftIngredients
           .map(
@@ -146,6 +163,14 @@ class AddRecipeReviewPage extends StatelessWidget {
   String _formatAmount(double amount) {
     return amount % 1 == 0 ? amount.toInt().toString() : amount.toString();
   }
+
+  String _formatMacro(double value) {
+    if (value <= 0) return '-';
+    final formatted = value % 1 == 0
+        ? value.toInt().toString()
+        : value.toStringAsFixed(1);
+    return '${formatted}g';
+  }
 }
 
 class _AddRecipeReviewView extends StatefulWidget {
@@ -155,6 +180,9 @@ class _AddRecipeReviewView extends StatefulWidget {
   final List<AddRecipeIngredient> aiDraftIngredients;
   final List<AddRecipeInstruction> aiDraftInstructions;
   final bool aiDraftUseSections;
+  final bool hideProgressBar;
+  final bool hideAppBar;
+  final VoidCallback? onAiDraftReviewed;
 
   const _AddRecipeReviewView({
     required this.recipeId,
@@ -163,6 +191,9 @@ class _AddRecipeReviewView extends StatefulWidget {
     this.aiDraftIngredients = const [],
     this.aiDraftInstructions = const [],
     this.aiDraftUseSections = false,
+    this.hideProgressBar = false,
+    this.hideAppBar = false,
+    this.onAiDraftReviewed,
   });
 
   @override
@@ -200,49 +231,60 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
-      appBar: CustomAppBar(
-        title: widget.aiReview == null ? "New Recipe" : "Customize AI Recipe",
-        actions: widget.aiReview == null
-            ? [
-                Consumer<AddRecipeVisibilityViewModel>(
-                  builder: (context, visibilityViewModel, _) {
-                    return RecipeVisibilityActionButton(
-                      visibility: visibilityViewModel.visibility,
-                      isSaving: visibilityViewModel.isSaving,
-                      onChanged: (value) => confirmRecipeVisibilityChange(
-                        context: context,
-                        currentVisibility: visibilityViewModel.visibility,
-                        nextVisibility: value,
-                        onConfirmed: (visibility) =>
-                            visibilityViewModel.updateVisibility(
-                              recipeId: widget.recipeId,
-                              value: visibility,
+      appBar: widget.hideAppBar
+          ? null
+          : CustomAppBar(
+              title: widget.aiReview == null
+                  ? "New Recipe"
+                  : "Customize AI Recipe",
+              actions: widget.aiReview == null
+                  ? [
+                      Consumer<AddRecipeVisibilityViewModel>(
+                        builder: (context, visibilityViewModel, _) {
+                          return RecipeVisibilityActionButton(
+                            visibility: visibilityViewModel.visibility,
+                            isSaving: visibilityViewModel.isSaving,
+                            onChanged: (value) => confirmRecipeVisibilityChange(
+                              context: context,
+                              currentVisibility: visibilityViewModel.visibility,
+                              nextVisibility: value,
+                              onConfirmed: (visibility) =>
+                                  visibilityViewModel.updateVisibility(
+                                    recipeId: widget.recipeId,
+                                    value: visibility,
+                                  ),
+                              errorMessage: () =>
+                                  visibilityViewModel.errorMessage,
                             ),
-                        errorMessage: () => visibilityViewModel.errorMessage,
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
-              ]
-            : null,
-      ),
+                    ]
+                  : null,
+            ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.md,
+            if (!widget.hideProgressBar)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                ),
+                child: AppStepProgressBar(
+                  totalSteps: 4,
+                  currentStep: 4,
+                  labels: [
+                    "Basic Info",
+                    "Ingredients",
+                    "Instructions",
+                    "Review",
+                  ],
+                ),
               ),
-              child: AppStepProgressBar(
-                totalSteps: 4,
-                currentStep: 4,
-                labels: ["Basic Info", "Ingredients", "Instructions", "Review"],
-              ),
-            ),
             Padding(
               padding: EdgeInsets.fromLTRB(
                 horizontalPadding,
@@ -413,13 +455,17 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                 AppSpacing.lg,
               ),
               child: PrimaryButton(
-                text: widget.aiReview == null ? "Save" : "Add Recipe",
+                text: widget.aiReview == null
+                    ? "Save"
+                    : widget.onAiDraftReviewed == null
+                    ? "Add Recipe"
+                    : "Next",
                 isLoading: viewModel.isSaving || _isSavingAiDraft,
                 onPressed: viewModel.isSaving || _isSavingAiDraft
                     ? null
                     : widget.aiReview == null
                     ? () => _finishSavedRecipe(context, viewModel)
-                    : () => _saveAiDraft(context),
+                    : widget.onAiDraftReviewed ?? () => _saveAiDraft(context),
               ),
             ),
           ],

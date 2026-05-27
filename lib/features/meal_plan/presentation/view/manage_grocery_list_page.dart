@@ -134,82 +134,102 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: AppSpacing.cardPadding,
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: const Color(0xFFF0FAF2),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE0F7E4),
-              borderRadius: BorderRadius.all(Radius.circular(12)),
-            ),
-            child: const Icon(
-              Icons.shopping_basket,
-              color: AppColors.primary,
-              size: 34,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'GROCERY LIST NAME',
-                  style: context.text.bodySmall?.copyWith(fontSize: 9),
+          Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE0F7E4),
+                  borderRadius: BorderRadius.all(Radius.circular(14)),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
+                child: const Icon(
+                  Icons.shopping_basket,
+                  color: AppColors.primary,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        detail.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.text.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                    Text(
+                      'Grocery list',
+                      style: context.text.bodySmall?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    IconButton(
-                      tooltip: 'Edit grocery list',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () => _showEditListDialog(context, detail),
-                      icon: const Icon(
-                        Icons.edit,
-                        size: 18,
+                    const SizedBox(height: 3),
+                    Text(
+                      detail.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.titleMedium?.copyWith(
                         color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    _HeaderMetric(
-                      icon: Icons.shopping_cart_outlined,
-                      value: '${detail.itemCount} items',
-                      label: 'Across ${detail.categoryCount} categories',
-                    ),
-                    const SizedBox(width: AppSpacing.lg),
-                    _HeaderMetric(
-                      icon: Icons.restaurant,
-                      value: '${detail.mealCount} meals',
-                      label: _shortDateRange(detail.startDate, detail.endDate),
-                    ),
-                  ],
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              IconButton(
+                tooltip: 'Edit grocery list',
+                visualDensity: VisualDensity.compact,
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.textPrimary,
+                  minimumSize: const Size(38, 38),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-              ],
-            ),
+                onPressed: () => _showEditListDialog(context, detail),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              _HeaderMetric(
+                icon: Icons.shopping_cart_outlined,
+                value: '${detail.itemCount}',
+                label: 'Items',
+                sublabel: '${detail.categoryCount} categories',
+              ),
+              _HeaderDivider(),
+              _HeaderMetric(
+                icon: Icons.restaurant_outlined,
+                value: '${detail.mealCount}',
+                label: 'Meals',
+                sublabel: _shortDateRange(detail.startDate, detail.endDate),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HeaderDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 42,
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      color: AppColors.primary.withValues(alpha: 0.14),
     );
   }
 }
@@ -540,11 +560,13 @@ class _HeaderMetric extends StatelessWidget {
   final IconData icon;
   final String value;
   final String label;
+  final String sublabel;
 
   const _HeaderMetric({
     required this.icon,
     required this.value,
     required this.label,
+    required this.sublabel,
   });
 
   @override
@@ -552,26 +574,49 @@ class _HeaderMetric extends StatelessWidget {
     return Expanded(
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.textPrimary),
-          const SizedBox(width: AppSpacing.xs),
+          Icon(icon, size: 18, color: AppColors.primary),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.titleMedium?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 1),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.bodySmall?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 Text(
-                  value,
+                  sublabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.text.bodySmall?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
+                    color: AppColors.textSecondary,
+                    fontSize: 10,
                   ),
-                ),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.bodySmall?.copyWith(fontSize: 9),
                 ),
               ],
             ),
@@ -883,27 +928,37 @@ class _GroceryCategoryCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      decoration: BoxDecoration(border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBFCFB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
-        initiallyExpanded: category.title == 'Dairy',
-        shape: const Border(
-          top: BorderSide(color: AppColors.border),
-          bottom: BorderSide(color: AppColors.border),
-          left: BorderSide(color: AppColors.border),
-          right: BorderSide(color: AppColors.border),
+        initiallyExpanded: true,
+        tilePadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
         ),
-        collapsedShape: const Border(
-          top: BorderSide(color: AppColors.border),
-          bottom: BorderSide(color: AppColors.border),
-          left: BorderSide(color: AppColors.border),
-          right: BorderSide(color: AppColors.border),
-        ),
+        childrenPadding: EdgeInsets.zero,
+        backgroundColor: const Color(0xFFFBFCFB),
+        collapsedBackgroundColor: const Color(0xFFFBFCFB),
+        shape: const RoundedRectangleBorder(),
+        collapsedShape: const RoundedRectangleBorder(),
         title: Row(
           children: [
-            Icon(
-              _ingredientCategoryIcon(category.title),
-              color: AppColors.primary,
-              size: 20,
+            Container(
+              width: 34,
+              height: 34,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8F8EB),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _ingredientCategoryIcon(category.title),
+                color: AppColors.primary,
+                size: 19,
+              ),
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
@@ -911,18 +966,23 @@ class _GroceryCategoryCard extends StatelessWidget {
                 category.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: context.text.titleMedium,
+                style: context.text.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ],
         ),
-        trailing: Text(
-          '${visibleItems.length} items',
-          style: context.text.labelLarge?.copyWith(color: AppColors.primary),
+        trailing: _CountBadge(
+          label:
+              '${visibleItems.length} item${visibleItems.length == 1 ? '' : 's'}',
         ),
-        children: visibleItems
-            .map((item) => _GroceryItemRow(item: item))
-            .toList(),
+        children: visibleItems.asMap().entries.map((entry) {
+          return _GroceryItemRow(
+            item: entry.value,
+            showDivider: entry.key < visibleItems.length - 1,
+          );
+        }).toList(),
       ),
     );
   }
@@ -930,43 +990,80 @@ class _GroceryCategoryCard extends StatelessWidget {
 
 class _GroceryItemRow extends StatelessWidget {
   final ManageGroceryItem item;
+  final bool showDivider;
 
-  const _GroceryItemRow({required this.item});
+  const _GroceryItemRow({required this.item, required this.showDivider});
 
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<ManageGroceryListViewModel>();
     final bought = viewModel.isBought(item.id);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, 8),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: showDivider
+            ? Border(
+                bottom: BorderSide(
+                  color: AppColors.border.withValues(alpha: 0.65),
+                ),
+              )
+            : null,
+      ),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 7, 4, 7),
       child: Row(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.name, style: context.text.bodyLarge),
-                Text(
-                  item.quantityLabel,
-                  style: context.text.bodyMedium?.copyWith(
-                    color: AppColors.secondary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
+          Transform.scale(
+            scale: 0.9,
+            child: Checkbox(
+              value: bought,
+              activeColor: AppColors.primary,
+              visualDensity: VisualDensity.compact,
+              onChanged: (_) => context
+                  .read<ManageGroceryListViewModel>()
+                  .toggleBought(item.id),
             ),
           ),
-          Checkbox(
-            value: bought,
-            activeColor: AppColors.primary,
-            onChanged: (_) => context
-                .read<ManageGroceryListViewModel>()
-                .toggleBought(item.id),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Opacity(
+              opacity: bought ? 0.55 : 1,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.bodyMedium?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w400,
+                      decoration: bought ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  if (item.quantityLabel.trim().isNotEmpty)
+                    Text(
+                      item.quantityLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodySmall?.copyWith(
+                        color: AppColors.secondary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
+          const SizedBox(width: AppSpacing.xs),
           IconButton(
             tooltip: 'Delete ingredient',
             visualDensity: VisualDensity.compact,
+            style: IconButton.styleFrom(
+              foregroundColor: AppColors.textSecondary,
+              minimumSize: const Size(34, 34),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             onPressed: viewModel.isSaving
                 ? null
                 : () => context.read<ManageGroceryListViewModel>().deleteItem(

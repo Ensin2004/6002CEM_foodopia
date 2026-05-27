@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../../../core/services/weather_category_service.dart';
+import '../../../recipe/domain/entities/add_recipe_basic_info.dart';
+import '../../../recipe/domain/entities/add_recipe_ingredient.dart';
+import '../../../recipe/domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_meal_ai_plan.dart';
 import '../../domain/entities/meal_plan_inspiration_input.dart';
 import '../../domain/usecases/generate_ai_meal_ideas_usecase.dart';
@@ -52,6 +55,10 @@ class GenerateAiMealViewModel extends ChangeNotifier {
   final List<String> _selectedIngredientsToInclude = [];
   final List<String> _selectedIngredientsToAvoid = [];
   final Set<String> _selectedRecipeIds = {};
+  AddRecipeBasicInfo? _recipeDraftBasicInfo;
+  List<AddRecipeIngredient> _recipeDraftIngredients = const [];
+  List<AddRecipeInstruction> _recipeDraftInstructions = const [];
+  bool _recipeDraftUseSections = false;
   bool _isFactorOptionsLoading = false;
   bool _isFoodSearching = false;
 
@@ -169,6 +176,17 @@ class GenerateAiMealViewModel extends ChangeNotifier {
         .toList();
   }
 
+  AddRecipeBasicInfo? get recipeDraftBasicInfo => _recipeDraftBasicInfo;
+  List<AddRecipeIngredient> get recipeDraftIngredients =>
+      _recipeDraftIngredients;
+  List<AddRecipeInstruction> get recipeDraftInstructions =>
+      _recipeDraftInstructions;
+  bool get recipeDraftUseSections => _recipeDraftUseSections;
+  bool get hasRecipeDraft =>
+      _recipeDraftBasicInfo != null &&
+      _recipeDraftIngredients.isNotEmpty &&
+      _recipeDraftInstructions.isNotEmpty;
+
   Future<void> loadPlan() async {
     _isLoading = true;
     _errorMessage = null;
@@ -234,6 +252,7 @@ class GenerateAiMealViewModel extends ChangeNotifier {
         _selectedServingSize = _servingCountFor(request.servingSize);
       }
       _selectedRecipeIds.clear();
+      clearRecipeDraft(notify: false);
     });
     result.ifLeft((failure) {
       _errorMessage = failure.message;
@@ -416,7 +435,40 @@ class GenerateAiMealViewModel extends ChangeNotifier {
       _selectedRecipeIds.clear();
       _selectedRecipeIds.add(recipeId);
     }
+    clearRecipeDraft(notify: false);
     _notifyIfActive();
+  }
+
+  void saveRecipeDraftBasicInfo(AddRecipeBasicInfo value) {
+    _recipeDraftBasicInfo = value;
+    _recipeDraftIngredients = const [];
+    _recipeDraftInstructions = const [];
+    _recipeDraftUseSections = false;
+    _notifyIfActive();
+  }
+
+  void saveRecipeDraftIngredients(List<AddRecipeIngredient> value) {
+    _recipeDraftIngredients = List.unmodifiable(value);
+    _recipeDraftInstructions = const [];
+    _recipeDraftUseSections = false;
+    _notifyIfActive();
+  }
+
+  void saveRecipeDraftInstructions({
+    required List<AddRecipeInstruction> instructions,
+    required bool useSections,
+  }) {
+    _recipeDraftInstructions = List.unmodifiable(instructions);
+    _recipeDraftUseSections = useSections;
+    _notifyIfActive();
+  }
+
+  void clearRecipeDraft({bool notify = true}) {
+    _recipeDraftBasicInfo = null;
+    _recipeDraftIngredients = const [];
+    _recipeDraftInstructions = const [];
+    _recipeDraftUseSections = false;
+    if (notify) _notifyIfActive();
   }
 
   bool isRecipeSelected(String recipeId) {

@@ -29,6 +29,16 @@ import '../widgets/instructions/instruction_mode_button.dart';
 import '../widgets/recipe_visibility_action_button.dart';
 import '../widgets/instructions/section_instruction_list.dart';
 
+class AddRecipeInstructionDraft {
+  final List<AddRecipeInstruction> instructions;
+  final bool useSections;
+
+  const AddRecipeInstructionDraft({
+    required this.instructions,
+    required this.useSections,
+  });
+}
+
 class AddRecipeInstructionsPage extends StatelessWidget {
   final String recipeId;
   final String initialVisibility;
@@ -38,6 +48,9 @@ class AddRecipeInstructionsPage extends StatelessWidget {
   final String? userId;
   final AddRecipeBasicInfo? aiDraftBasicInfo;
   final List<AddRecipeIngredient> aiDraftIngredients;
+  final bool hideProgressBar;
+  final bool hideAppBar;
+  final ValueChanged<AddRecipeInstructionDraft>? onAiDraftNext;
 
   const AddRecipeInstructionsPage({
     super.key,
@@ -49,6 +62,9 @@ class AddRecipeInstructionsPage extends StatelessWidget {
     this.userId,
     this.aiDraftBasicInfo,
     this.aiDraftIngredients = const [],
+    this.hideProgressBar = false,
+    this.hideAppBar = false,
+    this.onAiDraftNext,
   });
 
   @override
@@ -76,6 +92,9 @@ class AddRecipeInstructionsPage extends StatelessWidget {
         userId: userId,
         aiDraftBasicInfo: aiDraftBasicInfo,
         aiDraftIngredients: aiDraftIngredients,
+        hideProgressBar: hideProgressBar,
+        hideAppBar: hideAppBar,
+        onAiDraftNext: onAiDraftNext,
       ),
     );
   }
@@ -89,6 +108,9 @@ class _AddRecipeInstructionsView extends StatefulWidget {
   final String? userId;
   final AddRecipeBasicInfo? aiDraftBasicInfo;
   final List<AddRecipeIngredient> aiDraftIngredients;
+  final bool hideProgressBar;
+  final bool hideAppBar;
+  final ValueChanged<AddRecipeInstructionDraft>? onAiDraftNext;
 
   const _AddRecipeInstructionsView({
     required this.recipeId,
@@ -98,6 +120,9 @@ class _AddRecipeInstructionsView extends StatefulWidget {
     this.userId,
     this.aiDraftBasicInfo,
     this.aiDraftIngredients = const [],
+    this.hideProgressBar = false,
+    this.hideAppBar = false,
+    this.onAiDraftNext,
   });
 
   @override
@@ -182,59 +207,62 @@ class _AddRecipeInstructionsViewState
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         backgroundColor: Colors.white,
-        appBar: CustomAppBar(
-          title: widget.initialAiRecipe == null
-              ? "New Recipe"
-              : "Customize AI Recipe",
-          leading: IconButton(
-            onPressed: () => _handleBack(context),
-            icon: const Icon(Icons.arrow_back),
-          ),
-          actions: [
-            Consumer<AddRecipeVisibilityViewModel>(
-              builder: (context, visibilityViewModel, _) {
-                return RecipeVisibilityActionButton(
-                  visibility: visibilityViewModel.visibility,
-                  isSaving: visibilityViewModel.isSaving,
-                  onChanged: (value) => confirmRecipeVisibilityChange(
-                    context: context,
-                    currentVisibility: visibilityViewModel.visibility,
-                    nextVisibility: value,
-                    onConfirmed: (visibility) =>
-                        visibilityViewModel.updateVisibility(
-                          recipeId: widget.recipeId,
-                          value: visibility,
+        appBar: widget.hideAppBar
+            ? null
+            : CustomAppBar(
+                title: widget.initialAiRecipe == null
+                    ? "New Recipe"
+                    : "Customize AI Recipe",
+                leading: IconButton(
+                  onPressed: () => _handleBack(context),
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                actions: [
+                  Consumer<AddRecipeVisibilityViewModel>(
+                    builder: (context, visibilityViewModel, _) {
+                      return RecipeVisibilityActionButton(
+                        visibility: visibilityViewModel.visibility,
+                        isSaving: visibilityViewModel.isSaving,
+                        onChanged: (value) => confirmRecipeVisibilityChange(
+                          context: context,
+                          currentVisibility: visibilityViewModel.visibility,
+                          nextVisibility: value,
+                          onConfirmed: (visibility) =>
+                              visibilityViewModel.updateVisibility(
+                                recipeId: widget.recipeId,
+                                value: visibility,
+                              ),
+                          errorMessage: () => visibilityViewModel.errorMessage,
                         ),
-                    errorMessage: () => visibilityViewModel.errorMessage,
+                      );
+                    },
                   ),
-                );
-              },
-            ),
-          ],
-        ),
+                ],
+              ),
         body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Progress Bar
-              const Padding(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.sm,
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                  AppSpacing.md,
+              if (!widget.hideProgressBar)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.sm,
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                    AppSpacing.md,
+                  ),
+                  child: AppStepProgressBar(
+                    totalSteps: 4,
+                    currentStep: 3,
+                    labels: [
+                      "Basic Info",
+                      "Ingredients",
+                      "Instructions",
+                      "Review",
+                    ],
+                  ),
                 ),
-                child: AppStepProgressBar(
-                  totalSteps: 4,
-                  currentStep: 3,
-                  labels: [
-                    "Basic Info",
-                    "Ingredients",
-                    "Instructions",
-                    "Review",
-                  ],
-                ),
-              ),
 
               // Label, Tips, Button
               Padding(
@@ -449,6 +477,17 @@ class _AddRecipeInstructionsViewState
     AddRecipeInstructionsViewModel viewModel,
   ) async {
     if (widget.initialAiRecipe != null) {
+      final onAiDraftNext = widget.onAiDraftNext;
+      if (onAiDraftNext != null) {
+        _didSaveChanges = true;
+        onAiDraftNext(
+          AddRecipeInstructionDraft(
+            instructions: _completedInstructions,
+            useSections: _useSections,
+          ),
+        );
+        return;
+      }
       context.push(
         AppRouter.addRecipeReview,
         extra: AddRecipeReviewArgs(
