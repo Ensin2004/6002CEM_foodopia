@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/basic_info/input_option_field.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -100,7 +100,6 @@ class _AddRecipeBasicInfoView extends StatefulWidget {
 }
 
 class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
-  final ImagePicker _imagePicker = ImagePicker();
   final List<File> _images = [];
   final List<String> _existingImageUrls = [];
   final TextEditingController _recipeNameController = TextEditingController();
@@ -284,13 +283,13 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                         widget.initialAiRecipe?.imageBase64?.isNotEmpty == true)
                       _AiRecipeImagePreview(
                         imageBase64: widget.initialAiRecipe!.imageBase64!,
-                        onReplace: _pickImages,
+                        onReplace: _pickMedia,
                       )
                     else
                       RecipeImagePicker(
                         images: _images,
                         existingImageUrls: _existingImageUrls,
-                        onPick: _pickImages,
+                        onPick: _pickMedia,
                         onEdit: _showSelectedMediaSheet,
                       ),
                     const SizedBox(height: AppSpacing.lg),
@@ -469,24 +468,32 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     }
   }
 
-  // Image Picker Helper
-  Future<void> _pickImages() async {
+  // Media Picker Helper
+  Future<void> _pickMedia() async {
     final remainingSlots = 10 - _images.length - _existingImageUrls.length;
     if (remainingSlots <= 0) return;
 
-    final pickedImages = await _imagePicker.pickMultiImage();
-    if (pickedImages.isEmpty) return;
+    final result = await fp.FilePicker.pickFiles(
+      allowMultiple: true,
+      type: fp.FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'mp4', 'mov', 'm4v', 'avi', 'webm'],
+    );
+    if (result == null || result.files.isEmpty) return;
 
     setState(() {
       _images.addAll(
-        pickedImages.take(remainingSlots).map((image) => File(image.path)),
+        result.files
+            .map((file) => file.path)
+            .whereType<String>()
+            .take(remainingSlots)
+            .map((path) => File(path)),
       );
     });
   }
 
   Future<void> _showSelectedMediaSheet() async {
     if (_images.isEmpty && _existingImageUrls.isEmpty) {
-      await _pickImages();
+      await _pickMedia();
       return;
     }
 
@@ -696,9 +703,6 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     }
 
     _didSaveChanges = true;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Recipe basic info saved.")));
 
     if (widget.returnToReview) {
       context.pushReplacement(

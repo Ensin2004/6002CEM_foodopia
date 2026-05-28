@@ -48,9 +48,9 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
     final imageCount = widget.existingImageUrls.length + widget.images.length;
     if (imageCount == 0) {
       return MethodCard(
-        icon: Icons.add_photo_alternate_outlined,
-        title: "Upload Image",
-        subtitle: "Upload image for your recipe.",
+        icon: Icons.perm_media_outlined,
+        title: "Upload Media",
+        subtitle: "Upload images or videos for your recipe.",
         onTap: widget.onPick,
       );
     }
@@ -81,10 +81,12 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
                     return GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () => existingUrl == null
-                          ? _showExpandedImage(context: context, imageFile: widget.images[fileIndex])
-                          : _showExpandedImage(context: context, imageUrl: existingUrl),
+                          ? _showExpandedMedia(context: context, imageFile: widget.images[fileIndex])
+                          : _showExpandedMedia(context: context, imageUrl: existingUrl),
                       child: existingUrl == null
-                          ? Image.file(widget.images[fileIndex], fit: BoxFit.contain)
+                          ? _RecipeMediaPreview(file: widget.images[fileIndex], fit: BoxFit.contain)
+                          : _isVideoPath(existingUrl)
+                          ? const _VideoPlaceholder()
                           : AppRemoteOrAssetImage(
                               imagePath: existingUrl,
                               width: double.infinity,
@@ -134,11 +136,14 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
     );
   }
 
-  Future<void> _showExpandedImage({
+  Future<void> _showExpandedMedia({
     required BuildContext context,
     File? imageFile,
     String? imageUrl,
   }) async {
+    final isVideo = imageFile != null
+        ? _isVideoPath(imageFile.path)
+        : _isVideoPath(imageUrl ?? '');
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -151,7 +156,9 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
                   child: InteractiveViewer(
                     minScale: 1,
                     maxScale: 4,
-                    child: imageFile != null
+                    child: isVideo
+                        ? const _VideoPlaceholder()
+                        : imageFile != null
                         ? Image.file(imageFile, fit: BoxFit.contain)
                         : AppRemoteOrAssetImage(
                             imagePath: imageUrl ?? "",
@@ -176,6 +183,43 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
       },
     );
   }
+}
+
+class _RecipeMediaPreview extends StatelessWidget {
+  final File file;
+  final BoxFit fit;
+
+  const _RecipeMediaPreview({required this.file, required this.fit});
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isVideoPath(file.path)) return const _VideoPlaceholder();
+    return Image.file(file, fit: fit);
+  }
+}
+
+class _VideoPlaceholder extends StatelessWidget {
+  const _VideoPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ColoredBox(
+      color: colors.surfaceContainerHighest,
+      child: const Center(
+        child: Icon(Icons.play_circle_fill_rounded, size: 56),
+      ),
+    );
+  }
+}
+
+bool _isVideoPath(String path) {
+  final value = path.toLowerCase().split('?').first;
+  return value.endsWith('.mp4') ||
+      value.endsWith('.mov') ||
+      value.endsWith('.m4v') ||
+      value.endsWith('.avi') ||
+      value.endsWith('.webm');
 }
 
 class _ImageActionButton extends StatelessWidget {

@@ -55,11 +55,11 @@ class OpenAiIngredientDataService {
               },
             }),
           )
-          .timeout(const Duration(seconds: 60));
+          .timeout(const Duration(seconds: 90));
     } on TimeoutException {
       throw TimeoutException(
         'OpenAI took too long to analyze ingredients. Please try again, or switch OPENAI_RECIPE_MODEL to a faster mini model.',
-        const Duration(seconds: 60),
+        const Duration(seconds: 90),
       );
     }
 

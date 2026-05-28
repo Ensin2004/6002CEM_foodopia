@@ -54,7 +54,10 @@ class AddRecipeVideoDataSource {
 
       return AddRecipeVideoResult(
         basicInfo: AddRecipeBasicInfo(
-          mediaFiles: draft.imageFile == null ? const [] : [draft.imageFile!],
+          mediaFiles: [
+            File(videoPath),
+            if (draft.imageFile != null) draft.imageFile!,
+          ],
           recipeName: draft.recipeName,
           description: draft.description,
           otherNames: const [],

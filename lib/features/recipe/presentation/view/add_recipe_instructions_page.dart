@@ -484,9 +484,6 @@ class _AddRecipeInstructionsViewState
     }
 
     _didSaveChanges = true;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Recipe instructions saved.")));
 
     if (widget.returnToReview) {
       context.pushReplacement(

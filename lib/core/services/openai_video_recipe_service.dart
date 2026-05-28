@@ -58,7 +58,7 @@ class OpenAiVideoRecipeService {
             await http.MultipartFile.fromPath('file', audioFile.path),
           );
 
-    final streamed = await request.send().timeout(const Duration(seconds: 90));
+    final streamed = await request.send().timeout(const Duration(seconds: 120));
     final body = await streamed.stream.bytesToString();
     if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
       throw StateError('OpenAI transcription failed: $body');
@@ -100,7 +100,7 @@ class OpenAiVideoRecipeService {
             ],
           }),
         )
-        .timeout(const Duration(seconds: 90));
+        .timeout(const Duration(seconds: 120));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError(
@@ -148,7 +148,7 @@ class OpenAiVideoRecipeService {
             },
           }),
         )
-        .timeout(const Duration(seconds: 90));
+        .timeout(const Duration(seconds: 120));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('OpenAI recipe request failed: ${response.body}');
@@ -181,7 +181,7 @@ class OpenAiVideoRecipeService {
             'n': 1,
           }),
         )
-        .timeout(const Duration(seconds: 60));
+        .timeout(const Duration(seconds: 120));
 
     if (response.statusCode < 200 || response.statusCode >= 300) return null;
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;

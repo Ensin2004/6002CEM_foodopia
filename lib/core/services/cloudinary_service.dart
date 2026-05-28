@@ -31,8 +31,8 @@ class CloudinaryService {
   static String get _instructionUploadPreset => EnvConfig.instructionUploadPreset;
 
   /// Base URL for Cloudinary uploads
-  static String _getUploadUrl() {
-    return 'https://api.cloudinary.com/v1_1/$_cloudName/image/upload';
+  static String _getUploadUrl({String resourceType = 'image'}) {
+    return 'https://api.cloudinary.com/v1_1/$_cloudName/$resourceType/upload';
   }
 
   static void _validateConfig(String uploadPreset) {
@@ -45,12 +45,12 @@ class CloudinaryService {
   }
 
   /// Generic upload method
-  static Future<String> _uploadImage(File imageFile, String uploadPreset) async {
+  static Future<String> _uploadFile(File imageFile, String uploadPreset, {String resourceType = 'image'}) async {
     try {
       _validateConfig(uploadPreset);
 
       // Runs the guarded operation that can throw.
-      final uri = Uri.parse(_getUploadUrl());
+      final uri = Uri.parse(_getUploadUrl(resourceType: resourceType));
       final request = http.MultipartRequest('POST', uri);
 
       // Add upload preset
@@ -82,31 +82,31 @@ class CloudinaryService {
   /// Upload user profile image
   static Future<String> uploadUserProfileImage(File imageFile) async {
     /// Handles the upload image operation.
-    return await _uploadImage(imageFile, _userProfileUploadPreset);
+    return await _uploadFile(imageFile, _userProfileUploadPreset);
   }
 
   /// Upload settings-related images (help center, FAQ, ratings)
   static Future<String> uploadSettingsImage(File imageFile) async {
     /// Handles the upload image operation.
-    return await _uploadImage(imageFile, _settingsUploadPreset);
+    return await _uploadFile(imageFile, _settingsUploadPreset);
   }
 
   /// Upload recipe image and video
   static Future<String> uploadRecipeImage(File imageFile) async {
     /// Handles the upload image operation.
-    return await _uploadImage(imageFile, _recipeUploadPreset);
+    return await _uploadFile(imageFile, _recipeUploadPreset, resourceType: 'auto');
   }
 
   /// Upload ingredient image
   static Future<String> uploadIngredientImage(File imageFile) async {
     /// Handles the upload image operation.
-    return await _uploadImage(imageFile, _ingredientUploadPreset);
+    return await _uploadFile(imageFile, _ingredientUploadPreset);
   }
 
   /// Upload instruction image
   static Future<String> uploadInstructionImage(File imageFile) async {
     /// Handles the upload image operation.
-    return await _uploadImage(imageFile, _instructionUploadPreset);
+    return await _uploadFile(imageFile, _instructionUploadPreset);
   }
 
   // For backward compatibility with existing code
