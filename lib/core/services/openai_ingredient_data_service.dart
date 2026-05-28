@@ -64,7 +64,7 @@ class OpenAiIngredientDataService {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('OpenAI ingredient request failed: ${response.body}');
+      throw StateError('OpenAI ingredient analyze request failed: ${response.body}');
     }
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -109,11 +109,11 @@ Rules:
 - Do not create new categories.
 - If an ingredient does not clearly match any category, use the provided category named "Others".
 - Return ingredientCategoryId as the selected category id.
-- Return nutrients for each ingredient as calories, carbohydrates, fat, and protein.
+- Return nutrients for each ingredient as calories, carbohydrates, fat and protein.
 - Nutrients are for the provided amount and unit.
-- If usdaNutrients is provided, keep only calories, carbohydrates, fat, and protein from USDA and use those values.
-- If usdaNutrients is missing or incomplete, estimate calories, carbohydrates, fat, and protein from the ingredient, amount, and unit.
-- Use kcal for calories and grams for carbohydrates, fat, and protein.
+- If usdaNutrients is provided, keep only calories, carbohydrates, fat and protein from USDA and use those values.
+- If usdaNutrients is missing or incomplete, estimate calories, carbohydrates, fat and protein from the ingredient, amount and unit.
+- Use kcal for calories and grams for carbohydrates, fat and protein.
 ''';
   }
 

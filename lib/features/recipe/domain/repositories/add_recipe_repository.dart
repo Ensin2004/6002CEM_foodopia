@@ -8,6 +8,7 @@ import '../entities/add_recipe_ingredient_unit.dart';
 import '../entities/add_recipe_instruction.dart';
 import '../entities/add_recipe_review.dart';
 import '../entities/add_recipe_setup.dart';
+import '../entities/add_recipe_video_result.dart';
 
 abstract class AddRecipeRepository {
   Future<Either<Failure, AddRecipeSetup>> getSetup();
@@ -23,6 +24,10 @@ abstract class AddRecipeRepository {
   );
 
   Future<Either<Failure, String>> saveBasicInfo(AddRecipeBasicInfo info);
+
+  Future<Either<Failure, AddRecipeVideoResult>> generateRecipeFromVideo(
+    String videoPath,
+  );
 
   Future<Either<Failure, void>> saveIngredients({
     required String recipeId,

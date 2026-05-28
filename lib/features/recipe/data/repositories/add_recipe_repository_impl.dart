@@ -8,6 +8,7 @@ import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_review.dart';
 import '../../domain/entities/add_recipe_setup.dart';
+import '../../domain/entities/add_recipe_video_result.dart';
 import '../../domain/repositories/add_recipe_repository.dart';
 import '../datasources/add_recipe_remote_datasource.dart';
 
@@ -101,6 +102,31 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
     } catch (error) {
       return Left(
         ServerFailure(message: 'Unable to save recipe basic info: $error'),
+      );
+    }
+  }
+
+  @override
+  Future<Either<Failure, AddRecipeVideoResult>> generateRecipeFromVideo(
+    String videoPath,
+  ) async {
+    if (videoPath.trim().isEmpty) {
+      return Left(ValidationFailure(message: 'Please select a video.'));
+    }
+
+    try {
+      final result = await remoteDataSource.generateRecipeFromVideo(videoPath);
+      if (result.ingredients.isEmpty || result.instructions.isEmpty) {
+        return Left(
+          ServerFailure(
+            message: 'Unable to detect enough recipe details from the video.',
+          ),
+        );
+      }
+      return Right(result);
+    } catch (error) {
+      return Left(
+        ServerFailure(message: 'Unable to generate recipe from video: $error'),
       );
     }
   }
