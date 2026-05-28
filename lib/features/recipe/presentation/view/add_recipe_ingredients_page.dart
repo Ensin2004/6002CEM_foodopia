@@ -519,9 +519,6 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     }
 
     _didSaveChanges = true;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Recipe ingredients saved.")));
 
     if (widget.returnToReview) {
       context.pushReplacement(

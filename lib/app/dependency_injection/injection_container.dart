@@ -33,6 +33,7 @@ import '../../core/services/network_info.dart';
 import '../../core/services/openai_ingredient_data_service.dart';
 import '../../core/services/food_search_service.dart';
 import '../../core/services/openai_meal_idea_service.dart';
+import '../../core/services/openai_video_recipe_service.dart';
 import '../../core/services/open_meteo_weather_service.dart';
 
 // Auth Feature - Data Layer
@@ -106,11 +107,13 @@ import '../../features/notifications/domain/usecases/schedule_plan_reminder_usec
 import '../../features/notifications/domain/usecases/update_notification_preference_usecase.dart';
 import '../../features/statistics/data/datasources/statistics_local_datasource.dart';
 import '../../features/statistics/data/datasources/statistics_remote_datasource.dart';
+import '../../features/recipe/data/datasources/add_recipe_video_datasource.dart';
 import '../../features/recipe/data/datasources/add_recipe_remote_datasource.dart';
 import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart';
 import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
 import '../../features/recipe/domain/usecases/finalize_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/complete_add_recipe_usecase.dart';
+import '../../features/recipe/domain/usecases/generate_add_recipe_from_video_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_review_usecase.dart';
@@ -294,12 +297,20 @@ Future<void> initDependencies() async {
 
 void _initRecipeFeature() {
   sl.registerLazySingleton(() => OpenAiIngredientDataService(client: sl()));
+  sl.registerLazySingleton(() => OpenAiVideoRecipeService(client: sl()));
+  sl.registerLazySingleton(
+    () => AddRecipeVideoDataSource(
+      firestore: sl(),
+      openAiVideoRecipeService: sl(),
+    ),
+  );
   sl.registerLazySingleton(
     () => AddRecipeRemoteDataSource(
       firestore: sl(),
       auth: sl(),
       foodSearchService: sl(),
       ingredientAiDataSource: sl(),
+      videoDataSource: sl(),
     ),
   );
   sl.registerLazySingleton<AddRecipeRepository>(
@@ -309,6 +320,7 @@ void _initRecipeFeature() {
   sl.registerLazySingleton(() => GetAddRecipeIngredientUnitsUseCase(sl()));
   sl.registerLazySingleton(() => SearchAddRecipeFoodsUseCase(sl()));
   sl.registerLazySingleton(() => GetAddRecipeFoodNutrientsUseCase(sl()));
+  sl.registerLazySingleton(() => GenerateAddRecipeFromVideoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeInstructionsUseCase(sl()));

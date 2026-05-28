@@ -26,10 +26,7 @@ class _ReviewHeroImageState extends State<ReviewHeroImage> {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(
-          color: AppColors.border,
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.border, width: 1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: ClipRRect(
@@ -46,15 +43,18 @@ class _ReviewHeroImageState extends State<ReviewHeroImage> {
                     setState(() => _currentImageIndex = index);
                   },
                   itemBuilder: (context, index) {
+                    final mediaPath = widget.media[index];
                     return GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => _showExpandedImage(context, widget.media[index]),
-                      child: AppRemoteOrAssetImage(
-                        imagePath: widget.media.isEmpty ? "" : widget.media[index],
-                        width: double.infinity,
-                        height: double.infinity,
-                        fit: BoxFit.contain,
-                      ),
+                      onTap: () => _showExpandedImage(context, mediaPath),
+                      child: _isVideoPath(mediaPath)
+                          ? const _VideoPlaceholder()
+                          : AppRemoteOrAssetImage(
+                              imagePath: mediaPath,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.contain,
+                            ),
                     );
                   },
                 ),
@@ -100,12 +100,14 @@ class _ReviewHeroImageState extends State<ReviewHeroImage> {
                   child: InteractiveViewer(
                     minScale: 1,
                     maxScale: 4,
-                    child: AppRemoteOrAssetImage(
-                      imagePath: imagePath,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.contain,
-                    ),
+                    child: _isVideoPath(imagePath)
+                        ? const _VideoPlaceholder()
+                        : AppRemoteOrAssetImage(
+                            imagePath: imagePath,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.contain,
+                          ),
                   ),
                 ),
                 Positioned(
@@ -123,4 +125,28 @@ class _ReviewHeroImageState extends State<ReviewHeroImage> {
       },
     );
   }
+}
+
+class _VideoPlaceholder extends StatelessWidget {
+  const _VideoPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ColoredBox(
+      color: colors.surfaceContainerHighest,
+      child: const Center(
+        child: Icon(Icons.play_circle_fill_rounded, size: 56),
+      ),
+    );
+  }
+}
+
+bool _isVideoPath(String path) {
+  final value = path.toLowerCase().split('?').first;
+  return value.endsWith('.mp4') ||
+      value.endsWith('.mov') ||
+      value.endsWith('.m4v') ||
+      value.endsWith('.avi') ||
+      value.endsWith('.webm');
 }

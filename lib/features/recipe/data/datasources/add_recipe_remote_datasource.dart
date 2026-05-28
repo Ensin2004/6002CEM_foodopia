@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -13,6 +15,8 @@ import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_option.dart';
 import '../../domain/entities/add_recipe_review.dart';
+import '../../domain/entities/add_recipe_video_result.dart';
+import 'add_recipe_video_datasource.dart';
 import '../models/add_recipe_basic_info_model.dart';
 import '../models/add_recipe_ingredient_model.dart';
 import '../models/add_recipe_instruction_model.dart';
@@ -24,12 +28,14 @@ class AddRecipeRemoteDataSource {
   final FirebaseAuth auth;
   final FoodSearchService foodSearchService;
   final OpenAiIngredientDataService ingredientAiDataSource;
+  final AddRecipeVideoDataSource videoDataSource;
 
   const AddRecipeRemoteDataSource({
     required this.firestore,
     required this.auth,
     required this.foodSearchService,
     required this.ingredientAiDataSource,
+    required this.videoDataSource,
   });
 
   Future<AddRecipeSetupModel> getSetup() async {
@@ -147,6 +153,10 @@ class AddRecipeRemoteDataSource {
     return foodSearchService.getUsdaLabelNutrients(fdcId);
   }
 
+  Future<AddRecipeVideoResult> generateRecipeFromVideo(String videoPath) {
+    return videoDataSource.generateFromVideo(videoPath);
+  }
+
   Future<String> saveBasicInfo(AddRecipeBasicInfo info) async {
     final uid = auth.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
@@ -160,6 +170,9 @@ class AddRecipeRemoteDataSource {
     for (final mediaFile in info.mediaFiles) {
       final url = await CloudinaryService.uploadRecipeImage(mediaFile);
       mediaUrls.add(url);
+      if (info.isAiGenerated) {
+        await _deleteVideoWorkingDirForFile(mediaFile);
+      }
     }
 
     final model = AddRecipeBasicInfoModel(
@@ -187,6 +200,20 @@ class AddRecipeRemoteDataSource {
 
     final doc = await firestore.collection('recipes').add(model.toFirestore());
     return doc.id;
+  }
+
+  Future<void> _deleteVideoWorkingDirForFile(File file) async {
+    final parent = file.parent;
+    final parentName = parent.path.split(RegExp(r'[\\/]')).last;
+    if (!parentName.startsWith('foodopia_video_')) return;
+
+    try {
+      if (await parent.exists()) {
+        await parent.delete(recursive: true);
+      }
+    } catch (_) {
+      // Temporary FFmpeg files won't affect recipe saving after upload.
+    }
   }
 
   Future<void> saveIngredients({

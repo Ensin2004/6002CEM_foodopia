@@ -137,7 +137,9 @@ class _SelectedMediaTile extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             imageFile != null
-                ? Image.file(imageFile!, fit: BoxFit.cover)
+                ? _MediaTilePreview(file: imageFile!)
+                : _isVideoPath(imageUrl!)
+                ? const _VideoTilePreview()
                 : AppRemoteOrAssetImage(imagePath: imageUrl!, fit: BoxFit.cover),
             Positioned(
               left: AppSpacing.xs,
@@ -186,4 +188,40 @@ class _SelectedMediaTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MediaTilePreview extends StatelessWidget {
+  final File file;
+
+  const _MediaTilePreview({required this.file});
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isVideoPath(file.path)) return const _VideoTilePreview();
+    return Image.file(file, fit: BoxFit.cover);
+  }
+}
+
+class _VideoTilePreview extends StatelessWidget {
+  const _VideoTilePreview();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ColoredBox(
+      color: colors.surfaceContainerHighest,
+      child: const Center(
+        child: Icon(Icons.play_circle_fill_rounded, size: 34),
+      ),
+    );
+  }
+}
+
+bool _isVideoPath(String path) {
+  final value = path.toLowerCase().split('?').first;
+  return value.endsWith('.mp4') ||
+      value.endsWith('.mov') ||
+      value.endsWith('.m4v') ||
+      value.endsWith('.avi') ||
+      value.endsWith('.webm');
 }
