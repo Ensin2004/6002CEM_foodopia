@@ -11,6 +11,7 @@ import '../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
@@ -421,12 +422,12 @@ class _HeroImageState extends State<_HeroImage> {
               itemBuilder: (context, index) {
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => _showExpandedImage(context, images[index]),
-                  child: AppRemoteOrAssetImage(
-                    imagePath: images[index],
-                    width: double.infinity,
-                    height: double.infinity,
+                  onTap: () => showRecipeMediaDialog(context, images[index]),
+                  child: AppRecipeMedia(
+                    mediaPath: images[index],
                     fit: BoxFit.cover,
+                    showVideoControls: isRecipeVideoPath(images[index]),
+                    allowFullscreen: isRecipeVideoPath(images[index]),
                   ),
                 );
               },
@@ -435,63 +436,23 @@ class _HeroImageState extends State<_HeroImage> {
         ),
         Positioned(
           right: 10,
-          bottom: 10,
+          top: 10,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: colors.onSurface.withValues(alpha: 0.75),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               '${_currentImageIndex + 1}/${images.length}',
-              style: context.text.bodySmall?.copyWith(
+              style: context.text.titleSmall?.copyWith(
                 color: colors.surface,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
         ),
       ],
-    );
-  }
-
-  Future<void> _showExpandedImage(
-    BuildContext context,
-    String imagePath,
-  ) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return Dialog.fullscreen(
-          backgroundColor: Colors.black,
-          child: SafeArea(
-            child: Stack(
-              children: [
-                Center(
-                  child: InteractiveViewer(
-                    minScale: 1,
-                    maxScale: 4,
-                    child: AppRemoteOrAssetImage(
-                      imagePath: imagePath,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: IconButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

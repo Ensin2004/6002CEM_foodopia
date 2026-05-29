@@ -10,6 +10,7 @@ import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../viewmodel/explore_creator_detail_viewmodel.dart';
@@ -71,40 +72,7 @@ class _ExploreCreatorDetailViewState extends State<_ExploreCreatorDetailView>
   }
 
   Future<void> _showRecipeImage(ExploreRecipe recipe) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return Dialog.fullscreen(
-          backgroundColor: Colors.black,
-          child: SafeArea(
-            child: Stack(
-              children: [
-                Center(
-                  child: InteractiveViewer(
-                    minScale: 1,
-                    maxScale: 4,
-                    child: AppRemoteOrAssetImage(
-                      imagePath: recipe.imagePath,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: IconButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    await showRecipeMediaDialog(context, recipe.imagePath);
   }
 
   @override

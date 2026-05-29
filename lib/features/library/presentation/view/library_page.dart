@@ -12,6 +12,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/entities/library_profile.dart';
 import '../../domain/entities/library_recipe.dart';
@@ -274,68 +275,76 @@ class _LibraryContent extends StatelessWidget {
 
     return SafeArea(
       top: false,
-      child: CustomScrollView(
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        slivers: [
-          SliverToBoxAdapter(
-            child: _LibraryProfileHeader(
-              profile: profile,
-              postCount: viewModel.postCount,
-              onMoreTap: onComingSoonTap,
-              onEditProfileTap: onEditProfileTap,
-              onFollowersTap: onFollowersTap,
-              onFollowingTap: onFollowingTap,
-            ),
-          ),
-          SliverToBoxAdapter(child: _LibraryTabs(tabController: tabController)),
-          if (viewModel.shouldShowEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: LibraryEmptyState(onExploreNow: onExploreNow),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: MediaQuery.sizeOf(context).width >= 720
-                      ? 3
-                      : 2,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 16,
-                  mainAxisExtent: 282,
-                ),
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final recipe = recipes[index];
-                  final disabled =
-                      mealPlanSelection?.existingRecipeIds.contains(
-                        recipe.id,
-                      ) ??
-                      false;
-                  return LibraryRecipeCard(
-                    recipe: recipe,
-                    isHighlighted: recipe.id == focusedRecipeId,
-                    disabled: disabled,
-                    onComingSoonTap: onComingSoonTap,
-                    onFavouriteTap: () => onFavouriteTap(recipe.id),
-                    onTap: () async {
-                      await context.push(
-                        AppRouter.libraryRecipeDetail,
-                        extra: LibraryRecipeDetailArgs(
-                          recipeId: recipe.id,
-                          isSelfPublished: recipe.isSelfPublished,
-                          isPublished: recipe.isPublished,
-                          mealPlanSelection: mealPlanSelection,
-                        ),
-                      );
-                      if (!context.mounted) return;
-                      await viewModel.loadLibrary();
-                    },
-                  );
-                }, childCount: recipes.length),
+      child: RefreshIndicator(
+        onRefresh: viewModel.loadLibrary,
+        child: CustomScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: _LibraryProfileHeader(
+                profile: profile,
+                postCount: viewModel.postCount,
+                onMoreTap: onComingSoonTap,
+                onEditProfileTap: onEditProfileTap,
+                onFollowersTap: onFollowersTap,
+                onFollowingTap: onFollowingTap,
               ),
             ),
-        ],
+            SliverToBoxAdapter(
+              child: _LibraryTabs(tabController: tabController),
+            ),
+            if (viewModel.shouldShowEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: LibraryEmptyState(onExploreNow: onExploreNow),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: MediaQuery.sizeOf(context).width >= 720
+                        ? 3
+                        : 2,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 16,
+                    mainAxisExtent: 282,
+                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final recipe = recipes[index];
+                    final disabled =
+                        mealPlanSelection?.existingRecipeIds.contains(
+                          recipe.id,
+                        ) ??
+                        false;
+                    return LibraryRecipeCard(
+                      recipe: recipe,
+                      isHighlighted: recipe.id == focusedRecipeId,
+                      disabled: disabled,
+                      onComingSoonTap: onComingSoonTap,
+                      onFavouriteTap: () => onFavouriteTap(recipe.id),
+                      onImageLongPress: () =>
+                          showRecipeMediaDialog(context, recipe.imagePath),
+                      onTap: () async {
+                        await context.push(
+                          AppRouter.libraryRecipeDetail,
+                          extra: LibraryRecipeDetailArgs(
+                            recipeId: recipe.id,
+                            isSelfPublished: recipe.isSelfPublished,
+                            isPublished: recipe.isPublished,
+                            mealPlanSelection: mealPlanSelection,
+                          ),
+                        );
+                        if (!context.mounted) return;
+                        await viewModel.loadLibrary();
+                      },
+                    );
+                  }, childCount: recipes.length),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

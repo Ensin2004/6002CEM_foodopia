@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../domain/entities/library_recipe.dart';
 
 class LibraryRecipeCard extends StatelessWidget {
@@ -10,6 +11,7 @@ class LibraryRecipeCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onComingSoonTap;
   final VoidCallback onFavouriteTap;
+  final VoidCallback? onImageLongPress;
   final bool isHighlighted;
   final bool disabled;
 
@@ -19,6 +21,7 @@ class LibraryRecipeCard extends StatelessWidget {
     required this.onTap,
     required this.onComingSoonTap,
     required this.onFavouriteTap,
+    this.onImageLongPress,
     this.isHighlighted = false,
     this.disabled = false,
   });
@@ -56,17 +59,17 @@ class LibraryRecipeCard extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(8),
-                        ),
-                        child: ColoredBox(
-                          color: colors.surfaceContainerHighest,
-                          child: AppRemoteOrAssetImage(
-                            imagePath: recipe.imagePath,
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
+                      GestureDetector(
+                        onLongPress: onImageLongPress,
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8),
+                          ),
+                          child: ColoredBox(
+                            color: colors.surfaceContainerHighest,
+                            child: AppRecipeMediaPreview(
+                              mediaPath: recipe.imagePath,
+                            ),
                           ),
                         ),
                       ),

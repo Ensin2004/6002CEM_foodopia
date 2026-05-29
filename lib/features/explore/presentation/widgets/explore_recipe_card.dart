@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../domain/entities/explore_recipe.dart';
 
 class ExploreRecipeCard extends StatelessWidget {
@@ -60,11 +61,8 @@ class ExploreRecipeCard extends StatelessWidget {
                             ),
                             child: ColoredBox(
                               color: colors.surfaceContainerHighest,
-                              child: AppRemoteOrAssetImage(
-                                imagePath: recipe.imagePath,
-                                width: double.infinity,
-                                height: double.infinity,
-                                fit: BoxFit.cover,
+                              child: AppRecipeMediaPreview(
+                                mediaPath: recipe.imagePath,
                               ),
                             ),
                           ),
