@@ -1,8 +1,8 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -132,7 +132,6 @@ class _AddRecipeInstructionsView extends StatefulWidget {
 
 class _AddRecipeInstructionsViewState
     extends State<_AddRecipeInstructionsView> {
-  final ImagePicker _imagePicker = ImagePicker();
   late final List<InstructionStepState> _steps;
   final List<InstructionSectionState> _sections = [InstructionSectionState()];
   bool _useSections = false;
@@ -386,9 +385,19 @@ class _AddRecipeInstructionsViewState
 
   // Image Picker Helper
   Future<void> _pickStepImage(InstructionStepState step) async {
-    final image = await _imagePicker.pickImage(source: ImageSource.gallery);
+    final image = await _pickImageFile();
     if (image == null) return;
-    setState(() => step.imageFile = File(image.path));
+    setState(() => step.imageFile = image);
+  }
+
+  Future<File?> _pickImageFile() async {
+    final result = await fp.FilePicker.pickFiles(
+      allowMultiple: false,
+      type: fp.FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+    );
+    final path = result?.files.firstOrNull?.path;
+    return path == null ? null : File(path);
   }
 
   // Add, Remove, Reorder Helper

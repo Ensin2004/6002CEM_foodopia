@@ -1,9 +1,9 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/ingredients/input_ingredient_field.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -123,7 +123,6 @@ class _AddRecipeIngredientsView extends StatefulWidget {
 }
 
 class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
-  final ImagePicker _imagePicker = ImagePicker();
   late final List<IngredientRowState> _rows;
   String? _seededRecipeId;
   String? _requestedRecipeId;
@@ -372,9 +371,19 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
 
   // Image Picker Helper
   Future<void> _pickIngredientImage(IngredientRowState row) async {
-    final image = await _imagePicker.pickImage(source: ImageSource.gallery);
+    final image = await _pickImageFile();
     if (image == null) return;
-    setState(() => row.imageFile = File(image.path));
+    setState(() => row.imageFile = image);
+  }
+
+  Future<File?> _pickImageFile() async {
+    final result = await fp.FilePicker.pickFiles(
+      allowMultiple: false,
+      type: fp.FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+    );
+    final path = result?.files.firstOrNull?.path;
+    return path == null ? null : File(path);
   }
 
   // Name Picker Helper

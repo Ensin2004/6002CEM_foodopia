@@ -7,6 +7,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/cards/method_card.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../../core/widgets/media/app_recipe_media.dart';
 
 class RecipeImagePicker extends StatefulWidget {
   final List<File> images;
@@ -81,12 +82,17 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
                     return GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () => existingUrl == null
-                          ? _showExpandedMedia(context: context, imageFile: widget.images[fileIndex])
-                          : _showExpandedMedia(context: context, imageUrl: existingUrl),
+                          ? showRecipeMediaDialog(context, widget.images[fileIndex].path)
+                          : showRecipeMediaDialog(context, existingUrl),
                       child: existingUrl == null
                           ? _RecipeMediaPreview(file: widget.images[fileIndex], fit: BoxFit.contain)
-                          : _isVideoPath(existingUrl)
-                          ? const _VideoPlaceholder()
+                          : isRecipeVideoPath(existingUrl)
+                          ? AppRecipeMedia(
+                              mediaPath: existingUrl,
+                              fit: BoxFit.contain,
+                              showVideoControls: true,
+                              allowFullscreen: true,
+                            )
                           : AppRemoteOrAssetImage(
                               imagePath: existingUrl,
                               width: double.infinity,
@@ -110,22 +116,19 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
               ),
             ),
             Positioned(
-              right: AppSpacing.sm,
-              top: AppSpacing.sm,
+              right: 10,
+              top: 10,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: colors.onSurface.withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   "${_currentImageIndex + 1}/$imageCount",
                   style: context.text.bodySmall?.copyWith(
                     color: colors.surface,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -133,54 +136,6 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
           ],
         ),
       ),
-    );
-  }
-
-  Future<void> _showExpandedMedia({
-    required BuildContext context,
-    File? imageFile,
-    String? imageUrl,
-  }) async {
-    final isVideo = imageFile != null
-        ? _isVideoPath(imageFile.path)
-        : _isVideoPath(imageUrl ?? '');
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return Dialog.fullscreen(
-          backgroundColor: Colors.black,
-          child: SafeArea(
-            child: Stack(
-              children: [
-                Center(
-                  child: InteractiveViewer(
-                    minScale: 1,
-                    maxScale: 4,
-                    child: isVideo
-                        ? const _VideoPlaceholder()
-                        : imageFile != null
-                        ? Image.file(imageFile, fit: BoxFit.contain)
-                        : AppRemoteOrAssetImage(
-                            imagePath: imageUrl ?? "",
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.contain,
-                          ),
-                  ),
-                ),
-                Positioned(
-                  top: AppSpacing.sm,
-                  right: AppSpacing.sm,
-                  child: IconButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }
@@ -193,33 +148,16 @@ class _RecipeMediaPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (_isVideoPath(file.path)) return const _VideoPlaceholder();
+    if (isRecipeVideoPath(file.path)) {
+      return AppRecipeMedia(
+        mediaPath: file.path,
+        fit: fit,
+        showVideoControls: true,
+        allowFullscreen: true,
+      );
+    }
     return Image.file(file, fit: fit);
   }
-}
-
-class _VideoPlaceholder extends StatelessWidget {
-  const _VideoPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return ColoredBox(
-      color: colors.surfaceContainerHighest,
-      child: const Center(
-        child: Icon(Icons.play_circle_fill_rounded, size: 56),
-      ),
-    );
-  }
-}
-
-bool _isVideoPath(String path) {
-  final value = path.toLowerCase().split('?').first;
-  return value.endsWith('.mp4') ||
-      value.endsWith('.mov') ||
-      value.endsWith('.m4v') ||
-      value.endsWith('.avi') ||
-      value.endsWith('.webm');
 }
 
 class _ImageActionButton extends StatelessWidget {
