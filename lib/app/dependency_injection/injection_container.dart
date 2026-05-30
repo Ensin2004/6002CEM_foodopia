@@ -127,8 +127,11 @@ import '../../features/recipe/domain/usecases/update_add_recipe_visibility_useca
 import '../../features/statistics/data/repositories/statistics_repository_impl.dart';
 import '../../features/statistics/domain/repositories/statistics_repository.dart';
 import '../../features/statistics/domain/usecases/get_admin_dietary_preference_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_gender_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_hub_rating_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_meal_analytic_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_post_analytic_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_user_usage_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_calories_intake_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_calories_posted_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_cooking_time_statistics_usecase.dart';
@@ -361,6 +364,9 @@ void _initStatisticsFeature() {
   sl.registerLazySingleton(
     () => GetAdminDietaryPreferenceStatisticsUseCase(sl()),
   );
+  sl.registerLazySingleton(() => GetAdminGenderStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAdminUserUsageStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAdminHubRatingStatisticsUseCase(sl()));
 }
 
 void _initExploreFeature() {

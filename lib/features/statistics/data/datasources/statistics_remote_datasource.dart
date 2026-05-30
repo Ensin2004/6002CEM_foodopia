@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../domain/entities/admin_statistics.dart';
 import '../../domain/entities/calories_intake_statistics.dart';
 import '../../domain/entities/calories_posted_statistics.dart';
 import '../../domain/entities/cooking_time_statistics.dart';
@@ -45,6 +46,529 @@ class StatisticsRemoteDataSource {
 
     final recipes = await _getUserSharedRecipes(uid);
     return _buildCommunitySlides(recipes);
+  }
+
+  Future<List<StatisticsHeroSlide>> getAdminHeroSlides() async {
+    final today = _resolveRange(DateTime.now(), DateTime.now());
+    final todayPlans = await _getAllMealPlans(today);
+    final todayRecipes = await _getAllSharedRecipes(today);
+    final allRange = (
+      start: DateTime.fromMillisecondsSinceEpoch(0),
+      end: DateTime(9999, 12, 31, 23, 59, 59),
+    );
+    final allPlans = await _getAllMealPlans(allRange);
+    final allRecipes = await _getAllSharedRecipes(allRange);
+    final plannedCategories = await _categoryGroups(todayPlans);
+    final postedCategories = await _buildPostRatingCategories(todayRecipes);
+    final averagePlannedDifficulty = todayPlans.isEmpty
+        ? 0.0
+        : todayPlans.fold<int>(
+                0,
+                (total, plan) => total + plan.difficultyLevel,
+              ) /
+              todayPlans.length;
+    final averagePostedDifficulty = todayRecipes.isEmpty
+        ? 0.0
+        : todayRecipes.fold<int>(
+                0,
+                (total, recipe) => total + recipe.difficultyLevel,
+              ) /
+              todayRecipes.length;
+
+    return [
+      StatisticsHeroSlide(
+        title: 'Meal Planned Today',
+        type: StatisticsHeroSlideType.overview,
+        metrics: [
+          StatisticsMetric(
+            label: 'Meal Planned Today',
+            value: todayPlans.length.toString(),
+            tone: StatisticsMetricTone.positive,
+          ),
+          StatisticsMetric(
+            label: 'Average Difficulty Today',
+            value: averagePlannedDifficulty.toStringAsFixed(1),
+            tone: StatisticsMetricTone.neutral,
+          ),
+          StatisticsMetric(
+            label: 'Top Meal Planned Today',
+            value: _topMealName(todayPlans),
+            tone: StatisticsMetricTone.positive,
+          ),
+          StatisticsMetric(
+            label: 'Top Planned Category Today',
+            value: _topFoodGroupName(plannedCategories),
+            tone: StatisticsMetricTone.positive,
+          ),
+        ],
+      ),
+      StatisticsHeroSlide(
+        title: 'Posted Today',
+        type: StatisticsHeroSlideType.overview,
+        metrics: [
+          StatisticsMetric(
+            label: 'Posted Today',
+            value: todayRecipes.length.toString(),
+            tone: StatisticsMetricTone.positive,
+          ),
+          StatisticsMetric(
+            label: 'Average Difficulty Posted',
+            value: averagePostedDifficulty.toStringAsFixed(1),
+            tone: StatisticsMetricTone.neutral,
+          ),
+          StatisticsMetric(
+            label: 'Category Posted Today',
+            value: postedCategories.length.toString(),
+            tone: StatisticsMetricTone.positive,
+          ),
+          StatisticsMetric(
+            label: 'Top Rating Food Today',
+            value: _topRatedRecipe(todayRecipes),
+            tone: StatisticsMetricTone.positive,
+          ),
+        ],
+      ),
+      StatisticsHeroSlide(
+        title: 'Achievement',
+        type: StatisticsHeroSlideType.achievement,
+        metrics: [
+          StatisticsMetric(
+            label: 'Meal Planned In System',
+            value: allPlans.length.toString(),
+            tone: StatisticsMetricTone.positive,
+          ),
+          StatisticsMetric(
+            label: 'Recipe In System',
+            value: allRecipes.length.toString(),
+            tone: StatisticsMetricTone.positive,
+          ),
+          StatisticsMetric(
+            label: 'Category In System',
+            value: (await _allRecipeCategoryNames(
+              allRecipes,
+            )).length.toString(),
+            tone: StatisticsMetricTone.positive,
+          ),
+          StatisticsMetric(
+            label: 'Post In System',
+            value: allRecipes.length.toString(),
+            tone: StatisticsMetricTone.positive,
+          ),
+        ],
+      ),
+    ];
+  }
+
+  Future<AdminMealAnalyticStatistics> getAdminMealAnalytic({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    var range = _resolveAdminRange(startDate, endDate);
+    final plans = await _getAllMealPlans(range);
+    if (startDate == null && endDate == null) {
+      range = _rangeFromMealPlans(plans);
+    }
+    final categoryConfigs = await _getMealCategoryConfigs();
+    final mealTimeGroups = <String, List<_MealPlanStat>>{
+      for (final category in categoryConfigs) category.name: <_MealPlanStat>[],
+    };
+    for (final plan in plans) {
+      final label = _mealTimeLabelForPlan(plan, categoryConfigs);
+      mealTimeGroups.putIfAbsent(label, () => []).add(plan);
+    }
+
+    return AdminMealAnalyticStatistics(
+      dateRange: _formatRange(range.start, range.end),
+      dailyPlans: _dailyPlanCounts(plans, range),
+      sections: [
+        _adminSectionFromGroups(
+          title: 'Most Planned Meal',
+          summaryTitle: 'Total Planned',
+          summaryValue: plans.length.toString(),
+          highlightTitle: 'Top Meal',
+          groups: _groupMealPlans(
+            plans,
+            labelFor: (plan) => plan.recipeName,
+            imageFor: (plan) => plan.imageUrl,
+          ),
+          iconFor: _iconForRecipe,
+        ),
+        _adminSectionFromGroups(
+          title: 'Top Category Meal',
+          summaryTitle: 'Total Category',
+          summaryValue: (await _categoryGroups(plans)).length.toString(),
+          highlightTitle: 'Top Category',
+          groups: await _categoryGroups(plans),
+          iconFor: _iconForCategory,
+          useInitialMarkers: true,
+        ),
+        _adminSectionFromCounts(
+          title: 'Meal Planned Time',
+          summaryTitle: 'Total Meals',
+          summaryValue: plans.length.toString(),
+          highlightTitle: 'Top Time',
+          counts: {
+            for (final entry in mealTimeGroups.entries)
+              entry.key: entry.value.length,
+          },
+          details: _detailsByMealTime(mealTimeGroups),
+          iconFor: _mealTimeIcon,
+          colorFor: _mealTimeColor,
+          includeZeroValues: true,
+        ),
+        _adminSectionFromCounts(
+          title: 'Average Difficulty',
+          summaryTitle: 'Average',
+          summaryValue: _averageDifficulty(plans).toStringAsFixed(1),
+          highlightTitle: 'Most Common',
+          counts: {
+            for (var level = 1; level <= 5; level++)
+              '$level Star': plans
+                  .where((plan) => plan.difficultyLevel == level)
+                  .length,
+          },
+          details: _detailsByMealDifficulty(plans),
+          iconFor: _difficultyIcon,
+          colorFor: _difficultyColor,
+          includeZeroValues: true,
+          preserveOrder: true,
+        ),
+        _adminSectionFromCounts(
+          title: 'Method Of Creating Meal Plan',
+          summaryTitle: 'Total Created',
+          summaryValue: plans.length.toString(),
+          highlightTitle: 'Top Method',
+          counts: {
+            'Explore Community': plans
+                .where(
+                  (plan) => _methodLabel(plan.source) == 'Explore Community',
+                )
+                .length,
+            'From Library': plans
+                .where((plan) => _methodLabel(plan.source) == 'From Library')
+                .length,
+            'Generate With AI': plans
+                .where(
+                  (plan) => _methodLabel(plan.source) == 'Generate With AI',
+                )
+                .length,
+          },
+          details: _detailsByMethod(plans),
+          iconFor: _methodIcon,
+          colorFor: _methodColor,
+          includeZeroValues: true,
+        ),
+      ],
+    );
+  }
+
+  Future<AdminPostAnalyticStatistics> getAdminPostAnalytic({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    var range = _resolveAdminRange(startDate, endDate);
+    final recipes = await _getAllSharedRecipes(range);
+    final allPlans = await _getAllMealPlans(range);
+    final allPublicRecipes = await _getAllSharedRecipes(
+      _resolveAdminRange(null, null),
+    );
+    if (startDate == null && endDate == null) {
+      range = _rangeFromRecipes(recipes);
+    }
+    final categorySection = await _adminSectionFromPostCategories(
+      title: 'Most Rating Category',
+      summaryTitle: 'Rated Category',
+      highlightTitle: 'Top Category',
+      recipes: recipes,
+    );
+    final recipePlanCounts = <String, int>{};
+    final recipePlanImages = <String, String?>{};
+    for (final plan in allPlans) {
+      recipePlanCounts[plan.recipeName] =
+          (recipePlanCounts[plan.recipeName] ?? 0) + 1;
+      recipePlanImages[plan.recipeName] ??= plan.imageUrl;
+    }
+
+    return AdminPostAnalyticStatistics(
+      dateRange: _formatRange(range.start, range.end),
+      dailyPosts: _dailyPostCounts(recipes, range),
+      recipePerformance: await _buildAdminRecipePerformance(allPublicRecipes),
+      sections: [
+        _adminSectionFromCounts(
+          title: 'Most Rating For All Posted',
+          summaryTitle: 'Total Post',
+          summaryValue: recipes.length.toString(),
+          highlightTitle: 'Top Rated',
+          counts: {
+            for (final recipe in recipes) recipe.name: recipe.ratingCount,
+          },
+          details: _detailsByRecipes(recipes),
+          imageUrls: {
+            for (final recipe in recipes) recipe.name: recipe.imageUrl,
+          },
+          iconFor: _iconForRecipe,
+        ),
+        categorySection,
+        _adminSectionFromCounts(
+          title: 'Recipe Performance',
+          summaryTitle: 'Total Views',
+          summaryValue: recipes
+              .fold<int>(0, (total, recipe) => total + recipe.totalViews)
+              .toString(),
+          highlightTitle: 'Top Recipe',
+          counts: {
+            for (final recipe in recipes) recipe.name: recipe.totalViews,
+          },
+          details: _detailsByRecipes(recipes),
+          imageUrls: {
+            for (final recipe in recipes) recipe.name: recipe.imageUrl,
+          },
+          iconFor: _iconForRecipe,
+        ),
+        _adminSectionFromCounts(
+          title: 'Recipe That Been Planned The Most',
+          summaryTitle: 'Total Planned',
+          summaryValue: allPlans.length.toString(),
+          highlightTitle: 'Top Recipe',
+          counts: recipePlanCounts,
+          details: _detailsByRecipeName(allPlans),
+          imageUrls: recipePlanImages,
+          iconFor: _iconForRecipe,
+        ),
+        _adminSectionFromCounts(
+          title: 'Average Difficulty',
+          summaryTitle: 'Average',
+          summaryValue: _averagePostDifficulty(recipes).toStringAsFixed(1),
+          highlightTitle: 'Most Common',
+          counts: {
+            for (var level = 1; level <= 5; level++)
+              '$level Star': recipes
+                  .where((recipe) => recipe.difficultyLevel == level)
+                  .length,
+          },
+          details: _detailsByPostDifficulty(recipes),
+          iconFor: _difficultyIcon,
+          colorFor: _difficultyColor,
+          includeZeroValues: true,
+          preserveOrder: true,
+        ),
+      ],
+    );
+  }
+
+  Future<AdminDietaryPreferenceStatistics> getAdminDietaryPreference({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    var range = _resolveAdminRange(startDate, endDate);
+    final users = await firestore.collection('users').get();
+    final counts = <String, int>{};
+    var totalUsers = 0;
+    if (startDate == null && endDate == null) {
+      final createdDates = users.docs
+          .where((user) => !_isAdminUser(user.data()))
+          .map((user) => _dateTime(user.data()['createdAt']))
+          .where((date) => date.millisecondsSinceEpoch > 0)
+          .toList();
+      range = _rangeFromDates(createdDates);
+    }
+
+    for (final user in users.docs) {
+      if (_isAdminUser(user.data())) continue;
+      final createdAt = _dateTime(user.data()['createdAt']);
+      if (createdAt.isBefore(range.start) || createdAt.isAfter(range.end)) {
+        continue;
+      }
+      totalUsers += 1;
+      final profile = await user.reference
+          .collection('preferences')
+          .doc('food_profile')
+          .get();
+      final data = profile.data() ?? const <String, dynamic>{};
+      final diet = _stringValue(data['diet'], fallback: 'No specific diet');
+      counts[diet] = (counts[diet] ?? 0) + 1;
+      for (final allergy in _stringList(data['allergies'])) {
+        counts[allergy] = (counts[allergy] ?? 0) + 1;
+      }
+      for (final dislike in _stringList(data['dislikes'])) {
+        counts[dislike] = (counts[dislike] ?? 0) + 1;
+      }
+    }
+
+    final items = _rankedStatsFromCounts(
+      counts: counts,
+      total: totalUsers == 0 ? 1 : totalUsers,
+      iconFor: _dietaryIcon,
+      markerTexts: {for (final key in counts.keys) key: key},
+      colors: const [
+        Color(0xFF10A957),
+        Color(0xFFFFB300),
+        Color(0xFF21AEEA),
+        Color(0xFFFF4D5A),
+        Color(0xFF8E7CF3),
+      ],
+    );
+
+    return AdminDietaryPreferenceStatistics(
+      dateRange: _formatRange(range.start, range.end),
+      totalUsers: totalUsers,
+      topPreference: items.isEmpty ? '-' : items.first.label,
+      preferences: items,
+    );
+  }
+
+  Future<AdminGenderStatistics> getAdminGender({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    var range = _resolveAdminRange(startDate, endDate);
+    final users = await firestore.collection('users').get();
+    final userDocs = users.docs
+        .where((user) => !_isAdminUser(user.data()))
+        .toList();
+    if (startDate == null && endDate == null) {
+      range = _rangeFromDates(
+        userDocs
+            .map((user) => _dateTime(user.data()['createdAt']))
+            .where((date) => date.millisecondsSinceEpoch > 0)
+            .toList(),
+      );
+    }
+
+    final counts = <String, int>{'Male': 0, 'Female': 0};
+    var totalUsers = 0;
+    for (final user in userDocs) {
+      final data = user.data();
+      final createdAt = _dateTime(data['createdAt']);
+      if (createdAt.isBefore(range.start) || createdAt.isAfter(range.end)) {
+        continue;
+      }
+      totalUsers += 1;
+      final gender = _genderLabel(data['gender']);
+      counts[gender] = (counts[gender] ?? 0) + 1;
+    }
+
+    final items = _rankedStatsFromCounts(
+      counts: counts,
+      total: totalUsers == 0 ? 1 : totalUsers,
+      iconFor: _genderIcon,
+      colorFor: _genderColor,
+      includeZeroValues: true,
+      preserveOrder: true,
+    );
+
+    final nonZeroItems = items.where((item) => item.value > 0).toList();
+    return AdminGenderStatistics(
+      dateRange: _formatRange(range.start, range.end),
+      totalUsers: totalUsers,
+      mostGender: nonZeroItems.isEmpty ? '-' : nonZeroItems.first.label,
+      genders: items,
+    );
+  }
+
+  Future<AdminUserUsageStatistics> getAdminUserUsage({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    var range = _resolveAdminRange(startDate, endDate);
+    final users = await firestore.collection('users').get();
+    final createdDates = users.docs
+        .where((user) => !_isAdminUser(user.data()))
+        .map((user) => _dateTime(user.data()['createdAt']))
+        .where((date) => date.millisecondsSinceEpoch > 0)
+        .toList();
+    if (startDate == null && endDate == null) {
+      range = _rangeFromDates(createdDates);
+    }
+
+    final monthlyUsers = _monthsInRange(range).map((month) {
+      final count = createdDates.where((date) {
+        final userMonth = _startOfMonth(date);
+        return userMonth.year == month.year && userMonth.month == month.month;
+      }).length;
+      return AdminMonthlyUserStatistic(month: month, newUsers: count);
+    }).toList();
+    final topMonth = [...monthlyUsers]
+      ..sort((left, right) => right.newUsers.compareTo(left.newUsers));
+
+    return AdminUserUsageStatistics(
+      dateRange: _formatRange(range.start, range.end),
+      totalUsers: monthlyUsers.fold<int>(
+        0,
+        (total, month) => total + month.newUsers,
+      ),
+      topMonth: topMonth.isEmpty || topMonth.first.newUsers == 0
+          ? '-'
+          : _monthYearLabel(topMonth.first.month),
+      monthlyUsers: monthlyUsers,
+    );
+  }
+
+  Future<AdminHubRatingStatistics> getAdminHubRating({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    var range = _resolveAdminRange(startDate, endDate);
+    final nonAdminUserIds = await _nonAdminUserIds();
+    final ratings = await firestore
+        .collection('support_center')
+        .doc('app_rating_feedback')
+        .collection('items')
+        .get();
+    final ratingRows = ratings.docs
+        .map((doc) {
+          final data = doc.data();
+          final uid = _stringValue(data['uid'], fallback: doc.id);
+          return (
+            uid: uid,
+            stars: _intValue(data['stars']).clamp(0, 5).toInt(),
+            date: _dateTime(data['createdAt'] ?? data['updatedAt']),
+          );
+        })
+        .where(
+          (rating) =>
+              rating.stars > 0 &&
+              rating.date.millisecondsSinceEpoch > 0 &&
+              (rating.uid.isEmpty || nonAdminUserIds.contains(rating.uid)),
+        )
+        .toList();
+    if (startDate == null && endDate == null) {
+      range = _rangeFromDates(ratingRows.map((rating) => rating.date).toList());
+    }
+
+    final monthlyRatings = _monthsInRange(range).map((month) {
+      final monthRatings = ratingRows.where((rating) {
+        final ratingMonth = _startOfMonth(rating.date);
+        return ratingMonth.year == month.year &&
+            ratingMonth.month == month.month;
+      }).toList();
+      final totalStars = monthRatings.fold<int>(
+        0,
+        (total, rating) => total + rating.stars,
+      );
+      return AdminMonthlyRatingStatistic(
+        month: month,
+        ratingCount: monthRatings.length,
+        averageRating: monthRatings.isEmpty
+            ? 0
+            : totalStars / monthRatings.length,
+      );
+    }).toList();
+    final totalRatings = monthlyRatings.fold<int>(
+      0,
+      (total, month) => total + month.ratingCount,
+    );
+    final totalStars = monthlyRatings.fold<double>(
+      0,
+      (total, month) => total + (month.averageRating * month.ratingCount),
+    );
+
+    return AdminHubRatingStatistics(
+      dateRange: _formatRange(range.start, range.end),
+      totalRatings: totalRatings,
+      averageRating: totalRatings == 0 ? 0 : totalStars / totalRatings,
+      monthlyRatings: monthlyRatings,
+    );
   }
 
   Future<PostAnalyticStatistics> getUserPostAnalytic({
@@ -808,6 +1332,342 @@ class StatisticsRemoteDataSource {
     return plans..sort((left, right) => left.date.compareTo(right.date));
   }
 
+  Future<List<_MealPlanStat>> _getAllMealPlans(
+    ({DateTime start, DateTime end}) range,
+  ) async {
+    final nonAdminUserIds = await _nonAdminUserIds();
+    final snapshot = await firestore.collection('meal_plans').get();
+    final plans = <_MealPlanStat>[];
+    for (final doc in snapshot.docs) {
+      final plan = await _mealPlanStatFromDoc(doc);
+      if (plan.plannerUid.isNotEmpty &&
+          !nonAdminUserIds.contains(plan.plannerUid)) {
+        continue;
+      }
+      if (!plan.date.isBefore(range.start) && !plan.date.isAfter(range.end)) {
+        plans.add(plan);
+      }
+    }
+    return plans..sort((left, right) => left.date.compareTo(right.date));
+  }
+
+  List<AdminDailyStatistic> _dailyPlanCounts(
+    List<_MealPlanStat> plans,
+    ({DateTime start, DateTime end}) range,
+  ) {
+    return _daysInRange(range).map((day) {
+      final value = plans.where((plan) => _startOfDay(plan.date) == day).length;
+      return AdminDailyStatistic(date: day, value: value);
+    }).toList();
+  }
+
+  List<AdminDailyStatistic> _dailyPostCounts(
+    List<_CommunityRecipeStat> recipes,
+    ({DateTime start, DateTime end}) range,
+  ) {
+    return _daysInRange(range).map((day) {
+      final value = recipes
+          .where((recipe) => _startOfDay(recipe.publishedAt) == day)
+          .length;
+      return AdminDailyStatistic(date: day, value: value);
+    }).toList();
+  }
+
+  AdminAnalyticSection _adminSectionFromGroups({
+    required String title,
+    required String summaryTitle,
+    required String summaryValue,
+    required String highlightTitle,
+    required Map<String, _FoodGroup> groups,
+    required IconData Function(String label) iconFor,
+    bool useInitialMarkers = false,
+  }) {
+    return _adminSectionFromCounts(
+      title: title,
+      summaryTitle: summaryTitle,
+      summaryValue: summaryValue,
+      highlightTitle: highlightTitle,
+      counts: {
+        for (final entry in groups.entries) entry.key: entry.value.count,
+      },
+      imageUrls: {
+        for (final entry in groups.entries) entry.key: entry.value.imageUrl,
+      },
+      details: {
+        for (final entry in groups.entries)
+          entry.key: _detailsFromFoodGroup(entry.value),
+      },
+      markerTexts: useInitialMarkers
+          ? {for (final entry in groups.entries) entry.key: entry.key}
+          : const {},
+      iconFor: iconFor,
+    );
+  }
+
+  Future<AdminAnalyticSection> _adminSectionFromPostCategories({
+    required String title,
+    required String summaryTitle,
+    required String highlightTitle,
+    required List<_CommunityRecipeStat> recipes,
+  }) async {
+    final categories = await _buildPostRatingCategories(recipes);
+    return _adminSectionFromCounts(
+      title: title,
+      summaryTitle: summaryTitle,
+      summaryValue: categories.length.toString(),
+      highlightTitle: highlightTitle,
+      counts: {
+        for (final category in categories)
+          category.name: category.ratedDishCount,
+      },
+      markerTexts: {
+        for (final category in categories) category.name: category.name,
+      },
+      iconFor: _iconForCategory,
+    );
+  }
+
+  AdminAnalyticSection _adminSectionFromCounts({
+    required String title,
+    required String summaryTitle,
+    required String summaryValue,
+    required String highlightTitle,
+    required Map<String, int> counts,
+    required IconData Function(String label) iconFor,
+    Map<String, List<AdminRankedStatisticDetail>> details = const {},
+    Map<String, String?> imageUrls = const {},
+    Map<String, String> markerTexts = const {},
+    Color Function(String label)? colorFor,
+    bool includeZeroValues = false,
+    bool preserveOrder = false,
+  }) {
+    final items = _rankedStatsFromCounts(
+      counts: counts,
+      total: counts.values.fold<int>(0, (total, value) => total + value),
+      iconFor: iconFor,
+      details: details,
+      imageUrls: imageUrls,
+      markerTexts: markerTexts,
+      colorFor: colorFor,
+      includeZeroValues: includeZeroValues,
+      preserveOrder: preserveOrder,
+    );
+    return AdminAnalyticSection(
+      title: title,
+      summaryTitle: summaryTitle,
+      summaryValue: summaryValue,
+      highlightTitle: highlightTitle,
+      highlightValue: items.isEmpty ? '-' : items.first.label,
+      items: items,
+    );
+  }
+
+  List<AdminRankedStatistic> _rankedStatsFromCounts({
+    required Map<String, int> counts,
+    required int total,
+    required IconData Function(String label) iconFor,
+    Map<String, List<AdminRankedStatisticDetail>> details = const {},
+    Map<String, String?> imageUrls = const {},
+    Map<String, String> markerTexts = const {},
+    Color Function(String label)? colorFor,
+    bool includeZeroValues = false,
+    bool preserveOrder = false,
+    List<Color> colors = const [
+      Color(0xFF21AEEA),
+      Color(0xFF54C27A),
+      Color(0xFFFFB300),
+      Color(0xFFFF7A59),
+      Color(0xFF8E7CF3),
+    ],
+  }) {
+    final entries = counts.entries
+        .where((entry) => includeZeroValues || entry.value > 0)
+        .toList();
+    if (!preserveOrder) {
+      entries.sort((left, right) => right.value.compareTo(left.value));
+    }
+    final denominator = total <= 0 ? 1 : total;
+    return List.generate(entries.length, (index) {
+      final entry = entries[index];
+      return AdminRankedStatistic(
+        label: entry.key,
+        value: entry.value,
+        percent: entry.value / denominator,
+        icon: iconFor(entry.key),
+        color: colorFor?.call(entry.key) ?? colors[index % colors.length],
+        imageUrl: imageUrls[entry.key],
+        markerText: markerTexts[entry.key],
+        details: details[entry.key] ?? const [],
+      );
+    });
+  }
+
+  Future<RecipePerformanceStatistics> _buildAdminRecipePerformance(
+    List<_CommunityRecipeStat> recipes,
+  ) async {
+    final items = <RecipePerformanceItem>[];
+    for (final recipe in recipes) {
+      final favouriteCount = await _recipeFavouriteCount(recipe.id);
+      items.add(
+        RecipePerformanceItem(
+          id: recipe.id,
+          name: recipe.name,
+          imageUrl: recipe.imageUrl,
+          totalViews: recipe.totalViews,
+          commentCount: recipe.commentCount,
+          favouriteCount: favouriteCount,
+          ratingCount: recipe.ratingCount,
+          publishedAt: recipe.publishedAt,
+        ),
+      );
+    }
+
+    return RecipePerformanceStatistics(
+      dateRange: 'Not available',
+      totalViews: recipes.fold<int>(
+        0,
+        (total, recipe) => total + recipe.totalViews,
+      ),
+      totalComments: recipes.fold<int>(
+        0,
+        (total, recipe) => total + recipe.commentCount,
+      ),
+      totalFavourites: items.fold<int>(
+        0,
+        (total, recipe) => total + recipe.favouriteCount,
+      ),
+      totalRatings: recipes.fold<int>(
+        0,
+        (total, recipe) => total + recipe.ratingCount,
+      ),
+      recipes: items
+        ..sort((left, right) => right.totalViews.compareTo(left.totalViews)),
+    );
+  }
+
+  List<AdminRankedStatisticDetail> _detailsFromFoodGroup(_FoodGroup group) {
+    final entries = group.detailCounts.entries.toList()
+      ..sort((left, right) => right.value.compareTo(left.value));
+    return entries
+        .map(
+          (entry) => AdminRankedStatisticDetail(
+            title: entry.key,
+            quantity: entry.value,
+            icon: _iconForRecipe(entry.key),
+            imageUrl: group.detailImages[entry.key],
+          ),
+        )
+        .toList();
+  }
+
+  Map<String, List<AdminRankedStatisticDetail>> _detailsByMealTime(
+    Map<String, List<_MealPlanStat>> groups,
+  ) {
+    return {
+      for (final entry in groups.entries)
+        entry.key: _detailsFromMealPlans(entry.value),
+    };
+  }
+
+  Map<String, List<AdminRankedStatisticDetail>> _detailsByMethod(
+    List<_MealPlanStat> plans,
+  ) {
+    final groups = <String, List<_MealPlanStat>>{
+      'Explore Community': <_MealPlanStat>[],
+      'From Library': <_MealPlanStat>[],
+      'Generate With AI': <_MealPlanStat>[],
+    };
+    for (final plan in plans) {
+      groups.putIfAbsent(_methodLabel(plan.source), () => []).add(plan);
+    }
+    return {
+      for (final entry in groups.entries)
+        entry.key: _detailsFromMealPlans(entry.value, includeMealTime: true),
+    };
+  }
+
+  Map<String, List<AdminRankedStatisticDetail>> _detailsByMealDifficulty(
+    List<_MealPlanStat> plans,
+  ) {
+    return {
+      for (var level = 1; level <= 5; level++)
+        '$level Star': _detailsFromMealPlans(
+          plans.where((plan) => plan.difficultyLevel == level).toList(),
+        ),
+    };
+  }
+
+  Map<String, List<AdminRankedStatisticDetail>> _detailsByPostDifficulty(
+    List<_CommunityRecipeStat> recipes,
+  ) {
+    return {
+      for (var level = 1; level <= 5; level++)
+        '$level Star': recipes
+            .where((recipe) => recipe.difficultyLevel == level)
+            .map(
+              (recipe) => AdminRankedStatisticDetail(
+                title: recipe.name,
+                subtitle: DateFormat('MMM d, yyyy').format(recipe.publishedAt),
+                quantity: 1,
+                icon: _iconForRecipe(recipe.name),
+                imageUrl: recipe.imageUrl,
+              ),
+            )
+            .toList(),
+    };
+  }
+
+  Map<String, List<AdminRankedStatisticDetail>> _detailsByRecipes(
+    List<_CommunityRecipeStat> recipes,
+  ) {
+    return {
+      for (final recipe in recipes)
+        recipe.name: [
+          AdminRankedStatisticDetail(
+            title: recipe.name,
+            subtitle: DateFormat('MMM d, yyyy').format(recipe.publishedAt),
+            quantity: 1,
+            icon: _iconForRecipe(recipe.name),
+            imageUrl: recipe.imageUrl,
+          ),
+        ],
+    };
+  }
+
+  Map<String, List<AdminRankedStatisticDetail>> _detailsByRecipeName(
+    List<_MealPlanStat> plans,
+  ) {
+    final groups = <String, List<_MealPlanStat>>{};
+    for (final plan in plans) {
+      groups.putIfAbsent(plan.recipeName, () => []).add(plan);
+    }
+    return {
+      for (final entry in groups.entries)
+        entry.key: _detailsFromMealPlans(entry.value),
+    };
+  }
+
+  List<AdminRankedStatisticDetail> _detailsFromMealPlans(
+    List<_MealPlanStat> plans, {
+    bool includeMealTime = false,
+  }) {
+    final groups = <String, List<_MealPlanStat>>{};
+    for (final plan in plans) {
+      groups.putIfAbsent(plan.recipeId, () => []).add(plan);
+    }
+    return groups.values.map((sameRecipePlans) {
+      final plan = sameRecipePlans.first;
+      final date = DateFormat('MMM d, yyyy').format(plan.date);
+      return AdminRankedStatisticDetail(
+        title: plan.recipeName,
+        subtitle: includeMealTime ? '$date - ${plan.mealCategoryName}' : date,
+        quantity: sameRecipePlans.length,
+        icon: _iconForRecipe(plan.recipeName),
+        imageUrl: plan.imageUrl,
+      );
+    }).toList()..sort((left, right) => right.quantity.compareTo(left.quantity));
+  }
+
   Future<_MealPlanStat> _mealPlanStatFromDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) async {
@@ -1134,6 +1994,18 @@ class StatisticsRemoteDataSource {
     return auth.currentUser?.metadata.creationTime ?? DateTime.now();
   }
 
+  Future<Set<String>> _nonAdminUserIds() async {
+    final snapshot = await firestore.collection('users').get();
+    return snapshot.docs
+        .where((doc) => !_isAdminUser(doc.data()))
+        .map((doc) => doc.id)
+        .toSet();
+  }
+
+  bool _isAdminUser(Map<String, dynamic> data) {
+    return _stringValue(data['role']).toLowerCase() == 'admin';
+  }
+
   List<StatisticsHeroSlide> _buildSelfSlides(
     List<_MealPlanStat> plans, {
     required DateTime createdAt,
@@ -1311,6 +2183,26 @@ class StatisticsRemoteDataSource {
     return recipes.where((recipe) => recipe.isShared).toList();
   }
 
+  Future<List<_CommunityRecipeStat>> _getAllSharedRecipes(
+    ({DateTime start, DateTime end}) range,
+  ) async {
+    final nonAdminUserIds = await _nonAdminUserIds();
+    final snapshot = await firestore.collection('recipes').get();
+    final recipes = snapshot.docs
+        .map((doc) => _CommunityRecipeStat.fromFirestore(doc.id, doc.data()))
+        .where(
+          (recipe) =>
+              recipe.isShared &&
+              (recipe.creatorUid.isEmpty ||
+                  nonAdminUserIds.contains(recipe.creatorUid)) &&
+              !recipe.publishedAt.isBefore(range.start) &&
+              !recipe.publishedAt.isAfter(range.end),
+        )
+        .toList();
+    return recipes
+      ..sort((left, right) => left.publishedAt.compareTo(right.publishedAt));
+  }
+
   Future<List<_CommunityRecipeStat>> _getUserOwnedRecipes(String uid) async {
     final docsById = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
 
@@ -1333,6 +2225,50 @@ class StatisticsRemoteDataSource {
     return docsById.values
         .map((doc) => _CommunityRecipeStat.fromFirestore(doc.id, doc.data()))
         .toList();
+  }
+
+  Future<Set<String>> _allRecipeCategoryNames(
+    List<_CommunityRecipeStat> recipes,
+  ) async {
+    final cache = <String, String>{};
+    final names = <String>{};
+    for (final recipe in recipes) {
+      names.addAll(await _categoryNamesForRecipe(recipe, cache: cache));
+    }
+    return names;
+  }
+
+  String _topMealName(List<_MealPlanStat> plans) {
+    if (plans.isEmpty) return '-';
+    final counts = <String, int>{};
+    for (final plan in plans) {
+      counts[plan.recipeName] = (counts[plan.recipeName] ?? 0) + 1;
+    }
+    final entries = counts.entries.toList()
+      ..sort((left, right) => right.value.compareTo(left.value));
+    return entries.first.key;
+  }
+
+  String _topFoodGroupName(Map<String, _FoodGroup> groups) {
+    if (groups.isEmpty) return '-';
+    final entries = groups.entries.toList()
+      ..sort((left, right) => right.value.count.compareTo(left.value.count));
+    return entries.first.key;
+  }
+
+  double _averageDifficulty(List<_MealPlanStat> plans) {
+    if (plans.isEmpty) return 0;
+    return plans.fold<int>(0, (total, plan) => total + plan.difficultyLevel) /
+        plans.length;
+  }
+
+  double _averagePostDifficulty(List<_CommunityRecipeStat> recipes) {
+    if (recipes.isEmpty) return 0;
+    return recipes.fold<int>(
+          0,
+          (total, recipe) => total + recipe.difficultyLevel,
+        ) /
+        recipes.length;
   }
 
   Future<List<PostRatingCategory>> _buildPostRatingCategories(
@@ -1597,12 +2533,70 @@ class StatisticsRemoteDataSource {
         : (start: start, end: end);
   }
 
+  ({DateTime start, DateTime end}) _resolveAdminRange(
+    DateTime? startDate,
+    DateTime? endDate,
+  ) {
+    if (startDate == null && endDate == null) {
+      return (
+        start: DateTime.fromMillisecondsSinceEpoch(0),
+        end: DateTime(9999, 12, 31, 23, 59, 59),
+      );
+    }
+    return _resolveRange(startDate, endDate);
+  }
+
+  ({DateTime start, DateTime end}) _rangeFromMealPlans(
+    List<_MealPlanStat> plans,
+  ) {
+    return _rangeFromDates(plans.map((plan) => plan.date).toList());
+  }
+
+  ({DateTime start, DateTime end}) _rangeFromRecipes(
+    List<_CommunityRecipeStat> recipes,
+  ) {
+    return _rangeFromDates(
+      recipes.map((recipe) => recipe.publishedAt).toList(),
+    );
+  }
+
+  ({DateTime start, DateTime end}) _rangeFromDates(List<DateTime> dates) {
+    final validDates = dates
+        .where((date) => date.millisecondsSinceEpoch > 0)
+        .toList();
+    if (validDates.isEmpty) return _resolveRange(null, null);
+    validDates.sort();
+    return (
+      start: _startOfDay(validDates.first),
+      end: _endOfDay(validDates.last),
+    );
+  }
+
   DateTime _startOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day);
   }
 
   DateTime _endOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day, 23, 59, 59);
+  }
+
+  DateTime _startOfMonth(DateTime date) {
+    return DateTime(date.year, date.month);
+  }
+
+  List<DateTime> _monthsInRange(({DateTime start, DateTime end}) range) {
+    final months = <DateTime>[];
+    var cursor = _startOfMonth(range.start);
+    final end = _startOfMonth(range.end);
+    while (!cursor.isAfter(end)) {
+      months.add(cursor);
+      cursor = DateTime(cursor.year, cursor.month + 1);
+    }
+    return months;
+  }
+
+  String _monthYearLabel(DateTime month) {
+    return DateFormat('MMM yyyy').format(month);
   }
 
   String _formatRange(DateTime start, DateTime end) {
@@ -1655,6 +2649,11 @@ class StatisticsRemoteDataSource {
   String _stringValue(Object? value, {String fallback = ''}) {
     final text = value?.toString().trim() ?? '';
     return text.isEmpty ? fallback : text;
+  }
+
+  int _intValue(Object? value) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   String? _firstMediaUrl(Object? value) {
@@ -1727,6 +2726,48 @@ class StatisticsRemoteDataSource {
     if (lower.contains('ai')) return Icons.auto_awesome;
     if (lower.contains('library')) return Icons.bookmark;
     if (lower.contains('explore')) return Icons.public;
+    return Icons.restaurant_menu;
+  }
+
+  IconData _difficultyIcon(String label) {
+    return Icons.star;
+  }
+
+  Color _difficultyColor(String label) {
+    return const Color(0xFF21AEEA);
+  }
+
+  String _genderLabel(Object? value) {
+    final lower = value?.toString().trim().toLowerCase() ?? '';
+    if (lower.startsWith('m')) return 'Male';
+    if (lower.startsWith('f')) return 'Female';
+    return 'Other';
+  }
+
+  IconData _genderIcon(String label) {
+    final lower = label.toLowerCase();
+    if (lower == 'male') return Icons.male;
+    if (lower == 'female') return Icons.female;
+    return Icons.person_outline;
+  }
+
+  Color _genderColor(String label) {
+    final lower = label.toLowerCase();
+    if (lower == 'male') return const Color(0xFF21AEEA);
+    if (lower == 'female') return const Color(0xFFFF7A9A);
+    return const Color(0xFF8E7CF3);
+  }
+
+  IconData _dietaryIcon(String label) {
+    final lower = label.toLowerCase();
+    if (lower.contains('vegetarian') || lower.contains('vege')) {
+      return Icons.eco;
+    }
+    if (lower.contains('pork') || lower.contains('meat')) {
+      return Icons.no_food;
+    }
+    if (lower.contains('alcohol')) return Icons.local_bar_outlined;
+    if (lower.contains('allerg')) return Icons.health_and_safety_outlined;
     return Icons.restaurant_menu;
   }
 
@@ -1841,6 +2882,7 @@ class _FoodGroup {
 class _CommunityRecipeStat {
   final String id;
   final String name;
+  final String creatorUid;
   final double averageRating;
   final int ratingCount;
   final int commentCount;
@@ -1855,6 +2897,7 @@ class _CommunityRecipeStat {
   const _CommunityRecipeStat({
     required this.id,
     required this.name,
+    required this.creatorUid,
     required this.averageRating,
     required this.ratingCount,
     required this.commentCount,
@@ -1874,6 +2917,13 @@ class _CommunityRecipeStat {
     return _CommunityRecipeStat(
       id: id,
       name: _stringValue(data['name'], fallback: 'Untitled Recipe'),
+      creatorUid: _stringValue(
+        data['creatorId'] ??
+            data['creatorUid'] ??
+            data['uid'] ??
+            data['userId'] ??
+            data['user_id'],
+      ),
       averageRating: _doubleValue(data['averageRating']),
       ratingCount: _intValue(data['ratingCount']),
       commentCount: _intValue(data['commentCount']),

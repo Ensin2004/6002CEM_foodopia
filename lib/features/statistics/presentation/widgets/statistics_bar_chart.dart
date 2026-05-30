@@ -10,6 +10,7 @@ class StatisticsBarChartItem {
   final Color color;
   final String? imageUrl;
   final String? markerText;
+  final Color? markerIconColor;
 
   const StatisticsBarChartItem({
     required this.label,
@@ -18,6 +19,7 @@ class StatisticsBarChartItem {
     required this.color,
     this.imageUrl,
     this.markerText,
+    this.markerIconColor,
   });
 }
 
@@ -233,7 +235,11 @@ class _ChartMarkerContent extends StatelessWidget {
       );
     }
 
-    return Icon(item.icon, size: 17, color: const Color(0xFF6D642C));
+    return Icon(
+      item.icon,
+      size: 17,
+      color: item.markerIconColor ?? const Color(0xFF6D642C),
+    );
   }
 
   String _markerText(String? value) {

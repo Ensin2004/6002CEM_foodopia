@@ -117,13 +117,14 @@ class _AdminDietaryPreferenceViewState
   }
 
   Future<void> _pickDateRange(AdminDietaryPreferenceViewModel viewModel) async {
+    final now = DateTime.now();
     final pickedRange = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2023),
       lastDate: DateTime(2026, 12, 31),
       initialDateRange: DateTimeRange(
-        start: viewModel.startDate ?? DateTime(2024, 5, 12),
-        end: viewModel.endDate ?? DateTime(2024, 5, 18),
+        start: viewModel.startDate ?? now.subtract(const Duration(days: 6)),
+        end: viewModel.endDate ?? now,
       ),
     );
 

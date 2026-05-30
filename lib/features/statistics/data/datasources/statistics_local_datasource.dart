@@ -191,8 +191,13 @@ class StatisticsLocalDataSource {
       menuItems: [
         StatisticsMenuItem(title: 'Planned Meal Analytic'),
         StatisticsMenuItem(title: 'Post Analytic'),
+        StatisticsMenuItem(title: 'Dietary Preference'),
       ],
-      communityMenuItems: [StatisticsMenuItem(title: 'Dietary Preference')],
+      communityMenuItems: [
+        StatisticsMenuItem(title: 'Gender'),
+        StatisticsMenuItem(title: 'User Usage'),
+        StatisticsMenuItem(title: 'Hub Rating'),
+      ],
     );
   }
 

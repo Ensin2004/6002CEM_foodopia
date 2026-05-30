@@ -111,9 +111,13 @@ class StatisticsLineChart extends StatelessWidget {
       0,
       (max, point) => math.max(max, point.value),
     );
-    if (maxPointValue <= 400) return 400;
-    if (maxPointValue <= 1000) return 1000;
-    return ((maxPointValue / 500).ceil()) * 500;
+    if (maxPointValue <= 0) return 4;
+    if (maxPointValue <= 4) return 4;
+    if (maxPointValue <= 10) return 10;
+    if (maxPointValue <= 20) return 20;
+    if (maxPointValue <= 40) return 40;
+    if (maxPointValue <= 100) return 100;
+    return ((maxPointValue / 50).ceil()) * 50;
   }
 
   List<int> _gridValues(int highestValue) {
