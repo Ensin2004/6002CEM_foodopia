@@ -29,8 +29,11 @@ import '../../features/meal_plan/presentation/view/planning/add_meal_plan_page.d
 import '../../features/meal_plan/presentation/view/planning/generate_ai_meal_page.dart';
 import '../../features/statistics/presentation/view/statistics_page.dart';
 import '../../features/statistics/presentation/view/admin_dietary_preference_page.dart';
+import '../../features/statistics/presentation/view/admin_gender_page.dart';
+import '../../features/statistics/presentation/view/admin_hub_rating_page.dart';
 import '../../features/statistics/presentation/view/admin_meal_analytic_page.dart';
 import '../../features/statistics/presentation/view/admin_post_analytic_page.dart';
+import '../../features/statistics/presentation/view/admin_user_usage_page.dart';
 import '../../features/statistics/presentation/view/calories_intake_page.dart';
 import '../../features/statistics/presentation/view/calories_posted_page.dart';
 import '../../features/statistics/presentation/view/cooking_time_page.dart';
@@ -98,6 +101,9 @@ class AppRouter {
   static const String adminPostAnalytic = '/statistics/admin-post-analytic';
   static const String adminDietaryPreference =
       '/statistics/admin-dietary-preference';
+  static const String adminGender = '/statistics/admin-gender';
+  static const String adminUserUsage = '/statistics/admin-user-usage';
+  static const String adminHubRating = '/statistics/admin-hub-rating';
   static const String foodAnalytic = '/statistics/food-analytic';
   static const String cookingTime = '/statistics/cooking-time';
   static const String caloriesIntake = '/statistics/calories-intake';
@@ -718,6 +724,24 @@ class AppRouter {
         name: 'adminDietaryPreference',
         path: adminDietaryPreference,
         builder: (context, state) => const AdminDietaryPreferencePage(),
+      ),
+
+      GoRoute(
+        name: 'adminGender',
+        path: adminGender,
+        builder: (context, state) => const AdminGenderPage(),
+      ),
+
+      GoRoute(
+        name: 'adminUserUsage',
+        path: adminUserUsage,
+        builder: (context, state) => const AdminUserUsagePage(),
+      ),
+
+      GoRoute(
+        name: 'adminHubRating',
+        path: adminHubRating,
+        builder: (context, state) => const AdminHubRatingPage(),
       ),
 
       GoRoute(

@@ -90,4 +90,19 @@ abstract class StatisticsRepository {
 
   Future<Either<Failure, AdminDietaryPreferenceStatistics>>
   getAdminDietaryPreference({DateTime? startDate, DateTime? endDate});
+
+  Future<Either<Failure, AdminGenderStatistics>> getAdminGender({
+    DateTime? startDate,
+    DateTime? endDate,
+  });
+
+  Future<Either<Failure, AdminUserUsageStatistics>> getAdminUserUsage({
+    DateTime? startDate,
+    DateTime? endDate,
+  });
+
+  Future<Either<Failure, AdminHubRatingStatistics>> getAdminHubRating({
+    DateTime? startDate,
+    DateTime? endDate,
+  });
 }

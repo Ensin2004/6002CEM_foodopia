@@ -497,25 +497,22 @@ class _MetricTile extends StatelessWidget {
           ),
         ],
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _MetricValue(
-              metric: metric,
-              color: resolvedValueColor,
-              fontSize: resolvedValueFontSize,
-              suffixFontSize: suffixFontSize,
-            ),
-            const SizedBox(height: 5),
-            _MetricLabel(
-              metric: metric,
-              color: resolvedLabelColor,
-              fontSize: labelFontSize,
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _MetricValue(
+            metric: metric,
+            color: resolvedValueColor,
+            fontSize: resolvedValueFontSize,
+            suffixFontSize: suffixFontSize,
+          ),
+          const SizedBox(height: 5),
+          _MetricLabel(
+            metric: metric,
+            color: resolvedLabelColor,
+            fontSize: labelFontSize,
+          ),
+        ],
       ),
     );
   }
@@ -547,8 +544,9 @@ class _MetricValue extends StatelessWidget {
             ),
         ],
       ),
-      maxLines: 1,
+      maxLines: 2,
       overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
       style: context.text.titleMedium?.copyWith(
         color: color,
         fontWeight: FontWeight.w700,

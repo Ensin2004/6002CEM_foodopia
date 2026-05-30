@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/admin_statistics.dart';
+import '../../domain/entities/recipe_performance_statistics.dart';
 import '../../domain/usecases/get_admin_post_analytic_statistics_usecase.dart';
 
 class AdminPostAnalyticViewModel extends ChangeNotifier {
@@ -14,6 +15,7 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   DateTime? _startDate;
   DateTime? _endDate;
   int _selectedSectionIndex = 0;
+  String? _selectedRecipeId;
   AdminStatisticsSortOrder _sortOrder = AdminStatisticsSortOrder.descending;
 
   AdminPostAnalyticViewModel({
@@ -28,7 +30,18 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   DateTime? get startDate => _startDate;
   DateTime? get endDate => _endDate;
   int get selectedSectionIndex => _selectedSectionIndex;
+  String? get selectedRecipeId => _selectedRecipeId;
   AdminStatisticsSortOrder get sortOrder => _sortOrder;
+
+  RecipePerformanceItem? get selectedRecipe {
+    final statistics = _statistics?.recipePerformance;
+    final selectedId = _selectedRecipeId;
+    if (statistics == null || selectedId == null) return null;
+    for (final recipe in statistics.recipes) {
+      if (recipe.id == selectedId) return recipe;
+    }
+    return null;
+  }
 
   AdminAnalyticSection? get selectedSection {
     final sections = _statistics?.sections;
@@ -51,6 +64,13 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
 
     result.ifRight((statistics) {
       _statistics = statistics;
+      if (_selectedRecipeId != null &&
+          !(statistics.recipePerformance?.recipes.any(
+                (recipe) => recipe.id == _selectedRecipeId,
+              ) ??
+              false)) {
+        _selectedRecipeId = null;
+      }
     });
     result.ifLeft((failure) {
       _errorMessage = failure.message;
@@ -70,6 +90,12 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   void setSortOrder(AdminStatisticsSortOrder order) {
     if (_sortOrder == order) return;
     _sortOrder = order;
+    _notifyIfActive();
+  }
+
+  void selectRecipe(String recipeId) {
+    if (_selectedRecipeId == recipeId) return;
+    _selectedRecipeId = recipeId;
     _notifyIfActive();
   }
 
