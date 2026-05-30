@@ -131,6 +131,7 @@ import '../../features/statistics/domain/usecases/get_admin_meal_analytic_statis
 import '../../features/statistics/domain/usecases/get_admin_post_analytic_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_calories_intake_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_calories_posted_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_cooking_time_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_difficulty_meal_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_food_analytic_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_meal_plan_method_statistics_usecase.dart';
@@ -344,6 +345,7 @@ void _initStatisticsFeature() {
 
   sl.registerLazySingleton(() => GetStatisticsDashboardUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlannedTimeStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetCookingTimeStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetFoodAnalyticStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetCaloriesIntakeStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetDifficultyMealStatisticsUseCase(sl()));

@@ -4,6 +4,7 @@ import '../../../../core/error/failures.dart';
 import '../../domain/entities/admin_statistics.dart';
 import '../../domain/entities/calories_intake_statistics.dart';
 import '../../domain/entities/calories_posted_statistics.dart';
+import '../../domain/entities/cooking_time_statistics.dart';
 import '../../domain/entities/difficulty_meal_statistics.dart';
 import '../../domain/entities/food_analytic_statistics.dart';
 import '../../domain/entities/meal_plan_method_statistics.dart';
@@ -32,12 +33,13 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   Future<Either<Failure, StatisticsDashboard>> getUserStatistics() async {
     try {
       final localDashboard = await localDataSource.getUserStatistics();
+      final userHeroSlides = await remoteDataSource.getUserSelfHeroSlides();
       final communityHeroSlides = await remoteDataSource
           .getUserCommunityHeroSlides();
 
       return Right(
         StatisticsDashboardModel(
-          heroSlides: localDashboard.heroSlides,
+          heroSlides: userHeroSlides,
           communityHeroSlides: communityHeroSlides,
           menuItems: localDashboard.menuItems,
           communityMenuItems: localDashboard.communityMenuItems,
@@ -64,7 +66,7 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }) async {
     try {
       return Right(
-        await localDataSource.getMealPlannedTime(
+        await remoteDataSource.getUserMealPlannedTime(
           startDate: startDate,
           endDate: endDate,
         ),
@@ -75,13 +77,30 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   @override
+  Future<Either<Failure, CookingTimeStatistics>> getCookingTime({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      return Right(
+        await remoteDataSource.getUserCookingTime(
+          startDate: startDate,
+          endDate: endDate,
+        ),
+      );
+    } catch (_) {
+      return Left(ServerFailure(message: 'Unable to load cooking time'));
+    }
+  }
+
+  @override
   Future<Either<Failure, FoodAnalyticStatistics>> getFoodAnalytic({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
     try {
       return Right(
-        await localDataSource.getFoodAnalytic(
+        await remoteDataSource.getUserFoodAnalytic(
           startDate: startDate,
           endDate: endDate,
         ),
@@ -115,7 +134,7 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }) async {
     try {
       return Right(
-        await localDataSource.getDifficultyMeals(
+        await remoteDataSource.getUserDifficultyMeals(
           startDate: startDate,
           endDate: endDate,
         ),
@@ -132,7 +151,7 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }) async {
     try {
       return Right(
-        await localDataSource.getMealPlanMethods(
+        await remoteDataSource.getUserMealPlanMethods(
           startDate: startDate,
           endDate: endDate,
         ),
@@ -210,7 +229,7 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }) async {
     try {
       return Right(
-        await localDataSource.getMostCookedRecipes(
+        await remoteDataSource.getUserMostCookedRecipes(
           startDate: startDate,
           endDate: endDate,
         ),

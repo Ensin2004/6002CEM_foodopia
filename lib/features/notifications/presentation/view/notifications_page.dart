@@ -97,13 +97,6 @@ class _NotificationsView extends StatelessWidget {
                   label: 'Notification Settings',
                 ),
               ),
-              PopupMenuItem(
-                value: _NotificationMenuAction.scheduleTest,
-                child: _NotificationMenuItem(
-                  icon: Icons.alarm_add_outlined,
-                  label: 'Schedule test reminder',
-                ),
-              ),
             ],
           ),
         ],
@@ -141,49 +134,11 @@ class _NotificationsView extends StatelessWidget {
       case _NotificationMenuAction.settings:
         viewModel.goToSettings();
         break;
-      case _NotificationMenuAction.scheduleTest:
-        _showSchedulePicker(context, viewModel);
-        break;
     }
-  }
-
-  Future<void> _showSchedulePicker(
-    BuildContext context,
-    NotificationsViewModel viewModel,
-  ) async {
-    final now = DateTime.now();
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(minutes: 1))),
-    );
-    if (pickedTime == null || !context.mounted) return;
-
-    var scheduledAt = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      pickedTime.hour,
-      pickedTime.minute,
-    );
-    if (!scheduledAt.isAfter(now)) {
-      scheduledAt = scheduledAt.add(const Duration(days: 1));
-    }
-
-    await viewModel.schedulePlanReminder(scheduledAt);
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Plan reminder scheduled for ${pickedTime.format(context)}',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 }
 
-enum _NotificationMenuAction { markAllAsRead, settings, scheduleTest }
+enum _NotificationMenuAction { markAllAsRead, settings }
 
 class _NotificationMenuItem extends StatelessWidget {
   final IconData icon;

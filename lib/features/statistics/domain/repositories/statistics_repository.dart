@@ -4,6 +4,7 @@ import '../../../../core/error/failures.dart';
 import '../entities/admin_statistics.dart';
 import '../entities/calories_intake_statistics.dart';
 import '../entities/calories_posted_statistics.dart';
+import '../entities/cooking_time_statistics.dart';
 import '../entities/difficulty_meal_statistics.dart';
 import '../entities/food_analytic_statistics.dart';
 import '../entities/meal_plan_method_statistics.dart';
@@ -21,6 +22,11 @@ abstract class StatisticsRepository {
   Future<Either<Failure, StatisticsDashboard>> getAdminStatistics();
 
   Future<Either<Failure, MealPlannedTimeStatistics>> getMealPlannedTime({
+    DateTime? startDate,
+    DateTime? endDate,
+  });
+
+  Future<Either<Failure, CookingTimeStatistics>> getCookingTime({
     DateTime? startDate,
     DateTime? endDate,
   });

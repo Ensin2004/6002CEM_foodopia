@@ -61,8 +61,6 @@ class _MostCookedRecipeView extends StatelessWidget {
       );
     }
 
-    final recipes = viewModel.sortedRecipes;
-
     return SafeArea(
       top: false,
       child: SingleChildScrollView(
@@ -108,10 +106,10 @@ class _MostCookedRecipeView extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
-            _RecipeChartCard(recipes: recipes),
+            _RecipeChartCard(recipes: viewModel.chartRecipes),
             const SizedBox(height: AppSpacing.lg),
             _RecipeBreakdown(
-              recipes: recipes,
+              days: viewModel.breakdownDays,
               sortOrder: viewModel.sortOrder,
               expandedIndex: viewModel.expandedIndex,
               onSortChanged: viewModel.setSortOrder,
@@ -160,6 +158,7 @@ class _RecipeChartCard extends StatelessWidget {
                       value: recipe.quantity,
                       icon: recipe.icon,
                       color: recipe.color,
+                      imageUrl: recipe.imageUrl,
                     ),
                   )
                   .toList(),
@@ -172,14 +171,14 @@ class _RecipeChartCard extends StatelessWidget {
 }
 
 class _RecipeBreakdown extends StatelessWidget {
-  final List<MostCookedRecipeItem> recipes;
+  final List<MostCookedRecipeDay> days;
   final MostCookedRecipeSortOrder sortOrder;
   final int? expandedIndex;
   final ValueChanged<MostCookedRecipeSortOrder> onSortChanged;
   final ValueChanged<int> onToggle;
 
   const _RecipeBreakdown({
-    required this.recipes,
+    required this.days,
     required this.sortOrder,
     required this.expandedIndex,
     required this.onSortChanged,
@@ -196,8 +195,8 @@ class _RecipeBreakdown extends StatelessWidget {
               Expanded(
                 child: Text(
                   sortOrder == MostCookedRecipeSortOrder.highest
-                      ? 'Highest Planned Dish'
-                      : 'Lowest Planned Dish',
+                      ? 'Date Breakdown - Highest'
+                      : 'Date Breakdown - Lowest',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.text.bodySmall?.copyWith(
@@ -246,12 +245,13 @@ class _RecipeBreakdown extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Column(
-              children: List.generate(recipes.length, (index) {
-                final recipe = recipes[index];
-                return _RecipeSection(
-                  recipe: recipe,
+              children: List.generate(days.length, (index) {
+                final day = days[index];
+                return _DateSection(
+                  day: day,
+                  sortOrder: sortOrder,
                   isExpanded: expandedIndex == index,
-                  showDivider: index != recipes.length - 1,
+                  showDivider: index != days.length - 1,
                   onTap: () => onToggle(index),
                 );
               }),
@@ -263,14 +263,16 @@ class _RecipeBreakdown extends StatelessWidget {
   }
 }
 
-class _RecipeSection extends StatelessWidget {
-  final MostCookedRecipeItem recipe;
+class _DateSection extends StatelessWidget {
+  final MostCookedRecipeDay day;
+  final MostCookedRecipeSortOrder sortOrder;
   final bool isExpanded;
   final bool showDivider;
   final VoidCallback onTap;
 
-  const _RecipeSection({
-    required this.recipe,
+  const _DateSection({
+    required this.day,
+    required this.sortOrder,
     required this.isExpanded,
     required this.showDivider,
     required this.onTap,
@@ -278,6 +280,15 @@ class _RecipeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final plannedDate = DateFormat('MMM d, yyyy').format(day.date);
+    final recipes = [...day.recipes]
+      ..sort((left, right) {
+        final result = right.quantity.compareTo(left.quantity);
+        return sortOrder == MostCookedRecipeSortOrder.highest
+            ? result
+            : -result;
+      });
+
     return Column(
       children: [
         InkWell(
@@ -290,23 +301,37 @@ class _RecipeSection extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _FoodIcon(icon: recipe.icon),
+                const _SoftIcon(icon: Icons.event_available),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
-                  child: Text(
-                    recipe.dishName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodySmall?.copyWith(
-                      color: Colors.black,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        plannedDate,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.bodySmall?.copyWith(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        'Recipe planned by others',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
-                  recipe.quantity.toString(),
+                  day.totalQuantity.toString(),
                   style: context.text.bodyMedium?.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w800,
@@ -326,22 +351,20 @@ class _RecipeSection extends StatelessWidget {
           ),
         ),
         if (isExpanded)
-          ...recipe.plannedDates.map((date) => _RecipeDateRow(date: date)),
+          ...recipes.map((recipe) => _DateRecipeRow(recipe: recipe)),
         if (showDivider) const Divider(height: 1, color: AppColors.border),
       ],
     );
   }
 }
 
-class _RecipeDateRow extends StatelessWidget {
-  final MostCookedRecipePlanDate date;
+class _DateRecipeRow extends StatelessWidget {
+  final MostCookedRecipeDayItem recipe;
 
-  const _RecipeDateRow({required this.date});
+  const _DateRecipeRow({required this.recipe});
 
   @override
   Widget build(BuildContext context) {
-    final plannedDate = DateFormat('MMM d, yyyy').format(date.date);
-
     return Container(
       color: const Color(0xFFF7F7F7),
       padding: const EdgeInsets.symmetric(
@@ -350,11 +373,11 @@ class _RecipeDateRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const _SoftIcon(icon: Icons.event_available),
+          _FoodIcon(icon: recipe.icon, imageUrl: recipe.imageUrl),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
-              plannedDate,
+              recipe.dishName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.text.bodySmall?.copyWith(
@@ -366,7 +389,7 @@ class _RecipeDateRow extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           Text(
-            date.plannedTimes.toString(),
+            recipe.quantity.toString(),
             style: context.text.bodyMedium?.copyWith(
               color: Colors.black,
               fontWeight: FontWeight.w800,
@@ -508,21 +531,33 @@ class _SectionCard extends StatelessWidget {
 
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
+  final String? imageUrl;
 
-  const _FoodIcon({required this.icon});
+  const _FoodIcon({required this.icon, this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
+    final url = imageUrl?.trim() ?? '';
     return Container(
       width: 32,
       height: 32,
+      clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: const Color(0xFFECE7CF),
         shape: BoxShape.circle,
         border: Border.all(color: const Color(0xFFD7C98D)),
       ),
-      child: Icon(icon, color: const Color(0xFF6D642C), size: 18),
+      child: url.isNotEmpty
+          ? Image.network(
+              url,
+              width: 32,
+              height: 32,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Icon(icon, color: const Color(0xFF6D642C), size: 18),
+            )
+          : Icon(icon, color: const Color(0xFF6D642C), size: 18),
     );
   }
 }

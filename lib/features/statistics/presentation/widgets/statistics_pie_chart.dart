@@ -33,6 +33,10 @@ class StatisticsPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visibleSegments = segments
+        .where((segment) => segment.value > 0)
+        .toList();
+
     return SizedBox.square(
       dimension: size,
       child: Stack(
@@ -40,7 +44,7 @@ class StatisticsPieChart extends StatelessWidget {
         children: [
           CustomPaint(
             size: Size.square(size),
-            painter: _StatisticsPieChartPainter(segments: segments),
+            painter: _StatisticsPieChartPainter(segments: visibleSegments),
           ),
           Container(
             width: size * 0.36,

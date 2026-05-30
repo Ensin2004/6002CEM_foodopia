@@ -1126,6 +1126,10 @@ class ExploreRemoteDataSource {
     }
 
     try {
+      if (!await _isNotificationEnabled(receiverUid: receiverUid, type: type)) {
+        return;
+      }
+
       final notificationRef = await firestore
           .collection('users')
           .doc(receiverUid)
@@ -1151,6 +1155,46 @@ class ExploreRemoteDataSource {
     } on FirebaseException {
       // Notification writes are best-effort; the original action already
       // succeeded and should not be rolled back by notification rules.
+    }
+  }
+
+  Future<bool> _isNotificationEnabled({
+    required String receiverUid,
+    required String type,
+  }) async {
+    final preferenceId = _preferenceIdForNotificationType(type);
+    if (preferenceId == null) return true;
+
+    final userDoc = await firestore.collection('users').doc(receiverUid).get();
+    final preferences = userDoc.data()?['notificationPreferences'];
+    if (preferences is Map && preferences[preferenceId] is bool) {
+      return preferences[preferenceId] as bool;
+    }
+
+    final preferenceDoc = await firestore
+        .collection('users')
+        .doc(receiverUid)
+        .collection('notification_preferences')
+        .doc(preferenceId)
+        .get();
+    final enabled = preferenceDoc.data()?['enabled'];
+    return enabled is bool ? enabled : true;
+  }
+
+  String? _preferenceIdForNotificationType(String type) {
+    switch (type) {
+      case 'newFollower':
+        return 'new_follower_notification';
+      case 'newRating':
+        return 'new_rating_notification';
+      case 'newComment':
+        return 'new_comment_notification';
+      case 'newRecipe':
+        return 'new_recipe_notification';
+      case 'newReply':
+        return 'new_reply_notification';
+      default:
+        return null;
     }
   }
 

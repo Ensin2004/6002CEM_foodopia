@@ -4,6 +4,41 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 /// Defines behavior for auth remote data source.
 class AuthRemoteDataSource {
+  static const List<Map<String, String>> _defaultNotificationPreferences = [
+    {
+      'id': 'new_follower_notification',
+      'title': 'New Follower Notification',
+      'description': 'Get a notification for new follower',
+    },
+    {
+      'id': 'new_rating_notification',
+      'title': 'New Rating Notification',
+      'description':
+          'Receive a notification when your Recipe is being rated by user',
+    },
+    {
+      'id': 'new_comment_notification',
+      'title': 'New Comment Notification',
+      'description': 'Receive a notification when your recipe has comment',
+    },
+    {
+      'id': 'new_recipe_notification',
+      'title': 'New Recipe Notification',
+      'description': 'Receive a notification when followed creator posts',
+    },
+    {
+      'id': 'new_reply_notification',
+      'title': 'New Reply Notification',
+      'description': 'Receive a notification when someone replies you',
+    },
+    {
+      'id': 'plan_reminder_notification',
+      'title': 'Plan reminder',
+      'description':
+          'Get a reminder when you forget to plan your meal on that day',
+    },
+  ];
+
   final firebase_auth.FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
   final FirebaseMessaging _fcm;
@@ -114,6 +149,57 @@ class AuthRemoteDataSource {
     required Map<String, dynamic> userData,
   }) async {
     await _firestore.collection('users').doc(uid).set(userData);
+    await ensureNotificationPreferences(uid);
+  }
+
+  Future<void> ensureNotificationPreferences(String uid) async {
+    if (uid.isEmpty) return;
+
+    final userRef = _firestore.collection('users').doc(uid);
+    final collectionRef = userRef.collection('notification_preferences');
+    final snapshot = await collectionRef.get();
+    final existingIds = snapshot.docs.map((doc) => doc.id).toSet();
+    final existingMap = <String, bool>{};
+
+    for (final doc in snapshot.docs) {
+      final enabled = doc.data()['enabled'];
+      if (enabled is bool) {
+        existingMap[doc.id] = enabled;
+      }
+    }
+
+    final batch = _firestore.batch();
+    for (final preference in _defaultNotificationPreferences) {
+      final id = preference['id'] ?? '';
+      if (id.isEmpty) continue;
+
+      final ref = collectionRef.doc(id);
+      if (existingIds.contains(id)) {
+        batch.set(ref, {
+          'title': preference['title'] ?? id,
+          'description': preference['description'] ?? '',
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } else {
+        batch.set(ref, {
+          'title': preference['title'] ?? id,
+          'description': preference['description'] ?? '',
+          'enabled': true,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        existingMap[id] = true;
+      }
+    }
+
+    batch.set(userRef, {
+      'notificationPreferences': {
+        for (final preference in _defaultNotificationPreferences)
+          if ((preference['id'] ?? '').isNotEmpty)
+            preference['id']!: existingMap[preference['id']] ?? true,
+      },
+    }, SetOptions(merge: true));
+    await batch.commit();
   }
 
   /// Runs the update user in firestore operation.

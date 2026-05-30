@@ -33,6 +33,7 @@ import '../../features/statistics/presentation/view/admin_meal_analytic_page.dar
 import '../../features/statistics/presentation/view/admin_post_analytic_page.dart';
 import '../../features/statistics/presentation/view/calories_intake_page.dart';
 import '../../features/statistics/presentation/view/calories_posted_page.dart';
+import '../../features/statistics/presentation/view/cooking_time_page.dart';
 import '../../features/statistics/presentation/view/difficulty_meal_page.dart';
 import '../../features/statistics/presentation/view/food_analytic_page.dart';
 import '../../features/statistics/presentation/view/meal_plan_method_page.dart';
@@ -98,6 +99,7 @@ class AppRouter {
   static const String adminDietaryPreference =
       '/statistics/admin-dietary-preference';
   static const String foodAnalytic = '/statistics/food-analytic';
+  static const String cookingTime = '/statistics/cooking-time';
   static const String caloriesIntake = '/statistics/calories-intake';
   static const String difficultyMeals = '/statistics/difficulty-meals';
   static const String mealPlanMethods = '/statistics/meal-plan-methods';
@@ -722,6 +724,12 @@ class AppRouter {
         name: 'foodAnalytic',
         path: foodAnalytic,
         builder: (context, state) => const FoodAnalyticPage(),
+      ),
+
+      GoRoute(
+        name: 'cookingTime',
+        path: cookingTime,
+        builder: (context, state) => const CookingTimePage(),
       ),
 
       GoRoute(

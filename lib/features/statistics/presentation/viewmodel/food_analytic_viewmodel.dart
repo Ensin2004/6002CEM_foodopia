@@ -14,6 +14,7 @@ class FoodAnalyticViewModel extends ChangeNotifier {
   DateTime? _startDate;
   DateTime? _endDate;
   int _selectedChartIndex = 0;
+  int? _expandedItemIndex;
   StatisticsSortOrder _sortOrder = StatisticsSortOrder.most;
 
   FoodAnalyticViewModel({
@@ -28,6 +29,7 @@ class FoodAnalyticViewModel extends ChangeNotifier {
   DateTime? get startDate => _startDate;
   DateTime? get endDate => _endDate;
   int get selectedChartIndex => _selectedChartIndex;
+  int? get expandedItemIndex => _expandedItemIndex;
   StatisticsSortOrder get sortOrder => _sortOrder;
 
   FoodAnalyticChart? get selectedChart {
@@ -63,6 +65,7 @@ class FoodAnalyticViewModel extends ChangeNotifier {
   void selectChart(int index) {
     if (_selectedChartIndex == index) return;
     _selectedChartIndex = index;
+    _expandedItemIndex = null;
     _sortOrder = StatisticsSortOrder.most;
     _notifyIfActive();
   }
@@ -70,6 +73,12 @@ class FoodAnalyticViewModel extends ChangeNotifier {
   void setSortOrder(StatisticsSortOrder order) {
     if (_sortOrder == order) return;
     _sortOrder = order;
+    _expandedItemIndex = null;
+    _notifyIfActive();
+  }
+
+  void toggleItem(int index) {
+    _expandedItemIndex = _expandedItemIndex == index ? null : index;
     _notifyIfActive();
   }
 

@@ -163,7 +163,7 @@ class _StatisticsLineChartPainter extends CustomPainter {
           ? size.width / 2
           : size.width * index / (points.length - 1);
       final y = size.height - (points[index].value / maxValue) * size.height;
-      pointOffsets.add(Offset(x, y.clamp(0.0, size.height)));
+      pointOffsets.add(Offset(x, y.clamp(2.0, size.height - 2)));
     }
 
     final linePath = _smoothPath(pointOffsets);
