@@ -95,10 +95,16 @@ class FcmNotificationService {
     final body = message.notification?.body ?? message.data['body']?.toString();
     if (title == null || body == null) return;
 
+    final notificationId = message.data['notificationId']?.toString() ?? '';
+    final dedupeKey = notificationId.isEmpty
+        ? 'fcm_${message.messageId ?? DateTime.now().millisecondsSinceEpoch}'
+        : notificationId;
+    if (!_shownNotificationKeys.add(dedupeKey)) return;
+
     await _showNativeNotification(
       title: title,
       body: body,
-      key: 'fcm_${message.messageId ?? DateTime.now()}',
+      key: 'notification_$dedupeKey',
     );
   }
 
