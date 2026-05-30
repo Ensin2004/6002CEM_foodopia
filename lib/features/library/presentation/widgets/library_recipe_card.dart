@@ -79,6 +79,19 @@ class LibraryRecipeCard extends StatelessWidget {
                         child: _ViewsBadge(count: recipe.totalViews),
                       ),
                       Positioned(
+                        top: 6,
+                        right: 6,
+                        child: _ImageIconButton(
+                          icon: recipe.isFollowingAuthor
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: recipe.isFollowingAuthor
+                              ? AppColors.favourite
+                              : Colors.white,
+                          onTap: onFavouriteTap,
+                        ),
+                      ),
+                      Positioned(
                         left: 8,
                         bottom: 8,
                         child: _StatusBadge(recipe: recipe),
@@ -173,12 +186,6 @@ class LibraryRecipeCard extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                              _FavouriteIconButton(
-                                isFavourite: recipe.isFollowingAuthor,
-                                onTap: onFavouriteTap,
-                              ),
-                              const SizedBox(width: 4),
                               _CountWithIcon(
                                 icon: Icons.chat_bubble,
                                 label: _compactCount(recipe.commentCount),
@@ -194,6 +201,35 @@ class LibraryRecipeCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ImageIconButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ImageIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.58),
+      shape: const CircleBorder(),
+      child: InkResponse(
+        onTap: onTap,
+        radius: 19,
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Icon(icon, size: 18, color: color),
         ),
       ),
     );
@@ -352,30 +388,6 @@ class _CountWithIcon extends StatelessWidget {
             color: AppColors.textSecondary.withValues(alpha: 0.55),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _FavouriteIconButton extends StatelessWidget {
-  final bool isFavourite;
-  final VoidCallback onTap;
-
-  const _FavouriteIconButton({required this.isFavourite, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkResponse(
-      onTap: onTap,
-      radius: 18,
-      child: SizedBox(
-        width: 28,
-        height: 28,
-        child: Icon(
-          isFavourite ? Icons.favorite : Icons.favorite_border,
-          size: 20,
-          color: isFavourite ? AppColors.favourite : AppColors.textSecondary,
-        ),
       ),
     );
   }
