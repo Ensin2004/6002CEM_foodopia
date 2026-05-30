@@ -125,13 +125,16 @@ Future<void> pickStatisticsDateRange({
   required DateTime? endDate,
   required Future<void> Function(DateTime startDate, DateTime endDate) onPicked,
 }) async {
+  final now = DateTime.now();
+  final defaultEnd = DateTime(now.year, now.month, now.day);
+  final defaultStart = defaultEnd.subtract(const Duration(days: 6));
   final pickedRange = await showDateRangePicker(
     context: context,
     firstDate: DateTime(2023),
-    lastDate: DateTime(2026, 12, 31),
+    lastDate: DateTime(now.year + 1, 12, 31),
     initialDateRange: DateTimeRange(
-      start: startDate ?? DateTime(2024, 5, 12),
-      end: endDate ?? DateTime(2024, 5, 18),
+      start: startDate ?? defaultStart,
+      end: endDate ?? defaultEnd,
     ),
   );
 

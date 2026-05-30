@@ -33,11 +33,22 @@ class NotificationRepositoryImpl implements NotificationRepository {
   @override
   Future<Either<Failure, List<NotificationPreference>>> getPreferences() async {
     try {
-      return Right(await localDataSource.getPreferences());
+      final remote = await remoteDataSource.getPreferences();
+      for (final item in remote) {
+        await localDataSource.updatePreference(
+          preferenceId: item.id,
+          enabled: item.enabled,
+        );
+      }
+      return Right(remote);
     } catch (_) {
-      return Left(
-        CacheFailure(message: 'Unable to load notification settings'),
-      );
+      try {
+        return Right(await localDataSource.getPreferences());
+      } catch (_) {
+        return Left(
+          CacheFailure(message: 'Unable to load notification settings'),
+        );
+      }
     }
   }
 
@@ -70,6 +81,10 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }) async {
     try {
       await localDataSource.updatePreference(
+        preferenceId: preferenceId,
+        enabled: enabled,
+      );
+      await remoteDataSource.updatePreference(
         preferenceId: preferenceId,
         enabled: enabled,
       );

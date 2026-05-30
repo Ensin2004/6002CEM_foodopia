@@ -36,6 +36,7 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final userDoc = await remoteDataSource.getUserFromFirestore(user.uid);
+      await remoteDataSource.ensureNotificationPreferences(user.uid);
       await remoteDataSource.saveFcmToken(user.uid);
       await FcmNotificationService.initialize();
       final userEntity = UserModel.fromFirebase(user, userDoc);
@@ -106,6 +107,14 @@ class AuthRepositoryImpl implements AuthRepository {
           'ageGroupName': ageGroupName,
           'createdAt': FieldValue.serverTimestamp(),
           'fcmTokens': fcmToken != null ? [fcmToken] : [],
+          'notificationPreferences': const {
+            'new_follower_notification': true,
+            'new_rating_notification': true,
+            'new_comment_notification': true,
+            'new_recipe_notification': true,
+            'new_reply_notification': true,
+            'plan_reminder_notification': true,
+          },
           'role': RoleManager().getDefaultRole(),
         },
       );

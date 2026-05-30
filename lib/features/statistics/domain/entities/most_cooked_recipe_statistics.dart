@@ -7,12 +7,40 @@ class MostCookedRecipeStatistics {
   final int totalUsersPlanToCook;
   final String topPlanToCook;
   final List<MostCookedRecipeItem> recipes;
+  final List<MostCookedRecipeDay> days;
 
   const MostCookedRecipeStatistics({
     required this.dateRange,
     required this.totalUsersPlanToCook,
     required this.topPlanToCook,
     required this.recipes,
+    this.days = const [],
+  });
+}
+
+class MostCookedRecipeDay {
+  final DateTime date;
+  final int totalQuantity;
+  final List<MostCookedRecipeDayItem> recipes;
+
+  const MostCookedRecipeDay({
+    required this.date,
+    required this.totalQuantity,
+    required this.recipes,
+  });
+}
+
+class MostCookedRecipeDayItem {
+  final String dishName;
+  final int quantity;
+  final IconData icon;
+  final String? imageUrl;
+
+  const MostCookedRecipeDayItem({
+    required this.dishName,
+    required this.quantity,
+    required this.icon,
+    this.imageUrl,
   });
 }
 
@@ -21,6 +49,7 @@ class MostCookedRecipeItem {
   final int quantity;
   final IconData icon;
   final Color color;
+  final String? imageUrl;
   final List<MostCookedRecipePlanDate> plannedDates;
 
   const MostCookedRecipeItem({
@@ -28,6 +57,7 @@ class MostCookedRecipeItem {
     required this.quantity,
     required this.icon,
     required this.color,
+    this.imageUrl,
     required this.plannedDates,
   });
 }

@@ -67,6 +67,8 @@ class FoodAnalyticBarItem {
   final double percent;
   final IconData icon;
   final Color color;
+  final String? imageUrl;
+  final List<FoodAnalyticDetailItem> details;
 
   const FoodAnalyticBarItem({
     required this.label,
@@ -74,5 +76,21 @@ class FoodAnalyticBarItem {
     required this.percent,
     required this.icon,
     required this.color,
+    this.imageUrl,
+    this.details = const [],
+  });
+}
+
+class FoodAnalyticDetailItem {
+  final String name;
+  final int quantity;
+  final IconData icon;
+  final String? imageUrl;
+
+  const FoodAnalyticDetailItem({
+    required this.name,
+    required this.quantity,
+    required this.icon,
+    this.imageUrl,
   });
 }

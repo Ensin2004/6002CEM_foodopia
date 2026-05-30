@@ -36,6 +36,7 @@ class MealPlanMethodItem {
   final String mealTime;
   final int quantity;
   final IconData icon;
+  final String? imageUrl;
 
   const MealPlanMethodItem({
     required this.recipeName,
@@ -43,5 +44,6 @@ class MealPlanMethodItem {
     required this.mealTime,
     required this.quantity,
     required this.icon,
+    this.imageUrl,
   });
 }

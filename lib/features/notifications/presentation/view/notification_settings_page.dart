@@ -50,12 +50,6 @@ class _NotificationSettingsView extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Icon(Icons.more_horiz),
-          ),
-        ],
       ),
       body: viewModel.isLoading
           ? const LoadingDialog()

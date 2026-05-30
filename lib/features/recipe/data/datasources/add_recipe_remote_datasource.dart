@@ -533,6 +533,13 @@ class AddRecipeRemoteDataSource {
       final followerUids = await _getFollowerUids(recipeOwnerUid);
 
       for (final followerUid in followerUids) {
+        if (!await _isNotificationEnabled(
+          receiverUid: followerUid,
+          preferenceId: 'new_recipe_notification',
+        )) {
+          continue;
+        }
+
         final notificationRef = await firestore
             .collection('users')
             .doc(followerUid)
@@ -582,6 +589,26 @@ class AddRecipeRemoteDataSource {
     }
 
     return followerUids;
+  }
+
+  Future<bool> _isNotificationEnabled({
+    required String receiverUid,
+    required String preferenceId,
+  }) async {
+    final userDoc = await firestore.collection('users').doc(receiverUid).get();
+    final preferences = userDoc.data()?['notificationPreferences'];
+    if (preferences is Map && preferences[preferenceId] is bool) {
+      return preferences[preferenceId] as bool;
+    }
+
+    final preferenceDoc = await firestore
+        .collection('users')
+        .doc(receiverUid)
+        .collection('notification_preferences')
+        .doc(preferenceId)
+        .get();
+    final enabled = preferenceDoc.data()?['enabled'];
+    return enabled is bool ? enabled : true;
   }
 
   Future<void> _sendPushToUser({

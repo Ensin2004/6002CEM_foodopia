@@ -1,47 +1,32 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
-import '../../domain/entities/most_cooked_recipe_statistics.dart';
-import '../../domain/usecases/get_most_cooked_recipe_statistics_usecase.dart';
+import '../../domain/entities/cooking_time_statistics.dart';
+import '../../domain/usecases/get_cooking_time_statistics_usecase.dart';
 
-class MostCookedRecipeViewModel extends ChangeNotifier {
-  final GetMostCookedRecipeStatisticsUseCase _getStatisticsUseCase;
+class CookingTimeViewModel extends ChangeNotifier {
+  final GetCookingTimeStatisticsUseCase _getStatisticsUseCase;
 
-  MostCookedRecipeStatistics? _statistics;
+  CookingTimeStatistics? _statistics;
   bool _isLoading = true;
   bool _isDisposed = false;
   String? _errorMessage;
   DateTime? _startDate;
   DateTime? _endDate;
   int? _expandedIndex;
-  MostCookedRecipeSortOrder _sortOrder = MostCookedRecipeSortOrder.highest;
 
-  MostCookedRecipeViewModel({
-    required GetMostCookedRecipeStatisticsUseCase getStatisticsUseCase,
+  CookingTimeViewModel({
+    required GetCookingTimeStatisticsUseCase getStatisticsUseCase,
   }) : _getStatisticsUseCase = getStatisticsUseCase {
     Future.microtask(loadStatistics);
   }
 
-  MostCookedRecipeStatistics? get statistics => _statistics;
+  CookingTimeStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   DateTime? get startDate => _startDate;
   DateTime? get endDate => _endDate;
   int? get expandedIndex => _expandedIndex;
-  MostCookedRecipeSortOrder get sortOrder => _sortOrder;
-
-  List<MostCookedRecipeItem> get sortedRecipes {
-    final items = [...?_statistics?.recipes];
-    items.sort((left, right) {
-      final result = right.quantity.compareTo(left.quantity);
-      return _sortOrder == MostCookedRecipeSortOrder.highest ? result : -result;
-    });
-    return items;
-  }
-
-  List<MostCookedRecipeItem> get chartRecipes => sortedRecipes.take(5).toList();
-
-  List<MostCookedRecipeDay> get breakdownDays => _statistics?.days ?? const [];
 
   Future<void> loadStatistics() async {
     _isLoading = _statistics == null;
@@ -65,14 +50,7 @@ class MostCookedRecipeViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
-  void setSortOrder(MostCookedRecipeSortOrder order) {
-    if (_sortOrder == order) return;
-    _sortOrder = order;
-    _expandedIndex = null;
-    _notifyIfActive();
-  }
-
-  void toggleRecipe(int index) {
+  void toggleDay(int index) {
     _expandedIndex = _expandedIndex == index ? null : index;
     _notifyIfActive();
   }
