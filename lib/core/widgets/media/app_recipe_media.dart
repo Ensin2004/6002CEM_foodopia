@@ -76,11 +76,15 @@ class AppRecipeMedia extends StatelessWidget {
 class AppRecipeMediaPreview extends StatelessWidget {
   final String mediaPath;
   final BoxFit fit;
+  final double playOverlaySize;
+  final double playIconSize;
 
   const AppRecipeMediaPreview({
     super.key,
     required this.mediaPath,
     this.fit = BoxFit.cover,
+    this.playOverlaySize = 46,
+    this.playIconSize = 30,
   });
 
   @override
@@ -99,10 +103,14 @@ class AppRecipeMediaPreview extends StatelessWidget {
               color: Colors.black.withValues(alpha: 0.52),
               shape: BoxShape.circle,
             ),
-            child: const SizedBox(
-              width: 46,
-              height: 46,
-              child: Icon(Icons.play_arrow, color: Colors.white, size: 30),
+            child: SizedBox(
+              width: playOverlaySize,
+              height: playOverlaySize,
+              child: Icon(
+                Icons.play_arrow,
+                color: Colors.white,
+                size: playIconSize,
+              ),
             ),
           ),
         ),
@@ -124,7 +132,13 @@ Future<void> showRecipeMediaDialog(
           child: Stack(
             children: [
               Center(
-                child: isRecipeVideoPath(mediaPath)
+                child: mediaPath.trim().isEmpty
+                    ? const Icon(
+                        Icons.image_not_supported_outlined,
+                        color: Colors.white70,
+                        size: 56,
+                      )
+                    : isRecipeVideoPath(mediaPath)
                     ? AppRecipeMedia(
                         mediaPath: mediaPath,
                         fit: BoxFit.contain,
@@ -356,9 +370,7 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
                   onTogglePlayback: _togglePlayback,
                   onVolumeChanged: _setVolume,
                   isFullscreen: widget.isFullscreen,
-                  onFullscreen: widget.allowFullscreen
-                      ? _openFullscreen
-                      : null,
+                  onFullscreen: widget.allowFullscreen ? _openFullscreen : null,
                 ),
             ],
           ),
@@ -615,13 +627,11 @@ class _VideoControlsState extends State<_VideoControls> {
 class _VideoControlButton extends StatelessWidget {
   final String tooltip;
   final IconData icon;
-  final Color color;
   final VoidCallback onPressed;
 
   const _VideoControlButton({
     required this.tooltip,
     required this.icon,
-    this.color = Colors.white,
     required this.onPressed,
   });
 
@@ -633,7 +643,7 @@ class _VideoControlButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 28, height: 28),
       onPressed: onPressed,
-      icon: Icon(icon, color: color, size: 20),
+      icon: Icon(icon, color: Colors.white, size: 20),
     );
   }
 }

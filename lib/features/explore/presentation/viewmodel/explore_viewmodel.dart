@@ -407,6 +407,7 @@ class ExploreViewModel extends ChangeNotifier {
       allergenInfo: recipe.allergenInfo,
       totalTime: recipe.totalTime,
       difficulty: recipe.difficulty,
+      servings: recipe.servings,
       rating: recipe.rating,
       ratingCount: recipe.ratingCount,
       commentCount: recipe.commentCount,

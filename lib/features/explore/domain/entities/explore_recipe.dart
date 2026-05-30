@@ -18,6 +18,7 @@ class ExploreRecipe {
   final String allergenInfo;
   final String totalTime;
   final String difficulty;
+  final int servings;
   final double rating;
   final int ratingCount;
   final int commentCount;
@@ -50,6 +51,7 @@ class ExploreRecipe {
     required this.allergenInfo,
     required this.totalTime,
     required this.difficulty,
+    this.servings = 1,
     required this.rating,
     required this.ratingCount,
     required this.commentCount,
@@ -72,6 +74,10 @@ class ExploreIngredient {
   final String calories;
   final String imagePath;
   final double nutritionPercent;
+  final double caloriesValue;
+  final double carbsGrams;
+  final double proteinGrams;
+  final double fatGrams;
   final String ingredientCategoryId;
   final String ingredientCategoryName;
 
@@ -81,6 +87,10 @@ class ExploreIngredient {
     required this.calories,
     required this.imagePath,
     required this.nutritionPercent,
+    this.caloriesValue = 0,
+    this.carbsGrams = 0,
+    this.proteinGrams = 0,
+    this.fatGrams = 0,
     this.ingredientCategoryId = '',
     this.ingredientCategoryName = '',
   });
