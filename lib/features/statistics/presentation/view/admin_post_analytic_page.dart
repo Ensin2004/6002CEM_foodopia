@@ -270,7 +270,6 @@ class _RecipePerformanceChart extends StatelessWidget {
             child: Center(
               child: Text(
                 'Pick a posted recipe',
-                textAlign: TextAlign.center,
                 style: context.text.titleMedium?.copyWith(
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w700,

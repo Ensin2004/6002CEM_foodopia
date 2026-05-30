@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/widgets/custom_app_bar.dart';
@@ -97,11 +99,9 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
 
       /// Creates a icon button instance.
-      IconButton(
-        icon: const Icon(Icons.notifications),
+      _UnreadNotificationButton(
         color: Theme.of(context).colorScheme.onPrimary,
         onPressed: onNotificationsTap,
-        tooltip: 'Notifications',
       ),
     ];
   }
@@ -109,4 +109,67 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Handles the preferred size operation.
   @override
   Size get preferredSize => const Size.fromHeight(56);
+}
+
+class _UnreadNotificationButton extends StatelessWidget {
+  final Color color;
+  final VoidCallback? onPressed;
+
+  const _UnreadNotificationButton({required this.color, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty) {
+      return IconButton(
+        icon: const Icon(Icons.notifications),
+        color: color,
+        onPressed: onPressed,
+        tooltip: 'Notifications',
+      );
+    }
+
+    final unreadStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .where('isRead', isEqualTo: false)
+        .limit(1)
+        .snapshots();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: unreadStream,
+      builder: (context, snapshot) {
+        final hasUnread = (snapshot.data?.docs.length ?? 0) > 0;
+        return IconButton(
+          color: color,
+          onPressed: onPressed,
+          tooltip: 'Notifications',
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Icon(Icons.notifications),
+              if (hasUnread)
+                Positioned(
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

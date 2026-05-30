@@ -89,14 +89,15 @@ class StatisticsLocalDataSource {
       menuItems: [
         StatisticsMenuItem(title: 'Food Analytic'),
         StatisticsMenuItem(title: 'Time Taken For Cooking'),
-        StatisticsMenuItem(title: 'Calories Intake'),
+        StatisticsMenuItem(title: 'Grocery List'),
+        StatisticsMenuItem(title: 'Nutrient Intake'),
         StatisticsMenuItem(title: 'Meal Planned Time'),
         StatisticsMenuItem(title: 'Method For Creating Plan'),
         StatisticsMenuItem(title: 'Difficulty'),
       ],
       communityMenuItems: [
         StatisticsMenuItem(title: 'Post Analytic'),
-        StatisticsMenuItem(title: 'Most Calories Posted Meal'),
+        StatisticsMenuItem(title: 'Most Nutrient Posted Meal'),
         StatisticsMenuItem(title: 'Recipe Performance'),
         StatisticsMenuItem(title: 'Most Cooked Recipe By Others'),
         StatisticsMenuItem(title: 'Difficulty Posted'),

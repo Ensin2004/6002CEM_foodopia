@@ -7,6 +7,7 @@ import '../../domain/entities/calories_posted_statistics.dart';
 import '../../domain/entities/cooking_time_statistics.dart';
 import '../../domain/entities/difficulty_meal_statistics.dart';
 import '../../domain/entities/food_analytic_statistics.dart';
+import '../../domain/entities/grocery_list_statistics.dart';
 import '../../domain/entities/meal_plan_method_statistics.dart';
 import '../../domain/entities/meal_planned_time_statistics.dart';
 import '../../domain/entities/most_cooked_recipe_statistics.dart';
@@ -100,6 +101,23 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
       );
     } catch (_) {
       return Left(ServerFailure(message: 'Unable to load cooking time'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, GroceryListStatistics>> getGroceryLists({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      return Right(
+        await remoteDataSource.getUserGroceryLists(
+          startDate: startDate,
+          endDate: endDate,
+        ),
+      );
+    } catch (_) {
+      return Left(ServerFailure(message: 'Unable to load grocery list'));
     }
   }
 

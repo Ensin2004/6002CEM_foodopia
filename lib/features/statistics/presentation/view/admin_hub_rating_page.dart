@@ -176,6 +176,7 @@ class _HubRatingBreakdown extends StatelessWidget {
     final formatter = DateFormat('MMMM yyyy');
     return _SectionCard(
       title: 'Hub Rating Breakdown',
+      alignTitleLeft: true,
       child: Column(
         children: months
             .map(
@@ -194,8 +195,13 @@ class _HubRatingBreakdown extends StatelessWidget {
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
+  final bool alignTitleLeft;
 
-  const _SectionCard({required this.title, required this.child});
+  const _SectionCard({
+    required this.title,
+    required this.child,
+    this.alignTitleLeft = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -207,9 +213,13 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
+        crossAxisAlignment: alignTitleLeft
+            ? CrossAxisAlignment.stretch
+            : CrossAxisAlignment.center,
         children: [
           Text(
             title,
+            textAlign: alignTitleLeft ? TextAlign.start : TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: context.text.bodyMedium?.copyWith(

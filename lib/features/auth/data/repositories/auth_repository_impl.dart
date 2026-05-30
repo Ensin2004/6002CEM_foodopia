@@ -113,7 +113,6 @@ class AuthRepositoryImpl implements AuthRepository {
             'new_comment_notification': true,
             'new_recipe_notification': true,
             'new_reply_notification': true,
-            'plan_reminder_notification': true,
           },
           'role': RoleManager().getDefaultRole(),
         },

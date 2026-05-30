@@ -251,11 +251,7 @@ class UserSetupViewModel extends ChangeNotifier {
   }
 
   void _loadNotificationSettings() {
-    const ids = [
-      'new_follower_notification',
-      'new_rating_notification',
-      'plan_reminder_notification',
-    ];
+    const ids = ['new_follower_notification', 'new_rating_notification'];
 
     for (final id in ids) {
       _notificationSettings[id] = SharedPrefsManager.isNotificationTypeEnabled(

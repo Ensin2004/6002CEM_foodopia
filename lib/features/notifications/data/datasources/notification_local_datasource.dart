@@ -60,13 +60,6 @@ class NotificationLocalDataSource {
             description: 'Receive a notification when someone replies you',
             enabled: false,
           ),
-          NotificationPreference(
-            id: 'plan_reminder_notification',
-            title: 'Plan reminder',
-            description:
-                'Get a reminder when you forget to plan your meal on that day',
-            enabled: false,
-          ),
         ]
         .map(
           (item) => item.copyWith(

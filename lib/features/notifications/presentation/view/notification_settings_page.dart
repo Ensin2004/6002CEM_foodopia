@@ -79,8 +79,6 @@ class _NotificationSettingsView extends StatelessWidget {
         return Icons.group_add_outlined;
       case 'new_rating_notification':
         return Icons.info_outline;
-      case 'plan_reminder_notification':
-        return Icons.schedule_outlined;
       default:
         return Icons.notifications_none;
     }

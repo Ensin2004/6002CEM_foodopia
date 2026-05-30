@@ -45,7 +45,7 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: const CustomAppBar(
-        title: 'Daily Calories Intake',
+        title: 'Daily Nutrient Intake',
         leading: StatisticsBackButton(),
       ),
       body: _buildBody(context, viewModel),
@@ -54,13 +54,13 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
 
   Widget _buildBody(BuildContext context, CaloriesIntakeViewModel viewModel) {
     if (viewModel.isLoading && viewModel.statistics == null) {
-      return const LoadingDialog(inline: true, message: 'Loading calories...');
+      return const LoadingDialog(inline: true, message: 'Loading nutrients...');
     }
 
     final statistics = viewModel.statistics;
     if (statistics == null) {
       return _CaloriesError(
-        message: viewModel.errorMessage ?? 'Unable to load calories intake',
+        message: viewModel.errorMessage ?? 'Unable to load nutrient intake',
         onRetry: viewModel.loadStatistics,
       );
     }
@@ -133,7 +133,7 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
       case 3:
         return 'Average Fat';
       default:
-        return 'Average Calories';
+        return 'Average Nutrient';
     }
   }
 
@@ -304,8 +304,8 @@ class _CaloriesMetricPager extends StatelessWidget {
 
   List<_CaloriesChartMetric> get _metrics => [
     _CaloriesChartMetric(
-      title: 'Calories Intake Vs Day',
-      breakdownTitle: 'Calories Breakdown',
+      title: 'Nutrient Intake Vs Day',
+      breakdownTitle: 'Nutrient Breakdown',
       unit: viewModel.unitLabel,
       valueForDay: (day) => viewModel.convertCalories(day.totalCaloriesKcal),
       valueForMeal: (meal) => viewModel.convertCalories(meal.caloriesKcal),
@@ -411,7 +411,7 @@ class _MetricTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['Calories', 'Carbohydrate', 'Protein', 'Fat'];
+    const labels = ['Nutrient', 'Carbohydrate', 'Protein', 'Fat'];
     return Container(
       height: 38,
       padding: const EdgeInsets.all(3),

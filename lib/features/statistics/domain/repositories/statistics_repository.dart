@@ -7,6 +7,7 @@ import '../entities/calories_posted_statistics.dart';
 import '../entities/cooking_time_statistics.dart';
 import '../entities/difficulty_meal_statistics.dart';
 import '../entities/food_analytic_statistics.dart';
+import '../entities/grocery_list_statistics.dart';
 import '../entities/meal_plan_method_statistics.dart';
 import '../entities/meal_planned_time_statistics.dart';
 import '../entities/most_cooked_recipe_statistics.dart';
@@ -27,6 +28,11 @@ abstract class StatisticsRepository {
   });
 
   Future<Either<Failure, CookingTimeStatistics>> getCookingTime({
+    DateTime? startDate,
+    DateTime? endDate,
+  });
+
+  Future<Either<Failure, GroceryListStatistics>> getGroceryLists({
     DateTime? startDate,
     DateTime? endDate,
   });
