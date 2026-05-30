@@ -1126,10 +1126,6 @@ class ExploreRemoteDataSource {
     }
 
     try {
-      if (!await _isNotificationEnabled(receiverUid: receiverUid, type: type)) {
-        return;
-      }
-
       final notificationRef = await firestore
           .collection('users')
           .doc(receiverUid)
@@ -1142,6 +1138,10 @@ class ExploreRemoteDataSource {
             'senderUid': senderUid,
             'createdAt': FieldValue.serverTimestamp(),
           });
+      if (!await _isNotificationEnabled(receiverUid: receiverUid, type: type)) {
+        return;
+      }
+
       await _sendPushToUser(
         receiverUid: receiverUid,
         title: title,

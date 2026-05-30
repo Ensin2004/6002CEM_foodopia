@@ -712,26 +712,62 @@ class StatisticsRemoteDataSource {
   }
 
   Future<int> _recipeFavouriteCount(String recipeId) async {
-    try {
-      final snapshot = await firestore
-          .collectionGroup('saved_recipes')
-          .where('recipeId', isEqualTo: recipeId)
-          .get();
-      if (snapshot.docs.isNotEmpty) return snapshot.docs.length;
+    if (recipeId.trim().isEmpty) return 0;
+    final favouritedUserIds = <String>{};
 
-      final allSavedSnapshot = await firestore
-          .collectionGroup('saved_recipes')
-          .get();
-      final savedCount = allSavedSnapshot.docs.where((doc) {
-        final data = doc.data();
-        final savedRecipeId = data['recipeId']?.toString().trim();
-        return doc.id == recipeId || savedRecipeId == recipeId;
-      }).length;
-      if (savedCount > 0) return savedCount;
-      return _currentUserFavouriteCount(recipeId);
+    try {
+      final usersSnapshot = await firestore.collection('users').get();
+      for (final userDoc in usersSnapshot.docs) {
+        final data = userDoc.data();
+        if (_hasRecipeInSavedArrays(data, recipeId)) {
+          favouritedUserIds.add(userDoc.id);
+          continue;
+        }
+
+        final savedDoc = await userDoc.reference
+            .collection('saved_recipes')
+            .doc(recipeId)
+            .get();
+        if (savedDoc.exists) {
+          favouritedUserIds.add(userDoc.id);
+          continue;
+        }
+
+        final savedSnapshot = await userDoc.reference
+            .collection('saved_recipes')
+            .get();
+        final hasSavedRecipe = savedSnapshot.docs.any((doc) {
+          final savedRecipeId = _stringValue(
+            doc.data()['recipeId'] ??
+                doc.data()['recipe_id'] ??
+                doc.data()['recipeID'],
+            fallback: doc.id,
+          );
+          return savedRecipeId == recipeId;
+        });
+        if (hasSavedRecipe) favouritedUserIds.add(userDoc.id);
+      }
+      return favouritedUserIds.length;
     } on FirebaseException {
       return _currentUserFavouriteCount(recipeId);
     }
+  }
+
+  bool _hasRecipeInSavedArrays(Map<String, dynamic> data, String recipeId) {
+    for (final field in const [
+      'bookmarkedRecipeIds',
+      'followingRecipeIds',
+      'savedRecipeIds',
+      'favoriteRecipeIds',
+      'favouriteRecipeIds',
+    ]) {
+      final value = data[field];
+      if (value is Iterable &&
+          value.map((item) => item.toString().trim()).contains(recipeId)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<int> _currentUserFavouriteCount(String recipeId) async {
