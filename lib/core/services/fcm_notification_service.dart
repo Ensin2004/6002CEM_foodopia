@@ -116,6 +116,7 @@ class FcmNotificationService {
     final startedAt = Timestamp.fromDate(
       DateTime.now().subtract(const Duration(seconds: 10)),
     );
+    var hasDeliveredInitialSnapshot = false;
     _notificationSubscription = FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -126,6 +127,16 @@ class FcmNotificationService {
         .snapshots()
         .listen(
           (snapshot) async {
+            if (!hasDeliveredInitialSnapshot) {
+              for (final change in snapshot.docChanges) {
+                if (change.type == DocumentChangeType.added) {
+                  _shownNotificationKeys.add(change.doc.id);
+                }
+              }
+              hasDeliveredInitialSnapshot = true;
+              return;
+            }
+
             for (final change in snapshot.docChanges) {
               if (change.type != DocumentChangeType.added) continue;
               if (!_shownNotificationKeys.add(change.doc.id)) continue;
