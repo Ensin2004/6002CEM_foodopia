@@ -320,6 +320,7 @@ class ExploreRemoteDataSource {
           : allergenNames.join(', '),
       totalTime: '${_intValue(data['preparationTime'])} min',
       difficulty: _difficultyLabel(data['difficultyLevel']),
+      servings: _intValue(data['servings']).clamp(1, 999),
       rating: _doubleValue(data['averageRating']),
       ratingCount: ratingCount,
       commentCount: _intValue(data['commentCount']),
@@ -483,7 +484,8 @@ class ExploreRemoteDataSource {
         final data = doc.data();
         final amount = _doubleValue(data['amount']);
         final categoryId = _stringValue(data['ingredient_categories_id']);
-        final calories = _caloriesValue(data['nutrients']);
+        final nutrients = _nutritionFromData(data['nutrients']);
+        final calories = nutrients.calories.toDouble();
         final unit = await _resolveIngredientUnitName(
           customUnitId: _stringValue(data['customUnitId']),
           unitId: _stringValue(data['unitId']),
@@ -494,13 +496,14 @@ class ExploreRemoteDataSource {
           amount: '${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 1)} $unit'
               .trim(),
           calories: _caloriesLabel(calories),
-          imagePath: _stringValue(
-            data['image'],
-            fallback: 'assets/images/meal1.png',
-          ),
+          imagePath: _stringValue(data['image'], fallback: ''),
           nutritionPercent: totalCalories <= 0
               ? 0
               : (calories / totalCalories).clamp(0.0, 1.0),
+          caloriesValue: calories,
+          carbsGrams: nutrients.carbsGrams.toDouble(),
+          proteinGrams: nutrients.proteinGrams.toDouble(),
+          fatGrams: nutrients.fatGrams.toDouble(),
           ingredientCategoryId: categoryId,
           ingredientCategoryName: categoryNames[categoryId] ?? '',
         );
@@ -526,13 +529,6 @@ class ExploreRemoteDataSource {
     );
 
     return Map.fromEntries(entries);
-  }
-
-  double _caloriesValue(dynamic nutrients) {
-    final calories = nutrients is Map
-        ? _numericValue(nutrients['calories'])
-        : null;
-    return calories ?? 0;
   }
 
   String _caloriesLabel(double calories) {
@@ -612,10 +608,7 @@ class ExploreRemoteDataSource {
           return ExploreInstructionStep(
             title: 'Step ${_intValue(step['stepIndex'])}',
             description: _stringValue(step['description']),
-            imagePath: _stringValue(
-              step['stepImage'],
-              fallback: 'assets/images/meal3(2).png',
-            ),
+            imagePath: _stringValue(step['stepImage'], fallback: ''),
           );
         }).toList(),
       );
