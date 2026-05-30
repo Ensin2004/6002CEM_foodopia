@@ -436,16 +436,6 @@ class _NotificationView extends StatelessWidget {
               value,
             ),
           ),
-          _NotificationToggle(
-            title: 'Plan Reminder',
-            subtitle: 'Get a reminder when you forget to plan your meal',
-            value: viewModel.notificationValue('plan_reminder_notification'),
-            enabled: viewModel.preferences.notificationsEnabled,
-            onChanged: (value) => viewModel.setNotificationValue(
-              'plan_reminder_notification',
-              value,
-            ),
-          ),
         ],
       ),
     );

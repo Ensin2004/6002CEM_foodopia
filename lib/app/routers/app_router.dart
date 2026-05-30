@@ -39,6 +39,7 @@ import '../../features/statistics/presentation/view/calories_posted_page.dart';
 import '../../features/statistics/presentation/view/cooking_time_page.dart';
 import '../../features/statistics/presentation/view/difficulty_meal_page.dart';
 import '../../features/statistics/presentation/view/food_analytic_page.dart';
+import '../../features/statistics/presentation/view/grocery_list_statistics_page.dart';
 import '../../features/statistics/presentation/view/meal_plan_method_page.dart';
 import '../../features/statistics/presentation/view/meal_planned_time_page.dart';
 import '../../features/statistics/presentation/view/most_cooked_recipe_page.dart';
@@ -106,6 +107,7 @@ class AppRouter {
   static const String adminHubRating = '/statistics/admin-hub-rating';
   static const String foodAnalytic = '/statistics/food-analytic';
   static const String cookingTime = '/statistics/cooking-time';
+  static const String groceryListStatistics = '/statistics/grocery-list';
   static const String caloriesIntake = '/statistics/calories-intake';
   static const String difficultyMeals = '/statistics/difficulty-meals';
   static const String mealPlanMethods = '/statistics/meal-plan-methods';
@@ -754,6 +756,12 @@ class AppRouter {
         name: 'cookingTime',
         path: cookingTime,
         builder: (context, state) => const CookingTimePage(),
+      ),
+
+      GoRoute(
+        name: 'groceryListStatistics',
+        path: groceryListStatistics,
+        builder: (context, state) => const GroceryListStatisticsPage(),
       ),
 
       GoRoute(

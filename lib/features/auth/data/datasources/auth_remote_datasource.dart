@@ -31,12 +31,6 @@ class AuthRemoteDataSource {
       'title': 'New Reply Notification',
       'description': 'Receive a notification when someone replies you',
     },
-    {
-      'id': 'plan_reminder_notification',
-      'title': 'Plan reminder',
-      'description':
-          'Get a reminder when you forget to plan your meal on that day',
-    },
   ];
 
   final firebase_auth.FirebaseAuth _auth;

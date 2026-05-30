@@ -759,12 +759,17 @@ class _StatisticsMenu extends StatelessWidget {
       return;
     }
 
+    if (item.title == 'Grocery List') {
+      context.push(AppRouter.groceryListStatistics);
+      return;
+    }
+
     if (item.title == 'Meal Planned Time') {
       context.push(AppRouter.mealPlannedTime);
       return;
     }
 
-    if (item.title == 'Calories Intake') {
+    if (item.title == 'Nutrient Intake' || item.title == 'Calories Intake') {
       context.push(AppRouter.caloriesIntake);
       return;
     }
@@ -784,7 +789,8 @@ class _StatisticsMenu extends StatelessWidget {
       return;
     }
 
-    if (item.title == 'Most Calories Posted Meal') {
+    if (item.title == 'Most Nutrient Posted Meal' ||
+        item.title == 'Most Calories Posted Meal') {
       context.push(AppRouter.caloriesPosted);
       return;
     }

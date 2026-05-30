@@ -144,24 +144,6 @@ class SettingsRepositoryImpl implements SettingsRepository {
                     'Receive a notification when your recipe is being rated by user',
                 type: SettingsItemType.toggle,
               ),
-
-              /// Creates a settings item instance.
-              SettingsItem(
-                id: 'meal_planning_notifications_header',
-                title: 'Meal Planning Notifications',
-                icon: Icons.notifications,
-                type: SettingsItemType.info,
-              ),
-
-              /// Creates a settings item instance.
-              SettingsItem(
-                id: 'plan_reminder_notification',
-                title: 'Plan Reminder',
-                icon: Icons.event_note,
-                subtitle:
-                    'Get a reminder when you forget to plan your meal on that day',
-                type: SettingsItemType.toggle,
-              ),
             ],
           ),
         );

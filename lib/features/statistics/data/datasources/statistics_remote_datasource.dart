@@ -9,6 +9,7 @@ import '../../domain/entities/calories_posted_statistics.dart';
 import '../../domain/entities/cooking_time_statistics.dart';
 import '../../domain/entities/difficulty_meal_statistics.dart';
 import '../../domain/entities/food_analytic_statistics.dart';
+import '../../domain/entities/grocery_list_statistics.dart';
 import '../../domain/entities/meal_plan_method_statistics.dart';
 import '../../domain/entities/meal_planned_time_statistics.dart';
 import '../../domain/entities/most_cooked_recipe_statistics.dart';
@@ -958,6 +959,74 @@ class StatisticsRemoteDataSource {
         (total, day) => total + day.totalCookingMinutes,
       ),
       days: days,
+    );
+  }
+
+  Future<GroceryListStatistics> getUserGroceryLists({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final range = _resolveRange(startDate, endDate);
+    final uid = auth.currentUser?.uid ?? '';
+    final monthKeys = _monthsInRange(
+      range,
+    ).map((month) => '${month.year}-${month.month}').toSet();
+    final docs = uid.isEmpty
+        ? <QueryDocumentSnapshot<Map<String, dynamic>>>[]
+        : (await firestore
+                  .collection('grocery_lists')
+                  .where('uid', isEqualTo: uid)
+                  .get())
+              .docs;
+    final grouped = <DateTime, List<GroceryListStatisticItem>>{};
+
+    for (final doc in docs) {
+      final data = doc.data();
+      if (data['type']?.toString() == 'weekly') continue;
+      final createdAt = _dateTime(data['createdAt']);
+      if (createdAt.millisecondsSinceEpoch <= 0) continue;
+      final month = _startOfMonth(createdAt);
+      if (!monthKeys.contains('${month.year}-${month.month}')) continue;
+      final rawName =
+          data['name']?.toString().trim() ?? data['title']?.toString().trim();
+      grouped
+          .putIfAbsent(month, () => [])
+          .add(
+            GroceryListStatisticItem(
+              name: rawName == null || rawName.isEmpty
+                  ? 'Grocery List'
+                  : rawName,
+              duration: _formatGroceryListDuration(data),
+              createdAt: createdAt,
+            ),
+          );
+    }
+
+    final months = _monthsInRange(range).map((month) {
+      final lists = grouped[month] ?? <GroceryListStatisticItem>[];
+      lists.sort((left, right) => right.createdAt.compareTo(left.createdAt));
+      return GroceryListMonthStatistic(
+        month: month,
+        label: _monthYearLabel(month),
+        totalLists: lists.length,
+        lists: lists,
+      );
+    }).toList();
+    final totalLists = months.fold<int>(
+      0,
+      (total, month) => total + month.totalLists,
+    );
+    final topMonths = [...months]
+      ..sort((left, right) => right.totalLists.compareTo(left.totalLists));
+    final topMonth = topMonths.isEmpty || topMonths.first.totalLists == 0
+        ? '-'
+        : topMonths.first.label;
+
+    return GroceryListStatistics(
+      dateRange: _formatRange(range.start, range.end),
+      totalGroceryLists: totalLists,
+      mostGroceryListMonth: topMonth,
+      months: months,
     );
   }
 
@@ -2633,6 +2702,25 @@ class StatisticsRemoteDataSource {
 
   String _monthYearLabel(DateTime month) {
     return DateFormat('MMM yyyy').format(month);
+  }
+
+  String _formatGroceryListDuration(Map<String, dynamic> data) {
+    final directDuration = data['duration']?.toString().trim();
+    if (directDuration != null && directDuration.isNotEmpty) {
+      return directDuration;
+    }
+
+    final start = _dateTime(data['startDate']);
+    final end = _dateTime(data['endDate']);
+    if (start.millisecondsSinceEpoch <= 0) return '-';
+    final formatter = DateFormat('MMM d');
+    if (end.millisecondsSinceEpoch <= 0 ||
+        start.year == end.year &&
+            start.month == end.month &&
+            start.day == end.day) {
+      return formatter.format(start);
+    }
+    return '${formatter.format(start)} - ${formatter.format(end)}';
   }
 
   String _formatRange(DateTime start, DateTime end) {

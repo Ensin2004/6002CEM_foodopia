@@ -45,7 +45,7 @@ class _CaloriesPostedViewState extends State<_CaloriesPostedView> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: const CustomAppBar(
-        title: 'Calories Posted Meal',
+        title: 'Nutrient Posted Meal',
         leading: StatisticsBackButton(),
       ),
       body: _buildBody(context, viewModel),
@@ -54,13 +54,13 @@ class _CaloriesPostedViewState extends State<_CaloriesPostedView> {
 
   Widget _buildBody(BuildContext context, CaloriesPostedViewModel viewModel) {
     if (viewModel.isLoading && viewModel.statistics == null) {
-      return const LoadingDialog(inline: true, message: 'Loading calories...');
+      return const LoadingDialog(inline: true, message: 'Loading nutrients...');
     }
 
     final statistics = viewModel.statistics;
     if (statistics == null) {
       return StatisticsErrorState(
-        message: viewModel.errorMessage ?? 'Unable to load calories',
+        message: viewModel.errorMessage ?? 'Unable to load nutrients',
         onRetry: viewModel.loadStatistics,
       );
     }
@@ -132,7 +132,7 @@ class _CaloriesPostedViewState extends State<_CaloriesPostedView> {
       case 3:
         return 'Average Fat';
       default:
-        return 'Average Calories';
+        return 'Average Nutrient';
     }
   }
 
@@ -186,8 +186,8 @@ class _PostedMetricPager extends StatelessWidget {
 
   List<_PostedChartMetric> get _metrics => [
     _PostedChartMetric(
-      title: 'Calories Posted Vs Day',
-      breakdownTitle: 'Calories Breakdown',
+      title: 'Nutrient Posted Vs Day',
+      breakdownTitle: 'Nutrient Breakdown',
       unit: viewModel.unitLabel,
       valueForDay: (day) => viewModel.convertCalories(day.totalCaloriesKcal),
       valueForPost: (post) => viewModel.convertCalories(post.caloriesKcal),
@@ -290,7 +290,7 @@ class _MetricTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['Calories', 'Carbohydrate', 'Protein', 'Fat'];
+    const labels = ['Nutrient', 'Carbohydrate', 'Protein', 'Fat'];
     return Container(
       height: 38,
       padding: const EdgeInsets.all(3),

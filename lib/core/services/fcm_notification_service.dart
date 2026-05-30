@@ -85,6 +85,11 @@ class FcmNotificationService {
   }
 
   static Future<void> _showForegroundNotification(RemoteMessage message) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final type = message.data['type']?.toString() ?? '';
+    final enabled = await _isNotificationEnabledForType(uid: uid, type: type);
+    if (!enabled) return;
+
     final title =
         message.notification?.title ?? message.data['title']?.toString();
     final body = message.notification?.body ?? message.data['body']?.toString();
@@ -114,12 +119,18 @@ class FcmNotificationService {
         .orderBy('createdAt', descending: false)
         .snapshots()
         .listen(
-          (snapshot) {
+          (snapshot) async {
             for (final change in snapshot.docChanges) {
               if (change.type != DocumentChangeType.added) continue;
               if (!_shownNotificationKeys.add(change.doc.id)) continue;
               final data = change.doc.data() ?? const <String, dynamic>{};
               if (data['createdAt'] == null) continue;
+              final type = data['type']?.toString() ?? '';
+              final enabled = await _isNotificationEnabledForType(
+                uid: uid,
+                type: type,
+              );
+              if (!enabled) continue;
               final title = data['title']?.toString() ?? 'Foodopia';
               final body =
                   data['message']?.toString() ?? 'You have a new notification.';
@@ -136,6 +147,59 @@ class FcmNotificationService {
             );
           },
         );
+  }
+
+  static Future<bool> _isNotificationEnabledForType({
+    required String uid,
+    required String type,
+  }) async {
+    if (uid.isEmpty) return true;
+    final preferenceId = _preferenceIdForNotificationType(type);
+    if (preferenceId == null) return true;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final preferences = userDoc.data()?['notificationPreferences'];
+      if (preferences is Map && preferences[preferenceId] is bool) {
+        return preferences[preferenceId] as bool;
+      }
+
+      final preferenceDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('notification_preferences')
+          .doc(preferenceId)
+          .get();
+      final enabled = preferenceDoc.data()?['enabled'];
+      return enabled is bool ? enabled : true;
+    } on FirebaseException {
+      return true;
+    }
+  }
+
+  static String? _preferenceIdForNotificationType(String type) {
+    switch (type) {
+      case 'newFollower':
+      case 'follow':
+        return 'new_follower_notification';
+      case 'newRating':
+      case 'rating':
+        return 'new_rating_notification';
+      case 'newComment':
+      case 'comment':
+        return 'new_comment_notification';
+      case 'newRecipe':
+      case 'newPost':
+        return 'new_recipe_notification';
+      case 'newReply':
+      case 'reply':
+        return 'new_reply_notification';
+      default:
+        return null;
+    }
   }
 
   static Future<void> _showNativeNotification({

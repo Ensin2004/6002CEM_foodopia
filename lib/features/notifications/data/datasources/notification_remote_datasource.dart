@@ -37,13 +37,6 @@ class NotificationRemoteDataSource {
       description: 'Receive a notification when someone replies you',
       enabled: true,
     ),
-    NotificationPreference(
-      id: 'plan_reminder_notification',
-      title: 'Plan reminder',
-      description:
-          'Get a reminder when you forget to plan your meal on that day',
-      enabled: true,
-    ),
   ];
 
   final FirebaseFirestore firestore;
