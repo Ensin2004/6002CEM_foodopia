@@ -224,12 +224,10 @@ class _LoginViewState extends State<_LoginView> {
   Widget _buildForgotPasswordLink(BuildContext context) {
     /// Handles the text button operation.
     return TextButton(
-      onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          /// Creates a snack bar instance.
-          const SnackBar(content: Text('Forgot password feature coming soon')),
-        );
-      },
+      onPressed: () => context.go(
+        AppRouter.forgotPassword,
+        extra: ForgotPasswordArgs(initialEmail: _emailController.text.trim()),
+      ),
       child: const Text('Forgot Password?'),
     );
   }
@@ -246,8 +244,6 @@ class _LoginViewState extends State<_LoginView> {
 
   /// Handles the handle back press operation.
   void _handleBackPress(BuildContext context) {
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
+    context.go(AppRouter.onboarding);
   }
 }
