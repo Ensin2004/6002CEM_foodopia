@@ -5,6 +5,8 @@ enum AppNotificationType {
   newRecipe,
   newReply,
   newLike,
+  newUser,
+  systemRating,
   planReminder,
 }
 

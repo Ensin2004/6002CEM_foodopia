@@ -5,7 +5,7 @@ import '../../domain/entities/notification_preference.dart';
 import '../models/app_notification_model.dart';
 
 class NotificationRemoteDataSource {
-  static const List<NotificationPreference> defaultPreferences = [
+  static const List<NotificationPreference> userDefaultPreferences = [
     NotificationPreference(
       id: 'new_follower_notification',
       title: 'New Follower Notification',
@@ -37,6 +37,27 @@ class NotificationRemoteDataSource {
       description: 'Receive a notification when someone replies you',
       enabled: true,
     ),
+    NotificationPreference(
+      id: 'new_like_notification',
+      title: 'New Like Notification',
+      description: 'Receive a notification when someone likes your comment',
+      enabled: true,
+    ),
+  ];
+
+  static const List<NotificationPreference> adminDefaultPreferences = [
+    NotificationPreference(
+      id: 'new_user_notification',
+      title: 'New User Notification',
+      description: 'Receive a notification when a new user registers',
+      enabled: true,
+    ),
+    NotificationPreference(
+      id: 'system_rating_notification',
+      title: 'System Rating Notification',
+      description: 'Receive a notification when someone rates the system',
+      enabled: true,
+    ),
   ];
 
   final FirebaseFirestore firestore;
@@ -50,6 +71,7 @@ class NotificationRemoteDataSource {
   Future<List<AppNotificationModel>> getNotifications() async {
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) return [];
+    final isAdmin = await _isAdmin(uid);
 
     final snapshot = await firestore
         .collection('users')
@@ -60,15 +82,17 @@ class NotificationRemoteDataSource {
         .get();
 
     return snapshot.docs
+        .where((doc) => _isAllowedType(doc.data()['type']?.toString(), isAdmin))
         .map(AppNotificationModel.fromFirestore)
         .toList(growable: false);
   }
 
   Future<List<NotificationPreference>> getPreferences() async {
     final uid = auth.currentUser?.uid ?? '';
-    if (uid.isEmpty) return defaultPreferences;
+    if (uid.isEmpty) return userDefaultPreferences;
 
     await ensureDefaultPreferences();
+    final defaults = await _defaultPreferencesForUid(uid);
     final snapshot = await firestore
         .collection('users')
         .doc(uid)
@@ -76,7 +100,7 @@ class NotificationRemoteDataSource {
         .get();
     final byId = {for (final doc in snapshot.docs) doc.id: doc.data()};
 
-    return defaultPreferences
+    return defaults
         .map((preference) {
           final data = byId[preference.id];
           final enabled = data?['enabled'];
@@ -92,6 +116,7 @@ class NotificationRemoteDataSource {
     if (uid.isEmpty) return;
 
     final userRef = firestore.collection('users').doc(uid);
+    final defaultPreferences = await _defaultPreferencesForUid(uid);
     final collectionRef = userRef.collection('notification_preferences');
     final snapshot = await collectionRef.get();
     final existingIds = snapshot.docs.map((doc) => doc.id).toSet();
@@ -140,6 +165,7 @@ class NotificationRemoteDataSource {
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty || preferenceId.isEmpty) return;
 
+    final defaultPreferences = await _defaultPreferencesForUid(uid);
     final defaultPreference = defaultPreferences.firstWhere(
       (item) => item.id == preferenceId,
       orElse: () => NotificationPreference(
@@ -159,6 +185,26 @@ class NotificationRemoteDataSource {
     await userRef.set({
       'notificationPreferences': {preferenceId: enabled},
     }, SetOptions(merge: true));
+  }
+
+  Future<List<NotificationPreference>> _defaultPreferencesForUid(
+    String uid,
+  ) async {
+    return await _isAdmin(uid)
+        ? adminDefaultPreferences
+        : userDefaultPreferences;
+  }
+
+  Future<bool> _isAdmin(String uid) async {
+    if (uid.isEmpty) return false;
+    final doc = await firestore.collection('users').doc(uid).get();
+    return doc.data()?['role']?.toString().toLowerCase() == 'admin';
+  }
+
+  bool _isAllowedType(String? type, bool isAdmin) {
+    const adminTypes = {'newUser', 'systemRating'};
+    if (isAdmin) return adminTypes.contains(type);
+    return !adminTypes.contains(type);
   }
 
   Future<void> markAsRead(String notificationId) async {

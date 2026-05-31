@@ -60,6 +60,13 @@ class NotificationLocalDataSource {
             description: 'Receive a notification when someone replies you',
             enabled: false,
           ),
+          NotificationPreference(
+            id: 'new_like_notification',
+            title: 'New Like Notification',
+            description:
+                'Receive a notification when someone likes your comment',
+            enabled: false,
+          ),
         ]
         .map(
           (item) => item.copyWith(

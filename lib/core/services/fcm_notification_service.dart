@@ -171,6 +171,11 @@ class FcmNotificationService {
     required String type,
   }) async {
     if (uid.isEmpty) return true;
+    final isAdmin = await _isAdmin(uid);
+    const adminTypes = {'newUser', 'systemRating'};
+    if (isAdmin && !adminTypes.contains(type)) return false;
+    if (!isAdmin && adminTypes.contains(type)) return false;
+
     final preferenceId = _preferenceIdForNotificationType(type);
     if (preferenceId == null) return true;
 
@@ -197,6 +202,18 @@ class FcmNotificationService {
     }
   }
 
+  static Future<bool> _isAdmin(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      return doc.data()?['role']?.toString().toLowerCase() == 'admin';
+    } on FirebaseException {
+      return false;
+    }
+  }
+
   static String? _preferenceIdForNotificationType(String type) {
     switch (type) {
       case 'newFollower':
@@ -214,6 +231,13 @@ class FcmNotificationService {
       case 'newReply':
       case 'reply':
         return 'new_reply_notification';
+      case 'newLike':
+      case 'like':
+        return 'new_like_notification';
+      case 'newUser':
+        return 'new_user_notification';
+      case 'systemRating':
+        return 'system_rating_notification';
       default:
         return null;
     }

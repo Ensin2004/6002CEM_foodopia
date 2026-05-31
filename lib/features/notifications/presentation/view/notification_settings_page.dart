@@ -79,6 +79,18 @@ class _NotificationSettingsView extends StatelessWidget {
         return Icons.group_add_outlined;
       case 'new_rating_notification':
         return Icons.info_outline;
+      case 'new_comment_notification':
+        return Icons.comment_outlined;
+      case 'new_recipe_notification':
+        return Icons.restaurant_menu_outlined;
+      case 'new_reply_notification':
+        return Icons.reply_outlined;
+      case 'new_like_notification':
+        return Icons.favorite_border;
+      case 'new_user_notification':
+        return Icons.person_add_alt_1_outlined;
+      case 'system_rating_notification':
+        return Icons.star_rate_outlined;
       default:
         return Icons.notifications_none;
     }

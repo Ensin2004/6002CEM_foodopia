@@ -1186,6 +1186,8 @@ class ExploreRemoteDataSource {
         return 'new_recipe_notification';
       case 'newReply':
         return 'new_reply_notification';
+      case 'newLike':
+        return 'new_like_notification';
       default:
         return null;
     }
