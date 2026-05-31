@@ -321,6 +321,13 @@ class _SignupViewState extends State<_SignupView> {
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        _buildGenderButton(
+          label: "Prefer not to say",
+          value: "Prefer not to say",
+          selected: viewModel.selectedGender == "Prefer not to say",
+          onTap: () => viewModel.selectGender("Prefer not to say"),
+        ),
         if (viewModel.genderTouched && viewModel.selectedGender.isEmpty)
           /// Creates a padding instance.
           const Padding(

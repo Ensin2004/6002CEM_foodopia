@@ -107,6 +107,8 @@ class _UserSetupProvider extends StatelessWidget {
         searchFoodsUseCase: sl(),
         getPreferencesUseCase: sl(),
         savePreferencesUseCase: sl(),
+        getNotificationPreferencesUseCase: sl(),
+        updateNotificationPreferenceUseCase: sl(),
       )..load(optionCategoryIds: optionCategoryIds),
       child: child,
     );
@@ -135,14 +137,23 @@ class _DietView extends StatelessWidget {
       onContinue: args.isSettingsMode
           ? viewModel.saveDietFromSettings
           : viewModel.saveDiet,
-      child: _OptionList(
-        options: options,
-        emptyText: 'No diet options yet',
-        selectedValues: {
-          viewModel.preferences.diet ?? UserSetupViewModel.noDietValue,
-        },
-        onSelected: viewModel.selectDiet,
-        fullWidth: true,
+      child: ListView(
+        children: [
+          _OptionSection(
+            title: 'Default options',
+            options: options,
+            emptyText: 'No diet options yet',
+            selectedValues: {
+              if (viewModel.preferences.diet != null)
+                viewModel.preferences.diet!,
+            },
+            onSelected: viewModel.selectDiet,
+            onClearAll: viewModel.preferences.diet == null
+                ? null
+                : viewModel.clearDiet,
+            fullWidth: true,
+          ),
+        ],
       ),
     );
   }
@@ -208,6 +219,9 @@ class _AllergiesViewState extends State<_AllergiesView> {
               emptySearchText: 'No allergy results found',
               selectedValues: viewModel.preferences.allergies.toSet(),
               onSelected: viewModel.toggleAllergy,
+              onClearAll: viewModel.preferences.allergies.isEmpty
+                  ? null
+                  : viewModel.clearAllergies,
             ),
           ),
         ],
@@ -276,6 +290,9 @@ class _DislikesViewState extends State<_DislikesView> {
               emptySearchText: 'No dislike results found',
               selectedValues: viewModel.preferences.dislikes.toSet(),
               onSelected: viewModel.toggleDislike,
+              onClearAll: viewModel.preferences.dislikes.isEmpty
+                  ? null
+                  : viewModel.clearDislikes,
             ),
           ),
         ],
@@ -409,31 +426,21 @@ class _NotificationView extends StatelessWidget {
         children: [
           _SetupSwitchTile(
             title: 'Enable notifications',
-            subtitle: 'Use the same notification settings as your profile',
+            subtitle: 'Turn off to close all notification pop-ups',
             value: viewModel.preferences.notificationsEnabled,
             onChanged: (value) {
               viewModel.setNotificationsEnabled(value);
             },
           ),
           const SizedBox(height: AppSpacing.md),
-          _NotificationToggle(
-            title: 'New Follower Notification',
-            subtitle: 'Get a notification for new follower',
-            value: viewModel.notificationValue('new_follower_notification'),
-            enabled: viewModel.preferences.notificationsEnabled,
-            onChanged: (value) => viewModel.setNotificationValue(
-              'new_follower_notification',
-              value,
-            ),
-          ),
-          _NotificationToggle(
-            title: 'New Rating Notification',
-            subtitle: 'Receive a notification when your recipe is rated',
-            value: viewModel.notificationValue('new_rating_notification'),
-            enabled: viewModel.preferences.notificationsEnabled,
-            onChanged: (value) => viewModel.setNotificationValue(
-              'new_rating_notification',
-              value,
+          for (final item in viewModel.notificationPreferences)
+            _NotificationToggle(
+              title: item.title,
+              subtitle: item.description,
+              value: viewModel.notificationValue(item.id),
+              enabled: viewModel.preferences.notificationsEnabled,
+              onChanged: (value) =>
+                  viewModel.toggleNotificationValue(item.id, value),
             ),
           ),
           _NotificationToggle(
@@ -474,8 +481,13 @@ class _NotificationView extends StatelessWidget {
             onChanged: (value) => viewModel.setNotificationValue(
               'plan_reminder_notification',
               value,
+          if (viewModel.errorMessage != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              viewModel.errorMessage!,
+              style: context.text.bodySmall?.copyWith(color: Colors.red),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -558,6 +570,7 @@ class _SearchableOptionSections extends StatelessWidget {
   final String emptySearchText;
   final Set<String> selectedValues;
   final ValueChanged<String> onSelected;
+  final VoidCallback? onClearAll;
 
   const _SearchableOptionSections({
     required this.defaultOptions,
@@ -568,6 +581,7 @@ class _SearchableOptionSections extends StatelessWidget {
     required this.emptySearchText,
     required this.selectedValues,
     required this.onSelected,
+    this.onClearAll,
   });
 
   @override
@@ -580,6 +594,7 @@ class _SearchableOptionSections extends StatelessWidget {
           emptyText: emptyDefaultText,
           selectedValues: selectedValues,
           onSelected: onSelected,
+          onClearAll: onClearAll,
         ),
         if (searchQuery.trim().length >= 2) ...[
           const SizedBox(height: AppSpacing.lg),
@@ -609,6 +624,8 @@ class _OptionSection extends StatelessWidget {
   final String emptyText;
   final Set<String> selectedValues;
   final ValueChanged<String> onSelected;
+  final VoidCallback? onClearAll;
+  final bool fullWidth;
 
   const _OptionSection({
     required this.title,
@@ -616,6 +633,8 @@ class _OptionSection extends StatelessWidget {
     required this.emptyText,
     required this.selectedValues,
     required this.onSelected,
+    this.onClearAll,
+    this.fullWidth = false,
   });
 
   @override
@@ -623,13 +642,20 @@ class _OptionSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: context.text.titleMedium),
+        Row(
+          children: [
+            Expanded(child: Text(title, style: context.text.titleMedium)),
+            if (onClearAll != null)
+              TextButton(onPressed: onClearAll, child: const Text('Clear all')),
+          ],
+        ),
         const SizedBox(height: AppSpacing.sm),
         _OptionWrap(
           options: options,
           emptyText: emptyText,
           selectedValues: selectedValues,
           onSelected: onSelected,
+          fullWidth: fullWidth,
         ),
       ],
     );
@@ -641,12 +667,14 @@ class _OptionWrap extends StatelessWidget {
   final String emptyText;
   final Set<String> selectedValues;
   final ValueChanged<String> onSelected;
+  final bool fullWidth;
 
   const _OptionWrap({
     required this.options,
     required this.emptyText,
     required this.selectedValues,
     required this.onSelected,
+    this.fullWidth = false,
   });
 
   @override
@@ -655,6 +683,23 @@ class _OptionWrap extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         child: Text(emptyText, style: context.text.bodyMedium),
+      );
+    }
+
+    if (fullWidth) {
+      return ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemBuilder: (context, index) {
+          final option = options[index];
+          return UserSetupChoiceChip(
+            label: option.name,
+            selected: selectedValues.contains(option.name),
+            onTap: () => onSelected(option.name),
+          );
+        },
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemCount: options.length,
       );
     }
 
@@ -669,60 +714,6 @@ class _OptionWrap extends StatelessWidget {
             onTap: () => onSelected(option.name),
           ),
       ],
-    );
-  }
-}
-
-class _OptionList extends StatelessWidget {
-  final List<UserSetupOption> options;
-  final String emptyText;
-  final Set<String> selectedValues;
-  final ValueChanged<String> onSelected;
-  final bool fullWidth;
-
-  const _OptionList({
-    required this.options,
-    required this.emptyText,
-    required this.selectedValues,
-    required this.onSelected,
-    this.fullWidth = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (options.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset('assets/images/empty_page.png', width: 150),
-            const SizedBox(height: AppSpacing.md),
-            Text(emptyText, style: context.text.bodyMedium),
-          ],
-        ),
-      );
-    }
-
-    if (fullWidth) {
-      return ListView.separated(
-        itemBuilder: (context, index) {
-          final option = options[index];
-          return UserSetupChoiceChip(
-            label: option.name,
-            selected: selectedValues.contains(option.name),
-            onTap: () => onSelected(option.name),
-          );
-        },
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemCount: options.length,
-      );
-    }
-
-    return _OptionWrap(
-      options: options,
-      emptyText: emptyText,
-      selectedValues: selectedValues,
-      onSelected: onSelected,
     );
   }
 }

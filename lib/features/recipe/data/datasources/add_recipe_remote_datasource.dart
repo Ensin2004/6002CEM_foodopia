@@ -291,7 +291,8 @@ class AddRecipeRemoteDataSource {
     await batch.commit();
   }
 
-  Future<List<AddRecipeIngredientCategory>> _getActiveIngredientCategories() async {
+  Future<List<AddRecipeIngredientCategory>>
+  _getActiveIngredientCategories() async {
     final snapshot = await firestore
         .collection('app_config')
         .doc('ingredient_categories')
@@ -367,8 +368,16 @@ class AddRecipeRemoteDataSource {
     if (nutrients == null || nutrients.isEmpty) return null;
 
     final normalized = {
-      'calories': _nutrientValue(nutrients, const ['calories', 'calorie', 'energy']),
-      'carbohydrates': _nutrientValue(nutrients, const ['carbohydrates', 'carbohydrate', 'carbs']),
+      'calories': _nutrientValue(nutrients, const [
+        'calories',
+        'calorie',
+        'energy',
+      ]),
+      'carbohydrates': _nutrientValue(nutrients, const [
+        'carbohydrates',
+        'carbohydrate',
+        'carbs',
+      ]),
       'fat': _nutrientValue(nutrients, const ['fat', 'fats', 'totalFat']),
       'protein': _nutrientValue(nutrients, const ['protein', 'proteins']),
     };
@@ -379,7 +388,10 @@ class AddRecipeRemoteDataSource {
 
   double _nutrientValue(Map<String, dynamic> nutrients, List<String> keys) {
     for (final entry in nutrients.entries) {
-      final normalizedKey = entry.key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+      final normalizedKey = entry.key.toLowerCase().replaceAll(
+        RegExp(r'[^a-z]'),
+        '',
+      );
       for (final key in keys) {
         final targetKey = key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
         if (normalizedKey == targetKey || normalizedKey.contains(targetKey)) {
@@ -721,13 +733,6 @@ class AddRecipeRemoteDataSource {
       final followerUids = await _getFollowerUids(recipeOwnerUid);
 
       for (final followerUid in followerUids) {
-        if (!await _isNotificationEnabled(
-          receiverUid: followerUid,
-          preferenceId: 'new_recipe_notification',
-        )) {
-          continue;
-        }
-
         final notificationRef = await firestore
             .collection('users')
             .doc(followerUid)
@@ -740,6 +745,13 @@ class AddRecipeRemoteDataSource {
               'senderUid': recipeOwnerUid,
               'createdAt': FieldValue.serverTimestamp(),
             });
+        if (!await _isNotificationEnabled(
+          receiverUid: followerUid,
+          preferenceId: 'new_recipe_notification',
+        )) {
+          continue;
+        }
+
         await _sendPushToUser(
           receiverUid: followerUid,
           title: 'New Recipe',
@@ -783,12 +795,6 @@ class AddRecipeRemoteDataSource {
     required String receiverUid,
     required String preferenceId,
   }) async {
-    final userDoc = await firestore.collection('users').doc(receiverUid).get();
-    final preferences = userDoc.data()?['notificationPreferences'];
-    if (preferences is Map && preferences[preferenceId] is bool) {
-      return preferences[preferenceId] as bool;
-    }
-
     final preferenceDoc = await firestore
         .collection('users')
         .doc(receiverUid)

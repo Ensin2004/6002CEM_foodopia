@@ -8,6 +8,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../domain/entities/calories_intake_statistics.dart';
 import '../../domain/entities/calories_posted_statistics.dart';
 import '../../domain/usecases/get_calories_posted_statistics_usecase.dart';
@@ -45,7 +46,7 @@ class _CaloriesPostedViewState extends State<_CaloriesPostedView> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: const CustomAppBar(
-        title: 'Calories Posted Meal',
+        title: 'Nutrient Posted Meal',
         leading: StatisticsBackButton(),
       ),
       body: _buildBody(context, viewModel),
@@ -54,13 +55,13 @@ class _CaloriesPostedViewState extends State<_CaloriesPostedView> {
 
   Widget _buildBody(BuildContext context, CaloriesPostedViewModel viewModel) {
     if (viewModel.isLoading && viewModel.statistics == null) {
-      return const LoadingDialog(inline: true, message: 'Loading calories...');
+      return const LoadingDialog(inline: true, message: 'Loading nutrients...');
     }
 
     final statistics = viewModel.statistics;
     if (statistics == null) {
       return StatisticsErrorState(
-        message: viewModel.errorMessage ?? 'Unable to load calories',
+        message: viewModel.errorMessage ?? 'Unable to load nutrients',
         onRetry: viewModel.loadStatistics,
       );
     }
@@ -132,7 +133,7 @@ class _CaloriesPostedViewState extends State<_CaloriesPostedView> {
       case 3:
         return 'Average Fat';
       default:
-        return 'Average Calories';
+        return 'Average Nutrient';
     }
   }
 
@@ -186,8 +187,8 @@ class _PostedMetricPager extends StatelessWidget {
 
   List<_PostedChartMetric> get _metrics => [
     _PostedChartMetric(
-      title: 'Calories Posted Vs Day',
-      breakdownTitle: 'Calories Breakdown',
+      title: 'Nutrient Posted Vs Day',
+      breakdownTitle: 'Nutrient Breakdown',
       unit: viewModel.unitLabel,
       valueForDay: (day) => viewModel.convertCalories(day.totalCaloriesKcal),
       valueForPost: (post) => viewModel.convertCalories(post.caloriesKcal),
@@ -290,46 +291,11 @@ class _MetricTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['Calories', 'Carbohydrate', 'Protein', 'Fat'];
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: List.generate(labels.length, (index) {
-          final selected = selectedIndex == index;
-          return Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(6),
-              onTap: () => onSelected(index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected ? Colors.white : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  labels[index],
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.bodySmall?.copyWith(
-                    color: selected
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
+    const labels = ['Nutrient', 'Carbohydrate', 'Protein', 'Fat'];
+    return AppPillSegmentedControl(
+      labels: labels,
+      selectedIndex: selectedIndex,
+      onChanged: onSelected,
     );
   }
 }

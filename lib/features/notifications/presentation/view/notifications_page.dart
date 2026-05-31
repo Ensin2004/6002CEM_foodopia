@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
-import '../../../../app/routers/app_router.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../domain/usecases/get_notification_preferences_usecase.dart';
@@ -41,17 +40,6 @@ class _NotificationsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<NotificationsViewModel>();
-    final event = viewModel.navigationEvent;
-
-    if (event == NotificationNavigationEvent.goToSettings) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.push(AppRouter.notificationSettings).then((_) {
-          if (context.mounted) {
-            context.read<NotificationsViewModel>().load();
-          }
-        });
-      });
-    }
 
     if (viewModel.errorMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -90,13 +78,6 @@ class _NotificationsView extends StatelessWidget {
                   label: 'Mark all as read',
                 ),
               ),
-              PopupMenuItem(
-                value: _NotificationMenuAction.settings,
-                child: _NotificationMenuItem(
-                  icon: Icons.settings_outlined,
-                  label: 'Notification Settings',
-                ),
-              ),
             ],
           ),
         ],
@@ -131,14 +112,11 @@ class _NotificationsView extends StatelessWidget {
       case _NotificationMenuAction.markAllAsRead:
         viewModel.markAllAsRead();
         break;
-      case _NotificationMenuAction.settings:
-        viewModel.goToSettings();
-        break;
     }
   }
 }
 
-enum _NotificationMenuAction { markAllAsRead, settings }
+enum _NotificationMenuAction { markAllAsRead }
 
 class _NotificationMenuItem extends StatelessWidget {
   final IconData icon;

@@ -16,4 +16,8 @@ class GetAdminFaqItemsUseCase {
   Future<Either<Failure, List<FaqItem>>> execute() async {
     return await repository.getAdminFaqItems();
   }
+
+  Stream<Either<Failure, List<FaqItem>>> watch() {
+    return repository.watchAdminFaqItems();
+  }
 }

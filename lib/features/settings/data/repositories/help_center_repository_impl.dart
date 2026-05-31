@@ -23,9 +23,11 @@ class HelpCenterRepositoryImpl implements HelpCenterRepository {
     try {
       // Runs the guarded operation that can throw.
       final snapshot = await remoteDataSource.getUserIssues(uid);
-      final issues = snapshot.docs
-          .map((doc) => HelpCenterIssueModel.fromFirestore(doc))
-          .toList();
+      final issues =
+          snapshot.docs
+              .map((doc) => HelpCenterIssueModel.fromFirestore(doc))
+              .toList()
+            ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
       return Right(issues);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));

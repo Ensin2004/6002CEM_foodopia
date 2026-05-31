@@ -226,49 +226,44 @@ class _AdminMetricTile extends StatelessWidget {
           ),
         ],
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text.rich(
-              TextSpan(
-                text: metric.value,
-                children: [
-                  if (metric.suffix != null)
-                    TextSpan(
-                      text: ' ${metric.suffix}',
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                ],
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.text.titleMedium?.copyWith(
-                color: toneColor,
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-                height: 1,
-              ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text.rich(
+            TextSpan(
+              text: metric.value,
+              children: [
+                if (metric.suffix != null)
+                  TextSpan(
+                    text: ' ${metric.suffix}',
+                    style: const TextStyle(fontSize: 10),
+                  ),
+              ],
             ),
-            const SizedBox(height: 6),
-            SizedBox(
-              width: 118,
-              child: Text(
-                metric.label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: context.text.bodySmall?.copyWith(
-                  color: AppColors.textPrimary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  height: 1.15,
-                ),
-              ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: context.text.titleMedium?.copyWith(
+              color: toneColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+              height: 1,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            metric.label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: context.text.bodySmall?.copyWith(
+              color: AppColors.textPrimary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              height: 1.15,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -334,6 +329,21 @@ class _AdminStatisticActions extends StatelessWidget {
 
     if (item.title == 'Dietary Preference') {
       context.push(AppRouter.adminDietaryPreference);
+      return;
+    }
+
+    if (item.title == 'Gender') {
+      context.push(AppRouter.adminGender);
+      return;
+    }
+
+    if (item.title == 'User Usage') {
+      context.push(AppRouter.adminUserUsage);
+      return;
+    }
+
+    if (item.title == 'Hub Rating') {
+      context.push(AppRouter.adminHubRating);
     }
   }
 }

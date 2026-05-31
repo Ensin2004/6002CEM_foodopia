@@ -37,10 +37,11 @@ class UserSetupPreferences {
     String? notificationTime,
     int? currentStep,
     bool? isCompleted,
+    bool clearDiet = false,
     bool clearTargetCalories = false,
   }) {
     return UserSetupPreferences(
-      diet: diet ?? this.diet,
+      diet: clearDiet ? null : diet ?? this.diet,
       allergies: allergies ?? this.allergies,
       dislikes: dislikes ?? this.dislikes,
       targetCalories: clearTargetCalories

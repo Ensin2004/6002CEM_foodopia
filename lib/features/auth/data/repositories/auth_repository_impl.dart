@@ -107,14 +107,6 @@ class AuthRepositoryImpl implements AuthRepository {
           'ageGroupName': ageGroupName,
           'createdAt': FieldValue.serverTimestamp(),
           'fcmTokens': fcmToken != null ? [fcmToken] : [],
-          'notificationPreferences': const {
-            'new_follower_notification': true,
-            'new_rating_notification': true,
-            'new_comment_notification': true,
-            'new_recipe_notification': true,
-            'new_reply_notification': true,
-            'plan_reminder_notification': true,
-          },
           'role': RoleManager().getDefaultRole(),
         },
       );
