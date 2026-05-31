@@ -85,8 +85,15 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   /// Handles the build actions operation.
   List<Widget> _buildActions(BuildContext context) {
-    // Admin has no actions
-    if (isAdmin) return [];
+    if (isAdmin) {
+      return [
+        _UnreadNotificationButton(
+          isAdmin: true,
+          color: Theme.of(context).colorScheme.onPrimary,
+          onPressed: onNotificationsTap,
+        ),
+      ];
+    }
 
     // User has statistics and notifications
     return [
@@ -100,6 +107,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
 
       /// Creates a icon button instance.
       _UnreadNotificationButton(
+        isAdmin: false,
         color: Theme.of(context).colorScheme.onPrimary,
         onPressed: onNotificationsTap,
       ),
@@ -112,10 +120,15 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 class _UnreadNotificationButton extends StatelessWidget {
+  final bool isAdmin;
   final Color color;
   final VoidCallback? onPressed;
 
-  const _UnreadNotificationButton({required this.color, this.onPressed});
+  const _UnreadNotificationButton({
+    required this.isAdmin,
+    required this.color,
+    this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -134,13 +147,18 @@ class _UnreadNotificationButton extends StatelessWidget {
         .doc(uid)
         .collection('notifications')
         .where('isRead', isEqualTo: false)
-        .limit(1)
         .snapshots();
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: unreadStream,
       builder: (context, snapshot) {
-        final hasUnread = (snapshot.data?.docs.length ?? 0) > 0;
+        final hasUnread = (snapshot.data?.docs ?? const []).any((doc) {
+          final type = doc.data()['type']?.toString();
+          const adminTypes = {'newUser', 'systemRating'};
+          return isAdmin
+              ? adminTypes.contains(type)
+              : !adminTypes.contains(type);
+        });
         return IconButton(
           color: color,
           onPressed: onPressed,

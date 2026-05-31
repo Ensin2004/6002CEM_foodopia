@@ -174,7 +174,7 @@ class _MainPageViewState extends State<_MainPageView> {
         profileImageUrl: viewModel.profileImageUrl,
         onSettingsTap: viewModel.goToSettings,
         onStatisticsTap: isAdmin ? null : viewModel.goToStatistics,
-        onNotificationsTap: isAdmin ? null : viewModel.goToNotifications,
+        onNotificationsTap: viewModel.goToNotifications,
       ),
       body: _buildBody(context, viewModel),
       bottomNavigationBar: _buildBottomNavigationBar(context, viewModel),
