@@ -148,9 +148,7 @@ class _DietView extends StatelessWidget {
                 viewModel.preferences.diet!,
             },
             onSelected: viewModel.selectDiet,
-            onClearAll: viewModel.preferences.diet == null
-                ? null
-                : viewModel.clearDiet,
+            onClearAll: viewModel.clearDiet,
             fullWidth: true,
           ),
         ],
@@ -219,9 +217,7 @@ class _AllergiesViewState extends State<_AllergiesView> {
               emptySearchText: 'No allergy results found',
               selectedValues: viewModel.preferences.allergies.toSet(),
               onSelected: viewModel.toggleAllergy,
-              onClearAll: viewModel.preferences.allergies.isEmpty
-                  ? null
-                  : viewModel.clearAllergies,
+              onClearAll: viewModel.clearAllergies,
             ),
           ),
         ],
@@ -290,9 +286,7 @@ class _DislikesViewState extends State<_DislikesView> {
               emptySearchText: 'No dislike results found',
               selectedValues: viewModel.preferences.dislikes.toSet(),
               onSelected: viewModel.toggleDislike,
-              onClearAll: viewModel.preferences.dislikes.isEmpty
-                  ? null
-                  : viewModel.clearDislikes,
+              onClearAll: viewModel.clearDislikes,
             ),
           ),
         ],
@@ -442,7 +436,6 @@ class _NotificationView extends StatelessWidget {
               onChanged: (value) =>
                   viewModel.toggleNotificationValue(item.id, value),
             ),
-          ),
           _NotificationToggle(
             title: 'New Comment Notification',
             subtitle: 'Receive a notification when your recipe has comment',
@@ -468,10 +461,8 @@ class _NotificationView extends StatelessWidget {
             subtitle: 'Receive a notification when someone replies you',
             value: viewModel.notificationValue('new_reply_notification'),
             enabled: viewModel.preferences.notificationsEnabled,
-            onChanged: (value) => viewModel.setNotificationValue(
-              'new_reply_notification',
-              value,
-            ),
+            onChanged: (value) =>
+                viewModel.setNotificationValue('new_reply_notification', value),
           ),
           _NotificationToggle(
             title: 'Plan Reminder',
@@ -481,6 +472,8 @@ class _NotificationView extends StatelessWidget {
             onChanged: (value) => viewModel.setNotificationValue(
               'plan_reminder_notification',
               value,
+            ),
+          ),
           if (viewModel.errorMessage != null) ...[
             const SizedBox(height: AppSpacing.md),
             Text(
