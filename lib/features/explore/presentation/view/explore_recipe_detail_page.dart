@@ -105,6 +105,17 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
+  void _openAddMealPlan() {
+    context.push(
+      AppRouter.addMealPlan,
+      extra: AddMealPlanArgs(
+        mealType: 'Breakfast',
+        mealCategoryId: 'breakfast',
+        selectedDate: DateTime.now(),
+      ),
+    );
+  }
+
   void _openRecipeReview(ExploreRecipeDetailViewModel viewModel) {
     final recipeId = viewModel.recipe?.id;
     if (recipeId == null || recipeId.isEmpty) return;
@@ -290,6 +301,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         viewModel: viewModel,
         tabController: _tabController,
         onComingSoonTap: _showComingSoonMessage,
+        onStartCooking: _openAddMealPlan,
         showLibraryActions: widget.showLibraryActions,
         isPublished: _isPublished,
         onFavouriteTap: () => _toggleFavourite(viewModel),
@@ -323,6 +335,7 @@ class _DetailBody extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final TabController tabController;
   final VoidCallback onComingSoonTap;
+  final VoidCallback onStartCooking;
   final VoidCallback onFavouriteTap;
   final bool showLibraryActions;
   final bool isPublished;
@@ -332,6 +345,7 @@ class _DetailBody extends StatelessWidget {
     required this.viewModel,
     required this.tabController,
     required this.onComingSoonTap,
+    required this.onStartCooking,
     required this.onFavouriteTap,
     required this.showLibraryActions,
     required this.isPublished,
@@ -379,6 +393,7 @@ class _DetailBody extends StatelessWidget {
             viewModel: viewModel,
             recipe: recipe,
             onComingSoonTap: onComingSoonTap,
+            onStartCooking: onStartCooking,
             isPublished: isPublished,
             showStartCooking: !isMealPlanSelection,
           ),
@@ -511,38 +526,39 @@ class _RecipeHeader extends StatelessWidget {
           style: textTheme.bodyMedium,
         ),
         const SizedBox(height: 14),
-        Row(
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 2.75,
           children: [
-            Flexible(
-              flex: 3,
-              child: _MetricTile(
-                icon: Icons.schedule,
-                color: context.colors.primary,
-                title: recipe.totalTime,
-                subtitle: 'Time',
-              ),
+            _MetricTile(
+              icon: Icons.schedule,
+              color: context.colors.primary,
+              title: recipe.totalTime,
+              subtitle: 'Time',
             ),
-            const SizedBox(width: 10),
-            Flexible(
-              flex: 3,
-              child: _MetricTile(
-                icon: Icons.restaurant_menu,
-                color: AppColors.error,
-                title: recipe.difficulty,
-                subtitle: 'Difficulty',
-              ),
+            _MetricTile(
+              icon: Icons.restaurant_menu,
+              color: AppColors.error,
+              title: recipe.difficulty,
+              subtitle: 'Difficulty',
             ),
-            const SizedBox(width: 10),
-            Flexible(
-              flex: isPublished ? 3 : 4,
-              child: _MetricTile(
-                icon: Icons.star,
-                color: AppColors.secondary,
-                title: isPublished
-                    ? recipe.rating.toStringAsFixed(1)
-                    : 'No rating',
-                subtitle: 'Rating',
-              ),
+            _MetricTile(
+              icon: Icons.groups_2_outlined,
+              color: AppColors.primary,
+              title: recipe.servings.toString(),
+              subtitle: recipe.servings == 1 ? 'Serving' : 'Servings',
+            ),
+            _MetricTile(
+              icon: Icons.star,
+              color: AppColors.secondary,
+              title: isPublished
+                  ? recipe.rating.toStringAsFixed(1)
+                  : 'No rating',
+              subtitle: 'Rating',
             ),
           ],
         ),
@@ -632,6 +648,7 @@ class _SelectedTabContent extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
+  final VoidCallback onStartCooking;
   final bool showStartCooking;
   final bool isPublished;
 
@@ -639,6 +656,7 @@ class _SelectedTabContent extends StatelessWidget {
     required this.viewModel,
     required this.recipe,
     required this.onComingSoonTap,
+    required this.onStartCooking,
     required this.isPublished,
     required this.showStartCooking,
   });
@@ -651,6 +669,7 @@ class _SelectedTabContent extends StatelessWidget {
           viewModel: viewModel,
           recipe: recipe,
           onComingSoonTap: onComingSoonTap,
+          onStartCooking: onStartCooking,
           showStartCooking: showStartCooking,
         );
       case ExploreRecipeDetailTab.nutrition:
@@ -670,12 +689,14 @@ class _RecipeTab extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
+  final VoidCallback onStartCooking;
   final bool showStartCooking;
 
   const _RecipeTab({
     required this.viewModel,
     required this.recipe,
     required this.onComingSoonTap,
+    required this.onStartCooking,
     required this.showStartCooking,
   });
 
@@ -723,7 +744,7 @@ class _RecipeTab extends StatelessWidget {
         if (viewModel.selectedMethodTab == ExploreRecipeMethodTab.ingredients)
           _IngredientsList(
             recipe: recipe,
-            onUnitTap: onComingSoonTap,
+            onStartCooking: onStartCooking,
             showStartCooking: showStartCooking,
           )
         else
@@ -735,12 +756,12 @@ class _RecipeTab extends StatelessWidget {
 
 class _IngredientsList extends StatelessWidget {
   final ExploreRecipe recipe;
-  final VoidCallback onUnitTap;
+  final VoidCallback onStartCooking;
   final bool showStartCooking;
 
   const _IngredientsList({
     required this.recipe,
-    required this.onUnitTap,
+    required this.onStartCooking,
     required this.showStartCooking,
   });
 
@@ -769,17 +790,14 @@ class _IngredientsList extends StatelessWidget {
               ),
             ),
             ...group.ingredients.map(
-              (ingredient) => _IngredientListItem(
-                ingredient: ingredient,
-                onUnitTap: onUnitTap,
-              ),
+              (ingredient) => _IngredientListItem(ingredient: ingredient),
             ),
           ],
         ),
         if (showStartCooking) ...[
           const SizedBox(height: 6),
           PrimaryButton(
-            onPressed: () {},
+            onPressed: onStartCooking,
             text:
                 'Start Cooking (Total Calorie: ${recipe.nutrition.calories} kcal)',
             verticalPadding: 14,
@@ -798,53 +816,81 @@ class _InstructionsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = context.text;
+    final colors = context.colors;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: recipe.instructionSections.map((section) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.only(bottom: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 section.title,
                 style: textTheme.titleMedium?.copyWith(
-                  color: context.colors.primary,
+                  color: colors.primary,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               ...section.steps.asMap().entries.map((entry) {
                 final stepIndex = entry.key;
                 final step = entry.value;
                 final isLast = stepIndex == section.steps.length - 1;
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _InstructionTimelineMarker(showLine: !isLast),
-                      const SizedBox(width: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: AppRemoteOrAssetImage(
-                          imagePath: step.imagePath,
-                          width: 42,
-                          height: 70,
-                          fit: BoxFit.contain,
+                  padding: EdgeInsets.only(
+                    bottom: stepIndex == section.steps.length - 1 ? 0 : 10,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _InstructionTimelineMarker(showLine: !isLast),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: _RecipeDetailThumbnail(
+                                    imagePath: step.imagePath,
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        step.title,
+                                        style: textTheme.labelLarge,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        step.description,
+                                        style: textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(step.title, style: textTheme.labelLarge),
-                            Text(step.description, style: textTheme.bodySmall),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               }),
@@ -867,7 +913,6 @@ class _InstructionTimelineMarker extends StatelessWidget {
 
     return SizedBox(
       width: 24,
-      height: 82,
       child: Column(
         children: [
           CircleAvatar(radius: 11, backgroundColor: colors.primary),
@@ -918,18 +963,61 @@ class _DottedTimelineLinePainter extends CustomPainter {
   }
 }
 
-class _NutritionTab extends StatelessWidget {
+class _RecipeDetailThumbnail extends StatelessWidget {
+  final String imagePath;
+  final double width;
+  final double height;
+  final BoxFit fit;
+
+  const _RecipeDetailThumbnail({
+    required this.imagePath,
+    required this.width,
+    required this.height,
+    this.fit = BoxFit.cover,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => showRecipeMediaDialog(context, imagePath),
+      child: AppRemoteOrAssetImage(
+        imagePath: imagePath,
+        width: width,
+        height: height,
+        fit: fit,
+      ),
+    );
+  }
+}
+
+enum _NutritionSummaryMode { total, serving }
+
+enum _IngredientMacroCategory { carbohydrates, protein, fats }
+
+class _NutritionTab extends StatefulWidget {
   final ExploreRecipe recipe;
   final VoidCallback onServingTap;
 
   const _NutritionTab({required this.recipe, required this.onServingTap});
 
   @override
+  State<_NutritionTab> createState() => _NutritionTabState();
+}
+
+class _NutritionTabState extends State<_NutritionTab> {
+  _NutritionSummaryMode _summaryMode = _NutritionSummaryMode.serving;
+
+  @override
   Widget build(BuildContext context) {
     final textTheme = context.text;
-    final nutrition = recipe.nutrition;
+    final recipe = widget.recipe;
+    final displayNutrition = _nutritionForMode(recipe, _summaryMode);
     final totalMacroGrams =
-        nutrition.carbsGrams + nutrition.proteinGrams + nutrition.fatGrams;
+        displayNutrition.carbsGrams +
+        displayNutrition.proteinGrams +
+        displayNutrition.fatGrams;
+    final servings = recipe.servings <= 0 ? 1 : recipe.servings;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -941,9 +1029,16 @@ class _NutritionTab extends StatelessWidget {
                 children: [
                   Text('Nutrition Summary', style: textTheme.titleMedium),
                   const Spacer(),
-                  InkWell(
-                    onTap: onServingTap,
-                    borderRadius: BorderRadius.circular(6),
+                  PopupMenuButton<_NutritionSummaryMode>(
+                    initialValue: _summaryMode,
+                    onSelected: (mode) => setState(() => _summaryMode = mode),
+                    itemBuilder: (context) =>
+                        _NutritionSummaryMode.values.map((mode) {
+                          return PopupMenuItem(
+                            value: mode,
+                            child: Text(_nutritionModeLabel(mode)),
+                          );
+                        }).toList(),
                     child: Container(
                       height: 30,
                       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -955,7 +1050,10 @@ class _NutritionTab extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Per serving', style: textTheme.bodySmall),
+                          Text(
+                            _nutritionModeLabel(_summaryMode),
+                            style: textTheme.bodySmall,
+                          ),
                           const SizedBox(width: 4),
                           const Icon(
                             Icons.keyboard_arrow_down,
@@ -980,16 +1078,16 @@ class _NutritionTab extends StatelessWidget {
                         CustomPaint(
                           size: const Size.square(118),
                           painter: _MacroRingPainter(
-                            carbs: nutrition.carbsGrams,
-                            protein: nutrition.proteinGrams,
-                            fat: nutrition.fatGrams,
+                            carbs: displayNutrition.carbsGrams,
+                            protein: displayNutrition.proteinGrams,
+                            fat: displayNutrition.fatGrams,
                           ),
                         ),
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              '${nutrition.calories}',
+                              '${displayNutrition.calories}',
                               style: textTheme.headlineSmall,
                             ),
                             Text('kcal', style: textTheme.bodySmall),
@@ -1004,19 +1102,19 @@ class _NutritionTab extends StatelessWidget {
                       children: [
                         _MacroRow(
                           label: 'Carbohydrate',
-                          grams: nutrition.carbsGrams,
+                          grams: displayNutrition.carbsGrams,
                           totalGrams: totalMacroGrams,
                           color: AppColors.primary,
                         ),
                         _MacroRow(
                           label: 'Protein',
-                          grams: nutrition.proteinGrams,
+                          grams: displayNutrition.proteinGrams,
                           totalGrams: totalMacroGrams,
                           color: AppColors.error,
                         ),
                         _MacroRow(
                           label: 'Fat',
-                          grams: nutrition.fatGrams,
+                          grams: displayNutrition.fatGrams,
                           totalGrams: totalMacroGrams,
                           color: AppColors.secondary,
                         ),
@@ -1035,19 +1133,21 @@ class _NutritionTab extends StatelessWidget {
               Row(
                 children: [
                   Text('Ingredients Breakdown', style: textTheme.titleMedium),
-                  const Spacer(),
-                  Text(
-                    'See all',
-                    style: textTheme.bodySmall?.copyWith(
-                      color: context.colors.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 10),
-              ...recipe.ingredients.map(
-                (ingredient) => _IngredientNutritionRow(ingredient: ingredient),
+              _IngredientMacroPager(
+                key: ValueKey(_summaryMode),
+                ingredients: recipe.ingredients,
+                totalNutrition: displayNutrition,
+                servings: servings,
+                summaryMode: _summaryMode,
+                onSeeAll: (category, totalGrams) =>
+                    _showIngredientBreakdownDialog(
+                      context,
+                      category,
+                      totalGrams,
+                    ),
               ),
             ],
           ),
@@ -1055,16 +1155,366 @@ class _NutritionTab extends StatelessWidget {
       ],
     );
   }
+
+  void _showIngredientBreakdownDialog(
+    BuildContext context,
+    _IngredientMacroCategory category,
+    double totalGrams,
+  ) {
+    final ingredients = _sortedIngredientsByMacro(
+      widget.recipe.ingredients,
+      category,
+      summaryMode: _summaryMode,
+      servings: widget.recipe.servings <= 0 ? 1 : widget.recipe.servings,
+    );
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 36,
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420, maxHeight: 560),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '${_ingredientMacroLabel(category)} Breakdown',
+                        style: context.text.titleMedium,
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: ingredients
+                          .map(
+                            (ingredient) => _IngredientNutritionRow(
+                              ingredient: ingredient,
+                              category: category,
+                              color: _ingredientMacroColor(category),
+                              totalGrams: totalGrams,
+                              servings: widget.recipe.servings <= 0
+                                  ? 1
+                                  : widget.recipe.servings,
+                              summaryMode: _summaryMode,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static String _nutritionModeLabel(_NutritionSummaryMode mode) {
+    switch (mode) {
+      case _NutritionSummaryMode.serving:
+        return 'Per serving';
+      case _NutritionSummaryMode.total:
+        return 'Total serving';
+    }
+  }
+
+  static ExploreNutrition _nutritionForMode(
+    ExploreRecipe recipe,
+    _NutritionSummaryMode mode,
+  ) {
+    if (mode == _NutritionSummaryMode.total) return recipe.nutrition;
+
+    final servings = recipe.servings <= 0 ? 1 : recipe.servings;
+    return ExploreNutrition(
+      calories: (recipe.nutrition.calories / servings).round(),
+      carbsGrams: (recipe.nutrition.carbsGrams / servings).round(),
+      proteinGrams: (recipe.nutrition.proteinGrams / servings).round(),
+      fatGrams: (recipe.nutrition.fatGrams / servings).round(),
+    );
+  }
+
+  static double _ingredientMacroValue(
+    ExploreIngredient ingredient,
+    _IngredientMacroCategory category, {
+    required _NutritionSummaryMode summaryMode,
+    required int servings,
+  }) {
+    final totalValue = switch (category) {
+      _IngredientMacroCategory.carbohydrates => ingredient.carbsGrams,
+      _IngredientMacroCategory.protein => ingredient.proteinGrams,
+      _IngredientMacroCategory.fats => ingredient.fatGrams,
+    };
+    if (summaryMode == _NutritionSummaryMode.total) return totalValue;
+    return totalValue / (servings <= 0 ? 1 : servings);
+  }
+
+  static List<ExploreIngredient> _sortedIngredientsByMacro(
+    List<ExploreIngredient> ingredients,
+    _IngredientMacroCategory category, {
+    required _NutritionSummaryMode summaryMode,
+    required int servings,
+  }) {
+    return [...ingredients]..sort((first, second) {
+      final firstValue = _ingredientMacroValue(
+        first,
+        category,
+        summaryMode: summaryMode,
+        servings: servings,
+      );
+      final secondValue = _ingredientMacroValue(
+        second,
+        category,
+        summaryMode: summaryMode,
+        servings: servings,
+      );
+      final valueCompare = secondValue.compareTo(firstValue);
+      if (valueCompare != 0) return valueCompare;
+      return first.name.toLowerCase().compareTo(second.name.toLowerCase());
+    });
+  }
+
+  static String _ingredientMacroLabel(_IngredientMacroCategory category) {
+    switch (category) {
+      case _IngredientMacroCategory.carbohydrates:
+        return 'Carbohydrates';
+      case _IngredientMacroCategory.protein:
+        return 'Protein';
+      case _IngredientMacroCategory.fats:
+        return 'Fats';
+    }
+  }
+
+  static Color _ingredientMacroColor(_IngredientMacroCategory category) {
+    switch (category) {
+      case _IngredientMacroCategory.carbohydrates:
+        return AppColors.primary;
+      case _IngredientMacroCategory.protein:
+        return AppColors.error;
+      case _IngredientMacroCategory.fats:
+        return AppColors.secondary;
+    }
+  }
+}
+
+class _IngredientMacroPager extends StatefulWidget {
+  final List<ExploreIngredient> ingredients;
+  final ExploreNutrition totalNutrition;
+  final int servings;
+  final _NutritionSummaryMode summaryMode;
+  final void Function(_IngredientMacroCategory category, double totalGrams)
+  onSeeAll;
+
+  const _IngredientMacroPager({
+    super.key,
+    required this.ingredients,
+    required this.totalNutrition,
+    required this.servings,
+    required this.summaryMode,
+    required this.onSeeAll,
+  });
+
+  @override
+  State<_IngredientMacroPager> createState() => _IngredientMacroPagerState();
+}
+
+class _IngredientMacroPagerState extends State<_IngredientMacroPager> {
+  late final PageController _pageController;
+  int _currentPage = 0;
+
+  static const _categories = [
+    _IngredientMacroCategory.carbohydrates,
+    _IngredientMacroCategory.protein,
+    _IngredientMacroCategory.fats,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 374,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: _categories.length,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemBuilder: (context, index) {
+              final category = _categories[index];
+              return _IngredientMacroPage(
+                key: ValueKey('${widget.summaryMode}-$category'),
+                category: category,
+                color: _NutritionTabState._ingredientMacroColor(category),
+                ingredients: widget.ingredients,
+                totalGrams: _totalGramsFor(category),
+                servings: widget.servings,
+                summaryMode: widget.summaryMode,
+                onSeeAll: () =>
+                    widget.onSeeAll(category, _totalGramsFor(category)),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(_categories.length, (index) {
+            final isSelected = index == _currentPage;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: isSelected ? 18 : 7,
+              height: 7,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                color: isSelected ? context.colors.primary : AppColors.border,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  double _totalGramsFor(_IngredientMacroCategory category) {
+    switch (category) {
+      case _IngredientMacroCategory.carbohydrates:
+        return widget.totalNutrition.carbsGrams.toDouble();
+      case _IngredientMacroCategory.protein:
+        return widget.totalNutrition.proteinGrams.toDouble();
+      case _IngredientMacroCategory.fats:
+        return widget.totalNutrition.fatGrams.toDouble();
+    }
+  }
+}
+
+class _IngredientMacroPage extends StatelessWidget {
+  final _IngredientMacroCategory category;
+  final Color color;
+  final List<ExploreIngredient> ingredients;
+  final double totalGrams;
+  final int servings;
+  final _NutritionSummaryMode summaryMode;
+  final VoidCallback onSeeAll;
+
+  const _IngredientMacroPage({
+    super.key,
+    required this.category,
+    required this.color,
+    required this.ingredients,
+    required this.totalGrams,
+    required this.servings,
+    required this.summaryMode,
+    required this.onSeeAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedIngredients = _NutritionTabState._sortedIngredientsByMacro(
+      ingredients,
+      category,
+      summaryMode: summaryMode,
+      servings: servings,
+    );
+    final visibleIngredients = sortedIngredients.take(5).toList();
+    final totalLabel = _formatMacroGramValue(totalGrams);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              _NutritionTabState._ingredientMacroLabel(category),
+              style: context.text.labelLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${_NutritionTabState._nutritionModeLabel(summaryMode)} - ${totalLabel}g',
+              style: context.text.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: onSeeAll,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'See all',
+                style: context.text.bodySmall?.copyWith(
+                  color: context.colors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (visibleIngredients.isEmpty)
+          Text('No ingredients yet.', style: context.text.bodySmall)
+        else
+          ...visibleIngredients.map(
+            (ingredient) => _IngredientNutritionRow(
+              ingredient: ingredient,
+              category: category,
+              color: color,
+              totalGrams: totalGrams,
+              servings: servings,
+              summaryMode: summaryMode,
+            ),
+          ),
+      ],
+    );
+  }
+
+  static String _formatMacroGramValue(double value) {
+    if (value == value.roundToDouble()) return value.round().toString();
+    return value.toStringAsFixed(1);
+  }
 }
 
 class _IngredientListItem extends StatelessWidget {
   final ExploreIngredient ingredient;
-  final VoidCallback onUnitTap;
 
-  const _IngredientListItem({
-    required this.ingredient,
-    required this.onUnitTap,
-  });
+  const _IngredientListItem({required this.ingredient});
 
   @override
   Widget build(BuildContext context) {
@@ -1090,7 +1540,7 @@ class _IngredientListItem extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: AppRemoteOrAssetImage(
+            child: _RecipeDetailThumbnail(
               imagePath: ingredient.imagePath,
               width: 50,
               height: 50,
@@ -1112,33 +1562,22 @@ class _IngredientListItem extends StatelessWidget {
               ],
             ),
           ),
-          InkWell(
-            onTap: onUnitTap,
-            borderRadius: BorderRadius.circular(6),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 112,
             child: Container(
-              width: 86,
-              height: 34,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
               decoration: BoxDecoration(
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: AppColors.border),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      ingredient.amount,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodySmall,
-                    ),
-                  ),
-                  const Icon(
-                    Icons.keyboard_arrow_down,
-                    color: AppColors.textSecondary,
-                  ),
-                ],
+              child: Text(
+                ingredient.amount,
+                maxLines: 3,
+                overflow: TextOverflow.visible,
+                textAlign: TextAlign.center,
+                style: textTheme.bodySmall,
               ),
             ),
           ),
@@ -1159,6 +1598,13 @@ List<_IngredientCategoryGroup> _groupIngredientsByCategory(
         : ingredient.ingredientCategoryName.trim();
     groups.putIfAbsent(name, () => _IngredientCategoryGroup(name, []));
     groups[name]!.ingredients.add(ingredient);
+  }
+
+  for (final group in groups.values) {
+    group.ingredients.sort(
+      (first, second) =>
+          first.name.toLowerCase().compareTo(second.name.toLowerCase()),
+    );
   }
 
   return groups.values.toList();
@@ -1240,7 +1686,10 @@ class _MacroRow extends StatelessWidget {
                 width: 34,
                 child: Text(
                   '${grams}g',
-                  style: textTheme.labelLarge,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
                   textAlign: TextAlign.right,
                 ),
               ),
@@ -1327,13 +1776,36 @@ class _MacroRingSegment {
 
 class _IngredientNutritionRow extends StatelessWidget {
   final ExploreIngredient ingredient;
+  final _IngredientMacroCategory category;
+  final Color color;
+  final double totalGrams;
+  final int servings;
+  final _NutritionSummaryMode summaryMode;
 
-  const _IngredientNutritionRow({required this.ingredient});
+  const _IngredientNutritionRow({
+    required this.ingredient,
+    required this.category,
+    required this.color,
+    required this.totalGrams,
+    required this.servings,
+    required this.summaryMode,
+  });
 
   @override
   Widget build(BuildContext context) {
     final textTheme = context.text;
-    final percent = (ingredient.nutritionPercent * 100).round();
+    final value = _NutritionTabState._ingredientMacroValue(
+      ingredient,
+      category,
+      summaryMode: summaryMode,
+      servings: servings,
+    );
+    final valueLabel = value == value.roundToDouble()
+        ? value.round().toString()
+        : value.toStringAsFixed(1);
+    final percent = totalGrams <= 0
+        ? 0
+        : ((value / totalGrams).clamp(0.0, 1.0) * 100).round();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
@@ -1341,10 +1813,10 @@ class _IngredientNutritionRow extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: AppRemoteOrAssetImage(
+            child: _RecipeDetailThumbnail(
               imagePath: ingredient.imagePath,
-              width: 24,
-              height: 24,
+              width: 50,
+              height: 50,
               fit: BoxFit.contain,
             ),
           ),
@@ -1364,18 +1836,33 @@ class _IngredientNutritionRow extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      percent <= 0 ? ingredient.calories : '$percent%',
-                      maxLines: 1,
-                      overflow: TextOverflow.visible,
-                      style: textTheme.bodySmall,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '$percent%',
+                          maxLines: 1,
+                          overflow: TextOverflow.visible,
+                          style: textTheme.bodySmall,
+                        ),
+                        Text(
+                          '${valueLabel}g',
+                          maxLines: 1,
+                          overflow: TextOverflow.visible,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 LinearProgressIndicator(
-                  value: ingredient.nutritionPercent,
-                  color: context.colors.primary,
+                  value: totalGrams <= 0
+                      ? 0
+                      : (value / totalGrams).clamp(0.0, 1.0),
+                  color: color,
                   backgroundColor: AppColors.background,
                   minHeight: 4,
                 ),
@@ -1646,11 +2133,11 @@ class _RelatedRecipeCard extends StatelessWidget {
                 border: Border.all(color: AppColors.secondary, width: 1.6),
               ),
               child: ClipOval(
-                child: AppRemoteOrAssetImage(
-                  imagePath: item.imagePath,
-                  width: double.infinity,
-                  height: double.infinity,
+                child: AppRecipeMediaPreview(
+                  mediaPath: item.imagePath,
                   fit: BoxFit.cover,
+                  playOverlaySize: 28,
+                  playIconSize: 18,
                 ),
               ),
             ),
