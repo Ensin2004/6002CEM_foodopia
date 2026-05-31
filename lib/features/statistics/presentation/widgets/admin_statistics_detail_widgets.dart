@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
+import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../domain/entities/admin_statistics.dart';
 import 'statistics_bar_chart.dart';
 import 'statistics_line_chart.dart';
@@ -276,38 +277,20 @@ class _AdminSectionTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final tabWidth = (sections.length * 116.0).clamp(width - 32, 720.0);
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: Row(
-        children: List.generate(sections.length, (index) {
-          final selected = selectedIndex == index;
-          return Padding(
-            padding: EdgeInsets.only(
-              right: index == sections.length - 1 ? 0 : AppSpacing.sm,
-            ),
-            child: ChoiceChip(
-              label: Text(
-                _shortTabLabel(sections[index].title),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              selected: selected,
-              onSelected: (_) => onSelected(index),
-              selectedColor: const Color(0xFFEAF8F0),
-              backgroundColor: Colors.white,
-              side: BorderSide(
-                color: selected ? AppColors.primary : AppColors.border,
-              ),
-              labelStyle: context.text.bodySmall?.copyWith(
-                color: selected ? AppColors.primary : AppColors.textSecondary,
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
-              ),
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          );
-        }),
+      child: SizedBox(
+        width: tabWidth,
+        child: AppPillSegmentedControl(
+          labels: sections
+              .map((section) => _shortTabLabel(section.title))
+              .toList(),
+          selectedIndex: selectedIndex,
+          onChanged: onSelected,
+        ),
       ),
     );
   }

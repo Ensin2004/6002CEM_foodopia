@@ -213,12 +213,6 @@ class AuthRemoteDataSource {
     required String adminUid,
     required String preferenceId,
   }) async {
-    final userDoc = await _firestore.collection('users').doc(adminUid).get();
-    final preferences = userDoc.data()?['notificationPreferences'];
-    if (preferences is Map && preferences[preferenceId] is bool) {
-      return preferences[preferenceId] as bool;
-    }
-
     final preferenceDoc = await _firestore
         .collection('users')
         .doc(adminUid)
@@ -268,14 +262,6 @@ class AuthRemoteDataSource {
     final collectionRef = userRef.collection('notification_preferences');
     final snapshot = await collectionRef.get();
     final existingIds = snapshot.docs.map((doc) => doc.id).toSet();
-    final existingMap = <String, bool>{};
-
-    for (final doc in snapshot.docs) {
-      final enabled = doc.data()['enabled'];
-      if (enabled is bool) {
-        existingMap[doc.id] = enabled;
-      }
-    }
 
     final batch = _firestore.batch();
     for (final preference in _defaultNotificationPreferences) {
@@ -297,17 +283,9 @@ class AuthRemoteDataSource {
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
-        existingMap[id] = true;
       }
     }
 
-    batch.set(userRef, {
-      'notificationPreferences': {
-        for (final preference in _defaultNotificationPreferences)
-          if ((preference['id'] ?? '').isNotEmpty)
-            preference['id']!: existingMap[preference['id']] ?? true,
-      },
-    }, SetOptions(merge: true));
     await batch.commit();
   }
 

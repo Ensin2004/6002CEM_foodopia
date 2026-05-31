@@ -110,46 +110,6 @@ class SettingsRepositoryImpl implements SettingsRepository {
       }
 
       // ============================================================
-      // 3. NOTIFICATIONS SECTION (User only)
-      // ============================================================
-      if (!isAdmin) {
-        sections.add(
-          /// Creates a settings section instance.
-          const SettingsSection(
-            title: 'Notifications',
-            items: [
-              /// Creates a settings item instance.
-              SettingsItem(
-                id: 'social_notifications_header',
-                title: 'Social Notifications',
-                icon: Icons.notifications,
-                type: SettingsItemType.info,
-              ),
-
-              /// Creates a settings item instance.
-              SettingsItem(
-                id: 'new_follower_notification',
-                title: 'New Follower Notification',
-                icon: Icons.person_add,
-                subtitle: 'Get a notification for new follower',
-                type: SettingsItemType.toggle,
-              ),
-
-              /// Creates a settings item instance.
-              SettingsItem(
-                id: 'new_rating_notification',
-                title: 'New Rating Notification',
-                icon: Icons.star_rate,
-                subtitle:
-                    'Receive a notification when your recipe is being rated by user',
-                type: SettingsItemType.toggle,
-              ),
-            ],
-          ),
-        );
-      }
-
-      // ============================================================
       // 4. ADMIN SECTION
       // ============================================================
       if (isAdmin) {

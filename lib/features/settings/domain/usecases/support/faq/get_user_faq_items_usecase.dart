@@ -16,4 +16,8 @@ class GetUserFaqItemsUseCase {
   Future<Either<Failure, List<FaqItem>>> execute() async {
     return await repository.getUserFaqItems();
   }
+
+  Stream<Either<Failure, List<FaqItem>>> watch() {
+    return repository.watchUserFaqItems();
+  }
 }

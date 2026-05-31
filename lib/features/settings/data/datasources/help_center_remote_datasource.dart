@@ -19,10 +19,7 @@ class HelpCenterRemoteDataSource {
 
   /// Loads data for the get user issues operation.
   Future<QuerySnapshot> getUserIssues(String uid) async {
-    return await _collection
-        .where('uid', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
-        .get();
+    return await _collection.where('uid', isEqualTo: uid).get();
   }
 
   /// Loads data for the get all issues operation.

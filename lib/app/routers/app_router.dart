@@ -10,7 +10,6 @@ import '../../features/auth/presentation/view/login_screen.dart';
 import '../../features/auth/presentation/view/signup_screen.dart';
 import '../../features/onboarding/presentation/view/onboarding_screen.dart';
 import '../../features/main/presentation/view/main_page.dart';
-import '../../features/notifications/presentation/view/notification_settings_page.dart';
 import '../../features/notifications/presentation/view/notifications_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_basic_info_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_ingredients_page.dart';
@@ -79,7 +78,6 @@ class AppRouter {
   static const String rateUs = '/rate-us';
   static const String helpCenter = '/help-center';
   static const String notifications = '/notifications';
-  static const String notificationSettings = '/notifications/settings';
   static const String addRecipe = '/recipes/add';
   static const String addRecipeBasicInfo = '/recipes/add/basic-info';
   static const String addRecipeIngredients = '/recipes/add/ingredients';
@@ -447,12 +445,6 @@ class AppRouter {
         name: 'notifications',
         path: notifications,
         builder: (context, state) => const NotificationsPage(),
-      ),
-
-      GoRoute(
-        name: 'notificationSettings',
-        path: notificationSettings,
-        builder: (context, state) => const NotificationSettingsPage(),
       ),
 
       /// Creates a go route instance.

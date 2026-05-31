@@ -19,4 +19,8 @@ class GetAboutContentUseCase {
     }
     return await repository.getAboutContent(documentId);
   }
+
+  Stream<Either<Failure, AboutContent>> watch(String documentId) {
+    return repository.watchAboutContent(documentId);
+  }
 }

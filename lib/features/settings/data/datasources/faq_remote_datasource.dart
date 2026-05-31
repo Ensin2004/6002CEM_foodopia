@@ -20,9 +20,17 @@ class FaqRemoteDataSource {
     return await _collection.orderBy('createdAt', descending: true).get();
   }
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchUserFaqItems() {
+    return _collection.orderBy('createdAt', descending: true).snapshots();
+  }
+
   /// Loads data for the get admin faq items operation.
   Future<QuerySnapshot> getAdminFaqItems() async {
     return await _collection.orderBy('createdAt', descending: true).get();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchAdminFaqItems() {
+    return _collection.orderBy('createdAt', descending: true).snapshots();
   }
 
   /// Handles the add faq item operation.

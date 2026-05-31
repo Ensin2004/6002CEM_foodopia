@@ -32,7 +32,8 @@ class _ChangePasswordPageView extends StatefulWidget {
 
   /// Creates data for the create state operation.
   @override
-  State<_ChangePasswordPageView> createState() => _ChangePasswordPageViewState();
+  State<_ChangePasswordPageView> createState() =>
+      _ChangePasswordPageViewState();
 }
 
 /// Defines behavior for change password page view state.
@@ -58,10 +59,7 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
 
     /// Handles the scaffold operation.
     return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Change Password',
-        centerTitle: true,
-      ),
+      appBar: CustomAppBar(title: 'Change Password', centerTitle: true),
       body: Stack(
         children: [
           /// Creates a single child scroll view instance.
@@ -74,9 +72,11 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
                   /// Creates a sized box instance.
                   const SizedBox(height: 30),
                   _buildPasswordIcon(context),
+
                   /// Creates a sized box instance.
                   const SizedBox(height: 20),
                   _buildInstructionText(),
+
                   /// Creates a sized box instance.
                   const SizedBox(height: 30),
                   _buildCurrentPasswordField(viewModel),
@@ -84,9 +84,11 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
                   _buildConfirmPasswordField(viewModel),
                   if (viewModel.errorMessage != null)
                     _buildErrorMessage(viewModel.errorMessage!),
+
                   /// Creates a sized box instance.
                   const SizedBox(height: 40),
                   _buildChangePasswordButton(viewModel),
+
                   /// Creates a sized box instance.
                   const SizedBox(height: 20),
                 ],
@@ -145,6 +147,7 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildFieldLabel('Current Password'),
+
           /// Creates a sized box instance.
           const SizedBox(height: 8),
           _buildPasswordInputRow(
@@ -170,13 +173,17 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildFieldLabel('New Password'),
+
           /// Creates a sized box instance.
           const SizedBox(height: 8),
           _buildPasswordInputRow(
             controller: _newPasswordController,
             isVisible: viewModel.showNewPassword,
             onToggle: viewModel.toggleNewPasswordVisibility,
-            validator: viewModel.validateNewPassword,
+            validator: (value) => viewModel.validateNewPassword(
+              value,
+              currentPassword: _currentPasswordController.text,
+            ),
           ),
           if (password.isNotEmpty)
             /// Creates a padding instance.
@@ -186,6 +193,7 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: rules.map((rule) {
                   final isCheckmark = rule.startsWith('✓');
+
                   /// Handles the padding operation.
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 2),
@@ -214,6 +222,7 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildFieldLabel('Confirm New Password'),
+
           /// Creates a sized box instance.
           const SizedBox(height: 8),
           _buildPasswordInputRow(
@@ -235,10 +244,7 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
     /// Handles the text operation.
     return Text(
       label,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-      ),
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
     );
   }
 
@@ -247,6 +253,7 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
     required TextEditingController controller,
     required bool isVisible,
     required VoidCallback onToggle,
+
     /// Handles the function operation.
     required String? Function(String?)? validator,
   }) {
@@ -255,8 +262,10 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
       children: [
         /// Creates a icon instance.
         Icon(Icons.vpn_key, color: Theme.of(context).colorScheme.primary),
+
         /// Creates a sized box instance.
         const SizedBox(width: 12),
+
         /// Creates a expanded instance.
         Expanded(
           child: Container(
@@ -326,14 +335,13 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
         children: [
           /// Creates a icon instance.
           Icon(Icons.error_outline, color: Colors.red.shade700),
+
           /// Creates a sized box instance.
           const SizedBox(width: 8),
+
           /// Creates a expanded instance.
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: Colors.red.shade700),
-            ),
+            child: Text(message, style: TextStyle(color: Colors.red.shade700)),
           ),
         ],
       ),
@@ -358,9 +366,7 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
       builder: (context) => AlertDialog(
         title: const Text('Success'),
         content: const Text('Your password has been changed successfully.'),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         actions: [
           /// Creates a text button instance.
           TextButton(

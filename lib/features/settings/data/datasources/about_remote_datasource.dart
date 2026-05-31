@@ -13,6 +13,12 @@ class AboutRemoteDataSource {
     return await _firestore.collection('support_center').doc(documentId).get();
   }
 
+  Stream<DocumentSnapshot<Map<String, dynamic>>> watchAboutContent(
+    String documentId,
+  ) {
+    return _firestore.collection('support_center').doc(documentId).snapshots();
+  }
+
   // Changed from update to set (creates if not exists, updates if exists)
   Future<void> saveAboutContent(String documentId, String content) async {
     await _firestore.collection('support_center').doc(documentId).set(
@@ -23,6 +29,10 @@ class AboutRemoteDataSource {
       },
       SetOptions(merge: true),
     ); // merge: true allows updates without overwriting
+  }
+
+  Future<void> deleteAboutContent(String documentId) async {
+    await _firestore.collection('support_center').doc(documentId).delete();
   }
 
   String _getTitleFromId(String id) {

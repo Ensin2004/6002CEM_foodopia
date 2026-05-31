@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
+import '../../../../app/routers/app_router.dart';
+import '../../../../app/routers/router_args.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../domain/entities/post_analytic_statistics.dart';
 import '../../domain/usecases/get_post_analytic_statistics_usecase.dart';
 import '../viewmodel/post_analytic_viewmodel.dart';
@@ -442,7 +446,7 @@ class _CategorySection extends StatelessWidget {
         ),
         if (isExpanded)
           ...category.dishes.map(
-            (dish) => _PostRow(post: dish, showView: false),
+            (dish) => _PostRow(post: dish, showView: true),
           ),
       ],
     );
@@ -495,16 +499,32 @@ class _PostRow extends StatelessWidget {
               fontSize: 12,
             ),
           ),
-          if (showView) ...[
+          if (showView && (post.id ?? '').isNotEmpty) ...[
             const SizedBox(width: AppSpacing.md),
-            Text(
-              'View',
-              style: context.text.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-                fontSize: 10,
+            InkWell(
+              borderRadius: BorderRadius.circular(4),
+              onTap: () => context.push(
+                AppRouter.exploreRecipeDetail,
+                extra: ExploreRecipeDetailArgs(recipeId: post.id!),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'View',
+                      style: context.text.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, size: 18),
+                  ],
+                ),
               ),
             ),
-            const Icon(Icons.chevron_right, size: 18),
           ],
         ],
       ),
@@ -749,68 +769,10 @@ class _PageTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          _PageTabButton(
-            label: 'Rated Post',
-            selected: selectedIndex == 0,
-            onTap: () => onSelected(0),
-          ),
-          _PageTabButton(
-            label: 'Category',
-            selected: selectedIndex == 1,
-            onTap: () => onSelected(1),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PageTabButton extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PageTabButton({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: context.text.bodySmall?.copyWith(
-              color: selected ? AppColors.primary : AppColors.textSecondary,
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
-            ),
-          ),
-        ),
-      ),
+    return AppPillSegmentedControl(
+      labels: const ['Rated Post', 'Category'],
+      selectedIndex: selectedIndex,
+      onChanged: onSelected,
     );
   }
 }

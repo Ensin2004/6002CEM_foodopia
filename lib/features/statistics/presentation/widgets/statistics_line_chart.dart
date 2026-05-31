@@ -155,6 +155,12 @@ class _StatisticsLineChartPainter extends CustomPainter {
     final fillPaint = Paint()
       ..color = color.withValues(alpha: 0.28)
       ..style = PaintingStyle.fill;
+    final dotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final dotBorderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
 
     for (var index = 0; index < gridValues.length; index++) {
       final y = size.height * index / (gridValues.length - 1);
@@ -178,6 +184,10 @@ class _StatisticsLineChartPainter extends CustomPainter {
 
     canvas.drawPath(fillPath, fillPaint);
     canvas.drawPath(linePath, linePaint);
+    for (final offset in pointOffsets) {
+      canvas.drawCircle(offset, 5, dotBorderPaint);
+      canvas.drawCircle(offset, 3.5, dotPaint);
+    }
   }
 
   Path _smoothPath(List<Offset> points) {

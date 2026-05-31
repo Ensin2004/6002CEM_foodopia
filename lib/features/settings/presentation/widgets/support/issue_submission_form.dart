@@ -55,6 +55,11 @@ class _IssueSubmissionFormState extends State<IssueSubmissionForm> {
       widget.onSubmit();
       Navigator.pop(context);
     }
+    if (!success && mounted && viewModel.errorMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(viewModel.errorMessage!)));
+    }
 
     if (mounted) {
       setState(() => _isSubmitting = false);
@@ -81,11 +86,15 @@ class _IssueSubmissionFormState extends State<IssueSubmissionForm> {
             maxLines: 3,
             decoration: InputDecoration(
               hintText: 'Describe your issue...',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
+
           /// Creates a sized box instance.
           const SizedBox(height: 8),
+
           /// Creates a row instance.
           Row(
             children: [
@@ -97,13 +106,20 @@ class _IssueSubmissionFormState extends State<IssueSubmissionForm> {
               if (_selectedImage != null) ...[
                 /// Creates a sized box instance.
                 const SizedBox(width: 8),
+
                 /// Creates a sized box instance.
-                SizedBox(width: 60, height: 60, child: Image.file(_selectedImage!, fit: BoxFit.cover)),
+                SizedBox(
+                  width: 60,
+                  height: 60,
+                  child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                ),
               ],
             ],
           ),
+
           /// Creates a sized box instance.
           const SizedBox(height: 8),
+
           /// Creates a sized box instance.
           SizedBox(
             width: double.infinity,

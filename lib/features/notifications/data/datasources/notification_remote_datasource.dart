@@ -120,13 +120,6 @@ class NotificationRemoteDataSource {
     final collectionRef = userRef.collection('notification_preferences');
     final snapshot = await collectionRef.get();
     final existingIds = snapshot.docs.map((doc) => doc.id).toSet();
-    final existingMap = <String, bool>{};
-    for (final doc in snapshot.docs) {
-      final enabled = doc.data()['enabled'];
-      if (enabled is bool) {
-        existingMap[doc.id] = enabled;
-      }
-    }
 
     final batch = firestore.batch();
     for (final preference in defaultPreferences) {
@@ -145,16 +138,9 @@ class NotificationRemoteDataSource {
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
-        existingMap[preference.id] = preference.enabled;
       }
     }
 
-    batch.set(userRef, {
-      'notificationPreferences': {
-        for (final preference in defaultPreferences)
-          preference.id: existingMap[preference.id] ?? preference.enabled,
-      },
-    }, SetOptions(merge: true));
     await batch.commit();
   }
 
@@ -181,9 +167,6 @@ class NotificationRemoteDataSource {
       'description': defaultPreference.description,
       'enabled': enabled,
       'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-    await userRef.set({
-      'notificationPreferences': {preferenceId: enabled},
     }, SetOptions(merge: true));
   }
 

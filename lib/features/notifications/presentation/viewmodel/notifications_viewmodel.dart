@@ -9,8 +9,6 @@ import '../../domain/usecases/mark_notification_as_read_usecase.dart';
 import '../../domain/usecases/schedule_plan_reminder_usecase.dart';
 import '../../domain/usecases/update_notification_preference_usecase.dart';
 
-enum NotificationNavigationEvent { goToSettings }
-
 class NotificationsViewModel extends ChangeNotifier {
   final GetNotificationsUseCase _getNotificationsUseCase;
   final GetNotificationPreferencesUseCase _getPreferencesUseCase;
@@ -40,7 +38,6 @@ class NotificationsViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool _isScheduling = false;
   String? _errorMessage;
-  NotificationNavigationEvent? _navigationEvent;
   bool _isDisposed = false;
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
@@ -49,12 +46,6 @@ class NotificationsViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isScheduling => _isScheduling;
   String? get errorMessage => _errorMessage;
-
-  NotificationNavigationEvent? get navigationEvent {
-    final event = _navigationEvent;
-    _navigationEvent = null;
-    return event;
-  }
 
   Future<void> load() async {
     _setLoading(true);
@@ -123,11 +114,6 @@ class NotificationsViewModel extends ChangeNotifier {
     );
     _isScheduling = false;
     await load();
-  }
-
-  void goToSettings() {
-    _navigationEvent = NotificationNavigationEvent.goToSettings;
-    _notifyIfActive();
   }
 
   void clearError() {

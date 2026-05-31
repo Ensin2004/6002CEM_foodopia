@@ -9,6 +9,9 @@ import '../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../auth/domain/entities/user_entity.dart';
+import '../../../notifications/domain/entities/notification_preference.dart';
+import '../../../notifications/domain/usecases/get_notification_preferences_usecase.dart';
+import '../../../notifications/domain/usecases/update_notification_preference_usecase.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../viewmodel/settings_viewmodel.dart';
 import '../widgets/settings_section_widget.dart';
@@ -25,8 +28,14 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     /// Runs the change notifier provider operation.
     return ChangeNotifierProvider(
-      create: (_) =>
-          SettingsViewModel(user: user, repository: sl<SettingsRepository>()),
+      create: (_) => SettingsViewModel(
+        user: user,
+        repository: sl<SettingsRepository>(),
+        getNotificationPreferencesUseCase:
+            sl<GetNotificationPreferencesUseCase>(),
+        updateNotificationPreferenceUseCase:
+            sl<UpdateNotificationPreferenceUseCase>(),
+      ),
       child: const _SettingsPageView(),
     );
   }
@@ -163,7 +172,10 @@ class _SettingsPageView extends StatelessWidget {
 
     for (int i = 0; i < sectionCount; i++) {
       final section = viewModel.sections[i];
-      final isLast = i == sectionCount - 1;
+      final shouldInsertNotifications =
+          section.title == (viewModel.isAdmin ? 'Account' : 'Preferences');
+      final isLast =
+          i == sectionCount - 1 && viewModel.notificationPreferences.isEmpty;
 
       sections.add(
         /// Creates a settings section widget instance.
@@ -173,9 +185,67 @@ class _SettingsPageView extends StatelessWidget {
           isLast: isLast,
         ),
       );
+
+      if (shouldInsertNotifications &&
+          viewModel.notificationPreferences.isNotEmpty) {
+        sections.add(_buildNotificationSection(context, viewModel));
+      }
     }
 
     return sections;
+  }
+
+  Widget _buildNotificationSection(
+    BuildContext context,
+    SettingsViewModel viewModel,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            'Notifications',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        for (final item in viewModel.notificationPreferences)
+          _NotificationPreferenceTile(
+            icon: _iconForNotification(item),
+            title: item.title,
+            description: item.description,
+            value: item.enabled,
+            onChanged: (value) => viewModel.toggleNotification(item.id, value),
+          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Divider(height: 1, color: Colors.grey[300], thickness: 2),
+        ),
+      ],
+    );
+  }
+
+  IconData _iconForNotification(NotificationPreference preference) {
+    switch (preference.id) {
+      case 'new_follower_notification':
+        return Icons.group_add_outlined;
+      case 'new_rating_notification':
+        return Icons.info_outline;
+      case 'new_comment_notification':
+        return Icons.comment_outlined;
+      case 'new_recipe_notification':
+        return Icons.restaurant_menu_outlined;
+      case 'new_reply_notification':
+        return Icons.reply_outlined;
+      case 'new_like_notification':
+        return Icons.favorite_border;
+      case 'new_user_notification':
+        return Icons.person_add_alt_1_outlined;
+      case 'system_rating_notification':
+        return Icons.star_rate_outlined;
+      default:
+        return Icons.notifications_none;
+    }
   }
 
   // Type-safe navigation handler
@@ -344,5 +414,45 @@ class _SettingsPageView extends StatelessWidget {
   /// Handles the navigate to onboarding operation.
   void _navigateToOnboarding(BuildContext context) {
     context.go(AppRouter.onboarding);
+  }
+}
+
+class _NotificationPreferenceTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _NotificationPreferenceTile({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      visualDensity: const VisualDensity(vertical: -2),
+      title: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodyLarge,
+      ),
+      subtitle: Text(
+        description,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.2),
+      ),
+      value: value,
+      onChanged: onChanged,
+      activeThumbColor: Theme.of(context).colorScheme.primary,
+      secondary: Icon(icon, color: Theme.of(context).colorScheme.primary),
+    );
   }
 }

@@ -99,12 +99,6 @@ class RatingRemoteDataSource {
     required String adminUid,
     required String preferenceId,
   }) async {
-    final userDoc = await _firestore.collection('users').doc(adminUid).get();
-    final preferences = userDoc.data()?['notificationPreferences'];
-    if (preferences is Map && preferences[preferenceId] is bool) {
-      return preferences[preferenceId] as bool;
-    }
-
     final preferenceDoc = await _firestore
         .collection('users')
         .doc(adminUid)

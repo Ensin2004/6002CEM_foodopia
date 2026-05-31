@@ -215,6 +215,7 @@ import '../../features/settings/domain/repositories/settings_repository.dart';
 // Profile Feature - Domain Layer
 import '../../features/settings/domain/repositories/profile_repository.dart';
 import '../../features/settings/domain/usecases/about/save_about_content_usecase.dart';
+import '../../features/settings/domain/usecases/about/delete_about_content_usecase.dart';
 import '../../features/settings/domain/usecases/account/get_user_email_usecase.dart';
 import '../../features/settings/domain/usecases/account/get_user_profile_usecase.dart';
 import '../../features/settings/domain/usecases/support/faq/add_faq_item_usecase.dart';
@@ -876,6 +877,7 @@ void _initAboutFeature() {
   sl.registerLazySingleton(
     () => SaveAboutContentUseCase(sl()),
   ); // Changed from Update to Save
+  sl.registerLazySingleton(() => DeleteAboutContentUseCase(sl()));
 
   // --------------------------------------------------------------------------
   // NOTE: AboutViewerViewModel and AboutEditorViewModel are NOT registered here because:

@@ -1158,12 +1158,6 @@ class ExploreRemoteDataSource {
     final preferenceId = _preferenceIdForNotificationType(type);
     if (preferenceId == null) return true;
 
-    final userDoc = await firestore.collection('users').doc(receiverUid).get();
-    final preferences = userDoc.data()?['notificationPreferences'];
-    if (preferences is Map && preferences[preferenceId] is bool) {
-      return preferences[preferenceId] as bool;
-    }
-
     final preferenceDoc = await firestore
         .collection('users')
         .doc(receiverUid)

@@ -59,6 +59,10 @@ class StatisticsRemoteDataSource {
     );
     final allPlans = await _getAllMealPlans(allRange);
     final allRecipes = await _getAllSharedRecipes(allRange);
+    final topRatedRecipeToday = await _topRatedRecipeByRatingDate(
+      recipes: allRecipes,
+      range: today,
+    );
     final plannedCategories = await _categoryGroups(todayPlans);
     final postedCategories = await _buildPostRatingCategories(todayRecipes);
     final averagePlannedDifficulty = todayPlans.isEmpty
@@ -124,7 +128,7 @@ class StatisticsRemoteDataSource {
           ),
           StatisticsMetric(
             label: 'Top Rating Food Today',
-            value: _topRatedRecipe(todayRecipes),
+            value: topRatedRecipeToday,
             tone: StatisticsMetricTone.positive,
           ),
         ],
@@ -436,7 +440,11 @@ class StatisticsRemoteDataSource {
       );
     }
 
-    final counts = <String, int>{'Male': 0, 'Female': 0};
+    final counts = <String, int>{
+      'Male': 0,
+      'Female': 0,
+      'Prefer not to say': 0,
+    };
     var totalUsers = 0;
     for (final user in userDocs) {
       final data = user.data();
@@ -591,6 +599,7 @@ class StatisticsRemoteDataSource {
     final posts = recipes
         .map(
           (recipe) => PostRatingItem(
+            id: recipe.id,
             name: recipe.name,
             rating: recipe.averageRating,
             ratingCount: recipe.ratingCount,
@@ -1284,6 +1293,7 @@ class StatisticsRemoteDataSource {
       if (label.isEmpty) continue;
       final group = groups.putIfAbsent(label, () => _FoodGroup(label: label));
       group.count += 1;
+      group.recipeId ??= plan.recipeId;
       group.imageUrl ??= imageFor?.call(plan);
       final detailLabel = detailLabelFor?.call(plan).trim() ?? label;
       if (detailLabel.isNotEmpty) {
@@ -1291,6 +1301,7 @@ class StatisticsRemoteDataSource {
             (group.detailCounts[detailLabel] ?? 0) + 1;
         group.detailImages[detailLabel] ??=
             detailImageFor?.call(plan) ?? imageFor?.call(plan);
+        group.detailRecipeIds[detailLabel] ??= plan.recipeId;
       }
     }
     return groups;
@@ -1316,6 +1327,7 @@ class StatisticsRemoteDataSource {
         group.detailCounts[plan.recipeName] =
             (group.detailCounts[plan.recipeName] ?? 0) + 1;
         group.detailImages[plan.recipeName] ??= plan.imageUrl;
+        group.detailRecipeIds[plan.recipeName] ??= plan.recipeId;
       }
     }
     return groups;
@@ -1343,6 +1355,7 @@ class StatisticsRemoteDataSource {
         group.detailCounts[plan.recipeName] =
             (group.detailCounts[plan.recipeName] ?? 0) + 1;
         group.detailImages[plan.recipeName] ??= plan.imageUrl;
+        group.detailRecipeIds[plan.recipeName] ??= plan.recipeId;
       }
       for (final customCategoryId in plan.customCategoryIds) {
         final name = await _resolveCategoryName(
@@ -1360,6 +1373,7 @@ class StatisticsRemoteDataSource {
         group.detailCounts[plan.recipeName] =
             (group.detailCounts[plan.recipeName] ?? 0) + 1;
         group.detailImages[plan.recipeName] ??= plan.imageUrl;
+        group.detailRecipeIds[plan.recipeName] ??= plan.recipeId;
       }
       if (plan.categoryIds.isEmpty && plan.customCategoryIds.isEmpty) {
         final group = groups.putIfAbsent(
@@ -1370,6 +1384,7 @@ class StatisticsRemoteDataSource {
         group.detailCounts[plan.recipeName] =
             (group.detailCounts[plan.recipeName] ?? 0) + 1;
         group.detailImages[plan.recipeName] ??= plan.imageUrl;
+        group.detailRecipeIds[plan.recipeName] ??= plan.recipeId;
       }
     }
     return groups;
@@ -1393,6 +1408,7 @@ class StatisticsRemoteDataSource {
     return List.generate(sorted.length, (index) {
       final group = sorted[index];
       return FoodAnalyticBarItem(
+        recipeId: group.recipeId,
         label: group.label,
         value: group.count,
         percent: total <= 0 ? 0 : group.count / total,
@@ -1410,6 +1426,7 @@ class StatisticsRemoteDataSource {
     return details
         .map(
           (entry) => FoodAnalyticDetailItem(
+            recipeId: group.detailRecipeIds[entry.key],
             name: entry.key,
             quantity: entry.value,
             icon: _iconForRecipe(entry.key),
@@ -2397,6 +2414,7 @@ class StatisticsRemoteDataSource {
           final dishes = entry.value
               .map(
                 (recipe) => PostRatingItem(
+                  id: recipe.id,
                   name: recipe.name,
                   rating: recipe.averageRating,
                   ratingCount: recipe.ratingCount,
@@ -2600,6 +2618,56 @@ class StatisticsRemoteDataSource {
     return sorted.first.name;
   }
 
+  Future<String> _topRatedRecipeByRatingDate({
+    required List<_CommunityRecipeStat> recipes,
+    required ({DateTime start, DateTime end}) range,
+  }) async {
+    if (recipes.isEmpty) return '-';
+
+    final ratedRecipes = <_TodayRecipeRating>[];
+    for (final recipe in recipes) {
+      final ratings = await firestore
+          .collection('recipes')
+          .doc(recipe.id)
+          .collection('ratings')
+          .get();
+      var ratingCount = 0;
+      var ratingTotal = 0.0;
+
+      for (final rating in ratings.docs) {
+        final data = rating.data();
+        final ratedAt = _dateTime(data['createdAt'] ?? data['updatedAt']);
+        if (ratedAt.isBefore(range.start) || ratedAt.isAfter(range.end)) {
+          continue;
+        }
+
+        final value = _doubleValue(data['rating']);
+        if (value <= 0) continue;
+        ratingCount++;
+        ratingTotal += value;
+      }
+
+      if (ratingCount == 0) continue;
+      ratedRecipes.add(
+        _TodayRecipeRating(
+          recipeName: recipe.name,
+          averageRating: ratingTotal / ratingCount,
+          ratingCount: ratingCount,
+        ),
+      );
+    }
+
+    if (ratedRecipes.isEmpty) return '-';
+    ratedRecipes.sort((left, right) {
+      final ratingCompare = right.averageRating.compareTo(left.averageRating);
+      if (ratingCompare != 0) return ratingCompare;
+      final countCompare = right.ratingCount.compareTo(left.ratingCount);
+      if (countCompare != 0) return countCompare;
+      return left.recipeName.compareTo(right.recipeName);
+    });
+    return ratedRecipes.first.recipeName;
+  }
+
   String _mostRatedRecipe(List<_CommunityRecipeStat> recipes) {
     if (recipes.isEmpty) return '-';
     final sorted = [...recipes]
@@ -2780,6 +2848,11 @@ class StatisticsRemoteDataSource {
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
+  double _doubleValue(Object? value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
   String? _firstMediaUrl(Object? value) {
     if (value is Iterable) {
       for (final item in value) {
@@ -2865,14 +2938,14 @@ class StatisticsRemoteDataSource {
     final lower = value?.toString().trim().toLowerCase() ?? '';
     if (lower.startsWith('m')) return 'Male';
     if (lower.startsWith('f')) return 'Female';
-    return 'Other';
+    return 'Prefer not to say';
   }
 
   IconData _genderIcon(String label) {
     final lower = label.toLowerCase();
     if (lower == 'male') return Icons.male;
     if (lower == 'female') return Icons.female;
-    return Icons.person_outline;
+    return Icons.privacy_tip_outlined;
   }
 
   Color _genderColor(String label) {
@@ -2996,9 +3069,11 @@ class _MostCookedGroup {
 class _FoodGroup {
   final String label;
   int count = 0;
+  String? recipeId;
   String? imageUrl;
   final Map<String, int> detailCounts = {};
   final Map<String, String?> detailImages = {};
+  final Map<String, String> detailRecipeIds = {};
 
   _FoodGroup({required this.label});
 }
@@ -3117,6 +3192,18 @@ class _CommunityRecipeStat {
     }
     return const [];
   }
+}
+
+class _TodayRecipeRating {
+  final String recipeName;
+  final double averageRating;
+  final int ratingCount;
+
+  const _TodayRecipeRating({
+    required this.recipeName,
+    required this.averageRating,
+    required this.ratingCount,
+  });
 }
 
 class _RecipeNutritionStat {

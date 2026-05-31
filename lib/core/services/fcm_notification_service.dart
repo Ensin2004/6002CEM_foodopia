@@ -180,15 +180,6 @@ class FcmNotificationService {
     if (preferenceId == null) return true;
 
     try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
-      final preferences = userDoc.data()?['notificationPreferences'];
-      if (preferences is Map && preferences[preferenceId] is bool) {
-        return preferences[preferenceId] as bool;
-      }
-
       final preferenceDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
