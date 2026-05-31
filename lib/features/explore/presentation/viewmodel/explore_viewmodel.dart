@@ -69,24 +69,13 @@ class ExploreViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  List<ExploreRecipe> get visibleRecipes {
+  List<ExploreRecipe> get visibleRecipes => visibleRecipesFor(_selectedTab);
+
+  List<ExploreRecipe> visibleRecipesFor(ExploreRecipeTab tab) {
     Iterable<ExploreRecipe> results = _recipes;
 
-    if (_selectedTab == ExploreRecipeTab.following) {
+    if (tab == ExploreRecipeTab.following) {
       results = results.where((recipe) => recipe.isFollowingAuthor);
-    } else if (_selectedTab == ExploreRecipeTab.recent) {
-      final now = DateTime.now();
-      final weekStart = DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ).subtract(Duration(days: now.weekday - 1));
-      final nextWeekStart = weekStart.add(const Duration(days: 7));
-      results = results.where(
-        (recipe) =>
-            !recipe.publishedAt.isBefore(weekStart) &&
-            recipe.publishedAt.isBefore(nextWeekStart),
-      );
     }
 
     final normalizedQuery = _query.trim().toLowerCase();
@@ -114,14 +103,17 @@ class ExploreViewModel extends ChangeNotifier {
       });
     }
 
-    final sorted = results.toList()..sort(_compareRecipes);
+    final sorted = results.toList()..sort(_compareRecipesForTab(tab));
     return sorted;
   }
 
   bool get shouldShowFollowingEmpty =>
+      shouldShowFollowingEmptyFor(_selectedTab);
+
+  bool shouldShowFollowingEmptyFor(ExploreRecipeTab tab) =>
       !_isLoading &&
       _errorMessage == null &&
-      _selectedTab == ExploreRecipeTab.following &&
+      tab == ExploreRecipeTab.following &&
       _recipes.where((recipe) => recipe.isFollowingAuthor).isEmpty;
 
   List<ExploreCreatorSummary> get followedCreators {
@@ -367,6 +359,34 @@ class ExploreViewModel extends ChangeNotifier {
       if (comparison != 0) return comparison;
     }
     return 0;
+  }
+
+  int Function(ExploreRecipe first, ExploreRecipe second) _compareRecipesForTab(
+    ExploreRecipeTab tab,
+  ) {
+    switch (tab) {
+      case ExploreRecipeTab.popular:
+        return _comparePopularRecipes;
+      case ExploreRecipeTab.recent:
+        return _compareRecentRecipes;
+      case ExploreRecipeTab.all:
+      case ExploreRecipeTab.following:
+        return _compareRecipes;
+    }
+  }
+
+  int _comparePopularRecipes(ExploreRecipe first, ExploreRecipe second) {
+    final viewsComparison = second.totalViews.compareTo(first.totalViews);
+    if (viewsComparison != 0) return viewsComparison;
+
+    final ratingComparison = second.rating.compareTo(first.rating);
+    if (ratingComparison != 0) return ratingComparison;
+
+    return second.publishedAt.compareTo(first.publishedAt);
+  }
+
+  int _compareRecentRecipes(ExploreRecipe first, ExploreRecipe second) {
+    return second.publishedAt.compareTo(first.publishedAt);
   }
 
   static const _sortPriority = [

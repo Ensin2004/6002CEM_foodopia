@@ -271,79 +271,93 @@ class _LibraryContent extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final recipes = _focusedFirst(viewModel.visibleRecipes);
-
     return SafeArea(
       top: false,
       child: RefreshIndicator(
         onRefresh: viewModel.loadLibrary,
-        child: CustomScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: NestedScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: _LibraryProfileHeader(
-                profile: profile,
-                postCount: viewModel.postCount,
-                onMoreTap: onComingSoonTap,
-                onEditProfileTap: onEditProfileTap,
-                onFollowersTap: onFollowersTap,
-                onFollowingTap: onFollowingTap,
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: _LibraryTabs(tabController: tabController),
-            ),
-            if (viewModel.shouldShowEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: LibraryEmptyState(onExploreNow: onExploreNow),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: MediaQuery.sizeOf(context).width >= 720
-                        ? 3
-                        : 2,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 16,
-                    mainAxisExtent: 282,
-                  ),
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final recipe = recipes[index];
-                    final disabled =
-                        mealPlanSelection?.existingRecipeIds.contains(
-                          recipe.id,
-                        ) ??
-                        false;
-                    return LibraryRecipeCard(
-                      recipe: recipe,
-                      isHighlighted: recipe.id == focusedRecipeId,
-                      disabled: disabled,
-                      onComingSoonTap: onComingSoonTap,
-                      onFavouriteTap: () => onFavouriteTap(recipe.id),
-                      onImageLongPress: () =>
-                          showRecipeMediaDialog(context, recipe.imagePath),
-                      onTap: () async {
-                        await context.push(
-                          AppRouter.libraryRecipeDetail,
-                          extra: LibraryRecipeDetailArgs(
-                            recipeId: recipe.id,
-                            isSelfPublished: recipe.isSelfPublished,
-                            isPublished: recipe.isPublished,
-                            mealPlanSelection: mealPlanSelection,
-                          ),
-                        );
-                        if (!context.mounted) return;
-                        await viewModel.loadLibrary();
-                      },
-                    );
-                  }, childCount: recipes.length),
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              SliverToBoxAdapter(
+                child: _LibraryProfileHeader(
+                  profile: profile,
+                  postCount: viewModel.postCount,
+                  onMoreTap: onComingSoonTap,
+                  onEditProfileTap: onEditProfileTap,
+                  onFollowersTap: onFollowersTap,
+                  onFollowingTap: onFollowingTap,
                 ),
               ),
-          ],
+              SliverToBoxAdapter(
+                child: _LibraryTabs(tabController: tabController),
+              ),
+            ];
+          },
+          body: TabBarView(
+            controller: tabController,
+            children: LibraryRecipeTab.values.map((tab) {
+              final recipes = _focusedFirst(viewModel.visibleRecipesFor(tab));
+              return CustomScrollView(
+                key: PageStorageKey(tab),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  if (viewModel.shouldShowEmptyFor(tab))
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: LibraryEmptyState(onExploreNow: onExploreNow),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                      sliver: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount:
+                              MediaQuery.sizeOf(context).width >= 720 ? 3 : 2,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 16,
+                          mainAxisExtent: 282,
+                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final recipe = recipes[index];
+                          final disabled =
+                              mealPlanSelection?.existingRecipeIds.contains(
+                                recipe.id,
+                              ) ??
+                              false;
+                          return LibraryRecipeCard(
+                            recipe: recipe,
+                            isHighlighted: recipe.id == focusedRecipeId,
+                            disabled: disabled,
+                            onComingSoonTap: onComingSoonTap,
+                            onFavouriteTap: () => onFavouriteTap(recipe.id),
+                            onImageLongPress: () => showRecipeMediaDialog(
+                              context,
+                              recipe.imagePath,
+                            ),
+                            onTap: () async {
+                              await context.push(
+                                AppRouter.libraryRecipeDetail,
+                                extra: LibraryRecipeDetailArgs(
+                                  recipeId: recipe.id,
+                                  isSelfPublished: recipe.isSelfPublished,
+                                  isPublished: recipe.isPublished,
+                                  mealPlanSelection: mealPlanSelection,
+                                ),
+                              );
+                              if (!context.mounted) return;
+                              await viewModel.loadLibrary();
+                            },
+                          );
+                        }, childCount: recipes.length),
+                      ),
+                    ),
+                ],
+              );
+            }).toList(),
+          ),
         ),
       ),
     );

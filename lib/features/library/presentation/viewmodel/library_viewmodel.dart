@@ -65,10 +65,12 @@ class LibraryViewModel extends ChangeNotifier {
   int get postCount =>
       _recipes.where((recipe) => recipe.isSelfPublished).length;
 
-  List<LibraryRecipe> get visibleRecipes {
+  List<LibraryRecipe> get visibleRecipes => visibleRecipesFor(_selectedTab);
+
+  List<LibraryRecipe> visibleRecipesFor(LibraryRecipeTab tab) {
     Iterable<LibraryRecipe> results = _recipes;
 
-    switch (_selectedTab) {
+    switch (tab) {
       case LibraryRecipeTab.public:
         results = results.where(
           (recipe) => recipe.isSelfPublished && recipe.isPublished,
@@ -97,8 +99,10 @@ class LibraryViewModel extends ChangeNotifier {
     return results.toList();
   }
 
-  bool get shouldShowEmpty =>
-      !_isLoading && _errorMessage == null && visibleRecipes.isEmpty;
+  bool get shouldShowEmpty => shouldShowEmptyFor(_selectedTab);
+
+  bool shouldShowEmptyFor(LibraryRecipeTab tab) =>
+      !_isLoading && _errorMessage == null && visibleRecipesFor(tab).isEmpty;
 
   Future<void> loadLibrary() async {
     _isLoading = _recipes.isEmpty && _profile == null;
