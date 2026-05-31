@@ -11,6 +11,7 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
     super.calorieUnit,
     super.calorieTargetEnabled,
     super.notificationsEnabled,
+    super.notificationPreferences,
     super.notificationTime,
     super.currentStep,
     super.isCompleted,
@@ -30,6 +31,7 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
       notificationsEnabled: data['notificationsEnabled'] is bool
           ? data['notificationsEnabled'] as bool
           : false,
+      notificationPreferences: _boolMap(data['notificationPreferences']),
       notificationTime: data['notificationTime']?.toString() ?? '08:00',
       currentStep: data['currentStep'] is int ? data['currentStep'] as int : 1,
       isCompleted: data['isCompleted'] is bool
@@ -47,6 +49,7 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
       calorieUnit: entity.calorieUnit,
       calorieTargetEnabled: entity.calorieTargetEnabled,
       notificationsEnabled: entity.notificationsEnabled,
+      notificationPreferences: entity.notificationPreferences,
       notificationTime: entity.notificationTime,
       currentStep: entity.currentStep,
       isCompleted: entity.isCompleted,
@@ -62,6 +65,7 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
       'calorieUnit': calorieUnit,
       'calorieTargetEnabled': calorieTargetEnabled,
       'notificationsEnabled': notificationsEnabled,
+      'notificationPreferences': notificationPreferences,
       'notificationTime': notificationTime,
       'currentStep': currentStep,
       'isCompleted': isCompleted,
@@ -72,5 +76,10 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
   static List<String> _stringList(dynamic value) {
     if (value is! List) return [];
     return value.map((item) => item.toString()).toList();
+  }
+
+  static Map<String, bool> _boolMap(dynamic value) {
+    if (value is! Map) return {};
+    return value.map((key, item) => MapEntry(key.toString(), item == true));
   }
 }

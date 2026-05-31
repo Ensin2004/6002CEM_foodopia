@@ -22,6 +22,20 @@ class AuthenticatedRouteArgs {
   const AuthenticatedRouteArgs();
 }
 
+/// Typed arguments for forgot password route.
+class ForgotPasswordArgs {
+  final String? initialEmail;
+
+  const ForgotPasswordArgs({this.initialEmail});
+}
+
+/// Typed arguments for forgot password sent route.
+class ForgotPasswordSentArgs {
+  final String email;
+
+  const ForgotPasswordSentArgs({required this.email});
+}
+
 /// Typed arguments for explore recipe detail route.
 class ExploreRecipeDetailArgs {
   final String recipeId;

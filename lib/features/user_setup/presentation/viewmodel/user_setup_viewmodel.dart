@@ -24,6 +24,14 @@ class UserSetupViewModel extends ChangeNotifier {
   static const noneValue = 'None';
   static const noDietValue = 'No specific diet';
   static const totalSteps = 5;
+  static const notificationPreferenceIds = [
+    'new_follower_notification',
+    'new_rating_notification',
+    'new_comment_notification',
+    'new_recipe_notification',
+    'new_reply_notification',
+    'plan_reminder_notification',
+  ];
 
   final String uid;
   final GetUserSetupOptionsUseCase _getOptionsUseCase;
@@ -184,8 +192,22 @@ class UserSetupViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setNotificationsEnabled(bool value) {
-    _preferences = _preferences.copyWith(notificationsEnabled: value);
+  Future<void> setNotificationsEnabled(bool value) async {
+    _preferences = _preferences.copyWith(
+      notificationsEnabled: value,
+      notificationPreferences: {
+        for (final id in notificationPreferenceIds) id: value,
+      },
+    );
+    await SharedPrefsManager.setNotificationEnabled(value);
+    await Future.wait(
+      notificationPreferenceIds.map((id) {
+        return SharedPrefsManager.setNotificationTypeEnabled(id, value);
+      }),
+    );
+    for (final id in notificationPreferenceIds) {
+      _notificationSettings[id] = value;
+    }
     notifyListeners();
   }
 
@@ -197,6 +219,9 @@ class UserSetupViewModel extends ChangeNotifier {
   Future<void> setNotificationValue(String id, bool value) async {
     await SharedPrefsManager.setNotificationTypeEnabled(id, value);
     _notificationSettings[id] = value;
+    _preferences = _preferences.copyWith(
+      notificationPreferences: {..._notificationSettings},
+    );
     notifyListeners();
   }
 
@@ -251,17 +276,20 @@ class UserSetupViewModel extends ChangeNotifier {
   }
 
   void _loadNotificationSettings() {
-    const ids = [
-      'new_follower_notification',
-      'new_rating_notification',
-      'plan_reminder_notification',
-    ];
-
-    for (final id in ids) {
+    for (final id in notificationPreferenceIds) {
       _notificationSettings[id] = SharedPrefsManager.isNotificationTypeEnabled(
         id,
       );
     }
+    final savedPreferences = _preferences.notificationPreferences;
+    for (final entry in savedPreferences.entries) {
+      if (notificationPreferenceIds.contains(entry.key)) {
+        _notificationSettings[entry.key] = entry.value;
+      }
+    }
+    _preferences = _preferences.copyWith(
+      notificationPreferences: {..._notificationSettings},
+    );
   }
 
   Future<void> saveDietFromSettings() async {

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:photo_view/photo_view.dart';
 import '../../core/widgets/custom_app_bar.dart';
 import '../../features/auth/domain/entities/user_entity.dart';
+import '../../features/auth/presentation/view/forgot_password_screen.dart';
 import '../../features/auth/presentation/view/login_screen.dart';
 import '../../features/auth/presentation/view/signup_screen.dart';
 import '../../features/onboarding/presentation/view/onboarding_screen.dart';
@@ -65,6 +66,8 @@ class AppRouter {
   static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String signup = '/signup';
+  static const String forgotPassword = '/forgot-password';
+  static const String forgotPasswordSent = '/forgot-password/sent';
   static const String home = '/user_home';
   static const String settings = '/settings';
   static const String editProfile = '/settings/edit-profile';
@@ -157,7 +160,11 @@ class AppRouter {
     required bool isLoggedIn,
   }) {
     final location = state.matchedLocation;
-    final isAuthPage = location == login || location == signup;
+    final isAuthPage =
+        location == login ||
+        location == signup ||
+        location == forgotPassword ||
+        location == forgotPasswordSent;
     final isOnboarding = location == onboarding;
     final currentUser = FirebaseAuth.instance.currentUser;
     final isCurrentlyLoggedIn =
@@ -213,6 +220,24 @@ class AppRouter {
         name: 'signup',
         path: signup,
         builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(
+        name: 'forgotPassword',
+        path: forgotPassword,
+        builder: (context, state) {
+          final args = state.extra as ForgotPasswordArgs?;
+          return ForgotPasswordScreen(args: args ?? const ForgotPasswordArgs());
+        },
+      ),
+      GoRoute(
+        name: 'forgotPasswordSent',
+        path: forgotPasswordSent,
+        builder: (context, state) {
+          final args = state.extra as ForgotPasswordSentArgs?;
+          return ForgotPasswordSentScreen(
+            args: args ?? const ForgotPasswordSentArgs(email: ''),
+          );
+        },
       ),
       GoRoute(
         name: 'setupDiet',

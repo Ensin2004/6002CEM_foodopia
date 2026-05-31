@@ -79,6 +79,24 @@ class AuthRemoteDataSource {
     await _auth.currentUser?.sendEmailVerification();
   }
 
+  /// Checks whether an email is registered in the users collection.
+  Future<bool> emailExistsInFirestore(String email) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) return false;
+
+    final snapshot = await _firestore
+        .collection('users')
+        .where('email', isEqualTo: trimmed)
+        .limit(1)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
+
+  /// Sends a Firebase password reset email.
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
+  }
+
   /// Handles the reload user operation.
   Future<void> reloadUser() async {
     await _auth.currentUser?.reload();

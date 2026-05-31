@@ -437,6 +437,36 @@ class _NotificationView extends StatelessWidget {
             ),
           ),
           _NotificationToggle(
+            title: 'New Comment Notification',
+            subtitle: 'Receive a notification when your recipe has comment',
+            value: viewModel.notificationValue('new_comment_notification'),
+            enabled: viewModel.preferences.notificationsEnabled,
+            onChanged: (value) => viewModel.setNotificationValue(
+              'new_comment_notification',
+              value,
+            ),
+          ),
+          _NotificationToggle(
+            title: 'New Recipe Notification',
+            subtitle: 'Receive a notification when followed creator posts',
+            value: viewModel.notificationValue('new_recipe_notification'),
+            enabled: viewModel.preferences.notificationsEnabled,
+            onChanged: (value) => viewModel.setNotificationValue(
+              'new_recipe_notification',
+              value,
+            ),
+          ),
+          _NotificationToggle(
+            title: 'New Reply Notification',
+            subtitle: 'Receive a notification when someone replies you',
+            value: viewModel.notificationValue('new_reply_notification'),
+            enabled: viewModel.preferences.notificationsEnabled,
+            onChanged: (value) => viewModel.setNotificationValue(
+              'new_reply_notification',
+              value,
+            ),
+          ),
+          _NotificationToggle(
             title: 'Plan Reminder',
             subtitle: 'Get a reminder when you forget to plan your meal',
             value: viewModel.notificationValue('plan_reminder_notification'),

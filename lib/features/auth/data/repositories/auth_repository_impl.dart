@@ -183,6 +183,34 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  @override
+  Future<Either<AuthFailure, void>> requestPasswordReset({
+    required String email,
+  }) async {
+    try {
+      await remoteDataSource.sendPasswordResetEmail(email);
+      return const Right(null);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'invalid-email':
+          message = 'Invalid email address';
+          break;
+        case 'user-not-found':
+          message = 'Unable to send password reset email';
+          break;
+        case 'user-disabled':
+          message = 'This user has been disabled';
+          break;
+        default:
+          message = e.message ?? 'Unable to send password reset email';
+      }
+      return Left(AuthFailure(message: message, code: e.code));
+    } catch (e) {
+      return Left(AuthFailure(message: e.toString()));
+    }
+  }
+
   /// Handles the logout operation.
   @override
   Future<Either<AuthFailure, void>> logout() async {
