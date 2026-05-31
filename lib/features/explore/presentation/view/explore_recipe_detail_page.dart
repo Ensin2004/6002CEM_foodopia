@@ -94,6 +94,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   }
 
   void _handleTabChanged() {
+    if (_tabController.indexIsChanging) return;
     context.read<ExploreRecipeDetailViewModel>().selectTab(
       ExploreRecipeDetailTab.values[_tabController.index],
     );
@@ -373,32 +374,41 @@ class _DetailBody extends StatelessWidget {
       );
     }
 
-    return ListView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: EdgeInsets.zero,
-      children: [
-        _HeroImage(recipe: recipe),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: _RecipeHeader(
-            recipe: recipe,
-            isPublished: isPublished,
-            onFavouriteTap: onFavouriteTap,
+    return NestedScrollView(
+      headerSliverBuilder: (context, innerBoxIsScrolled) {
+        return [
+          SliverToBoxAdapter(child: _HeroImage(recipe: recipe)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _RecipeHeader(
+                recipe: recipe,
+                isPublished: isPublished,
+                onFavouriteTap: onFavouriteTap,
+              ),
+            ),
           ),
-        ),
-        _TopTabs(tabController: tabController),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          child: _SelectedTabContent(
-            viewModel: viewModel,
-            recipe: recipe,
-            onComingSoonTap: onComingSoonTap,
-            onStartCooking: onStartCooking,
-            isPublished: isPublished,
-            showStartCooking: !isMealPlanSelection,
-          ),
-        ),
-      ],
+          SliverToBoxAdapter(child: _TopTabs(tabController: tabController)),
+        ];
+      },
+      body: TabBarView(
+        controller: tabController,
+        children: ExploreRecipeDetailTab.values.map((tab) {
+          return SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: _SelectedTabContent(
+              tab: tab,
+              viewModel: viewModel,
+              recipe: recipe,
+              onComingSoonTap: onComingSoonTap,
+              onStartCooking: onStartCooking,
+              isPublished: isPublished,
+              showStartCooking: !isMealPlanSelection,
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }
@@ -645,6 +655,7 @@ class _TopTabs extends StatelessWidget {
 }
 
 class _SelectedTabContent extends StatelessWidget {
+  final ExploreRecipeDetailTab tab;
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
@@ -653,6 +664,7 @@ class _SelectedTabContent extends StatelessWidget {
   final bool isPublished;
 
   const _SelectedTabContent({
+    required this.tab,
     required this.viewModel,
     required this.recipe,
     required this.onComingSoonTap,
@@ -663,7 +675,7 @@ class _SelectedTabContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    switch (viewModel.selectedTab) {
+    switch (tab) {
       case ExploreRecipeDetailTab.recipe:
         return _RecipeTab(
           viewModel: viewModel,

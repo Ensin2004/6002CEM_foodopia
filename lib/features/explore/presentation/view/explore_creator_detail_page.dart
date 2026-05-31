@@ -147,51 +147,64 @@ class _CreatorBody extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: viewModel.loadCreator,
-      child: CustomScrollView(
+      child: NestedScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(
-            child: _CreatorHeader(
-              creator: creator,
-              isUpdatingFollow: viewModel.isUpdatingFollow,
-              onFollowTap: viewModel.toggleFollow,
-              onFollowersTap: () {
-                context.push(
-                  AppRouter.libraryProfileUsers,
-                  extra: LibraryProfileUsersArgs(
-                    showFollowers: true,
-                    ownerUid: creator.summary.uid,
-                  ),
-                );
-              },
-              onFollowingTap: () {
-                context.push(
-                  AppRouter.libraryProfileUsers,
-                  extra: LibraryProfileUsersArgs(
-                    showFollowers: false,
-                    ownerUid: creator.summary.uid,
-                  ),
-                );
-              },
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverToBoxAdapter(
+              child: _CreatorHeader(
+                creator: creator,
+                isUpdatingFollow: viewModel.isUpdatingFollow,
+                onFollowTap: viewModel.toggleFollow,
+                onFollowersTap: () {
+                  context.push(
+                    AppRouter.libraryProfileUsers,
+                    extra: LibraryProfileUsersArgs(
+                      showFollowers: true,
+                      ownerUid: creator.summary.uid,
+                    ),
+                  );
+                },
+                onFollowingTap: () {
+                  context.push(
+                    AppRouter.libraryProfileUsers,
+                    extra: LibraryProfileUsersArgs(
+                      showFollowers: false,
+                      ownerUid: creator.summary.uid,
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: AppSegmentedTabs(
-              controller: tabController,
-              tabs: ExploreCreatorRecipeTab.values
-                  .map(_creatorTabLabel)
-                  .toList(),
-              margin: EdgeInsets.zero,
-              isScrollable: false,
+            SliverToBoxAdapter(
+              child: AppSegmentedTabs(
+                controller: tabController,
+                tabs: ExploreCreatorRecipeTab.values
+                    .map(_creatorTabLabel)
+                    .toList(),
+                margin: EdgeInsets.zero,
+                isScrollable: false,
+              ),
             ),
-          ),
-          _RecipeGrid(
-            recipes: viewModel.visibleRecipes,
-            onComingSoonTap: onComingSoonTap,
-            onFavouriteTap: viewModel.toggleFavourite,
-            onImageLongPress: onImageLongPress,
-          ),
-        ],
+          ];
+        },
+        body: TabBarView(
+          controller: tabController,
+          children: ExploreCreatorRecipeTab.values.map((tab) {
+            return CustomScrollView(
+              key: PageStorageKey(tab),
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                _RecipeGrid(
+                  recipes: viewModel.visibleRecipesFor(tab),
+                  onComingSoonTap: onComingSoonTap,
+                  onFavouriteTap: viewModel.toggleFavourite,
+                  onImageLongPress: onImageLongPress,
+                ),
+              ],
+            );
+          }).toList(),
+        ),
       ),
     );
   }

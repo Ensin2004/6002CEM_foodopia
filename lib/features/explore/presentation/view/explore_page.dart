@@ -146,11 +146,17 @@ class _ExplorePageViewState extends State<_ExplorePageView>
               onCategoryChanged: viewModel.updateCategoryFilter,
             ),
             Expanded(
-              child: _ExploreContent(
-                viewModel: viewModel,
-                mealPlanSelection: widget.mealPlanSelection,
-                onExploreNow: () => _selectTab(ExploreRecipeTab.all),
-                onCommentTap: _showCommentsPopup,
+              child: TabBarView(
+                controller: _tabController,
+                children: ExploreRecipeTab.values.map((tab) {
+                  return _ExploreContent(
+                    tab: tab,
+                    viewModel: viewModel,
+                    mealPlanSelection: widget.mealPlanSelection,
+                    onExploreNow: () => _selectTab(ExploreRecipeTab.all),
+                    onCommentTap: _showCommentsPopup,
+                  );
+                }).toList(),
               ),
             ),
           ],
@@ -300,12 +306,14 @@ class _ExploreCommentsDialogBody extends StatelessWidget {
 }
 
 class _ExploreContent extends StatelessWidget {
+  final ExploreRecipeTab tab;
   final ExploreViewModel viewModel;
   final MealPlanSelectionArgs? mealPlanSelection;
   final VoidCallback onExploreNow;
   final ValueChanged<ExploreRecipe> onCommentTap;
 
   const _ExploreContent({
+    required this.tab,
     required this.viewModel,
     this.mealPlanSelection,
     required this.onExploreNow,
@@ -332,18 +340,18 @@ class _ExploreContent extends StatelessWidget {
       );
     }
 
-    if (viewModel.shouldShowFollowingEmpty) {
+    if (viewModel.shouldShowFollowingEmptyFor(tab)) {
       return ExploreEmptyState(onExploreNow: onExploreNow);
     }
 
-    if (viewModel.selectedTab == ExploreRecipeTab.following) {
+    if (tab == ExploreRecipeTab.following) {
       return _FollowingCreatorsList(
         creators: viewModel.followedCreators,
         onToggleFollow: viewModel.toggleCreatorFollow,
       );
     }
 
-    final recipes = viewModel.visibleRecipes;
+    final recipes = viewModel.visibleRecipesFor(tab);
     if (recipes.isEmpty) {
       return Center(
         child: Text(
@@ -393,52 +401,102 @@ class _FollowingCreatorsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      itemCount: creators.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      itemCount: creators.length + 1,
+      separatorBuilder: (_, index) => index == 0
+          ? const SizedBox(height: 8)
+          : const Divider(height: 1, thickness: 0.7, color: AppColors.border),
       itemBuilder: (context, index) {
-        final creator = creators[index];
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(vertical: 8),
-          leading: AppRemoteOrAssetAvatar(
-            radius: 26,
-            imagePath: creator.avatarPath,
-          ),
-          title: Text(
-            creator.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          subtitle: Text(
-            '${_compactCount(creator.followerCount)} Followers',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          trailing: FilledButton.icon(
-            onPressed: () => onToggleFollow(creator.uid),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              minimumSize: const Size(0, 32),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'Total following: ${creators.length}',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-            icon: const Icon(Icons.check, size: 15),
-            label: const Text(
-              'Following',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-            ),
-          ),
+          );
+        }
+
+        final creator = creators[index - 1];
+        return InkWell(
           onTap: () {
             context.push(
               AppRouter.exploreCreatorDetail,
               extra: ExploreCreatorDetailArgs(creatorUid: creator.uid),
             );
           },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Row(
+              children: [
+                AppRemoteOrAssetAvatar(
+                  radius: 28,
+                  imagePath: creator.avatarPath,
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        creator.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${_compactCount(creator.followerCount)} Followers',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton(
+                  onPressed: () => onToggleFollow(creator.uid),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    minimumSize: const Size(0, 38),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check, size: 15),
+                      SizedBox(width: 4),
+                      Text(
+                        'Following',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
