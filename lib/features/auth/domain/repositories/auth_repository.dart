@@ -34,6 +34,11 @@ abstract class AuthRepository {
   /// Handles the resend verification email operation.
   Future<Either<AuthFailure, void>> resendVerificationEmail();
 
+  /// Validates the email against Firestore and sends a reset email.
+  Future<Either<AuthFailure, void>> requestPasswordReset({
+    required String email,
+  });
+
   /// Loads configured age groups.
   Future<Either<AuthFailure, List<Map<String, dynamic>>>> getAgeGroups();
 

@@ -193,6 +193,7 @@ import '../../features/admin_manage/domain/usecases/reorder_admin_manage_items_u
 import '../../features/admin_manage/domain/usecases/save_admin_manage_item_usecase.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
+import '../../features/auth/domain/usecases/request_password_reset_usecase.dart';
 import '../../features/auth/domain/usecases/signup_usecase.dart';
 import '../../features/auth/domain/usecases/get_age_groups_usecase.dart';
 import '../../features/auth/domain/usecases/verify_email_usecase.dart';
@@ -251,6 +252,7 @@ import '../../features/settings/domain/usecases/about/get_about_content_usecase.
 // ============================================================================
 // Auth Feature - Presentation Layer
 import '../../features/admin_manage/presentation/viewmodel/admin_manage_viewmodel.dart';
+import '../../features/auth/presentation/viewmodel/forgot_password_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/login_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/signup_viewmodel.dart';
 
@@ -635,6 +637,9 @@ void _initAuthFeature() {
   // Verify Email - Checks if user's email is verified
   sl.registerLazySingleton(() => VerifyEmailUseCase(sl()));
 
+  // Request Password Reset - Validates account email and sends reset email
+  sl.registerLazySingleton(() => RequestPasswordResetUseCase(sl()));
+
   // --------------------------------------------------------------------------
   // 4. VIEWMODELS (UI State Management Layer)
   // --------------------------------------------------------------------------
@@ -655,6 +660,11 @@ void _initAuthFeature() {
       getAgeGroupsUseCase: sl(),
       authRepository: sl(),
     ),
+  );
+
+  // Forgot Password ViewModel - Manages reset email flow
+  sl.registerFactory(
+    () => ForgotPasswordViewModel(requestPasswordResetUseCase: sl()),
   );
 }
 

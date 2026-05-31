@@ -26,6 +26,14 @@ enum UserSetupNavigationEvent {
 class UserSetupViewModel extends ChangeNotifier {
   static const noDietValue = 'No specific diet';
   static const totalSteps = 5;
+  static const notificationPreferenceIds = [
+    'new_follower_notification',
+    'new_rating_notification',
+    'new_comment_notification',
+    'new_recipe_notification',
+    'new_reply_notification',
+    'plan_reminder_notification',
+  ];
 
   final String uid;
   final GetUserSetupOptionsUseCase _getOptionsUseCase;
@@ -215,6 +223,21 @@ class UserSetupViewModel extends ChangeNotifier {
   }
 
   Future<void> setNotificationsEnabled(bool value) async {
+    _preferences = _preferences.copyWith(
+      notificationsEnabled: value,
+      notificationPreferences: {
+        for (final id in notificationPreferenceIds) id: value,
+      },
+    );
+    await SharedPrefsManager.setNotificationEnabled(value);
+    await Future.wait(
+      notificationPreferenceIds.map((id) {
+        return SharedPrefsManager.setNotificationTypeEnabled(id, value);
+      }),
+    );
+    for (final id in notificationPreferenceIds) {
+      _notificationSettings[id] = value;
+    }
     _preferences = _preferences.copyWith(notificationsEnabled: value);
     notifyListeners();
 
@@ -241,6 +264,12 @@ class UserSetupViewModel extends ChangeNotifier {
   }
 
   Future<void> setNotificationValue(String id, bool value) async {
+    await SharedPrefsManager.setNotificationTypeEnabled(id, value);
+    _notificationSettings[id] = value;
+    _preferences = _preferences.copyWith(
+      notificationPreferences: {..._notificationSettings},
+    );
+    notifyListeners();
     final result = await _updateNotificationPreferenceUseCase.execute(
       preferenceId: id,
       enabled: value,
@@ -305,6 +334,21 @@ class UserSetupViewModel extends ChangeNotifier {
     );
   }
 
+  void _loadNotificationSettings() {
+    for (final id in notificationPreferenceIds) {
+      _notificationSettings[id] = SharedPrefsManager.isNotificationTypeEnabled(
+        id,
+      );
+    }
+    final savedPreferences = _preferences.notificationPreferences;
+    for (final entry in savedPreferences.entries) {
+      if (notificationPreferenceIds.contains(entry.key)) {
+        _notificationSettings[entry.key] = entry.value;
+      }
+    }
+    _preferences = _preferences.copyWith(
+      notificationPreferences: {..._notificationSettings},
+    );
   Future<void> _loadNotificationSettings() async {
     final result = await _getNotificationPreferencesUseCase.execute();
     result.ifLeft((failure) => _errorMessage = failure.message);
