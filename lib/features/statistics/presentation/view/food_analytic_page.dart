@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
+import '../../../../app/routers/app_router.dart';
+import '../../../../app/routers/router_args.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../domain/entities/food_analytic_statistics.dart';
 import '../../domain/usecases/get_food_analytic_statistics_usecase.dart';
 import '../viewmodel/food_analytic_viewmodel.dart';
@@ -283,6 +287,9 @@ class _FoodAnalyticChartCard extends StatelessWidget {
     final availableWidth = MediaQuery.sizeOf(context).width - 52;
     final chartWidth = availableWidth.clamp(288.0, 340.0);
     final chartHeight = chartWidth * 0.74;
+    final chartItems = chart.type == FoodAnalyticChartType.preparedIngredient
+        ? chart.items.take(5).toList()
+        : chart.items;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 1),
@@ -306,7 +313,7 @@ class _FoodAnalyticChartCard extends StatelessWidget {
               width: chartWidth,
               child: StatisticsBarChart(
                 height: chartHeight,
-                items: chart.items
+                items: chartItems
                     .map(
                       (item) => StatisticsBarChartItem(
                         label: item.label,
@@ -405,6 +412,7 @@ class _TopList extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           ...List.generate(chart.items.length, (index) {
             return _TopListRow(
+              chartType: chart.type,
               item: chart.items[index],
               isExpanded: expandedIndex == index,
               onTap: () => onToggle(index),
@@ -497,11 +505,13 @@ class _SortButton extends StatelessWidget {
 }
 
 class _TopListRow extends StatelessWidget {
+  final FoodAnalyticChartType chartType;
   final FoodAnalyticBarItem item;
   final bool isExpanded;
   final VoidCallback onTap;
 
   const _TopListRow({
+    required this.chartType,
     required this.item,
     required this.isExpanded,
     required this.onTap,
@@ -509,10 +519,13 @@ class _TopListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final canViewRecipe =
+        chartType == FoodAnalyticChartType.mealPlanned &&
+        (item.recipeId ?? '').isNotEmpty;
     return Column(
       children: [
         InkWell(
-          onTap: onTap,
+          onTap: chartType == FoodAnalyticChartType.mealPlanned ? null : onTap,
           borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -556,19 +569,25 @@ class _TopListRow extends StatelessWidget {
                     fontSize: 13,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Icon(
-                  isExpanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  size: 20,
-                  color: AppColors.textPrimary,
-                ),
+                if (canViewRecipe) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  _RecipeViewButton(recipeId: item.recipeId!),
+                ],
+                if (chartType != FoodAnalyticChartType.mealPlanned) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  Icon(
+                    isExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 20,
+                    color: AppColors.textPrimary,
+                  ),
+                ],
               ],
             ),
           ),
         ),
-        if (isExpanded)
+        if (chartType != FoodAnalyticChartType.mealPlanned && isExpanded)
           ...item.details.map((detail) => _FoodDetailRow(detail: detail)),
       ],
     );
@@ -628,6 +647,40 @@ class _FoodDetailRow extends StatelessWidget {
   }
 }
 
+class _RecipeViewButton extends StatelessWidget {
+  final String recipeId;
+
+  const _RecipeViewButton({required this.recipeId});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(4),
+      onTap: () => context.push(
+        AppRouter.exploreRecipeDetail,
+        extra: ExploreRecipeDetailArgs(recipeId: recipeId),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'View',
+              style: context.text.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PageTabs extends StatelessWidget {
   final List<FoodAnalyticChart> charts;
   final int selectedIndex;
@@ -641,23 +694,10 @@ class _PageTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: List.generate(charts.length, (index) {
-          return _PageTabButton(
-            label: _tabLabel(charts[index].type),
-            selected: selectedIndex == index,
-            onTap: () => onSelected(index),
-          );
-        }),
-      ),
+    return AppPillSegmentedControl(
+      labels: charts.map((chart) => _tabLabel(chart.type)).toList(),
+      selectedIndex: selectedIndex,
+      onChanged: onSelected,
     );
   }
 
@@ -670,46 +710,6 @@ class _PageTabs extends StatelessWidget {
       case FoodAnalyticChartType.categoryMealPrepared:
         return 'Category';
     }
-  }
-}
-
-class _PageTabButton extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PageTabButton({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: context.text.bodySmall?.copyWith(
-              color: selected ? AppColors.primary : AppColors.textSecondary,
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 

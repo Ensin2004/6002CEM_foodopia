@@ -8,6 +8,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../domain/entities/calories_intake_statistics.dart';
 import '../../domain/usecases/get_calories_intake_statistics_usecase.dart';
 import '../viewmodel/calories_intake_viewmodel.dart';
@@ -45,7 +46,7 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: const CustomAppBar(
-        title: 'Daily Calories Intake',
+        title: 'Daily Nutrient Intake',
         leading: StatisticsBackButton(),
       ),
       body: _buildBody(context, viewModel),
@@ -54,13 +55,13 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
 
   Widget _buildBody(BuildContext context, CaloriesIntakeViewModel viewModel) {
     if (viewModel.isLoading && viewModel.statistics == null) {
-      return const LoadingDialog(inline: true, message: 'Loading calories...');
+      return const LoadingDialog(inline: true, message: 'Loading nutrients...');
     }
 
     final statistics = viewModel.statistics;
     if (statistics == null) {
       return _CaloriesError(
-        message: viewModel.errorMessage ?? 'Unable to load calories intake',
+        message: viewModel.errorMessage ?? 'Unable to load nutrient intake',
         onRetry: viewModel.loadStatistics,
       );
     }
@@ -133,7 +134,7 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
       case 3:
         return 'Average Fat';
       default:
-        return 'Average Calories';
+        return 'Average Nutrient';
     }
   }
 
@@ -304,8 +305,8 @@ class _CaloriesMetricPager extends StatelessWidget {
 
   List<_CaloriesChartMetric> get _metrics => [
     _CaloriesChartMetric(
-      title: 'Calories Intake Vs Day',
-      breakdownTitle: 'Calories Breakdown',
+      title: 'Nutrient Intake Vs Day',
+      breakdownTitle: 'Nutrient Breakdown',
       unit: viewModel.unitLabel,
       valueForDay: (day) => viewModel.convertCalories(day.totalCaloriesKcal),
       valueForMeal: (meal) => viewModel.convertCalories(meal.caloriesKcal),
@@ -411,46 +412,11 @@ class _MetricTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['Calories', 'Carbohydrate', 'Protein', 'Fat'];
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: List.generate(labels.length, (index) {
-          final selected = selectedIndex == index;
-          return Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(6),
-              onTap: () => onSelected(index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected ? Colors.white : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  labels[index],
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.bodySmall?.copyWith(
-                    color: selected
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
+    const labels = ['Nutrient', 'Carbohydrate', 'Protein', 'Fat'];
+    return AppPillSegmentedControl(
+      labels: labels,
+      selectedIndex: selectedIndex,
+      onChanged: onSelected,
     );
   }
 }

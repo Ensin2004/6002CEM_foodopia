@@ -24,6 +24,7 @@ class PostAnalyticStatistics {
 }
 
 class PostRatingItem {
+  final String? id;
   final String name;
   final double rating;
   final int ratingCount;
@@ -31,6 +32,7 @@ class PostRatingItem {
   final String? imageUrl;
 
   const PostRatingItem({
+    this.id,
     required this.name,
     required this.rating,
     required this.ratingCount,

@@ -61,10 +61,10 @@ class NotificationLocalDataSource {
             enabled: false,
           ),
           NotificationPreference(
-            id: 'plan_reminder_notification',
-            title: 'Plan reminder',
+            id: 'new_like_notification',
+            title: 'New Like Notification',
             description:
-                'Get a reminder when you forget to plan your meal on that day',
+                'Receive a notification when someone likes your comment',
             enabled: false,
           ),
         ]

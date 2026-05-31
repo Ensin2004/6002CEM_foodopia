@@ -4,7 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../app/navigation/navigation_events.dart';
 import '../../../../core/services/shared_prefs_manager.dart';
 import '../../../auth/domain/entities/user_entity.dart';
-import '../../domain/entities/settings_item.dart';
+import '../../../notifications/domain/entities/notification_preference.dart';
+import '../../../notifications/domain/usecases/get_notification_preferences_usecase.dart';
+import '../../../notifications/domain/usecases/update_notification_preference_usecase.dart';
 import '../../domain/entities/settings_section.dart';
 import '../../domain/repositories/settings_repository.dart';
 
@@ -12,12 +14,16 @@ import '../../domain/repositories/settings_repository.dart';
 class SettingsViewModel extends ChangeNotifier {
   final UserEntity user;
   final SettingsRepository _repository;
+  final GetNotificationPreferencesUseCase _getNotificationPreferencesUseCase;
+  final UpdateNotificationPreferenceUseCase
+  _updateNotificationPreferenceUseCase;
 
   // State
   bool _isLoading = true;
   String? _errorMessage;
   List<SettingsSection> _sections = [];
   bool _notificationsEnabled = false;
+  List<NotificationPreference> _notificationPreferences = [];
   final Map<String, bool> _notificationSettings = {};
   String _fullName = '';
   String _email = '';
@@ -31,7 +37,14 @@ class SettingsViewModel extends ChangeNotifier {
   SettingsViewModel({
     required this.user,
     required SettingsRepository repository,
-  }) : _repository = repository {
+    required GetNotificationPreferencesUseCase
+    getNotificationPreferencesUseCase,
+    required UpdateNotificationPreferenceUseCase
+    updateNotificationPreferenceUseCase,
+  }) : _repository = repository,
+       _getNotificationPreferencesUseCase = getNotificationPreferencesUseCase,
+       _updateNotificationPreferenceUseCase =
+           updateNotificationPreferenceUseCase {
     /// Loads data for the load settings operation.
     loadSettings();
   }
@@ -47,6 +60,9 @@ class SettingsViewModel extends ChangeNotifier {
 
   /// Handles the notifications enabled operation.
   bool get notificationsEnabled => _notificationsEnabled;
+
+  List<NotificationPreference> get notificationPreferences =>
+      List.unmodifiable(_notificationPreferences);
 
   /// Handles one notification setting lookup.
   bool isNotificationEnabled(String id) =>
@@ -155,10 +171,8 @@ class SettingsViewModel extends ChangeNotifier {
       },
     );
 
-    if (!user.isAdmin) {
-      /// Handles the load notification settings operation.
-      await _loadNotificationSettings();
-    }
+    /// Handles the load notification settings operation.
+    await _loadNotificationSettings();
   }
 
   // Load user profile from Firestore
@@ -186,24 +200,14 @@ class SettingsViewModel extends ChangeNotifier {
 
   // Load notification settings
   Future<void> _loadNotificationSettings() async {
-    final result = await _repository.getNotificationEnabled();
-    result.fold((failure) => null, (enabled) {
-      _notificationsEnabled = enabled;
-      notifyListeners();
+    final result = await _getNotificationPreferencesUseCase.execute();
+    result.fold((failure) => _errorMessage = failure.message, (items) {
+      _notificationPreferences = items;
+      _notificationSettings
+        ..clear()
+        ..addEntries(items.map((item) => MapEntry(item.id, item.enabled)));
+      _notificationsEnabled = items.any((item) => item.enabled);
     });
-
-    for (final section in _sections) {
-      for (final item in section.items) {
-        if (item.type != SettingsItemType.toggle) continue;
-
-        final itemResult = await _repository.getNotificationTypeEnabled(
-          item.id,
-        );
-        itemResult.fold((failure) => null, (enabled) {
-          _notificationSettings[item.id] = enabled;
-        });
-      }
-    }
 
     notifyListeners();
   }
@@ -219,9 +223,18 @@ class SettingsViewModel extends ChangeNotifier {
 
   /// Toggle one notification preference.
   Future<void> toggleNotification(String id, bool value) async {
-    final result = await _repository.setNotificationTypeEnabled(id, value);
+    final result = await _updateNotificationPreferenceUseCase.execute(
+      preferenceId: id,
+      enabled: value,
+    );
     result.fold((failure) => null, (_) {
       _notificationSettings[id] = value;
+      _notificationPreferences = _notificationPreferences
+          .map((item) => item.id == id ? item.copyWith(enabled: value) : item)
+          .toList(growable: false);
+      _notificationsEnabled = _notificationPreferences.any(
+        (item) => item.enabled,
+      );
       notifyListeners();
     });
   }

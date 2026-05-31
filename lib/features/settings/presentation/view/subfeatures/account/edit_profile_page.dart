@@ -72,24 +72,28 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
       body: viewModel.isLoading
           ? const LoadingDialog()
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _buildProfilePictureSection(context, viewModel),
-            /// Creates a sized box instance.
-            const SizedBox(height: 16),
-            _buildProfileFieldsSection(context, viewModel),
-            if (viewModel.errorMessage != null)
-              _buildErrorMessage(viewModel.errorMessage!),
-          ],
-        ),
-      ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildProfilePictureSection(context, viewModel),
+
+                  /// Creates a sized box instance.
+                  const SizedBox(height: 16),
+                  _buildProfileFieldsSection(context, viewModel),
+                  if (viewModel.errorMessage != null)
+                    _buildErrorMessage(viewModel.errorMessage!),
+                ],
+              ),
+            ),
     );
   }
 
   // Profile Picture Section
-  Widget _buildProfilePictureSection(BuildContext context, EditProfileViewModel viewModel) {
+  Widget _buildProfilePictureSection(
+    BuildContext context,
+    EditProfileViewModel viewModel,
+  ) {
     /// Handles the gesture detector operation.
     return GestureDetector(
       onTap: () => _pickImage(context, viewModel),
@@ -102,6 +106,7 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
             backgroundImage: _getProfileImageProvider(viewModel),
             child: _buildAvatarPlaceholder(viewModel),
           ),
+
           /// Creates a container instance.
           Container(
             decoration: BoxDecoration(
@@ -144,14 +149,19 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
   }
 
   // Profile Fields Section
-  Widget _buildProfileFieldsSection(BuildContext context, EditProfileViewModel viewModel) {
+  Widget _buildProfileFieldsSection(
+    BuildContext context,
+    EditProfileViewModel viewModel,
+  ) {
     /// Handles the column operation.
     return Column(
       children: [
         _buildEmailField(context, viewModel),
+
         /// Creates a sized box instance.
         const SizedBox(height: 16),
         _buildNameField(context, viewModel),
+
         /// Creates a sized box instance.
         const SizedBox(height: 16),
         _buildGenderField(context, viewModel),
@@ -162,7 +172,10 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
   }
 
   /// Handles the build email field operation.
-  Widget _buildEmailField(BuildContext context, EditProfileViewModel viewModel) {
+  Widget _buildEmailField(
+    BuildContext context,
+    EditProfileViewModel viewModel,
+  ) {
     /// Handles the column operation.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,8 +189,10 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
             color: Theme.of(context).colorScheme.onBackground,
           ),
         ),
+
         /// Creates a sized box instance.
         const SizedBox(height: 8),
+
         /// Creates a container instance.
         Container(
           padding: const EdgeInsets.all(12),
@@ -189,8 +204,10 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
             children: [
               /// Creates a icon instance.
               Icon(Icons.email, color: Theme.of(context).colorScheme.primary),
+
               /// Creates a sized box instance.
               const SizedBox(width: 12),
+
               /// Creates a expanded instance.
               Expanded(
                 child: Text(
@@ -205,7 +222,10 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
     );
   }
 
-  Widget _buildAgeGroupField(BuildContext context, EditProfileViewModel viewModel) {
+  Widget _buildAgeGroupField(
+    BuildContext context,
+    EditProfileViewModel viewModel,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -262,8 +282,10 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
             color: Theme.of(context).colorScheme.onBackground,
           ),
         ),
+
         /// Creates a sized box instance.
         const SizedBox(height: 8),
+
         /// Creates a gesture detector instance.
         GestureDetector(
           onTap: () => _showEditNameDialog(context, viewModel),
@@ -276,9 +298,14 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
             child: Row(
               children: [
                 /// Creates a icon instance.
-                Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
+                Icon(
+                  Icons.person,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+
                 /// Creates a sized box instance.
                 const SizedBox(width: 12),
+
                 /// Creates a expanded instance.
                 Expanded(
                   child: Text(
@@ -286,6 +313,7 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
                     style: const TextStyle(fontSize: 16),
                   ),
                 ),
+
                 /// Creates a icon instance.
                 Icon(Icons.edit, color: Theme.of(context).colorScheme.primary),
               ],
@@ -297,7 +325,10 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
   }
 
   /// Handles the build gender field operation.
-  Widget _buildGenderField(BuildContext context, EditProfileViewModel viewModel) {
+  Widget _buildGenderField(
+    BuildContext context,
+    EditProfileViewModel viewModel,
+  ) {
     /// Handles the column operation.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,8 +342,10 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
             color: Theme.of(context).colorScheme.onBackground,
           ),
         ),
+
         /// Creates a sized box instance.
         const SizedBox(height: 8),
+
         /// Creates a gesture detector instance.
         GestureDetector(
           onTap: () => _showGenderDialog(context, viewModel),
@@ -326,8 +359,10 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
               children: [
                 /// Creates a icon instance.
                 Icon(Icons.wc, color: Theme.of(context).colorScheme.primary),
+
                 /// Creates a sized box instance.
                 const SizedBox(width: 12),
+
                 /// Creates a expanded instance.
                 Expanded(
                   child: Text(
@@ -337,6 +372,7 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
                     style: const TextStyle(fontSize: 16),
                   ),
                 ),
+
                 /// Creates a icon instance.
                 Icon(Icons.edit, color: Theme.of(context).colorScheme.primary),
               ],
@@ -348,7 +384,10 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
   }
 
   // Edit Name Dialog with immediate save
-  void _showEditNameDialog(BuildContext context, EditProfileViewModel viewModel) {
+  void _showEditNameDialog(
+    BuildContext context,
+    EditProfileViewModel viewModel,
+  ) {
     final pageContext = context;
     final controller = TextEditingController(text: viewModel.displayName);
 
@@ -373,6 +412,7 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
+
           /// Creates a text button instance.
           TextButton(
             onPressed: () async {
@@ -395,7 +435,8 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
 
                 if (success && pageContext.mounted) {
                   _showSuccessMessage(pageContext, 'Name updated successfully');
-                } else if (pageContext.mounted && viewModel.errorMessage != null) {
+                } else if (pageContext.mounted &&
+                    viewModel.errorMessage != null) {
                   _showErrorMessage(pageContext, viewModel.errorMessage!);
                 }
               } else {
@@ -412,7 +453,9 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
   // Edit Gender Dialog with immediate save
   void _showGenderDialog(BuildContext context, EditProfileViewModel viewModel) {
     final pageContext = context;
-    String selectedGender = viewModel.displayGender;
+    String selectedGender = viewModel.displayGender.isEmpty
+        ? 'Prefer not to say'
+        : viewModel.displayGender;
 
     /// Displays the show dialog flow.
     showDialog(
@@ -436,6 +479,7 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
                   });
                 },
               ),
+
               /// Creates a radio list tile instance.
               RadioListTile(
                 title: const Text('Female'),
@@ -448,10 +492,11 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
                   });
                 },
               ),
+
               /// Creates a radio list tile instance.
               RadioListTile(
                 title: const Text('Prefer not to say'),
-                value: '',
+                value: 'Prefer not to say',
                 groupValue: selectedGender,
                 onChanged: (value) {
                   setState(() {
@@ -468,10 +513,14 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
+
             /// Creates a text button instance.
             TextButton(
               onPressed: () async {
-                if (selectedGender != viewModel.displayGender) {
+                final currentGender = viewModel.displayGender.isEmpty
+                    ? 'Prefer not to say'
+                    : viewModel.displayGender;
+                if (selectedGender != currentGender) {
                   // Close dialog first
                   Navigator.pop(dialogContext);
 
@@ -481,15 +530,21 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
                   _showSavingDialog(pageContext);
 
                   // Save the change
-                  final success = await viewModel.saveGenderOnly(selectedGender);
+                  final success = await viewModel.saveGenderOnly(
+                    selectedGender,
+                  );
 
                   // Close loading dialog
                   if (!pageContext.mounted) return;
                   Navigator.of(pageContext, rootNavigator: true).pop();
 
                   if (success && pageContext.mounted) {
-                    _showSuccessMessage(pageContext, 'Gender updated successfully');
-                  } else if (pageContext.mounted && viewModel.errorMessage != null) {
+                    _showSuccessMessage(
+                      pageContext,
+                      'Gender updated successfully',
+                    );
+                  } else if (pageContext.mounted &&
+                      viewModel.errorMessage != null) {
                     _showErrorMessage(pageContext, viewModel.errorMessage!);
                   }
                 } else {
@@ -541,8 +596,13 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
   }
 
   // Pick and upload profile image
-  Future<void> _pickImage(BuildContext context, EditProfileViewModel viewModel) async {
-    final pickedFile = await _imagePicker.pickImage(source: ImageSource.gallery);
+  Future<void> _pickImage(
+    BuildContext context,
+    EditProfileViewModel viewModel,
+  ) async {
+    final pickedFile = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+    );
     if (pickedFile != null && context.mounted) {
       final selectedImage = File(pickedFile.path);
       setState(() => _selectedImage = selectedImage);
@@ -615,14 +675,13 @@ class _EditProfilePageViewState extends State<_EditProfilePageView> {
         children: [
           /// Creates a icon instance.
           Icon(Icons.error_outline, color: Colors.red.shade700),
+
           /// Creates a sized box instance.
           const SizedBox(width: 8),
+
           /// Creates a expanded instance.
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: Colors.red.shade700),
-            ),
+            child: Text(message, style: TextStyle(color: Colors.red.shade700)),
           ),
         ],
       ),

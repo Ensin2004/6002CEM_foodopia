@@ -1119,10 +1119,6 @@ class ExploreRemoteDataSource {
     }
 
     try {
-      if (!await _isNotificationEnabled(receiverUid: receiverUid, type: type)) {
-        return;
-      }
-
       final notificationRef = await firestore
           .collection('users')
           .doc(receiverUid)
@@ -1135,6 +1131,10 @@ class ExploreRemoteDataSource {
             'senderUid': senderUid,
             'createdAt': FieldValue.serverTimestamp(),
           });
+      if (!await _isNotificationEnabled(receiverUid: receiverUid, type: type)) {
+        return;
+      }
+
       await _sendPushToUser(
         receiverUid: receiverUid,
         title: title,
@@ -1158,12 +1158,6 @@ class ExploreRemoteDataSource {
     final preferenceId = _preferenceIdForNotificationType(type);
     if (preferenceId == null) return true;
 
-    final userDoc = await firestore.collection('users').doc(receiverUid).get();
-    final preferences = userDoc.data()?['notificationPreferences'];
-    if (preferences is Map && preferences[preferenceId] is bool) {
-      return preferences[preferenceId] as bool;
-    }
-
     final preferenceDoc = await firestore
         .collection('users')
         .doc(receiverUid)
@@ -1186,6 +1180,8 @@ class ExploreRemoteDataSource {
         return 'new_recipe_notification';
       case 'newReply':
         return 'new_reply_notification';
+      case 'newLike':
+        return 'new_like_notification';
       default:
         return null;
     }

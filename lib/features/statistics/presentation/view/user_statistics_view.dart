@@ -497,25 +497,22 @@ class _MetricTile extends StatelessWidget {
           ),
         ],
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _MetricValue(
-              metric: metric,
-              color: resolvedValueColor,
-              fontSize: resolvedValueFontSize,
-              suffixFontSize: suffixFontSize,
-            ),
-            const SizedBox(height: 5),
-            _MetricLabel(
-              metric: metric,
-              color: resolvedLabelColor,
-              fontSize: labelFontSize,
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _MetricValue(
+            metric: metric,
+            color: resolvedValueColor,
+            fontSize: resolvedValueFontSize,
+            suffixFontSize: suffixFontSize,
+          ),
+          const SizedBox(height: 5),
+          _MetricLabel(
+            metric: metric,
+            color: resolvedLabelColor,
+            fontSize: labelFontSize,
+          ),
+        ],
       ),
     );
   }
@@ -547,8 +544,9 @@ class _MetricValue extends StatelessWidget {
             ),
         ],
       ),
-      maxLines: 1,
+      maxLines: 2,
       overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
       style: context.text.titleMedium?.copyWith(
         color: color,
         fontWeight: FontWeight.w700,
@@ -761,12 +759,17 @@ class _StatisticsMenu extends StatelessWidget {
       return;
     }
 
+    if (item.title == 'Grocery List') {
+      context.push(AppRouter.groceryListStatistics);
+      return;
+    }
+
     if (item.title == 'Meal Planned Time') {
       context.push(AppRouter.mealPlannedTime);
       return;
     }
 
-    if (item.title == 'Calories Intake') {
+    if (item.title == 'Nutrient Intake' || item.title == 'Calories Intake') {
       context.push(AppRouter.caloriesIntake);
       return;
     }
@@ -786,7 +789,8 @@ class _StatisticsMenu extends StatelessWidget {
       return;
     }
 
-    if (item.title == 'Most Calories Posted Meal') {
+    if (item.title == 'Most Nutrient Posted Meal' ||
+        item.title == 'Most Calories Posted Meal') {
       context.push(AppRouter.caloriesPosted);
       return;
     }

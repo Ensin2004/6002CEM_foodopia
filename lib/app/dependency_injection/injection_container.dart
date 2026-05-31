@@ -127,13 +127,17 @@ import '../../features/recipe/domain/usecases/update_add_recipe_visibility_useca
 import '../../features/statistics/data/repositories/statistics_repository_impl.dart';
 import '../../features/statistics/domain/repositories/statistics_repository.dart';
 import '../../features/statistics/domain/usecases/get_admin_dietary_preference_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_gender_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_hub_rating_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_meal_analytic_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_post_analytic_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_user_usage_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_calories_intake_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_calories_posted_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_cooking_time_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_difficulty_meal_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_food_analytic_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_grocery_list_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_meal_plan_method_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_meal_planned_time_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_most_cooked_recipe_statistics_usecase.dart';
@@ -211,6 +215,7 @@ import '../../features/settings/domain/repositories/settings_repository.dart';
 // Profile Feature - Domain Layer
 import '../../features/settings/domain/repositories/profile_repository.dart';
 import '../../features/settings/domain/usecases/about/save_about_content_usecase.dart';
+import '../../features/settings/domain/usecases/about/delete_about_content_usecase.dart';
 import '../../features/settings/domain/usecases/account/get_user_email_usecase.dart';
 import '../../features/settings/domain/usecases/account/get_user_profile_usecase.dart';
 import '../../features/settings/domain/usecases/support/faq/add_faq_item_usecase.dart';
@@ -346,6 +351,7 @@ void _initStatisticsFeature() {
   sl.registerLazySingleton(() => GetStatisticsDashboardUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlannedTimeStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetCookingTimeStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetGroceryListStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetFoodAnalyticStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetCaloriesIntakeStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetDifficultyMealStatisticsUseCase(sl()));
@@ -361,6 +367,9 @@ void _initStatisticsFeature() {
   sl.registerLazySingleton(
     () => GetAdminDietaryPreferenceStatisticsUseCase(sl()),
   );
+  sl.registerLazySingleton(() => GetAdminGenderStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAdminUserUsageStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAdminHubRatingStatisticsUseCase(sl()));
 }
 
 void _initExploreFeature() {
@@ -868,6 +877,7 @@ void _initAboutFeature() {
   sl.registerLazySingleton(
     () => SaveAboutContentUseCase(sl()),
   ); // Changed from Update to Save
+  sl.registerLazySingleton(() => DeleteAboutContentUseCase(sl()));
 
   // --------------------------------------------------------------------------
   // NOTE: AboutViewerViewModel and AboutEditorViewModel are NOT registered here because:

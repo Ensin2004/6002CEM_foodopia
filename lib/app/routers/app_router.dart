@@ -10,7 +10,6 @@ import '../../features/auth/presentation/view/login_screen.dart';
 import '../../features/auth/presentation/view/signup_screen.dart';
 import '../../features/onboarding/presentation/view/onboarding_screen.dart';
 import '../../features/main/presentation/view/main_page.dart';
-import '../../features/notifications/presentation/view/notification_settings_page.dart';
 import '../../features/notifications/presentation/view/notifications_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_basic_info_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_ingredients_page.dart';
@@ -29,13 +28,17 @@ import '../../features/meal_plan/presentation/view/planning/add_meal_plan_page.d
 import '../../features/meal_plan/presentation/view/planning/generate_ai_meal_page.dart';
 import '../../features/statistics/presentation/view/statistics_page.dart';
 import '../../features/statistics/presentation/view/admin_dietary_preference_page.dart';
+import '../../features/statistics/presentation/view/admin_gender_page.dart';
+import '../../features/statistics/presentation/view/admin_hub_rating_page.dart';
 import '../../features/statistics/presentation/view/admin_meal_analytic_page.dart';
 import '../../features/statistics/presentation/view/admin_post_analytic_page.dart';
+import '../../features/statistics/presentation/view/admin_user_usage_page.dart';
 import '../../features/statistics/presentation/view/calories_intake_page.dart';
 import '../../features/statistics/presentation/view/calories_posted_page.dart';
 import '../../features/statistics/presentation/view/cooking_time_page.dart';
 import '../../features/statistics/presentation/view/difficulty_meal_page.dart';
 import '../../features/statistics/presentation/view/food_analytic_page.dart';
+import '../../features/statistics/presentation/view/grocery_list_statistics_page.dart';
 import '../../features/statistics/presentation/view/meal_plan_method_page.dart';
 import '../../features/statistics/presentation/view/meal_planned_time_page.dart';
 import '../../features/statistics/presentation/view/most_cooked_recipe_page.dart';
@@ -75,7 +78,6 @@ class AppRouter {
   static const String rateUs = '/rate-us';
   static const String helpCenter = '/help-center';
   static const String notifications = '/notifications';
-  static const String notificationSettings = '/notifications/settings';
   static const String addRecipe = '/recipes/add';
   static const String addRecipeBasicInfo = '/recipes/add/basic-info';
   static const String addRecipeIngredients = '/recipes/add/ingredients';
@@ -98,8 +100,12 @@ class AppRouter {
   static const String adminPostAnalytic = '/statistics/admin-post-analytic';
   static const String adminDietaryPreference =
       '/statistics/admin-dietary-preference';
+  static const String adminGender = '/statistics/admin-gender';
+  static const String adminUserUsage = '/statistics/admin-user-usage';
+  static const String adminHubRating = '/statistics/admin-hub-rating';
   static const String foodAnalytic = '/statistics/food-analytic';
   static const String cookingTime = '/statistics/cooking-time';
+  static const String groceryListStatistics = '/statistics/grocery-list';
   static const String caloriesIntake = '/statistics/calories-intake';
   static const String difficultyMeals = '/statistics/difficulty-meals';
   static const String mealPlanMethods = '/statistics/meal-plan-methods';
@@ -441,12 +447,6 @@ class AppRouter {
         builder: (context, state) => const NotificationsPage(),
       ),
 
-      GoRoute(
-        name: 'notificationSettings',
-        path: notificationSettings,
-        builder: (context, state) => const NotificationSettingsPage(),
-      ),
-
       /// Creates a go route instance.
       GoRoute(
         name: 'addRecipe',
@@ -721,6 +721,24 @@ class AppRouter {
       ),
 
       GoRoute(
+        name: 'adminGender',
+        path: adminGender,
+        builder: (context, state) => const AdminGenderPage(),
+      ),
+
+      GoRoute(
+        name: 'adminUserUsage',
+        path: adminUserUsage,
+        builder: (context, state) => const AdminUserUsagePage(),
+      ),
+
+      GoRoute(
+        name: 'adminHubRating',
+        path: adminHubRating,
+        builder: (context, state) => const AdminHubRatingPage(),
+      ),
+
+      GoRoute(
         name: 'foodAnalytic',
         path: foodAnalytic,
         builder: (context, state) => const FoodAnalyticPage(),
@@ -730,6 +748,12 @@ class AppRouter {
         name: 'cookingTime',
         path: cookingTime,
         builder: (context, state) => const CookingTimePage(),
+      ),
+
+      GoRoute(
+        name: 'groceryListStatistics',
+        path: groceryListStatistics,
+        builder: (context, state) => const GroceryListStatisticsPage(),
       ),
 
       GoRoute(

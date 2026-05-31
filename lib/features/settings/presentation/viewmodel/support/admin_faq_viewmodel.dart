@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
@@ -25,6 +26,7 @@ class AdminFaqViewModel extends ChangeNotifier {
   List<FaqItem> _filteredItems = [];
   String _sortOption = 'newest';
   String _searchTerm = '';
+  StreamSubscription? _faqSubscription;
 
   /// Creates a admin faq view model instance.
   AdminFaqViewModel({
@@ -33,25 +35,29 @@ class AdminFaqViewModel extends ChangeNotifier {
     required UpdateFaqItemUseCase updateFaqItemUseCase,
     required DeleteFaqItemUseCase deleteFaqItemUseCase,
     required UploadFaqImageUseCase uploadFaqImageUseCase,
-  })  : _getAdminFaqItemsUseCase = getAdminFaqItemsUseCase,
-        _addFaqItemUseCase = addFaqItemUseCase,
-        _updateFaqItemUseCase = updateFaqItemUseCase,
-        _deleteFaqItemUseCase = deleteFaqItemUseCase,
-        _uploadFaqImageUseCase = uploadFaqImageUseCase {
-    /// Loads data for the load items operation.
-    loadItems();
+  }) : _getAdminFaqItemsUseCase = getAdminFaqItemsUseCase,
+       _addFaqItemUseCase = addFaqItemUseCase,
+       _updateFaqItemUseCase = updateFaqItemUseCase,
+       _deleteFaqItemUseCase = deleteFaqItemUseCase,
+       _uploadFaqImageUseCase = uploadFaqImageUseCase {
+    watchItems();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+
   /// Handles the is saving operation.
   bool get isSaving => _isSaving;
+
   /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+
   /// Handles the filtered items operation.
   List<FaqItem> get filteredItems => _filteredItems;
+
   /// Handles the sort option operation.
   String get sortOption => _sortOption;
+
   /// Handles the search term operation.
   String get searchTerm => _searchTerm;
 
@@ -73,6 +79,24 @@ class AdminFaqViewModel extends ChangeNotifier {
     _applyFiltersAndSort();
     _isLoading = false;
     notifyListeners();
+  }
+
+  void watchItems() {
+    _isLoading = true;
+    notifyListeners();
+    _faqSubscription?.cancel();
+    _faqSubscription = _getAdminFaqItemsUseCase.watch().listen((result) {
+      if (result.isLeft()) {
+        _errorMessage = _getErrorMessage(result.left!);
+        _items = [];
+      } else {
+        _items = result.right!;
+        _errorMessage = null;
+      }
+      _applyFiltersAndSort();
+      _isLoading = false;
+      notifyListeners();
+    });
   }
 
   // Add item
@@ -99,8 +123,6 @@ class AdminFaqViewModel extends ChangeNotifier {
       return false;
     }
 
-    /// Loads data for the load items operation.
-    await loadItems();
     _isSaving = false;
     notifyListeners();
     return true;
@@ -136,8 +158,6 @@ class AdminFaqViewModel extends ChangeNotifier {
       return false;
     }
 
-    /// Loads data for the load items operation.
-    await loadItems();
     _isSaving = false;
     notifyListeners();
     return true;
@@ -157,8 +177,6 @@ class AdminFaqViewModel extends ChangeNotifier {
       return false;
     }
 
-    /// Loads data for the load items operation.
-    await loadItems();
     _isSaving = false;
     notifyListeners();
     return true;
@@ -224,5 +242,11 @@ class AdminFaqViewModel extends ChangeNotifier {
       return 'Network error. Please check your connection.';
     }
     return failure.message;
+  }
+
+  @override
+  void dispose() {
+    _faqSubscription?.cancel();
+    super.dispose();
   }
 }

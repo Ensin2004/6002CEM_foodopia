@@ -30,6 +30,20 @@ class FaqRepositoryImpl implements FaqRepository {
     }
   }
 
+  @override
+  Stream<Either<Failure, List<FaqItem>>> watchUserFaqItems() async* {
+    try {
+      await for (final snapshot in remoteDataSource.watchUserFaqItems()) {
+        final items = snapshot.docs
+            .map((doc) => FaqItemModel.fromFirestore(doc) as FaqItem)
+            .toList();
+        yield Right(items);
+      }
+    } catch (error) {
+      yield Left(ServerFailure(message: error.toString()));
+    }
+  }
+
   /// Loads data for the get admin faq items operation.
   @override
   Future<Either<Failure, List<FaqItem>>> getAdminFaqItems() async {
@@ -42,6 +56,20 @@ class FaqRepositoryImpl implements FaqRepository {
       return Right(items);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Stream<Either<Failure, List<FaqItem>>> watchAdminFaqItems() async* {
+    try {
+      await for (final snapshot in remoteDataSource.watchAdminFaqItems()) {
+        final items = snapshot.docs
+            .map((doc) => FaqItemModel.fromFirestore(doc) as FaqItem)
+            .toList();
+        yield Right(items);
+      }
+    } catch (error) {
+      yield Left(ServerFailure(message: error.toString()));
     }
   }
 

@@ -62,6 +62,7 @@ class FoodAnalyticChart {
 }
 
 class FoodAnalyticBarItem {
+  final String? recipeId;
   final String label;
   final int value;
   final double percent;
@@ -71,6 +72,7 @@ class FoodAnalyticBarItem {
   final List<FoodAnalyticDetailItem> details;
 
   const FoodAnalyticBarItem({
+    this.recipeId,
     required this.label,
     required this.value,
     required this.percent,
@@ -82,12 +84,14 @@ class FoodAnalyticBarItem {
 }
 
 class FoodAnalyticDetailItem {
+  final String? recipeId;
   final String name;
   final int quantity;
   final IconData icon;
   final String? imageUrl;
 
   const FoodAnalyticDetailItem({
+    this.recipeId,
     required this.name,
     required this.quantity,
     required this.icon,

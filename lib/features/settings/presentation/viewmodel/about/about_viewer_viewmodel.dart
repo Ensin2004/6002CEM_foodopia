@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
@@ -14,25 +16,28 @@ class AboutViewerViewModel extends ChangeNotifier {
   bool _isLoading = true;
   String? _errorMessage;
   AboutContent? _content;
+  StreamSubscription? _contentSubscription;
 
   /// Creates a about viewer view model instance.
   AboutViewerViewModel({
     required String documentId,
     required String title,
     required GetAboutContentUseCase getAboutContentUseCase,
-  })  : _documentId = documentId,
-        _title = title,
-        _getAboutContentUseCase = getAboutContentUseCase {
-    /// Loads data for the load content operation.
-    loadContent();
+  }) : _documentId = documentId,
+       _title = title,
+       _getAboutContentUseCase = getAboutContentUseCase {
+    watchContent();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+
   /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+
   /// Handles the content operation.
   AboutContent? get content => _content;
+
   /// Handles the title operation.
   String get title => _title;
 
@@ -70,6 +75,30 @@ class AboutViewerViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void watchContent() {
+    _isLoading = true;
+    notifyListeners();
+    _contentSubscription?.cancel();
+    _contentSubscription = _getAboutContentUseCase.watch(_documentId).listen((
+      result,
+    ) {
+      if (result.isLeft()) {
+        _errorMessage = _getErrorMessage(result.left!);
+      } else {
+        _content = result.right;
+        _errorMessage = null;
+      }
+      _isLoading = false;
+      notifyListeners();
+    });
+  }
+
+  @override
+  void dispose() {
+    _contentSubscription?.cancel();
+    super.dispose();
   }
 
   /// Handles the get error message operation.
