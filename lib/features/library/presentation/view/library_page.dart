@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -17,6 +18,8 @@ import '../../domain/entities/library_recipe.dart';
 import '../viewmodel/library_viewmodel.dart';
 import '../widgets/library_empty_state.dart';
 import '../widgets/library_recipe_card.dart';
+
+const int _libraryDescriptionWordLimit = 20;
 
 class LibraryPage extends StatelessWidget {
   final bool showAppBar;
@@ -271,91 +274,36 @@ class _LibraryContent extends StatelessWidget {
 
     return SafeArea(
       top: false,
-      child: RefreshIndicator(
-        onRefresh: viewModel.loadLibrary,
-        child: NestedScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          headerSliverBuilder: (context, innerBoxIsScrolled) {
-            return [
-              SliverToBoxAdapter(
-                child: _LibraryProfileHeader(
-                  profile: profile,
-                  postCount: viewModel.postCount,
-                  onEditDescriptionTap: onEditDescriptionTap,
-                  onFollowersTap: onFollowersTap,
-                  onFollowingTap: onFollowingTap,
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: _LibraryTabs(tabController: tabController),
-              ),
-            ];
-          },
-          body: TabBarView(
-            controller: tabController,
-            children: LibraryRecipeTab.values.map((tab) {
-              final recipes = _focusedFirst(viewModel.visibleRecipesFor(tab));
-              return CustomScrollView(
-                key: PageStorageKey(tab),
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  if (viewModel.shouldShowEmptyFor(tab))
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: LibraryEmptyState(onExploreNow: onExploreNow),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                      sliver: SliverGrid(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount:
-                              MediaQuery.sizeOf(context).width >= 720 ? 3 : 2,
-                          crossAxisSpacing: 14,
-                          mainAxisSpacing: 16,
-                          mainAxisExtent: 282,
-                        ),
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final recipe = recipes[index];
-                          final disabled =
-                              mealPlanSelection?.existingRecipeIds.contains(
-                                recipe.id,
-                              ) ??
-                              false;
-                          return LibraryRecipeCard(
-                            recipe: recipe,
-                            isHighlighted: recipe.id == focusedRecipeId,
-                            disabled: disabled,
-                            onComingSoonTap: onComingSoonTap,
-                            onFavouriteTap: () => onFavouriteTap(recipe.id),
-                            onImageLongPress: () => showRecipeMediaDialog(
-                              context,
-                              recipe.imagePath,
-                            ),
-                            onTap: () async {
-                              await context.push(
-                                AppRouter.libraryRecipeDetail,
-                                extra: LibraryRecipeDetailArgs(
-                                  recipeId: recipe.id,
-                                  isSelfPublished: recipe.isSelfPublished,
-                                  isPublished: recipe.isPublished,
-                                  mealPlanSelection: mealPlanSelection,
-                                ),
-                              );
-                              if (!context.mounted) return;
-                              await viewModel.loadLibrary();
-                            },
-                          );
-                        }, childCount: recipes.length),
-                      ),
-                    ),
-                ],
-              );
-            }).toList(),
+      child: Column(
+        children: [
+          _LibraryProfileHeader(
+            profile: profile,
+            postCount: viewModel.postCount,
+            onEditDescriptionTap: onEditDescriptionTap,
+            onFollowersTap: onFollowersTap,
+            onFollowingTap: onFollowingTap,
           ),
-        ),
+          _LibraryTabs(tabController: tabController),
+          Expanded(
+            child: TabBarView(
+              controller: tabController,
+              children: LibraryRecipeTab.values.map((tab) {
+                return _LibraryRecipeResults(
+                  key: PageStorageKey(tab),
+                  tab: tab,
+                  recipes: _focusedFirst(viewModel.visibleRecipesFor(tab)),
+                  isEmpty: viewModel.shouldShowEmptyFor(tab),
+                  onRefresh: viewModel.loadLibrary,
+                  onExploreNow: onExploreNow,
+                  focusedRecipeId: focusedRecipeId,
+                  mealPlanSelection: mealPlanSelection,
+                  onComingSoonTap: onComingSoonTap,
+                  onFavouriteTap: onFavouriteTap,
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -372,6 +320,94 @@ class _LibraryContent extends StatelessWidget {
       ...recipes.take(focusedIndex),
       ...recipes.skip(focusedIndex + 1),
     ];
+  }
+}
+
+class _LibraryRecipeResults extends StatelessWidget {
+  final LibraryRecipeTab tab;
+  final List<LibraryRecipe> recipes;
+  final bool isEmpty;
+  final Future<void> Function() onRefresh;
+  final VoidCallback onExploreNow;
+  final String? focusedRecipeId;
+  final MealPlanSelectionArgs? mealPlanSelection;
+  final VoidCallback onComingSoonTap;
+  final ValueChanged<String> onFavouriteTap;
+
+  const _LibraryRecipeResults({
+    super.key,
+    required this.tab,
+    required this.recipes,
+    required this.isEmpty,
+    required this.onRefresh,
+    required this.onExploreNow,
+    required this.focusedRecipeId,
+    required this.mealPlanSelection,
+    required this.onComingSoonTap,
+    required this.onFavouriteTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: CustomScrollView(
+        key: PageStorageKey(tab),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: LibraryEmptyState(onExploreNow: onExploreNow),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+              sliver: SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: MediaQuery.sizeOf(context).width >= 720
+                      ? 3
+                      : 2,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 16,
+                  mainAxisExtent: 282,
+                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final recipe = recipes[index];
+                  final disabled =
+                      mealPlanSelection?.existingRecipeIds.contains(
+                        recipe.id,
+                      ) ??
+                      false;
+                  return LibraryRecipeCard(
+                    recipe: recipe,
+                    isHighlighted: recipe.id == focusedRecipeId,
+                    disabled: disabled,
+                    onComingSoonTap: onComingSoonTap,
+                    onFavouriteTap: () => onFavouriteTap(recipe.id),
+                    onImageLongPress: () =>
+                        showRecipeMediaDialog(context, recipe.imagePath),
+                    onTap: () async {
+                      await context.push(
+                        AppRouter.libraryRecipeDetail,
+                        extra: LibraryRecipeDetailArgs(
+                          recipeId: recipe.id,
+                          isSelfPublished: recipe.isSelfPublished,
+                          isPublished: recipe.isPublished,
+                          mealPlanSelection: mealPlanSelection,
+                        ),
+                      );
+                      if (!context.mounted) return;
+                      await onRefresh();
+                    },
+                  );
+                }, childCount: recipes.length),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 
@@ -500,24 +536,38 @@ class _EditLibraryDescriptionSheet extends StatefulWidget {
 class _EditLibraryDescriptionSheetState
     extends State<_EditLibraryDescriptionSheet> {
   late final TextEditingController _bioController;
+  late int _wordCount;
 
   @override
   void initState() {
     super.initState();
-    _bioController = TextEditingController(text: widget.profile.bio);
+    final initialBio = _limitWords(
+      widget.profile.bio,
+      _libraryDescriptionWordLimit,
+    );
+    _bioController = TextEditingController(text: initialBio);
+    _wordCount = _countWords(initialBio);
+    _bioController.addListener(_updateWordCount);
   }
 
   @override
   void dispose() {
+    _bioController.removeListener(_updateWordCount);
     _bioController.dispose();
     super.dispose();
+  }
+
+  void _updateWordCount() {
+    final nextCount = _countWords(_bioController.text);
+    if (nextCount == _wordCount) return;
+    setState(() => _wordCount = nextCount);
   }
 
   Future<void> _save() async {
     final viewModel = context.read<LibraryViewModel>();
     final success = await viewModel.updateProfile(
       name: widget.profile.name,
-      bio: _bioController.text,
+      bio: _limitWords(_bioController.text, _libraryDescriptionWordLimit),
     );
 
     if (!mounted) return;
@@ -567,12 +617,28 @@ class _EditLibraryDescriptionSheetState
               TextField(
                 controller: _bioController,
                 enabled: !viewModel.isSavingProfile,
+                inputFormatters: const [
+                  _WordLimitTextInputFormatter(_libraryDescriptionWordLimit),
+                ],
                 minLines: 3,
                 maxLines: 5,
                 textInputAction: TextInputAction.newline,
                 decoration: const InputDecoration(
                   labelText: 'Description',
                   border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '$_wordCount/$_libraryDescriptionWordLimit',
+                  style: context.text.bodySmall?.copyWith(
+                    color: _wordCount >= _libraryDescriptionWordLimit
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 18),
@@ -592,6 +658,40 @@ class _EditLibraryDescriptionSheetState
       ),
     );
   }
+}
+
+class _WordLimitTextInputFormatter extends TextInputFormatter {
+  final int maxWords;
+
+  const _WordLimitTextInputFormatter(this.maxWords);
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final limitedText = _limitWords(newValue.text, maxWords);
+    if (limitedText == newValue.text) return newValue;
+
+    final selectionOffset = newValue.selection.end;
+    final nextOffset = selectionOffset > limitedText.length
+        ? limitedText.length
+        : selectionOffset;
+    return TextEditingValue(
+      text: limitedText,
+      selection: TextSelection.collapsed(offset: nextOffset),
+    );
+  }
+}
+
+int _countWords(String value) {
+  return RegExp(r'\S+').allMatches(value.trim()).length;
+}
+
+String _limitWords(String value, int maxWords) {
+  final matches = RegExp(r'\S+').allMatches(value).toList();
+  if (matches.length <= maxWords) return value;
+  return value.substring(0, matches[maxWords - 1].end);
 }
 
 class _ProfileAvatar extends StatelessWidget {
@@ -693,7 +793,6 @@ class _LibraryTabs extends StatelessWidget {
       controller: tabController,
       tabs: LibraryRecipeTab.values.map(_tabLabel).toList(),
       isScrollable: false,
-      margin: const EdgeInsets.only(top: 18),
     );
   }
 

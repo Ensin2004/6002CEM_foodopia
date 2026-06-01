@@ -541,7 +541,9 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     final recipe = _recipe;
     if (recipe == null) return;
 
-    final nextCount = recipe.ratingCount + 1;
+    final nextCount = recipe.hasRatedByCurrentUser
+        ? recipe.ratingCount
+        : recipe.ratingCount + 1;
     final nextAverage =
         ((recipe.rating * recipe.ratingCount) + rating) / nextCount;
     final review = ExploreReview(
@@ -557,6 +559,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
       recipe,
       rating: nextAverage,
       ratingCount: nextCount,
+      hasRatedByCurrentUser: true,
       community: _copyCommunity(
         recipe.community,
         ratingBreakdown: _ratingBreakdown(reviews),
@@ -739,6 +742,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     int? commentCount,
     bool? isFollowingAuthor,
     bool? isFavourite,
+    bool? hasRatedByCurrentUser,
     ExploreCommunity? community,
   }) {
     return ExploreRecipe(
@@ -768,6 +772,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
       isFollowingAuthor: isFollowingAuthor ?? recipe.isFollowingAuthor,
       isFavourite: isFavourite ?? recipe.isFavourite,
       isCreatedByCurrentUser: recipe.isCreatedByCurrentUser,
+      hasRatedByCurrentUser:
+          hasRatedByCurrentUser ?? recipe.hasRatedByCurrentUser,
       ingredients: recipe.ingredients,
       instructionSections: recipe.instructionSections,
       nutrition: recipe.nutrition,

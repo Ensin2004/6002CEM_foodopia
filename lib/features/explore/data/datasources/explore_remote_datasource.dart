@@ -293,6 +293,10 @@ class ExploreRemoteDataSource {
             currentRecipeId: doc.id,
           )
         : const <ExploreRecipeSummary>[];
+    final hasRatedByCurrentUser = includeCommunity && currentUid.isNotEmpty
+        ? (await doc.reference.collection('ratings').doc(currentUid).get())
+              .exists
+        : false;
     final ratingCount = _intValue(data['ratingCount']);
     final publishedAt = _dateTime(data['updatedAt'] ?? data['createdAt']);
 
@@ -329,6 +333,7 @@ class ExploreRemoteDataSource {
       isFollowingAuthor: isFollowingAuthor,
       isFavourite: isFavourite,
       isCreatedByCurrentUser: isCurrentUserCreator,
+      hasRatedByCurrentUser: hasRatedByCurrentUser,
       ingredients: ingredients,
       instructionSections: instructions,
       nutrition: nutrition,
