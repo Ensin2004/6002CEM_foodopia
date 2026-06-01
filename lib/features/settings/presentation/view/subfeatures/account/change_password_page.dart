@@ -294,9 +294,12 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
               obscureText: !isVisible,
               validator: validator,
               onChanged: onChanged,
+              textAlignVertical: TextAlignVertical.center,
               decoration: InputDecoration(
                 border: InputBorder.none,
                 hintText: 'Enter password',
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 suffixIcon: IconButton(
                   icon: Icon(
                     isVisible ? Icons.visibility : Icons.visibility_off,

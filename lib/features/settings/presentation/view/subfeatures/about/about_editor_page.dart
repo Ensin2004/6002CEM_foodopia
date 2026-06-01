@@ -194,6 +194,10 @@ class _AboutEditorPageViewState extends State<_AboutEditorPageView> {
                         ? null
                         : () => _saveContent(context, viewModel),
                     style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
