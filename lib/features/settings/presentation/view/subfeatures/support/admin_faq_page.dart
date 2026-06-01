@@ -54,11 +54,11 @@ class _AdminFaqPageView extends StatelessWidget {
       body: viewModel.isLoading
           ? const LoadingDialog()
           : Column(
-        children: [
-          _buildSearchAndSortRow(viewModel),
-          _buildContentList(viewModel),
-        ],
-      ),
+              children: [
+                _buildSearchAndSortRow(viewModel),
+                _buildContentList(viewModel),
+              ],
+            ),
       floatingActionButton: _buildAddButton(context, viewModel),
     );
   }
@@ -90,8 +90,10 @@ class _AdminFaqPageView extends StatelessWidget {
               ),
             ),
           ),
+
           /// Creates a sized box instance.
           const SizedBox(width: 12),
+
           /// Creates a sized box instance.
           SizedBox(
             height: 48,
@@ -107,10 +109,13 @@ class _AdminFaqPageView extends StatelessWidget {
                 items: const [
                   /// Creates a dropdown menu item instance.
                   DropdownMenuItem(value: 'newest', child: Text('Newest')),
+
                   /// Creates a dropdown menu item instance.
                   DropdownMenuItem(value: 'oldest', child: Text('Oldest')),
+
                   /// Creates a dropdown menu item instance.
                   DropdownMenuItem(value: 'a-z', child: Text('A-Z')),
+
                   /// Creates a dropdown menu item instance.
                   DropdownMenuItem(value: 'z-a', child: Text('Z-A')),
                 ],
@@ -139,6 +144,7 @@ class _AdminFaqPageView extends StatelessWidget {
           itemCount: viewModel.filteredItems.length,
           itemBuilder: (context, index) {
             final item = viewModel.filteredItems[index];
+
             /// Handles the build faq item operation.
             return _buildFaqItem(context, viewModel, item);
           },
@@ -148,7 +154,11 @@ class _AdminFaqPageView extends StatelessWidget {
   }
 
   /// Handles the build faq item operation.
-  Widget _buildFaqItem(BuildContext context, AdminFaqViewModel viewModel, FaqItem item) {
+  Widget _buildFaqItem(
+    BuildContext context,
+    AdminFaqViewModel viewModel,
+    FaqItem item,
+  ) {
     final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(item.createdAt);
 
     /// Handles the card operation.
@@ -164,14 +174,22 @@ class _AdminFaqPageView extends StatelessWidget {
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.all(12),
-          leading: _buildItemThumbnail(context, item.questionImageUrl),
+          leading: Icon(
+            Icons.question_answer,
+            color: Theme.of(context).colorScheme.primary,
+          ),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               /// Creates a text instance.
-              Text(formattedDate, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              Text(
+                formattedDate,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+
               /// Creates a sized box instance.
               const SizedBox(height: 4),
+
               /// Creates a text instance.
               Text(item.question, maxLines: 2, overflow: TextOverflow.ellipsis),
             ],
@@ -185,12 +203,10 @@ class _AdminFaqPageView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   /// Creates a text instance.
-                  Text(item.answer, style: TextStyle(fontSize: 14, color: Colors.grey[800])),
-                  if (item.answerImageUrl != null) ...[
-                    /// Creates a sized box instance.
-                    const SizedBox(height: 8),
-                    _buildAnswerImage(context, item.answerImageUrl!),
-                  ],
+                  Text(
+                    item.answer,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[800]),
+                  ),
                 ],
               ),
             ),
@@ -200,34 +216,12 @@ class _AdminFaqPageView extends StatelessWidget {
     );
   }
 
-  /// Handles the build item thumbnail operation.
-  Widget _buildItemThumbnail(BuildContext context, String? imageUrl) {
-    /// Handles the gesture detector operation.
-    return GestureDetector(
-      onTap: () => _showFullImage(context, imageUrl),
-      child: imageUrl != null
-          ? ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(imageUrl, width: 50, height: 50, fit: BoxFit.contain),
-      )
-          : Icon(Icons.image, size: 50, color: Colors.grey[400]),
-    );
-  }
-
-  /// Handles the build answer image operation.
-  Widget _buildAnswerImage(BuildContext context, String imageUrl) {
-    /// Handles the gesture detector operation.
-    return GestureDetector(
-      onTap: () => _showFullImage(context, imageUrl),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(imageUrl, height: 120, width: double.infinity, fit: BoxFit.contain),
-      ),
-    );
-  }
-
   /// Handles the build item menu operation.
-  Widget _buildItemMenu(BuildContext context, AdminFaqViewModel viewModel, FaqItem item) {
+  Widget _buildItemMenu(
+    BuildContext context,
+    AdminFaqViewModel viewModel,
+    FaqItem item,
+  ) {
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert),
       onSelected: (value) async {
@@ -236,22 +230,23 @@ class _AdminFaqPageView extends StatelessWidget {
             AppRouter.faqForm,
             extra: FaqFormArgs(
               item: item,
-              onSave: ({
-                required String question,
-                required String answer,
-                File? questionImageFile,
-                File? answerImageFile,
-              }) async {
-                return await viewModel.updateItem(
-                  id: item.id,
-                  question: question,
-                  answer: answer,
-                  existingQuestionImageUrl: item.questionImageUrl,
-                  existingAnswerImageUrl: item.answerImageUrl,
-                  newQuestionImageFile: questionImageFile,
-                  newAnswerImageFile: answerImageFile,
-                );
-              },
+              onSave:
+                  ({
+                    required String question,
+                    required String answer,
+                    File? questionImageFile,
+                    File? answerImageFile,
+                  }) async {
+                    return await viewModel.updateItem(
+                      id: item.id,
+                      question: question,
+                      answer: answer,
+                      existingQuestionImageUrl: null,
+                      existingAnswerImageUrl: null,
+                      newQuestionImageFile: questionImageFile,
+                      newAnswerImageFile: answerImageFile,
+                    );
+                  },
             ),
           );
           if (result == true && context.mounted) {
@@ -264,6 +259,7 @@ class _AdminFaqPageView extends StatelessWidget {
       itemBuilder: (context) => const [
         /// Creates a popup menu item instance.
         PopupMenuItem(value: 'edit', child: Text('Edit')),
+
         /// Creates a popup menu item instance.
         PopupMenuItem(value: 'delete', child: Text('Delete')),
       ],
@@ -271,7 +267,11 @@ class _AdminFaqPageView extends StatelessWidget {
   }
 
   /// Handles the show delete dialog operation.
-  void _showDeleteDialog(BuildContext context, AdminFaqViewModel viewModel, FaqItem item) {
+  void _showDeleteDialog(
+    BuildContext context,
+    AdminFaqViewModel viewModel,
+    FaqItem item,
+  ) {
     /// Displays the show dialog flow.
     showDialog(
       context: context,
@@ -280,7 +280,11 @@ class _AdminFaqPageView extends StatelessWidget {
         content: Text('Are you sure you want to delete this FAQ?'),
         actions: [
           /// Creates a text button instance.
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+
           /// Creates a text button instance.
           TextButton(
             onPressed: () async {
@@ -295,15 +299,6 @@ class _AdminFaqPageView extends StatelessWidget {
     );
   }
 
-  /// Handles the show full image operation.
-  void _showFullImage(BuildContext context, String? imageUrl) {
-    if (imageUrl == null) return;
-    context.push(
-      AppRouter.imagePreview,
-      extra: ImagePreviewArgs(imageUrl: imageUrl),
-    );
-  }
-
   // Fix: Uses named parameters in callback
   Widget _buildAddButton(BuildContext context, AdminFaqViewModel viewModel) {
     /// Handles the floating action button operation.
@@ -312,19 +307,20 @@ class _AdminFaqPageView extends StatelessWidget {
         final result = await context.push(
           AppRouter.faqForm,
           extra: FaqFormArgs(
-            onSave: ({
-              required String question,
-              required String answer,
-              File? questionImageFile,
-              File? answerImageFile,
-            }) async {
-              return await viewModel.addItem(
-                question: question,
-                answer: answer,
-                questionImageFile: questionImageFile,
-                answerImageFile: answerImageFile,
-              );
-            },
+            onSave:
+                ({
+                  required String question,
+                  required String answer,
+                  File? questionImageFile,
+                  File? answerImageFile,
+                }) async {
+                  return await viewModel.addItem(
+                    question: question,
+                    answer: answer,
+                    questionImageFile: questionImageFile,
+                    answerImageFile: answerImageFile,
+                  );
+                },
           ),
         );
         if (result == true && context.mounted) {

@@ -852,6 +852,7 @@ class AppRouter {
           return IssueDetailPage(
             issue: args.issue,
             userEmail: args.userEmail,
+            userName: args.userName,
             isAdmin: args.isAdmin,
             onStatusChanged: args.onStatusChanged,
           );

@@ -6,6 +6,8 @@ class HelpCenterIssue {
   final String? imageUrl;
   final bool replied;
   final DateTime timestamp;
+  final String adminReply;
+  final DateTime? repliedAt;
 
   /// Creates a help center issue instance.
   const HelpCenterIssue({
@@ -15,6 +17,8 @@ class HelpCenterIssue {
     this.imageUrl,
     required this.replied,
     required this.timestamp,
+    this.adminReply = '',
+    this.repliedAt,
   });
 
   /// Handles the is replied operation.
@@ -31,6 +35,8 @@ class HelpCenterIssue {
     String? imageUrl,
     bool? replied,
     DateTime? timestamp,
+    String? adminReply,
+    DateTime? repliedAt,
   }) {
     /// Handles the help center issue operation.
     return HelpCenterIssue(
@@ -40,6 +46,8 @@ class HelpCenterIssue {
       imageUrl: imageUrl ?? this.imageUrl,
       replied: replied ?? this.replied,
       timestamp: timestamp ?? this.timestamp,
+      adminReply: adminReply ?? this.adminReply,
+      repliedAt: repliedAt ?? this.repliedAt,
     );
   }
 }

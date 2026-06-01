@@ -172,7 +172,7 @@ class FcmNotificationService {
   }) async {
     if (uid.isEmpty) return true;
     final isAdmin = await _isAdmin(uid);
-    const adminTypes = {'newUser', 'systemRating'};
+    const adminTypes = {'newUser', 'systemRating', 'newHelpTicket'};
     if (isAdmin && !adminTypes.contains(type)) return false;
     if (!isAdmin && adminTypes.contains(type)) return false;
 
@@ -229,6 +229,10 @@ class FcmNotificationService {
         return 'new_user_notification';
       case 'systemRating':
         return 'system_rating_notification';
+      case 'newHelpTicket':
+        return 'new_help_ticket_notification';
+      case 'helpReply':
+        return 'help_center_reply_notification';
       default:
         return null;
     }

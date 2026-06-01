@@ -38,6 +38,11 @@ class AuthRemoteDataSource {
       'title': 'New Like Notification',
       'description': 'Receive a notification when someone likes your comment',
     },
+    {
+      'id': 'help_center_reply_notification',
+      'title': 'Help Center Reply Notification',
+      'description': 'Receive a notification when admin replies your ticket',
+    },
   ];
 
   final firebase_auth.FirebaseAuth _auth;

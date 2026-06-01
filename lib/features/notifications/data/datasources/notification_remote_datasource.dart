@@ -43,6 +43,12 @@ class NotificationRemoteDataSource {
       description: 'Receive a notification when someone likes your comment',
       enabled: true,
     ),
+    NotificationPreference(
+      id: 'help_center_reply_notification',
+      title: 'Help Center Reply Notification',
+      description: 'Receive a notification when admin replies your ticket',
+      enabled: true,
+    ),
   ];
 
   static const List<NotificationPreference> adminDefaultPreferences = [
@@ -56,6 +62,12 @@ class NotificationRemoteDataSource {
       id: 'system_rating_notification',
       title: 'System Rating Notification',
       description: 'Receive a notification when someone rates the system',
+      enabled: true,
+    ),
+    NotificationPreference(
+      id: 'new_help_ticket_notification',
+      title: 'New Help Ticket Notification',
+      description: 'Receive a notification when user submits help ticket',
       enabled: true,
     ),
   ];
@@ -185,7 +197,7 @@ class NotificationRemoteDataSource {
   }
 
   bool _isAllowedType(String? type, bool isAdmin) {
-    const adminTypes = {'newUser', 'systemRating'};
+    const adminTypes = {'newUser', 'systemRating', 'newHelpTicket'};
     if (isAdmin) return adminTypes.contains(type);
     return !adminTypes.contains(type);
   }
