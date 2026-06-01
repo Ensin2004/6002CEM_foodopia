@@ -351,6 +351,7 @@ class HelpCenterArgs {
 class IssueDetailArgs {
   final HelpCenterIssue issue;
   final String? userEmail;
+  final String? userName;
   final bool isAdmin;
 
   /// Handles the function operation.
@@ -360,6 +361,7 @@ class IssueDetailArgs {
   const IssueDetailArgs({
     required this.issue,
     this.userEmail,
+    this.userName,
     this.isAdmin = false,
     this.onStatusChanged,
   });

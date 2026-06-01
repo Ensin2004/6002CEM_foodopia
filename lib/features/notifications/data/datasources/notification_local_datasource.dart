@@ -67,6 +67,13 @@ class NotificationLocalDataSource {
                 'Receive a notification when someone likes your comment',
             enabled: false,
           ),
+          NotificationPreference(
+            id: 'help_center_reply_notification',
+            title: 'Help Center Reply Notification',
+            description:
+                'Receive a notification when admin replies your ticket',
+            enabled: false,
+          ),
         ]
         .map(
           (item) => item.copyWith(

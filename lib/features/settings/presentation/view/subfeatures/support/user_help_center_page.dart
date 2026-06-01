@@ -159,22 +159,29 @@ class _UserHelpCenterPageView extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              /// Creates a expanded instance.
+              if (issue.imageUrl != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: Image.network(
+                    issue.imageUrl!,
+                    width: 58,
+                    height: 58,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    /// Creates a text instance.
                     Text(
-                      issue.message,
-                      maxLines: 2,
+                      'Ticket ID: ${issue.id}',
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-
-                    /// Creates a sized box instance.
-                    const SizedBox(height: 8),
-
-                    /// Creates a text instance.
+                    const SizedBox(height: 6),
                     Text(
                       formattedDate,
                       style: TextStyle(
@@ -182,28 +189,16 @@ class _UserHelpCenterPageView extends StatelessWidget {
                         fontSize: 12,
                       ),
                     ),
-
-                    /// Creates a sized box instance.
                     const SizedBox(height: 4),
                     _buildStatusBadge(issue.isReplied),
                   ],
                 ),
               ),
-              if (issue.imageUrl != null) ...[
-                /// Creates a sized box instance.
-                const SizedBox(width: 8),
-
-                /// Creates a clip rrect instance.
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: Image.network(
-                    issue.imageUrl!,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ],
+              IconButton(
+                tooltip: 'View',
+                icon: const Icon(Icons.visibility_outlined),
+                onPressed: () => _navigateToIssueDetail(context, issue),
+              ),
             ],
           ),
         ),

@@ -104,6 +104,10 @@ class NotificationTile extends StatelessWidget {
         return Icons.person_add_alt_1_outlined;
       case AppNotificationType.systemRating:
         return Icons.star_rate_outlined;
+      case AppNotificationType.newHelpTicket:
+        return Icons.support_agent_outlined;
+      case AppNotificationType.helpReply:
+        return Icons.mark_chat_read_outlined;
       case AppNotificationType.planReminder:
         return Icons.schedule_outlined;
     }

@@ -14,6 +14,8 @@ class HelpCenterIssueModel extends HelpCenterIssue {
     super.imageUrl,
     required super.replied,
     required super.timestamp,
+    super.adminReply,
+    super.repliedAt,
   });
 
   /// Creates a help center issue model instance.
@@ -24,6 +26,7 @@ class HelpCenterIssueModel extends HelpCenterIssue {
         ? status == 'replied' || status == 'closed'
         : data['replied'] as bool? ?? false;
     final createdAt = data['createdAt'] ?? data['timestamp'];
+    final repliedAt = data['repliedAt'];
 
     /// Handles the help center issue model operation.
     return HelpCenterIssueModel(
@@ -33,6 +36,8 @@ class HelpCenterIssueModel extends HelpCenterIssue {
       imageUrl: data['imageUrl'] as String?,
       replied: replied,
       timestamp: (createdAt as Timestamp?)?.toDate() ?? DateTime.now(),
+      adminReply: data['adminReply'] as String? ?? '',
+      repliedAt: (repliedAt as Timestamp?)?.toDate(),
     );
   }
 
@@ -43,9 +48,9 @@ class HelpCenterIssueModel extends HelpCenterIssue {
       'message': message,
       if (imageUrl != null) 'imageUrl': imageUrl,
       'status': replied ? 'replied' : 'open',
-      'adminReply': '',
+      'adminReply': adminReply,
       'repliedBy': '',
-      'repliedAt': null,
+      'repliedAt': repliedAt == null ? null : Timestamp.fromDate(repliedAt!),
       'createdAt': Timestamp.fromDate(timestamp),
       'updatedAt': FieldValue.serverTimestamp(),
     };

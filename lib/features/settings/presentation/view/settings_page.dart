@@ -243,6 +243,10 @@ class _SettingsPageView extends StatelessWidget {
         return Icons.person_add_alt_1_outlined;
       case 'system_rating_notification':
         return Icons.star_rate_outlined;
+      case 'new_help_ticket_notification':
+        return Icons.support_agent_outlined;
+      case 'help_center_reply_notification':
+        return Icons.mark_chat_read_outlined;
       default:
         return Icons.notifications_none;
     }
