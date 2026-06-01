@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:dartz/dartz.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/rating.dart';
 import '../../domain/repositories/rating_repository.dart';
@@ -75,10 +76,12 @@ class RatingRepositoryImpl implements RatingRepository {
       final profileData = profile.data() as Map<String, dynamic>?;
       final userName = profileData?['name'] as String? ?? '';
 
-      await remoteDataSource.saveRating(userId, {
-        ...rating.toJson(),
-        'userName': userName,
-      });
+      final ratingData = {...rating.toJson(), 'userName': userName};
+      if (finalImageUrl == null) {
+        ratingData['imageUrl'] = FieldValue.delete();
+      }
+
+      await remoteDataSource.saveRating(userId, ratingData);
       return const Right(null);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));

@@ -7,6 +7,8 @@ import '../../features/recipe/domain/entities/add_recipe_ingredient.dart';
 import '../../features/recipe/domain/entities/add_recipe_instruction.dart';
 import '../../features/settings/domain/entities/faq_item.dart';
 import '../../features/settings/domain/entities/help_center_issue.dart';
+import '../../features/settings/domain/entities/rating.dart';
+import '../../features/settings/domain/entities/user_profile.dart';
 
 typedef FaqSaveCallback =
     Future<bool> Function({
@@ -339,6 +341,23 @@ class FaqArgs {
   const FaqArgs({required this.isAdmin});
 }
 
+/// Typed arguments for rating route
+class RateUsArgs {
+  final bool isAdmin;
+
+  /// Creates a rate us args instance.
+  const RateUsArgs({required this.isAdmin});
+}
+
+/// Typed arguments for rating detail route
+class RatingDetailArgs {
+  final RatingEntity rating;
+  final UserProfile? userProfile;
+
+  /// Creates a rating detail args instance.
+  const RatingDetailArgs({required this.rating, this.userProfile});
+}
+
 /// Typed arguments for help center route
 class HelpCenterArgs {
   final bool isAdmin;
@@ -351,6 +370,7 @@ class HelpCenterArgs {
 class IssueDetailArgs {
   final HelpCenterIssue issue;
   final String? userEmail;
+  final String? userName;
   final bool isAdmin;
 
   /// Handles the function operation.
@@ -360,6 +380,7 @@ class IssueDetailArgs {
   const IssueDetailArgs({
     required this.issue,
     this.userEmail,
+    this.userName,
     this.isAdmin = false,
     this.onStatusChanged,
   });

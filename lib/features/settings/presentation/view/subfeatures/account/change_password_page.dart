@@ -42,6 +42,7 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  String? _newPasswordError;
 
   /// Releases resources before widget removal.
   @override
@@ -180,11 +181,24 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
             controller: _newPasswordController,
             isVisible: viewModel.showNewPassword,
             onToggle: viewModel.toggleNewPasswordVisibility,
-            validator: (value) => viewModel.validateNewPassword(
-              value,
-              currentPassword: _currentPasswordController.text,
-            ),
+            validator: (_) => null,
+            onChanged: (value) {
+              setState(() {
+                _newPasswordError = viewModel.validateNewPassword(
+                  value,
+                  currentPassword: _currentPasswordController.text,
+                );
+              });
+            },
           ),
+          if (_newPasswordError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 36),
+              child: Text(
+                _newPasswordError!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
           if (password.isNotEmpty)
             /// Creates a padding instance.
             Padding(
@@ -253,6 +267,7 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
     required TextEditingController controller,
     required bool isVisible,
     required VoidCallback onToggle,
+    ValueChanged<String>? onChanged,
 
     /// Handles the function operation.
     required String? Function(String?)? validator,
@@ -278,9 +293,13 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
               controller: controller,
               obscureText: !isVisible,
               validator: validator,
+              onChanged: onChanged,
+              textAlignVertical: TextAlignVertical.center,
               decoration: InputDecoration(
                 border: InputBorder.none,
                 hintText: 'Enter password',
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 suffixIcon: IconButton(
                   icon: Icon(
                     isVisible ? Icons.visibility : Icons.visibility_off,
@@ -301,7 +320,13 @@ class _ChangePasswordPageViewState extends State<_ChangePasswordPageView> {
     return PrimaryButton(
       text: 'Change Password',
       onPressed: () async {
-        if (_formKey.currentState!.validate()) {
+        setState(() {
+          _newPasswordError = viewModel.validateNewPassword(
+            _newPasswordController.text,
+            currentPassword: _currentPasswordController.text,
+          );
+        });
+        if (_newPasswordError == null && _formKey.currentState!.validate()) {
           final success = await viewModel.changePassword(
             currentPassword: _currentPasswordController.text,
             newPassword: _newPasswordController.text,

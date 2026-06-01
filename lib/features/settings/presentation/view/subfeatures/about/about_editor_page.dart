@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../../../../../app/dependency_injection/injection_container.dart';
 import '../../../../../../core/widgets/custom_app_bar.dart';
 import '../../../../../../core/widgets/dialogs/loading_dialog.dart';
-import '../../../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../domain/usecases/about/get_about_content_usecase.dart';
 import '../../../../domain/usecases/about/save_about_content_usecase.dart';
 import '../../../../domain/usecases/about/delete_about_content_usecase.dart';
@@ -85,20 +84,6 @@ class _AboutEditorPageViewState extends State<_AboutEditorPageView> {
                   onPressed: viewModel.isSaving
                       ? null
                       : () => _confirmDelete(context, viewModel),
-                ),
-
-                /// Creates a icon button instance.
-                IconButton(
-                  icon: viewModel.isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save),
-                  onPressed: viewModel.isSaveDisabled
-                      ? null
-                      : () => _saveContent(context, viewModel),
                 ),
               ]
             : [
@@ -191,17 +176,40 @@ class _AboutEditorPageViewState extends State<_AboutEditorPageView> {
                     onPressed: viewModel.isSaving
                         ? null
                         : viewModel.cancelEditing,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey.shade700,
+                      side: BorderSide(color: Colors.grey.shade400),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                     child: const Text('Cancel'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: PrimaryButton(
-                    text: 'Save Changes',
+                  child: OutlinedButton(
                     onPressed: viewModel.isSaveDisabled
                         ? null
                         : () => _saveContent(context, viewModel),
-                    isLoading: viewModel.isSaving,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: viewModel.isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Save Changes'),
                   ),
                 ),
               ],

@@ -226,6 +226,7 @@ import '../../features/settings/domain/usecases/support/help_center/get_admin_is
 import '../../features/settings/domain/usecases/support/help_center/get_user_issues_usecase.dart';
 import '../../features/settings/domain/usecases/support/help_center/submit_issue_usecase.dart';
 import '../../features/settings/domain/usecases/support/help_center/update_issue_status_usecase.dart';
+import '../../features/settings/domain/usecases/support/help_center/reply_to_issue_usecase.dart';
 import '../../features/settings/domain/usecases/support/help_center/upload_issue_image_usecase.dart';
 import '../../features/settings/domain/usecases/support/rating/delete_rating_usecase.dart';
 import '../../features/settings/domain/usecases/support/faq/get_admin_faq_items_usecase.dart';
@@ -926,6 +927,7 @@ void _initHelpCenterFeature() {
   sl.registerLazySingleton(() => GetAdminIssuesUseCase(sl()));
   sl.registerLazySingleton(() => SubmitIssueUseCase(sl()));
   sl.registerLazySingleton(() => UpdateIssueStatusUseCase(sl()));
+  sl.registerLazySingleton(() => ReplyToIssueUseCase(sl()));
   sl.registerLazySingleton(() => UploadIssueImageUseCase(sl()));
   sl.registerLazySingleton(() => GetUserEmailUseCase(sl()));
 }
