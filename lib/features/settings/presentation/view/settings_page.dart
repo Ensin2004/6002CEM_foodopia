@@ -209,19 +209,80 @@ class _SettingsPageView extends StatelessWidget {
             style: Theme.of(context).textTheme.titleLarge,
           ),
         ),
-        for (final item in viewModel.notificationPreferences)
-          _NotificationPreferenceTile(
-            icon: _iconForNotification(item),
-            title: item.title,
-            description: item.description,
-            value: item.enabled,
-            onChanged: (value) => viewModel.toggleNotification(item.id, value),
-          ),
+        ..._buildNotificationPreferenceTiles(context, viewModel),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Divider(height: 1, color: Colors.grey[300], thickness: 2),
         ),
       ],
+    );
+  }
+
+  List<Widget> _buildNotificationPreferenceTiles(
+    BuildContext context,
+    SettingsViewModel viewModel,
+  ) {
+    if (viewModel.isAdmin) {
+      return viewModel.notificationPreferences
+          .map((item) => _buildNotificationTile(viewModel, item))
+          .toList(growable: false);
+    }
+
+    final groupedIds = <String, List<String>>{
+      'Follower Notification': [
+        'new_follower_notification',
+        'new_recipe_notification',
+      ],
+      'Community Notification': [
+        'new_rating_notification',
+        'new_comment_notification',
+        'new_like_notification',
+        'new_reply_notification',
+      ],
+      'System Notification': ['help_center_reply_notification'],
+    };
+    final byId = {
+      for (final item in viewModel.notificationPreferences) item.id: item,
+    };
+    final widgets = <Widget>[];
+
+    for (final entry in groupedIds.entries) {
+      final items = entry.value
+          .map((id) => byId[id])
+          .whereType<NotificationPreference>()
+          .toList(growable: false);
+      if (items.isEmpty) continue;
+
+      widgets.add(_NotificationCategoryHeader(title: entry.key));
+      widgets.addAll(
+        items.map((item) => _buildNotificationTile(viewModel, item)),
+      );
+    }
+
+    final groupedIdSet = groupedIds.values.expand((ids) => ids).toSet();
+    final remaining = viewModel.notificationPreferences
+        .where((item) => !groupedIdSet.contains(item.id))
+        .toList(growable: false);
+    if (remaining.isNotEmpty) {
+      widgets.add(const _NotificationCategoryHeader(title: 'Other'));
+      widgets.addAll(
+        remaining.map((item) => _buildNotificationTile(viewModel, item)),
+      );
+    }
+
+    return widgets;
+  }
+
+  Widget _buildNotificationTile(
+    SettingsViewModel viewModel,
+    NotificationPreference item,
+  ) {
+    return _NotificationPreferenceTile(
+      icon: _iconForNotification(item),
+      title: item.title,
+      description: item.description,
+      value: item.enabled,
+      onChanged: (value) => viewModel.toggleNotification(item.id, value),
     );
   }
 
@@ -418,6 +479,26 @@ class _SettingsPageView extends StatelessWidget {
   /// Handles the navigate to onboarding operation.
   void _navigateToOnboarding(BuildContext context) {
     context.go(AppRouter.onboarding);
+  }
+}
+
+class _NotificationCategoryHeader extends StatelessWidget {
+  final String title;
+
+  const _NotificationCategoryHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
   }
 }
 
