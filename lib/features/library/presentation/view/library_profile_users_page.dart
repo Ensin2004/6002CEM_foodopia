@@ -9,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../domain/entities/library_profile.dart';
 import '../viewmodel/library_profile_users_viewmodel.dart';
 
@@ -346,11 +347,7 @@ class _ProfileUserCard extends StatelessWidget {
                       width: 1.4,
                     ),
                   ),
-                  child: CircleAvatar(
-                    radius: 26,
-                    backgroundColor: colors.surfaceContainerHighest,
-                    backgroundImage: _imageProvider(user.imageUrl),
-                  ),
+                  child: _ProfileUserAvatar(imagePath: user.imageUrl),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -437,11 +434,29 @@ class _MessageState extends StatelessWidget {
   }
 }
 
-ImageProvider _imageProvider(String path) {
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return NetworkImage(path);
+class _ProfileUserAvatar extends StatelessWidget {
+  final String imagePath;
+
+  const _ProfileUserAvatar({required this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imagePath.trim().isNotEmpty;
+
+    return CircleAvatar(
+      radius: 26,
+      backgroundColor: Colors.white,
+      child: hasImage
+          ? ClipOval(
+              child: AppRemoteOrAssetImage(
+                imagePath: imagePath,
+                width: 52,
+                height: 52,
+              ),
+            )
+          : const Icon(Icons.person, color: AppColors.primary, size: 30),
+    );
   }
-  return AssetImage(path);
 }
 
 String _compactCount(int value) {

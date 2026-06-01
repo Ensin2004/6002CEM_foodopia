@@ -162,9 +162,7 @@ class ExploreRecipeCard extends StatelessWidget {
                                     width: 1.4,
                                   ),
                                 ),
-                                child: AppRemoteOrAssetAvatar(
-                                  radius: 16,
-                                  backgroundColor: colors.primary,
+                                child: _ExploreAuthorAvatar(
                                   imagePath: recipe.authorAvatarPath,
                                 ),
                               ),
@@ -241,6 +239,31 @@ class _AlreadyAddedBadge extends StatelessWidget {
           fontWeight: FontWeight.w800,
         ),
       ),
+    );
+  }
+}
+
+class _ExploreAuthorAvatar extends StatelessWidget {
+  final String imagePath;
+
+  const _ExploreAuthorAvatar({required this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imagePath.trim().isNotEmpty;
+
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: Colors.white,
+      child: hasImage
+          ? ClipOval(
+              child: AppRemoteOrAssetImage(
+                imagePath: imagePath,
+                width: 32,
+                height: 32,
+              ),
+            )
+          : const Icon(Icons.person, color: AppColors.primary, size: 20),
     );
   }
 }

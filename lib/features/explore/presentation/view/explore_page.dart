@@ -432,9 +432,11 @@ class _FollowingCreatorsList extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 18),
             child: Row(
               children: [
-                AppRemoteOrAssetAvatar(
-                  radius: 28,
+                _ExploreCreatorAvatar(
                   imagePath: creator.avatarPath,
+                  radius: 28,
+                  imageSize: 56,
+                  iconSize: 32,
                 ),
                 const SizedBox(width: 18),
                 Expanded(
@@ -965,9 +967,11 @@ class _ExploreSearchSheetState extends State<_ExploreSearchSheet> {
                           final creator = widget.creators[index];
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
-                            leading: AppRemoteOrAssetAvatar(
-                              radius: 18,
+                            leading: _ExploreCreatorAvatar(
                               imagePath: creator.avatarPath,
+                              radius: 18,
+                              imageSize: 36,
+                              iconSize: 22,
                             ),
                             title: Text(creator.name),
                             onTap: () => _submit(creator.name),
@@ -1414,6 +1418,39 @@ class _FilterButtonSection<T> extends StatelessWidget {
           }).toList(),
         ),
       ],
+    );
+  }
+}
+
+class _ExploreCreatorAvatar extends StatelessWidget {
+  final String imagePath;
+  final double radius;
+  final double imageSize;
+  final double iconSize;
+
+  const _ExploreCreatorAvatar({
+    required this.imagePath,
+    required this.radius,
+    required this.imageSize,
+    required this.iconSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imagePath.trim().isNotEmpty;
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.white,
+      child: hasImage
+          ? ClipOval(
+              child: AppRemoteOrAssetImage(
+                imagePath: imagePath,
+                width: imageSize,
+                height: imageSize,
+              ),
+            )
+          : Icon(Icons.person, color: AppColors.primary, size: iconSize),
     );
   }
 }
