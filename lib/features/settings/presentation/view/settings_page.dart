@@ -314,7 +314,7 @@ class _SettingsPageView extends StatelessWidget {
         break;
 
       case SettingsNavigationEvent.goToRateUs:
-        context.push(AppRouter.rateUs, extra: const AuthenticatedRouteArgs());
+        context.push(AppRouter.rateUs, extra: RateUsArgs(isAdmin: isAdmin));
         break;
 
       case SettingsNavigationEvent.goToHelpCenter:
