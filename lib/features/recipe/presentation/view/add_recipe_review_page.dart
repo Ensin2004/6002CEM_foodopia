@@ -211,7 +211,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
         : AppSpacing.lg;
 
     if (widget.aiReview == null && viewModel.isLoading) {
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     final review = widget.aiReview ?? viewModel.review;
@@ -474,7 +474,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
-  List<AddRecipeReviewIngredient> _sortedIngredients(List<AddRecipeReviewIngredient> ingredients,) {
+  List<AddRecipeReviewIngredient> _sortedIngredients(List<AddRecipeReviewIngredient> ingredients) {
     return [...ingredients]..sort(
       (first, second) =>
           first.name.toLowerCase().compareTo(second.name.toLowerCase()),
@@ -691,6 +691,20 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
   }
 }
 
+// Loading Page
+class _AddRecipePageLoading extends StatelessWidget {
+  const _AddRecipePageLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: LoadingDialog(message: "Loading...", inline: true),
+    );
+  }
+}
+
+// Error Page
 class _RecipeErrorState extends StatelessWidget {
   final String? message;
 
