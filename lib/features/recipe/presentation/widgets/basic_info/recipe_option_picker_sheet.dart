@@ -393,12 +393,29 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
   // Submit Button Helper
   void _submitSelection() {
     _addCustomOption();
+    _movePresetMatchingCustomOptions();
     Navigator.of(context).pop(
       RecipeOptionPickerSelection(
         optionIds: _selectedOptionIds.toList(),
         customOptions: _customOptions,
       ),
     );
+  }
+
+  void _movePresetMatchingCustomOptions() {
+    final remainingCustomOptions = <String>[];
+    for (final customOption in _customOptions) {
+      final matchingOption = _optionByName(customOption);
+      if (matchingOption == null) {
+        remainingCustomOptions.add(customOption);
+      } else {
+        _selectedOptionIds.add(matchingOption.id);
+      }
+    }
+
+    _customOptions
+      ..clear()
+      ..addAll(remainingCustomOptions);
   }
 
   // Listener Helper
