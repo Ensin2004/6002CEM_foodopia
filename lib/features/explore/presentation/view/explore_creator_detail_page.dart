@@ -10,6 +10,7 @@ import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../viewmodel/explore_creator_detail_viewmodel.dart';
@@ -71,40 +72,7 @@ class _ExploreCreatorDetailViewState extends State<_ExploreCreatorDetailView>
   }
 
   Future<void> _showRecipeImage(ExploreRecipe recipe) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return Dialog.fullscreen(
-          backgroundColor: Colors.black,
-          child: SafeArea(
-            child: Stack(
-              children: [
-                Center(
-                  child: InteractiveViewer(
-                    minScale: 1,
-                    maxScale: 4,
-                    child: AppRemoteOrAssetImage(
-                      imagePath: recipe.imagePath,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: IconButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    await showRecipeMediaDialog(context, recipe.imagePath);
   }
 
   @override
@@ -179,49 +147,55 @@ class _CreatorBody extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: viewModel.loadCreator,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(
-            child: _CreatorHeader(
-              creator: creator,
-              isUpdatingFollow: viewModel.isUpdatingFollow,
-              onFollowTap: viewModel.toggleFollow,
-              onFollowersTap: () {
-                context.push(
-                  AppRouter.libraryProfileUsers,
-                  extra: LibraryProfileUsersArgs(
-                    showFollowers: true,
-                    ownerUid: creator.summary.uid,
-                  ),
-                );
-              },
-              onFollowingTap: () {
-                context.push(
-                  AppRouter.libraryProfileUsers,
-                  extra: LibraryProfileUsersArgs(
-                    showFollowers: false,
-                    ownerUid: creator.summary.uid,
-                  ),
-                );
-              },
-            ),
+      child: Column(
+        children: [
+          _CreatorHeader(
+            creator: creator,
+            isUpdatingFollow: viewModel.isUpdatingFollow,
+            onFollowTap: viewModel.toggleFollow,
+            onFollowersTap: () {
+              context.push(
+                AppRouter.libraryProfileUsers,
+                extra: LibraryProfileUsersArgs(
+                  showFollowers: true,
+                  ownerUid: creator.summary.uid,
+                ),
+              );
+            },
+            onFollowingTap: () {
+              context.push(
+                AppRouter.libraryProfileUsers,
+                extra: LibraryProfileUsersArgs(
+                  showFollowers: false,
+                  ownerUid: creator.summary.uid,
+                ),
+              );
+            },
           ),
-          SliverToBoxAdapter(
-            child: AppSegmentedTabs(
+          AppSegmentedTabs(
+            controller: tabController,
+            tabs: ExploreCreatorRecipeTab.values.map(_creatorTabLabel).toList(),
+            margin: EdgeInsets.zero,
+            isScrollable: false,
+          ),
+          Expanded(
+            child: TabBarView(
               controller: tabController,
-              tabs: ExploreCreatorRecipeTab.values
-                  .map(_creatorTabLabel)
-                  .toList(),
-              margin: EdgeInsets.zero,
-              isScrollable: false,
+              children: ExploreCreatorRecipeTab.values.map((tab) {
+                return CustomScrollView(
+                  key: PageStorageKey(tab),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    _RecipeGrid(
+                      recipes: viewModel.visibleRecipesFor(tab),
+                      onComingSoonTap: onComingSoonTap,
+                      onFavouriteTap: viewModel.toggleFavourite,
+                      onImageLongPress: onImageLongPress,
+                    ),
+                  ],
+                );
+              }).toList(),
             ),
-          ),
-          _RecipeGrid(
-            recipes: viewModel.visibleRecipes,
-            onComingSoonTap: onComingSoonTap,
-            onFavouriteTap: viewModel.toggleFavourite,
-            onImageLongPress: onImageLongPress,
           ),
         ],
       ),
@@ -250,13 +224,15 @@ class _CreatorHeader extends StatelessWidget {
     final colors = context.colors;
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        border: const Border(
-          bottom: BorderSide(color: AppColors.border, width: 0.5),
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/images/creator_hero.png'),
+          fit: BoxFit.fill,
         ),
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
       ),
-      child: Padding(
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.86)),
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,62 +254,97 @@ class _CreatorHeader extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: AppRemoteOrAssetAvatar(
-                    radius: 38,
-                    imagePath: summary.avatarPath,
-                  ),
+                  child: _CreatorDetailAvatar(imagePath: summary.avatarPath),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        summary.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.text.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              summary.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.text.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          creator.isFollowing
+                              ? FilledButton.icon(
+                                  onPressed: isUpdatingFollow
+                                      ? null
+                                      : () => onFollowTap(),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: colors.primary,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    minimumSize: const Size(0, 36),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  icon: const Icon(Icons.check, size: 16),
+                                  label: const Text(
+                                    'Following',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                )
+                              : OutlinedButton.icon(
+                                  onPressed: isUpdatingFollow
+                                      ? null
+                                      : () => onFollowTap(),
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: colors.primary,
+                                    side: BorderSide(color: colors.primary),
+                                    elevation: 0,
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    minimumSize: const Size(0, 36),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  icon: const Icon(Icons.add, size: 16),
+                                  label: const Text(
+                                    'Follow',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                        ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        creator.bio,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.text.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                          height: 1.35,
+                      if (creator.bio.trim().isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          creator.bio,
+                          style: context.text.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                            height: 1.35,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                FilledButton.icon(
-                  onPressed: isUpdatingFollow ? null : () => onFollowTap(),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    minimumSize: const Size(0, 36),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  icon: Icon(
-                    creator.isFollowing ? Icons.check : Icons.add,
-                    size: 16,
-                  ),
-                  label: Text(
-                    creator.isFollowing ? 'Following' : 'Follow',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),
               ],
@@ -459,6 +470,31 @@ class _RecipeGrid extends StatelessWidget {
           extra: ExploreRecipeDetailArgs(recipeId: recipe.id),
         );
       },
+    );
+  }
+}
+
+class _CreatorDetailAvatar extends StatelessWidget {
+  final String imagePath;
+
+  const _CreatorDetailAvatar({required this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imagePath.trim().isNotEmpty;
+
+    return CircleAvatar(
+      radius: 38,
+      backgroundColor: Colors.white,
+      child: hasImage
+          ? ClipOval(
+              child: AppRemoteOrAssetImage(
+                imagePath: imagePath,
+                width: 76,
+                height: 76,
+              ),
+            )
+          : const Icon(Icons.person, color: AppColors.primary, size: 44),
     );
   }
 }

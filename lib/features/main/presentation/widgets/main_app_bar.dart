@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/widgets/custom_app_bar.dart';
@@ -83,8 +85,15 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   /// Handles the build actions operation.
   List<Widget> _buildActions(BuildContext context) {
-    // Admin has no actions
-    if (isAdmin) return [];
+    if (isAdmin) {
+      return [
+        _UnreadNotificationButton(
+          isAdmin: true,
+          color: Theme.of(context).colorScheme.onPrimary,
+          onPressed: onNotificationsTap,
+        ),
+      ];
+    }
 
     // User has statistics and notifications
     return [
@@ -97,11 +106,10 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
 
       /// Creates a icon button instance.
-      IconButton(
-        icon: const Icon(Icons.notifications),
+      _UnreadNotificationButton(
+        isAdmin: false,
         color: Theme.of(context).colorScheme.onPrimary,
         onPressed: onNotificationsTap,
-        tooltip: 'Notifications',
       ),
     ];
   }
@@ -109,4 +117,77 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Handles the preferred size operation.
   @override
   Size get preferredSize => const Size.fromHeight(56);
+}
+
+class _UnreadNotificationButton extends StatelessWidget {
+  final bool isAdmin;
+  final Color color;
+  final VoidCallback? onPressed;
+
+  const _UnreadNotificationButton({
+    required this.isAdmin,
+    required this.color,
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty) {
+      return IconButton(
+        icon: const Icon(Icons.notifications),
+        color: color,
+        onPressed: onPressed,
+        tooltip: 'Notifications',
+      );
+    }
+
+    final unreadStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .where('isRead', isEqualTo: false)
+        .snapshots();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: unreadStream,
+      builder: (context, snapshot) {
+        final hasUnread = (snapshot.data?.docs ?? const []).any((doc) {
+          final type = doc.data()['type']?.toString();
+          const adminTypes = {'newUser', 'systemRating'};
+          return isAdmin
+              ? adminTypes.contains(type)
+              : !adminTypes.contains(type);
+        });
+        return IconButton(
+          color: color,
+          onPressed: onPressed,
+          tooltip: 'Notifications',
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Icon(Icons.notifications),
+              if (hasUnread)
+                Positioned(
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

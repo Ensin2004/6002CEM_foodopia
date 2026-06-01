@@ -109,14 +109,43 @@ class UserSetupRemoteDataSource {
     await firestore.collection('users').doc(uid).set({
       'onboardingCompleted': preferences.isCompleted,
       'onboardingStep': preferences.currentStep,
+      'notificationPreferences': preferences.notificationPreferences,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+
+    await _saveNotificationPreferences(
+      uid: uid,
+      notificationPreferences: preferences.notificationPreferences,
+    );
 
     await _saveCalorieTargetHistory(
       uid: uid,
       previous: previous,
       next: preferences,
     );
+  }
+
+  Future<void> _saveNotificationPreferences({
+    required String uid,
+    required Map<String, bool> notificationPreferences,
+  }) async {
+    if (notificationPreferences.isEmpty) return;
+
+    final collection = firestore
+        .collection('users')
+        .doc(uid)
+        .collection('notification_preferences');
+    final batch = firestore.batch();
+
+    notificationPreferences.forEach((id, enabled) {
+      if (id.trim().isEmpty) return;
+      batch.set(collection.doc(id), {
+        'enabled': enabled,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    });
+
+    await batch.commit();
   }
 
   DocumentReference<Map<String, dynamic>> _preferencesDoc(String uid) {

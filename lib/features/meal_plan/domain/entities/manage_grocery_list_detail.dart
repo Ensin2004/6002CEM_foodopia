@@ -48,6 +48,8 @@ class ManageGroceryCategory {
 class ManageGroceryItem {
   final String id;
   final String name;
+  final String categoryId;
+  final String categoryName;
   final String quantityLabel;
   final String emoji;
   final bool bought;
@@ -55,6 +57,8 @@ class ManageGroceryItem {
   const ManageGroceryItem({
     required this.id,
     required this.name,
+    required this.categoryId,
+    required this.categoryName,
     required this.quantityLabel,
     required this.emoji,
     this.bought = false,
@@ -74,15 +78,35 @@ class ManageGroceryTimelineDay {
 }
 
 class ManageGroceryTimelineMeal {
+  final String mealPlanId;
   final String title;
   final String mealType;
   final String imagePath;
   final List<ManageGroceryItem> ingredients;
 
   const ManageGroceryTimelineMeal({
+    required this.mealPlanId,
     required this.title,
     required this.mealType,
     required this.imagePath,
     required this.ingredients,
+  });
+}
+
+class AddGroceryItemRequest {
+  final String listId;
+  final String name;
+  final double amount;
+  final String unit;
+  final String categoryName;
+  final List<String> relatedMealPlanIds;
+
+  const AddGroceryItemRequest({
+    required this.listId,
+    required this.name,
+    required this.amount,
+    required this.unit,
+    required this.categoryName,
+    this.relatedMealPlanIds = const [],
   });
 }

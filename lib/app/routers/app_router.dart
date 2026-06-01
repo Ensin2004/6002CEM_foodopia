@@ -6,11 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:photo_view/photo_view.dart';
 import '../../core/widgets/custom_app_bar.dart';
 import '../../features/auth/domain/entities/user_entity.dart';
+import '../../features/auth/presentation/view/forgot_password_screen.dart';
 import '../../features/auth/presentation/view/login_screen.dart';
 import '../../features/auth/presentation/view/signup_screen.dart';
 import '../../features/onboarding/presentation/view/onboarding_screen.dart';
 import '../../features/main/presentation/view/main_page.dart';
-import '../../features/notifications/presentation/view/notification_settings_page.dart';
 import '../../features/notifications/presentation/view/notifications_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_basic_info_page.dart';
 import '../../features/recipe/presentation/view/add_recipe_ingredients_page.dart';
@@ -29,12 +29,17 @@ import '../../features/meal_plan/presentation/view/planning/add_meal_plan_page.d
 import '../../features/meal_plan/presentation/view/planning/generate_ai_meal_page.dart';
 import '../../features/statistics/presentation/view/statistics_page.dart';
 import '../../features/statistics/presentation/view/admin_dietary_preference_page.dart';
+import '../../features/statistics/presentation/view/admin_gender_page.dart';
+import '../../features/statistics/presentation/view/admin_hub_rating_page.dart';
 import '../../features/statistics/presentation/view/admin_meal_analytic_page.dart';
 import '../../features/statistics/presentation/view/admin_post_analytic_page.dart';
+import '../../features/statistics/presentation/view/admin_user_usage_page.dart';
 import '../../features/statistics/presentation/view/calories_intake_page.dart';
 import '../../features/statistics/presentation/view/calories_posted_page.dart';
+import '../../features/statistics/presentation/view/cooking_time_page.dart';
 import '../../features/statistics/presentation/view/difficulty_meal_page.dart';
 import '../../features/statistics/presentation/view/food_analytic_page.dart';
+import '../../features/statistics/presentation/view/grocery_list_statistics_page.dart';
 import '../../features/statistics/presentation/view/meal_plan_method_page.dart';
 import '../../features/statistics/presentation/view/meal_planned_time_page.dart';
 import '../../features/statistics/presentation/view/most_cooked_recipe_page.dart';
@@ -50,8 +55,10 @@ import '../../features/settings/presentation/view/subfeatures/account/edit_profi
 import '../../features/settings/presentation/view/subfeatures/admin_age_groups_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/admin_faq_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/admin_help_center_page.dart';
+import '../../features/settings/presentation/view/subfeatures/support/admin_rate_us_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/faq_form_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/issue_detail_page.dart';
+import '../../features/settings/presentation/view/subfeatures/support/rating_detail_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/rate_us_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/user_faq_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/user_help_center_page.dart';
@@ -64,6 +71,8 @@ class AppRouter {
   static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String signup = '/signup';
+  static const String forgotPassword = '/forgot-password';
+  static const String forgotPasswordSent = '/forgot-password/sent';
   static const String home = '/user_home';
   static const String settings = '/settings';
   static const String editProfile = '/settings/edit-profile';
@@ -72,9 +81,9 @@ class AppRouter {
   static const String about = '/about';
   static const String faq = '/faq';
   static const String rateUs = '/rate-us';
+  static const String ratingDetail = '/rate-us/detail';
   static const String helpCenter = '/help-center';
   static const String notifications = '/notifications';
-  static const String notificationSettings = '/notifications/settings';
   static const String addRecipe = '/recipes/add';
   static const String addRecipeBasicInfo = '/recipes/add/basic-info';
   static const String addRecipeIngredients = '/recipes/add/ingredients';
@@ -97,7 +106,12 @@ class AppRouter {
   static const String adminPostAnalytic = '/statistics/admin-post-analytic';
   static const String adminDietaryPreference =
       '/statistics/admin-dietary-preference';
+  static const String adminGender = '/statistics/admin-gender';
+  static const String adminUserUsage = '/statistics/admin-user-usage';
+  static const String adminHubRating = '/statistics/admin-hub-rating';
   static const String foodAnalytic = '/statistics/food-analytic';
+  static const String cookingTime = '/statistics/cooking-time';
+  static const String groceryListStatistics = '/statistics/grocery-list';
   static const String caloriesIntake = '/statistics/calories-intake';
   static const String difficultyMeals = '/statistics/difficulty-meals';
   static const String mealPlanMethods = '/statistics/meal-plan-methods';
@@ -155,7 +169,11 @@ class AppRouter {
     required bool isLoggedIn,
   }) {
     final location = state.matchedLocation;
-    final isAuthPage = location == login || location == signup;
+    final isAuthPage =
+        location == login ||
+        location == signup ||
+        location == forgotPassword ||
+        location == forgotPasswordSent;
     final isOnboarding = location == onboarding;
     final currentUser = FirebaseAuth.instance.currentUser;
     final isCurrentlyLoggedIn =
@@ -211,6 +229,24 @@ class AppRouter {
         name: 'signup',
         path: signup,
         builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(
+        name: 'forgotPassword',
+        path: forgotPassword,
+        builder: (context, state) {
+          final args = state.extra as ForgotPasswordArgs?;
+          return ForgotPasswordScreen(args: args ?? const ForgotPasswordArgs());
+        },
+      ),
+      GoRoute(
+        name: 'forgotPasswordSent',
+        path: forgotPasswordSent,
+        builder: (context, state) {
+          final args = state.extra as ForgotPasswordSentArgs?;
+          return ForgotPasswordSentScreen(
+            args: args ?? const ForgotPasswordSentArgs(email: ''),
+          );
+        },
       ),
       GoRoute(
         name: 'setupDiet',
@@ -417,7 +453,25 @@ class AppRouter {
       GoRoute(
         name: 'rateUs',
         path: rateUs,
-        builder: (context, state) => const RateUsPage(),
+        builder: (context, state) {
+          final args = state.extra as RateUsArgs?;
+          return args?.isAdmin == true
+              ? const AdminRateUsPage()
+              : const RateUsPage();
+        },
+      ),
+
+      /// Creates a go route instance.
+      GoRoute(
+        name: 'ratingDetail',
+        path: ratingDetail,
+        builder: (context, state) {
+          final args = state.extra as RatingDetailArgs;
+          return RatingDetailPage(
+            rating: args.rating,
+            userProfile: args.userProfile,
+          );
+        },
       ),
 
       /// Creates a go route instance.
@@ -437,12 +491,6 @@ class AppRouter {
         name: 'notifications',
         path: notifications,
         builder: (context, state) => const NotificationsPage(),
-      ),
-
-      GoRoute(
-        name: 'notificationSettings',
-        path: notificationSettings,
-        builder: (context, state) => const NotificationSettingsPage(),
       ),
 
       /// Creates a go route instance.
@@ -639,7 +687,13 @@ class AppRouter {
       GoRoute(
         name: 'addGroceryList',
         path: addGroceryList,
-        builder: (context, state) => const AddGroceryListPage(),
+        builder: (context, state) {
+          final args = state.extra as AddGroceryListArgs?;
+          return AddGroceryListPage(
+            userId:
+                args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+          );
+        },
       ),
 
       GoRoute(
@@ -713,9 +767,39 @@ class AppRouter {
       ),
 
       GoRoute(
+        name: 'adminGender',
+        path: adminGender,
+        builder: (context, state) => const AdminGenderPage(),
+      ),
+
+      GoRoute(
+        name: 'adminUserUsage',
+        path: adminUserUsage,
+        builder: (context, state) => const AdminUserUsagePage(),
+      ),
+
+      GoRoute(
+        name: 'adminHubRating',
+        path: adminHubRating,
+        builder: (context, state) => const AdminHubRatingPage(),
+      ),
+
+      GoRoute(
         name: 'foodAnalytic',
         path: foodAnalytic,
         builder: (context, state) => const FoodAnalyticPage(),
+      ),
+
+      GoRoute(
+        name: 'cookingTime',
+        path: cookingTime,
+        builder: (context, state) => const CookingTimePage(),
+      ),
+
+      GoRoute(
+        name: 'groceryListStatistics',
+        path: groceryListStatistics,
+        builder: (context, state) => const GroceryListStatisticsPage(),
       ),
 
       GoRoute(
@@ -789,6 +873,7 @@ class AppRouter {
           return IssueDetailPage(
             issue: args.issue,
             userEmail: args.userEmail,
+            userName: args.userName,
             isAdmin: args.isAdmin,
             onStatusChanged: args.onStatusChanged,
           );

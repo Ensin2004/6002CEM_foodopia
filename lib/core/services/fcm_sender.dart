@@ -81,6 +81,8 @@ class FcmSender {
             'notification': <String, dynamic>{
               'channel_id': 'foodopia_social_notifications',
               'sound': 'default',
+              if (data?['notificationId']?.toString().isNotEmpty == true)
+                'tag': data!['notificationId'].toString(),
             },
           },
         },

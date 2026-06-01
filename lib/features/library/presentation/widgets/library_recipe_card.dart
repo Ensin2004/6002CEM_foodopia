@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../domain/entities/library_recipe.dart';
 
 class LibraryRecipeCard extends StatelessWidget {
@@ -10,6 +11,7 @@ class LibraryRecipeCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onComingSoonTap;
   final VoidCallback onFavouriteTap;
+  final VoidCallback? onImageLongPress;
   final bool isHighlighted;
   final bool disabled;
 
@@ -19,6 +21,7 @@ class LibraryRecipeCard extends StatelessWidget {
     required this.onTap,
     required this.onComingSoonTap,
     required this.onFavouriteTap,
+    this.onImageLongPress,
     this.isHighlighted = false,
     this.disabled = false,
   });
@@ -56,17 +59,17 @@ class LibraryRecipeCard extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(8),
-                        ),
-                        child: ColoredBox(
-                          color: colors.surfaceContainerHighest,
-                          child: AppRemoteOrAssetImage(
-                            imagePath: recipe.imagePath,
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
+                      GestureDetector(
+                        onLongPress: onImageLongPress,
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8),
+                          ),
+                          child: ColoredBox(
+                            color: colors.surfaceContainerHighest,
+                            child: AppRecipeMediaPreview(
+                              mediaPath: recipe.imagePath,
+                            ),
                           ),
                         ),
                       ),
@@ -74,6 +77,19 @@ class LibraryRecipeCard extends StatelessWidget {
                         left: 8,
                         top: 8,
                         child: _ViewsBadge(count: recipe.totalViews),
+                      ),
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: _ImageIconButton(
+                          icon: recipe.isFollowingAuthor
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: recipe.isFollowingAuthor
+                              ? AppColors.favourite
+                              : Colors.white,
+                          onTap: onFavouriteTap,
+                        ),
                       ),
                       Positioned(
                         left: 8,
@@ -138,9 +154,7 @@ class LibraryRecipeCard extends StatelessWidget {
                                     width: 1.4,
                                   ),
                                 ),
-                                child: AppRemoteOrAssetAvatar(
-                                  radius: 16,
-                                  backgroundColor: colors.primary,
+                                child: _AuthorAvatar(
                                   imagePath: recipe.authorAvatarPath,
                                 ),
                               ),
@@ -170,12 +184,6 @@ class LibraryRecipeCard extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                              _FavouriteIconButton(
-                                isFavourite: recipe.isFollowingAuthor,
-                                onTap: onFavouriteTap,
-                              ),
-                              const SizedBox(width: 4),
                               _CountWithIcon(
                                 icon: Icons.chat_bubble,
                                 label: _compactCount(recipe.commentCount),
@@ -191,6 +199,60 @@ class LibraryRecipeCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AuthorAvatar extends StatelessWidget {
+  final String imagePath;
+
+  const _AuthorAvatar({required this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imagePath.trim().isNotEmpty;
+
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: Colors.white,
+      child: hasImage
+          ? ClipOval(
+              child: AppRemoteOrAssetImage(
+                imagePath: imagePath,
+                width: 32,
+                height: 32,
+              ),
+            )
+          : const Icon(Icons.person, color: AppColors.primary, size: 20),
+    );
+  }
+}
+
+class _ImageIconButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ImageIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.58),
+      shape: const CircleBorder(),
+      child: InkResponse(
+        onTap: onTap,
+        radius: 19,
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Icon(icon, size: 18, color: color),
         ),
       ),
     );
@@ -349,30 +411,6 @@ class _CountWithIcon extends StatelessWidget {
             color: AppColors.textSecondary.withValues(alpha: 0.55),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _FavouriteIconButton extends StatelessWidget {
-  final bool isFavourite;
-  final VoidCallback onTap;
-
-  const _FavouriteIconButton({required this.isFavourite, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkResponse(
-      onTap: onTap,
-      radius: 18,
-      child: SizedBox(
-        width: 28,
-        height: 28,
-        child: Icon(
-          isFavourite ? Icons.favorite : Icons.favorite_border,
-          size: 20,
-          color: isFavourite ? AppColors.favourite : AppColors.textSecondary,
-        ),
       ),
     );
   }

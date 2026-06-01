@@ -2,40 +2,56 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/manage_grocery_list_detail.dart';
+import '../../domain/usecases/add_grocery_item_usecase.dart';
+import '../../domain/usecases/delete_grocery_item_usecase.dart';
 import '../../domain/usecases/get_manage_grocery_list_detail_usecase.dart';
+import '../../domain/usecases/update_grocery_item_bought_usecase.dart';
+import '../../domain/usecases/update_grocery_list_usecase.dart';
 
 enum ManageGroceryViewMode { list, timeline }
-
-enum ManageGroceryItemFilter { all, toBuy, bought }
 
 class ManageGroceryListViewModel extends ChangeNotifier {
   final String listId;
   final GetManageGroceryListDetailUseCase _getDetailUseCase;
+  final AddGroceryItemUseCase _addGroceryItemUseCase;
+  final DeleteGroceryItemUseCase _deleteGroceryItemUseCase;
+  final UpdateGroceryItemBoughtUseCase _updateItemBoughtUseCase;
+  final UpdateGroceryListUseCase _updateGroceryListUseCase;
 
   ManageGroceryListDetail? _detail;
   ManageGroceryViewMode _viewMode = ManageGroceryViewMode.list;
-  ManageGroceryItemFilter _filter = ManageGroceryItemFilter.all;
   final Set<String> _boughtItemIds = {};
   final Set<String> _collapsedTimelineDayKeys = {};
   final Set<String> _collapsedTimelineMealKeys = {};
   bool _hideBoughtItems = false;
   bool _isLoading = true;
+  bool _isSaving = false;
   bool _isDisposed = false;
   String? _errorMessage;
+  String? _actionErrorMessage;
 
   ManageGroceryListViewModel({
     required this.listId,
     required GetManageGroceryListDetailUseCase getDetailUseCase,
-  }) : _getDetailUseCase = getDetailUseCase {
+    required AddGroceryItemUseCase addGroceryItemUseCase,
+    required DeleteGroceryItemUseCase deleteGroceryItemUseCase,
+    required UpdateGroceryItemBoughtUseCase updateItemBoughtUseCase,
+    required UpdateGroceryListUseCase updateGroceryListUseCase,
+  }) : _getDetailUseCase = getDetailUseCase,
+       _addGroceryItemUseCase = addGroceryItemUseCase,
+       _deleteGroceryItemUseCase = deleteGroceryItemUseCase,
+       _updateItemBoughtUseCase = updateItemBoughtUseCase,
+       _updateGroceryListUseCase = updateGroceryListUseCase {
     Future.microtask(loadDetail);
   }
 
   ManageGroceryListDetail? get detail => _detail;
   ManageGroceryViewMode get viewMode => _viewMode;
-  ManageGroceryItemFilter get filter => _filter;
   bool get hideBoughtItems => _hideBoughtItems;
   bool get isLoading => _isLoading;
+  bool get isSaving => _isSaving;
   String? get errorMessage => _errorMessage;
+  String? get actionErrorMessage => _actionErrorMessage;
 
   int get totalItemCount =>
       _detail?.categories.fold<int>(
@@ -54,7 +70,17 @@ class ManageGroceryListViewModel extends ChangeNotifier {
     final result = await _getDetailUseCase.execute(listId);
     if (_isDisposed) return;
 
-    result.ifRight((detail) => _detail = detail);
+    result.ifRight((detail) {
+      _detail = detail;
+      _boughtItemIds
+        ..clear()
+        ..addAll(
+          detail.categories
+              .expand((category) => category.items)
+              .where((item) => item.bought)
+              .map((item) => item.id),
+        );
+    });
     result.ifLeft((failure) => _errorMessage = failure.message);
 
     _isLoading = false;
@@ -67,21 +93,106 @@ class ManageGroceryListViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
-  void setFilter(ManageGroceryItemFilter filter) {
-    _filter = filter;
-    _notifyIfActive();
-  }
-
-  void toggleBought(String itemId) {
+  Future<void> toggleBought(String itemId) async {
+    final nextValue = !_boughtItemIds.contains(itemId);
     if (_boughtItemIds.contains(itemId)) {
       _boughtItemIds.remove(itemId);
     } else {
       _boughtItemIds.add(itemId);
     }
+    _actionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _updateItemBoughtUseCase.execute(
+      listId: listId,
+      itemId: itemId,
+      bought: nextValue,
+    );
+    if (_isDisposed) return;
+
+    result.ifLeft((failure) {
+      _actionErrorMessage = failure.message;
+      if (nextValue) {
+        _boughtItemIds.remove(itemId);
+      } else {
+        _boughtItemIds.add(itemId);
+      }
+    });
     _notifyIfActive();
   }
 
   bool isBought(String itemId) => _boughtItemIds.contains(itemId);
+
+  // Manual item input stays UI-free for MVVM separation.
+  Future<bool> addItem({
+    required String name,
+    required String amountText,
+    required String unit,
+    required String categoryName,
+    List<String> relatedMealPlanIds = const [],
+  }) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      _actionErrorMessage = 'Ingredient name is required.';
+      _notifyIfActive();
+      return false;
+    }
+
+    final amount = double.tryParse(amountText.trim());
+    if (amountText.trim().isNotEmpty && amount == null) {
+      _actionErrorMessage = 'Quantity must be a number.';
+      _notifyIfActive();
+      return false;
+    }
+
+    _isSaving = true;
+    _actionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _addGroceryItemUseCase.execute(
+      AddGroceryItemRequest(
+        listId: listId,
+        name: trimmedName,
+        amount: amount ?? 0,
+        unit: unit,
+        categoryName: categoryName,
+        relatedMealPlanIds: relatedMealPlanIds,
+      ),
+    );
+    if (_isDisposed) return false;
+
+    var saved = false;
+    result.ifRight((_) => saved = true);
+    result.ifLeft((failure) => _actionErrorMessage = failure.message);
+    _isSaving = false;
+    _notifyIfActive();
+
+    if (saved) {
+      await loadDetail();
+    }
+    return saved;
+  }
+
+  // Detail reload keeps category counts and timeline grouping fresh.
+  Future<void> deleteItem(String itemId) async {
+    _isSaving = true;
+    _actionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _deleteGroceryItemUseCase.execute(
+      listId: listId,
+      itemId: itemId,
+    );
+    if (_isDisposed) return;
+
+    result.ifLeft((failure) => _actionErrorMessage = failure.message);
+    _isSaving = false;
+    _notifyIfActive();
+
+    if (result.isRight()) {
+      await loadDetail();
+    }
+  }
 
   bool isTimelineDayExpanded(DateTime date) {
     return !_collapsedTimelineDayKeys.contains(_dayKey(date));
@@ -116,14 +227,7 @@ class ManageGroceryListViewModel extends ChangeNotifier {
   bool shouldShowItem(String itemId) {
     final bought = isBought(itemId);
     if (_hideBoughtItems && bought) return false;
-    switch (_filter) {
-      case ManageGroceryItemFilter.all:
-        return true;
-      case ManageGroceryItemFilter.toBuy:
-        return !bought;
-      case ManageGroceryItemFilter.bought:
-        return bought;
-    }
+    return true;
   }
 
   void toggleHideBoughtItems(bool value) {
@@ -131,22 +235,45 @@ class ManageGroceryListViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
-  void updateDateRange(DateTime start, DateTime end) {
-    final current = _detail;
-    if (current == null) return;
-    _detail = ManageGroceryListDetail(
-      id: current.id,
-      title: current.title,
-      itemCount: current.itemCount,
-      mealCount: current.mealCount,
-      categoryCount: current.categoryCount,
-      startDate: start,
-      endDate: end,
-      upcomingMeals: current.upcomingMeals,
-      categories: current.categories,
-      timelineDays: current.timelineDays,
-    );
+  Future<bool> updateList({
+    required String name,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      _actionErrorMessage = 'List name is required.';
+      _notifyIfActive();
+      return false;
+    }
+    if (endDate.isBefore(startDate)) {
+      _actionErrorMessage = 'End date cannot be before start date.';
+      _notifyIfActive();
+      return false;
+    }
+
+    _isSaving = true;
+    _actionErrorMessage = null;
     _notifyIfActive();
+
+    final result = await _updateGroceryListUseCase.execute(
+      listId: listId,
+      name: trimmedName,
+      startDate: startDate,
+      endDate: endDate,
+    );
+    if (_isDisposed) return false;
+
+    var saved = false;
+    result.ifRight((_) => saved = true);
+    result.ifLeft((failure) => _actionErrorMessage = failure.message);
+    _isSaving = false;
+    _notifyIfActive();
+
+    if (saved) {
+      await loadDetail();
+    }
+    return saved;
   }
 
   void _notifyIfActive() {

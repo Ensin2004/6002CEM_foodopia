@@ -25,15 +25,31 @@ class EnvConfig {
   static const String instructionUploadPreset = String.fromEnvironment(
     'CLOUDINARY_INSTRUCTION_UPLOAD_PRESET',
   );
-  static const String usdaApiKey = String.fromEnvironment('USDA_API_KEY');
-  static const String openAiApiKey = String.fromEnvironment('OPENAI_API_KEY');
+  static const String usdaApiKey = String.fromEnvironment(
+    'USDA_API_KEY'
+  );
+  static const String openAiApiKey = String.fromEnvironment(
+    'OPENAI_API_KEY'
+  );
   static const String openAiRecipeModel = String.fromEnvironment(
     'OPENAI_RECIPE_MODEL',
-    defaultValue: 'gpt-5-mini',
+    defaultValue: 'gpt-4o-mini',
+  );
+  static const String openAiIngredientModel = String.fromEnvironment(
+    'OPENAI_INGREDIENT_MODEL',
+    defaultValue: 'gpt-4o-mini',
+  );
+  static const String openAiVideoRecipeModel = String.fromEnvironment(
+    'OPENAI_VIDEO_RECIPE_MODEL',
+    defaultValue: 'gpt-4o-mini',
+  );
+  static const String openAiTranscriptionModel = String.fromEnvironment(
+    'OPENAI_TRANSCRIPTION_MODEL',
+    defaultValue: 'whisper-1',
   );
   static const String openAiImageModel = String.fromEnvironment(
     'OPENAI_IMAGE_MODEL',
-    defaultValue: 'gpt-image-1-mini',
+    defaultValue: 'gpt-image-2',
   );
 
   // Firebase Configuration (already in the google-services.json)

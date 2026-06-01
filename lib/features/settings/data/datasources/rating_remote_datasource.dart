@@ -3,6 +3,7 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/services/cloudinary_service.dart';
+import '../../../../core/services/fcm_sender.dart';
 
 /// Defines behavior for rating remote data source.
 class RatingRemoteDataSource {
@@ -36,6 +37,108 @@ class RatingRemoteDataSource {
       writeData.remove('createdAt');
     }
     await doc.set(writeData, SetOptions(merge: true));
+    await _notifyAdminsSystemRating(userId: userId, data: writeData);
+  }
+
+  Future<void> _notifyAdminsSystemRating({
+    required String userId,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final userName = data['userName']?.toString().trim() ?? '';
+      final stars = data['stars']?.toString() ?? '';
+      final name = userName.isEmpty ? 'Someone' : userName;
+      final message = stars.isEmpty
+          ? '$name submitted a new system rating.'
+          : '$name submitted a new $stars star system rating.';
+      final admins = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'admin')
+          .get();
+
+      for (final admin in admins.docs) {
+        final adminUid = admin.id;
+        if (adminUid.isEmpty || adminUid == userId) continue;
+        final notificationRef = await _firestore
+            .collection('users')
+            .doc(adminUid)
+            .collection('notifications')
+            .add({
+              'type': 'systemRating',
+              'title': 'New Rating On System',
+              'message': message,
+              'isRead': false,
+              'senderUid': userId,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
+        if (!await _isAdminNotificationEnabled(
+          adminUid: adminUid,
+          preferenceId: 'system_rating_notification',
+        )) {
+          continue;
+        }
+
+        await _sendPushToUser(
+          receiverUid: adminUid,
+          title: 'New Rating On System',
+          message: message,
+          data: {
+            'type': 'systemRating',
+            'notificationId': notificationRef.id,
+            'senderUid': userId,
+          },
+        );
+      }
+    } on FirebaseException {
+      // Rating save already succeeded; admin notification is best-effort.
+    }
+  }
+
+  Future<bool> _isAdminNotificationEnabled({
+    required String adminUid,
+    required String preferenceId,
+  }) async {
+    final preferenceDoc = await _firestore
+        .collection('users')
+        .doc(adminUid)
+        .collection('notification_preferences')
+        .doc(preferenceId)
+        .get();
+    final enabled = preferenceDoc.data()?['enabled'];
+    return enabled is bool ? enabled : true;
+  }
+
+  Future<void> _sendPushToUser({
+    required String receiverUid,
+    required String title,
+    required String message,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(receiverUid)
+          .get();
+      final rawTokens = userDoc.data()?['fcmTokens'];
+      final tokens = rawTokens is Iterable
+          ? rawTokens
+                .map((token) => token?.toString().trim() ?? '')
+                .where((token) => token.isNotEmpty)
+                .toSet()
+          : <String>{};
+
+      for (final token in tokens) {
+        await FcmSender.instance.sendToToken(
+          deviceToken: token,
+          title: title,
+          body: message,
+          data: data,
+        );
+      }
+    } catch (_) {
+      // Push is best-effort; Firestore keeps the in-app notification.
+    }
   }
 
   /// Runs the delete rating operation.

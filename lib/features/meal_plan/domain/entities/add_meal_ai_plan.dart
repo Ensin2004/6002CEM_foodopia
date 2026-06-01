@@ -94,6 +94,9 @@ class AddMealAiRecipe {
   final List<AddMealAiIngredient> ingredients;
   final List<String> instructions;
   final int calories;
+  final double carbohydrates;
+  final double fat;
+  final double protein;
   final String imagePrompt;
   final String categoryName;
 
@@ -110,6 +113,9 @@ class AddMealAiRecipe {
     this.ingredients = const [],
     this.instructions = const [],
     this.calories = 0,
+    this.carbohydrates = 0,
+    this.fat = 0,
+    this.protein = 0,
     this.imagePrompt = '',
     this.categoryName = '',
   });
@@ -119,11 +125,19 @@ class AddMealAiIngredient {
   final String name;
   final double amount;
   final String unit;
+  final double calories;
+  final double carbohydrates;
+  final double fat;
+  final double protein;
 
   const AddMealAiIngredient({
     required this.name,
     required this.amount,
     required this.unit,
+    this.calories = 0,
+    this.carbohydrates = 0,
+    this.fat = 0,
+    this.protein = 0,
   });
 }
 

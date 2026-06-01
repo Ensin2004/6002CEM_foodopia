@@ -1,9 +1,9 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/ingredients/input_ingredient_field.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -41,6 +41,9 @@ class AddRecipeIngredientsPage extends StatelessWidget {
   final AddMealAiGenerationRequest? initialAiRequest;
   final String? userId;
   final AddRecipeBasicInfo? aiDraftBasicInfo;
+  final bool hideProgressBar;
+  final bool hideAppBar;
+  final ValueChanged<List<AddRecipeIngredient>>? onAiDraftNext;
 
   const AddRecipeIngredientsPage({
     super.key,
@@ -51,6 +54,9 @@ class AddRecipeIngredientsPage extends StatelessWidget {
     this.initialAiRequest,
     this.userId,
     this.aiDraftBasicInfo,
+    this.hideProgressBar = false,
+    this.hideAppBar = false,
+    this.onAiDraftNext,
   });
 
   @override
@@ -80,6 +86,9 @@ class AddRecipeIngredientsPage extends StatelessWidget {
         initialAiRequest: initialAiRequest,
         userId: userId,
         aiDraftBasicInfo: aiDraftBasicInfo,
+        hideProgressBar: hideProgressBar,
+        hideAppBar: hideAppBar,
+        onAiDraftNext: onAiDraftNext,
       ),
     );
   }
@@ -92,6 +101,9 @@ class _AddRecipeIngredientsView extends StatefulWidget {
   final AddMealAiGenerationRequest? initialAiRequest;
   final String? userId;
   final AddRecipeBasicInfo? aiDraftBasicInfo;
+  final bool hideProgressBar;
+  final bool hideAppBar;
+  final ValueChanged<List<AddRecipeIngredient>>? onAiDraftNext;
 
   const _AddRecipeIngredientsView({
     required this.recipeId,
@@ -100,6 +112,9 @@ class _AddRecipeIngredientsView extends StatefulWidget {
     this.initialAiRequest,
     this.userId,
     this.aiDraftBasicInfo,
+    this.hideProgressBar = false,
+    this.hideAppBar = false,
+    this.onAiDraftNext,
   });
 
   @override
@@ -108,7 +123,6 @@ class _AddRecipeIngredientsView extends StatefulWidget {
 }
 
 class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
-  final ImagePicker _imagePicker = ImagePicker();
   late final List<IngredientRowState> _rows;
   String? _seededRecipeId;
   String? _requestedRecipeId;
@@ -175,59 +189,62 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         backgroundColor: Colors.white,
-        appBar: CustomAppBar(
-          title: widget.initialAiRecipe == null
-              ? "New Recipe"
-              : "Customize AI Recipe",
-          leading: IconButton(
-            onPressed: () => _handleBack(context),
-            icon: const Icon(Icons.arrow_back),
-          ),
-          actions: [
-            Consumer<AddRecipeVisibilityViewModel>(
-              builder: (context, visibilityViewModel, _) {
-                return RecipeVisibilityActionButton(
-                  visibility: visibilityViewModel.visibility,
-                  isSaving: visibilityViewModel.isSaving,
-                  onChanged: (value) => confirmRecipeVisibilityChange(
-                    context: context,
-                    currentVisibility: visibilityViewModel.visibility,
-                    nextVisibility: value,
-                    onConfirmed: (visibility) =>
-                        visibilityViewModel.updateVisibility(
-                          recipeId: widget.recipeId,
-                          value: visibility,
+        appBar: widget.hideAppBar
+            ? null
+            : CustomAppBar(
+                title: widget.initialAiRecipe == null
+                    ? "New Recipe"
+                    : "Customize AI Recipe",
+                leading: IconButton(
+                  onPressed: () => _handleBack(context),
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                actions: [
+                  Consumer<AddRecipeVisibilityViewModel>(
+                    builder: (context, visibilityViewModel, _) {
+                      return RecipeVisibilityActionButton(
+                        visibility: visibilityViewModel.visibility,
+                        isSaving: visibilityViewModel.isSaving,
+                        onChanged: (value) => confirmRecipeVisibilityChange(
+                          context: context,
+                          currentVisibility: visibilityViewModel.visibility,
+                          nextVisibility: value,
+                          onConfirmed: (visibility) =>
+                              visibilityViewModel.updateVisibility(
+                                recipeId: widget.recipeId,
+                                value: visibility,
+                              ),
+                          errorMessage: () => visibilityViewModel.errorMessage,
                         ),
-                    errorMessage: () => visibilityViewModel.errorMessage,
+                      );
+                    },
                   ),
-                );
-              },
-            ),
-          ],
-        ),
+                ],
+              ),
         body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Progress Bar
-              const Padding(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.sm,
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                  AppSpacing.md,
+              if (!widget.hideProgressBar)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.sm,
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                    AppSpacing.md,
+                  ),
+                  child: AppStepProgressBar(
+                    totalSteps: 4,
+                    currentStep: 2,
+                    labels: [
+                      "Basic Info",
+                      "Ingredients",
+                      "Instructions",
+                      "Review",
+                    ],
+                  ),
                 ),
-                child: AppStepProgressBar(
-                  totalSteps: 4,
-                  currentStep: 2,
-                  labels: [
-                    "Basic Info",
-                    "Ingredients",
-                    "Instructions",
-                    "Review",
-                  ],
-                ),
-              ),
 
               // Label, Tips
               Padding(
@@ -354,9 +371,19 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
 
   // Image Picker Helper
   Future<void> _pickIngredientImage(IngredientRowState row) async {
-    final image = await _imagePicker.pickImage(source: ImageSource.gallery);
+    final image = await _pickImageFile();
     if (image == null) return;
-    setState(() => row.imageFile = File(image.path));
+    setState(() => row.imageFile = image);
+  }
+
+  Future<File?> _pickImageFile() async {
+    final result = await fp.FilePicker.pickFiles(
+      allowMultiple: false,
+      type: fp.FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+    );
+    final path = result?.files.firstOrNull?.path;
+    return path == null ? null : File(path);
   }
 
   // Name Picker Helper
@@ -398,6 +425,8 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       row.nameController.text = selected.name;
       row.usdaId = selected.usdaId;
       row.usdaNutrients = selected.isCustom ? null : nutrients;
+      row.ingredientCategoryId = null;
+      row.markAnalysisCurrent();
     });
   }
 
@@ -460,6 +489,12 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     AddRecipeIngredientsViewModel viewModel,
   ) async {
     if (widget.initialAiRecipe != null) {
+      final onAiDraftNext = widget.onAiDraftNext;
+      if (onAiDraftNext != null) {
+        _didSaveChanges = true;
+        onAiDraftNext(_completedIngredients);
+        return;
+      }
       context.push(
         AppRouter.addRecipeInstructions,
         extra: AddRecipeInstructionsArgs(
@@ -493,9 +528,6 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     }
 
     _didSaveChanges = true;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Recipe ingredients saved.")));
 
     if (widget.returnToReview) {
       context.pushReplacement(
@@ -529,7 +561,12 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
             unitId: row.isCustomUnit ? "" : row.unitId,
             customUnit: row.isCustomUnit ? row.unitName : "",
             usdaId: row.usdaId,
-            usdaNutrients: row.usdaNutrients,
+            usdaNutrients: row.hasAnalysisInputChanged
+                ? null
+                : row.usdaNutrients,
+            ingredientCategoryId: row.hasAnalysisInputChanged
+                ? null
+                : row.ingredientCategoryId,
           ),
         )
         .toList();
@@ -562,6 +599,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
             row.unitName,
             row.isCustomUnit.toString(),
             row.usdaId?.toString() ?? '',
+            row.ingredientCategoryId ?? '',
           ].join('|'),
         )
         .join('::');
@@ -597,6 +635,8 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
             }
             row.usdaId = item.usdaId;
             row.usdaNutrients = item.nutrients;
+            row.ingredientCategoryId = item.ingredientCategoryId;
+            row.markAnalysisCurrent();
           }
           row.addListener(_refreshFormState);
           return row;
@@ -638,6 +678,8 @@ class IngredientRowState {
   bool isCustomUnit = false;
   int? usdaId;
   Map<String, dynamic>? usdaNutrients;
+  String? ingredientCategoryId;
+  String? _analysisSignature;
 
   IngredientRowState();
 
@@ -653,6 +695,10 @@ class IngredientRowState {
   String get unitDisplayName => unitName;
 
   String get unitValueForSave => isCustomUnit ? unitName : unitId;
+
+  bool get hasAnalysisInputChanged {
+    return _analysisSignature != null && _analysisSignature != _inputSignature;
+  }
 
   bool get isComplete {
     return nameController.text.trim().isNotEmpty &&
@@ -686,9 +732,23 @@ class IngredientRowState {
     isCustomUnit = false;
     usdaId = null;
     usdaNutrients = null;
+    ingredientCategoryId = null;
+    _analysisSignature = null;
     for (final listener in _listeners) {
       listener();
     }
+  }
+
+  void markAnalysisCurrent() {
+    _analysisSignature = _inputSignature;
+  }
+
+  String get _inputSignature {
+    return [
+      nameController.text.trim().toLowerCase(),
+      amountController.text.trim(),
+      unitValueForSave.trim().toLowerCase(),
+    ].join('|');
   }
 
   void dispose() {

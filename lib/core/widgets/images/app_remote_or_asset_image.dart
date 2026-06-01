@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 class AppRemoteOrAssetImage extends StatelessWidget {
@@ -27,6 +29,23 @@ class AppRemoteOrAssetImage extends StatelessWidget {
         errorBuilder: (_, __, ___) =>
             _ImageFallback(width: width, height: height),
       );
+    }
+
+    if (trimmedPath.startsWith('data:image/')) {
+      final commaIndex = trimmedPath.indexOf(',');
+      final base64Data = commaIndex >= 0
+          ? trimmedPath.substring(commaIndex + 1)
+          : '';
+      if (base64Data.isNotEmpty) {
+        return Image.memory(
+          base64Decode(base64Data),
+          width: width,
+          height: height,
+          fit: fit,
+          errorBuilder: (_, __, ___) =>
+              _ImageFallback(width: width, height: height),
+        );
+      }
     }
 
     if (trimmedPath.isEmpty) {

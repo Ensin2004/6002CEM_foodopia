@@ -40,8 +40,6 @@ class ReviewInfoRow extends StatelessWidget {
           if (difficultyLevel == null) ...[
             Text(
               value,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               style: context.text.bodyMedium?.copyWith(
                 color: AppColors.textSecondary,
               ),

@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/basic_info/input_option_field.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -41,6 +41,9 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
   final AddMealAiRecipe? initialAiRecipe;
   final AddMealAiGenerationRequest? initialAiRequest;
   final String? userId;
+  final bool hideProgressBar;
+  final bool hideAppBar;
+  final ValueChanged<AddRecipeBasicInfo>? onAiDraftNext;
 
   const AddRecipeBasicInfoPage({
     super.key,
@@ -49,6 +52,9 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
     this.initialAiRecipe,
     this.initialAiRequest,
     this.userId,
+    this.hideProgressBar = false,
+    this.hideAppBar = false,
+    this.onAiDraftNext,
   });
 
   @override
@@ -74,6 +80,9 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
         initialAiRecipe: initialAiRecipe,
         initialAiRequest: initialAiRequest,
         userId: userId,
+        hideProgressBar: hideProgressBar,
+        hideAppBar: hideAppBar,
+        onAiDraftNext: onAiDraftNext,
       ),
     );
   }
@@ -85,6 +94,9 @@ class _AddRecipeBasicInfoView extends StatefulWidget {
   final AddMealAiRecipe? initialAiRecipe;
   final AddMealAiGenerationRequest? initialAiRequest;
   final String? userId;
+  final bool hideProgressBar;
+  final bool hideAppBar;
+  final ValueChanged<AddRecipeBasicInfo>? onAiDraftNext;
 
   const _AddRecipeBasicInfoView({
     this.recipeId,
@@ -92,6 +104,9 @@ class _AddRecipeBasicInfoView extends StatefulWidget {
     this.initialAiRecipe,
     this.initialAiRequest,
     this.userId,
+    this.hideProgressBar = false,
+    this.hideAppBar = false,
+    this.onAiDraftNext,
   });
 
   @override
@@ -100,7 +115,6 @@ class _AddRecipeBasicInfoView extends StatefulWidget {
 }
 
 class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
-  final ImagePicker _imagePicker = ImagePicker();
   final List<File> _images = [];
   final List<String> _existingImageUrls = [];
   final TextEditingController _recipeNameController = TextEditingController();
@@ -210,64 +224,66 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         backgroundColor: Colors.white,
-        appBar: CustomAppBar(
-          title: widget.initialAiRecipe == null
-              ? "New Recipe"
-              : "Customize AI Recipe",
-          leading: IconButton(
-            onPressed: () => _handleBack(context, viewModel),
-            icon: const Icon(Icons.arrow_back),
-          ),
-          actions: [
-            Consumer<AddRecipeVisibilityViewModel>(
-              builder: (context, visibilityViewModel, _) {
-                return RecipeVisibilityActionButton(
-                  visibility: visibilityViewModel.visibility,
-                  isSaving: visibilityViewModel.isSaving,
-                  onChanged: (value) => confirmRecipeVisibilityChange(
-                    context: context,
-                    currentVisibility: visibilityViewModel.visibility,
-                    nextVisibility: value,
-                    onConfirmed: (visibility) =>
-                        visibilityViewModel.updateVisibility(
-                          recipeId: widget.recipeId ?? "",
-                          value: visibility,
+        appBar: widget.hideAppBar
+            ? null
+            : CustomAppBar(
+                title: widget.initialAiRecipe == null
+                    ? "New Recipe"
+                    : "Customize AI Recipe",
+                leading: IconButton(
+                  onPressed: () => _handleBack(context, viewModel),
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                actions: [
+                  Consumer<AddRecipeVisibilityViewModel>(
+                    builder: (context, visibilityViewModel, _) {
+                      return RecipeVisibilityActionButton(
+                        visibility: visibilityViewModel.visibility,
+                        isSaving: visibilityViewModel.isSaving,
+                        onChanged: (value) => confirmRecipeVisibilityChange(
+                          context: context,
+                          currentVisibility: visibilityViewModel.visibility,
+                          nextVisibility: value,
+                          onConfirmed: (visibility) =>
+                              visibilityViewModel.updateVisibility(
+                                recipeId: widget.recipeId ?? "",
+                                value: visibility,
+                              ),
+                          errorMessage: () => visibilityViewModel.errorMessage,
                         ),
-                    errorMessage: () => visibilityViewModel.errorMessage,
+                      );
+                    },
                   ),
-                );
-              },
-            ),
-          ],
-        ),
+                ],
+              ),
         body: SafeArea(
           child: Column(
             children: [
-              // Progress Bar
-              const Padding(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.sm,
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                  AppSpacing.md,
+              if (!widget.hideProgressBar)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.sm,
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                    AppSpacing.md,
+                  ),
+                  child: AppStepProgressBar(
+                    totalSteps: 4,
+                    currentStep: 1,
+                    labels: [
+                      "Basic Info",
+                      "Ingredients",
+                      "Instructions",
+                      "Review",
+                    ],
+                  ),
                 ),
-                child: AppStepProgressBar(
-                  totalSteps: 4,
-                  currentStep: 1,
-                  labels: [
-                    "Basic Info",
-                    "Ingredients",
-                    "Instructions",
-                    "Review",
-                  ],
-                ),
-              ),
 
               // Input Fields
               Expanded(
                 child: ListView(
                   keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.manual,
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                   padding: EdgeInsets.fromLTRB(
                     horizontalPadding,
                     AppSpacing.sm,
@@ -284,13 +300,13 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                         widget.initialAiRecipe?.imageBase64?.isNotEmpty == true)
                       _AiRecipeImagePreview(
                         imageBase64: widget.initialAiRecipe!.imageBase64!,
-                        onReplace: _pickImages,
+                        onReplace: _pickMedia,
                       )
                     else
                       RecipeImagePicker(
                         images: _images,
                         existingImageUrls: _existingImageUrls,
-                        onPick: _pickImages,
+                        onPick: _pickMedia,
                         onEdit: _showSelectedMediaSheet,
                       ),
                     const SizedBox(height: AppSpacing.lg),
@@ -469,24 +485,32 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     }
   }
 
-  // Image Picker Helper
-  Future<void> _pickImages() async {
+  // Media Picker Helper
+  Future<void> _pickMedia() async {
     final remainingSlots = 10 - _images.length - _existingImageUrls.length;
     if (remainingSlots <= 0) return;
 
-    final pickedImages = await _imagePicker.pickMultiImage();
-    if (pickedImages.isEmpty) return;
+    final result = await fp.FilePicker.pickFiles(
+      allowMultiple: true,
+      type: fp.FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'mp4', 'mov', 'm4v', 'avi', 'webm'],
+    );
+    if (result == null || result.files.isEmpty) return;
 
     setState(() {
       _images.addAll(
-        pickedImages.take(remainingSlots).map((image) => File(image.path)),
+        result.files
+            .map((file) => file.path)
+            .whereType<String>()
+            .take(remainingSlots)
+            .map((path) => File(path)),
       );
     });
   }
 
   Future<void> _showSelectedMediaSheet() async {
     if (_images.isEmpty && _existingImageUrls.isEmpty) {
-      await _pickImages();
+      await _pickMedia();
       return;
     }
 
@@ -587,19 +611,17 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         .map((id) => _optionById(options: options, id: id))
         .whereType<AddRecipeOption>();
 
-    return [
+    return ([
       ...optionValues.map(
-        (option) => SelectedRecipeOption(
-          id: option.id,
-          name: option.name,
-          isCustom: false,
-        ),
+        (option) => SelectedRecipeOption(id: option.id, name: option.name, isCustom: false,),
       ),
       ...customOptions.map(
-        (option) =>
-            SelectedRecipeOption(id: option, name: option, isCustom: true),
+        (option) => SelectedRecipeOption(id: option, name: option, isCustom: true),
       ),
-    ];
+    ]..sort(
+      (first, second) =>
+          first.name.toLowerCase().compareTo(second.name.toLowerCase()),
+    ));
   }
 
   AddRecipeOption? _optionById({
@@ -669,6 +691,12 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     );
 
     if (widget.initialAiRecipe != null) {
+      final onAiDraftNext = widget.onAiDraftNext;
+      if (onAiDraftNext != null) {
+        _didSaveChanges = true;
+        onAiDraftNext(info);
+        return;
+      }
       context.push(
         AppRouter.addRecipeIngredients,
         extra: AddRecipeIngredientsArgs(
@@ -696,9 +724,6 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     }
 
     _didSaveChanges = true;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Recipe basic info saved.")));
 
     if (widget.returnToReview) {
       context.pushReplacement(

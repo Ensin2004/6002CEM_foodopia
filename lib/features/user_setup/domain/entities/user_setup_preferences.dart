@@ -6,6 +6,7 @@ class UserSetupPreferences {
   final String calorieUnit;
   final bool calorieTargetEnabled;
   final bool notificationsEnabled;
+  final Map<String, bool> notificationPreferences;
   final String notificationTime;
   final int currentStep;
   final bool isCompleted;
@@ -18,6 +19,7 @@ class UserSetupPreferences {
     this.calorieUnit = 'kcal',
     this.calorieTargetEnabled = true,
     this.notificationsEnabled = false,
+    this.notificationPreferences = const {},
     this.notificationTime = '08:00',
     this.currentStep = 1,
     this.isCompleted = false,
@@ -31,13 +33,15 @@ class UserSetupPreferences {
     String? calorieUnit,
     bool? calorieTargetEnabled,
     bool? notificationsEnabled,
+    Map<String, bool>? notificationPreferences,
     String? notificationTime,
     int? currentStep,
     bool? isCompleted,
+    bool clearDiet = false,
     bool clearTargetCalories = false,
   }) {
     return UserSetupPreferences(
-      diet: diet ?? this.diet,
+      diet: clearDiet ? null : diet ?? this.diet,
       allergies: allergies ?? this.allergies,
       dislikes: dislikes ?? this.dislikes,
       targetCalories: clearTargetCalories
@@ -46,6 +50,8 @@ class UserSetupPreferences {
       calorieUnit: calorieUnit ?? this.calorieUnit,
       calorieTargetEnabled: calorieTargetEnabled ?? this.calorieTargetEnabled,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      notificationPreferences:
+          notificationPreferences ?? this.notificationPreferences,
       notificationTime: notificationTime ?? this.notificationTime,
       currentStep: currentStep ?? this.currentStep,
       isCompleted: isCompleted ?? this.isCompleted,

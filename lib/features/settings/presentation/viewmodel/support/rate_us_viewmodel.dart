@@ -30,32 +30,41 @@ class RateUsViewModel extends ChangeNotifier {
     required GetUserRatingUseCase getUserRatingUseCase,
     required SaveRatingUseCase saveRatingUseCase,
     required DeleteRatingUseCase deleteRatingUseCase,
-  })  : _userId = userId,
-        _getUserRatingUseCase = getUserRatingUseCase,
-        _saveRatingUseCase = saveRatingUseCase,
-        _deleteRatingUseCase = deleteRatingUseCase {
+  }) : _userId = userId,
+       _getUserRatingUseCase = getUserRatingUseCase,
+       _saveRatingUseCase = saveRatingUseCase,
+       _deleteRatingUseCase = deleteRatingUseCase {
     /// Loads data for the load rating operation.
     loadRating();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+
   /// Handles the is saving operation.
   bool get isSaving => _isSaving;
+
   /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+
   /// Handles the rating operation.
   RatingEntity? get rating => _rating;
+
   /// Handles the selected stars operation.
   int get selectedStars => _selectedStars;
+
   /// Handles the comment operation.
   String get comment => _comment;
+
   /// Handles the image url operation.
   String? get imageUrl => _imageUrl;
+
   /// Handles the has submitted rating operation.
   bool get hasSubmittedRating => _rating != null;
+
   /// Handles the is editing operation.
   bool get isEditing => _isEditing;
+
   /// Handles the is submit disabled operation.
   bool get isSubmitDisabled => _selectedStars == 0 || _isSaving;
 
@@ -135,7 +144,7 @@ class RateUsViewModel extends ChangeNotifier {
       stars: _selectedStars,
       comment: _comment,
       imageFile: imageFile,
-      existingImageUrl: _imageUrl,
+      existingImageUrl: null,
     );
 
     if (result.isLeft()) {

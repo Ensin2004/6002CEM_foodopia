@@ -12,6 +12,7 @@ import '../../domain/usecases/get_meal_plan_inspiration_options_usecase.dart';
 import '../../domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../domain/usecases/get_meal_plan_weather_usecase.dart';
 import '../../domain/usecases/search_meal_plan_ingredients_usecase.dart';
+import '../../domain/usecases/update_weekly_grocery_week_start_day_usecase.dart';
 import '../viewmodel/meal_plan_viewmodel.dart';
 import '../widgets/grocery_list/grocery_list_tab_main_view.dart';
 import '../widgets/inspiration/inspiration_tab_main_view.dart';
@@ -34,6 +35,8 @@ class MealPlanPage extends StatelessWidget {
         searchIngredientsUseCase: sl<SearchMealPlanIngredientsUseCase>(),
         getInspirationOptionsUseCase:
             sl<GetMealPlanInspirationOptionsUseCase>(),
+        updateWeeklyGroceryWeekStartDayUseCase:
+            sl<UpdateWeeklyGroceryWeekStartDayUseCase>(),
       ),
       child: _MealPlanView(initialTabIndex: initialTabIndex),
     );

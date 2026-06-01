@@ -9,7 +9,7 @@ class GetAddGroceryListPlanUseCase {
 
   const GetAddGroceryListPlanUseCase(this.repository);
 
-  Future<Either<Failure, AddGroceryListPlan>> execute() {
-    return repository.getAddGroceryListPlan();
+  Future<Either<Failure, AddGroceryListPlan>> execute(String userId) {
+    return repository.getAddGroceryListPlan(userId);
   }
 }

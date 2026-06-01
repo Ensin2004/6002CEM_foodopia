@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../../../../app/dependency_injection/injection_container.dart';
 import '../../../../../app/routers/app_router.dart';
 import '../../../../../app/routers/router_args.dart';
+import '../../../../../core/extensions/either_extensions.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
@@ -17,6 +18,15 @@ import '../../../../../core/widgets/buttons/secondary_button.dart';
 import '../../../../../core/widgets/custom_app_bar.dart';
 import '../../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
+import '../../../../recipe/domain/entities/add_recipe_basic_info.dart';
+import '../../../../recipe/domain/usecases/complete_add_recipe_usecase.dart';
+import '../../../../recipe/domain/usecases/save_add_recipe_basic_info_usecase.dart';
+import '../../../../recipe/domain/usecases/save_add_recipe_ingredients_usecase.dart';
+import '../../../../recipe/domain/usecases/save_add_recipe_instructions_usecase.dart';
+import '../../../../recipe/presentation/view/add_recipe_basic_info_page.dart';
+import '../../../../recipe/presentation/view/add_recipe_ingredients_page.dart';
+import '../../../../recipe/presentation/view/add_recipe_instructions_page.dart';
+import '../../../../recipe/presentation/view/add_recipe_review_page.dart';
 import '../../../domain/entities/add_meal_ai_plan.dart';
 import '../../../domain/entities/meal_plan_inspiration_input.dart';
 import '../../../domain/usecases/generate_ai_meal_ideas_usecase.dart';
@@ -101,19 +111,23 @@ class _GenerateAiMealView extends StatelessWidget {
       );
     }
 
+    final isInspirationFlow = viewModel.sourceRequest != null;
+    final progressLabels = isInspirationFlow
+        ? const ['AI Result', 'Instructions', 'Review']
+        : const ['Factor', 'AI Result', 'Instructions', 'Review'];
+    final progressStep = isInspirationFlow
+        ? (viewModel.currentStep - 1).clamp(1, 3)
+        : viewModel.currentStep;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomAppBar(
-        title: !viewModel.showDatabaseResults
-            ? 'Inspiration'
-            : viewModel.currentStep == 4
+        title: viewModel.currentStep == 4
             ? 'Add to Meal Plan'
             : 'Generate with AI',
         leading: IconButton(
           onPressed: () {
-            if (!viewModel.showDatabaseResults) {
-              context.pop();
-            } else if (viewModel.currentStep > 1) {
+            if (viewModel.currentStep > 1) {
               context.read<GenerateAiMealViewModel>().goToPreviousStep();
             } else {
               context.pop();
@@ -127,25 +141,19 @@ class _GenerateAiMealView extends StatelessWidget {
           SafeArea(
             child: Column(
               children: [
-                if (viewModel.showDatabaseResults)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.sm,
-                      AppSpacing.lg,
-                      AppSpacing.sm,
-                      AppSpacing.md,
-                    ),
-                    child: AppStepProgressBar(
-                      totalSteps: 4,
-                      currentStep: viewModel.currentStep,
-                      labels: const [
-                        'Factor',
-                        'AI Result',
-                        'Instructions',
-                        'Review',
-                      ],
-                    ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.sm,
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                    AppSpacing.md,
                   ),
+                  child: AppStepProgressBar(
+                    totalSteps: progressLabels.length,
+                    currentStep: progressStep,
+                    labels: progressLabels,
+                  ),
+                ),
                 Expanded(child: _StepBody(plan: plan)),
               ],
             ),
@@ -171,7 +179,14 @@ class _StepBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final step = context.watch<GenerateAiMealViewModel>().currentStep;
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+    final step = viewModel.currentStep;
+    if (viewModel.sourceRequest != null && step == 1) {
+      return const LoadingDialog(
+        inline: true,
+        message: 'Generating AI recipes and images...',
+      );
+    }
     switch (step) {
       case 2:
         return _AiResultsStep(plan: plan);
@@ -1167,10 +1182,9 @@ class _DatabaseRecipeResults extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.watch<GenerateAiMealViewModel>();
     if (recipes.isEmpty) {
-      return _NoDatabaseRecipes(
-        onNext: context.read<GenerateAiMealViewModel>().goToNextStep,
-      );
+      return _NoDatabaseRecipes(onNext: viewModel.goToNextStep);
     }
 
     return ListView(
@@ -1194,7 +1208,9 @@ class _DatabaseRecipeResults extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         _PrimaryActionButton(
           label: 'Next',
-          onPressed: context.read<GenerateAiMealViewModel>().goToNextStep,
+          onPressed: viewModel.selectedRecipes.isEmpty
+              ? null
+              : viewModel.goToNextStep,
         ),
       ],
     );
@@ -1301,47 +1317,184 @@ class _AiCreatedRecipeResults extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         _PrimaryActionButton(
           label: 'Next',
-          onPressed: context.read<GenerateAiMealViewModel>().goToNextStep,
+          onPressed: viewModel.selectedRecipes.isEmpty
+              ? null
+              : viewModel.goToNextStep,
         ),
       ],
     );
   }
 }
 
-class _InstructionsStep extends StatelessWidget {
+class _InstructionsStep extends StatefulWidget {
   const _InstructionsStep();
 
   @override
+  State<_InstructionsStep> createState() => _InstructionsStepState();
+}
+
+class _InstructionsStepState extends State<_InstructionsStep> {
+  int _page = 1;
+
+  @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        children: [
-          const Spacer(),
-          Image.asset('assets/images/empty_page.png', height: 150),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Instructions will be added later',
-            style: context.text.titleMedium,
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+    final recipe = viewModel.selectedRecipes.firstOrNull;
+    final basicInfo = viewModel.recipeDraftBasicInfo;
+
+    if (recipe == null) {
+      return Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          children: [
+            const Spacer(),
+            Image.asset('assets/images/empty_page.png', height: 150),
+            const SizedBox(height: AppSpacing.md),
+            Text('Select one AI recipe first', style: context.text.titleMedium),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Go back to AI Result and choose the recipe you want to prepare.',
+              textAlign: TextAlign.center,
+              style: context.text.bodySmall,
+            ),
+            const Spacer(),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.sm,
           ),
-          const Spacer(),
-          _PrimaryActionButton(
-            label: 'Next',
-            onPressed: context.read<GenerateAiMealViewModel>().goToNextStep,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Recipe Instructions ($_page/4)',
+                  style: context.text.titleMedium,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _page <= 1 ? null : () => setState(() => _page -= 1),
+                icon: const Icon(Icons.chevron_left),
+                label: const Text('Back'),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        Expanded(child: _buildRecipeDraftPage(context, recipe, basicInfo)),
+      ],
     );
+  }
+
+  Widget _buildRecipeDraftPage(
+    BuildContext context,
+    AddMealAiRecipe recipe,
+    AddRecipeBasicInfo? basicInfo,
+  ) {
+    final viewModel = context.read<GenerateAiMealViewModel>();
+    switch (_page) {
+      case 2:
+        return AddRecipeIngredientsPage(
+          key: ValueKey('ai-ingredients-${recipe.id}'),
+          recipeId: '',
+          initialVisibility: basicInfo?.visibility ?? 'private',
+          initialAiRecipe: recipe,
+          initialAiRequest: viewModel.generationRequest,
+          userId: viewModel.userId,
+          aiDraftBasicInfo: basicInfo,
+          hideProgressBar: true,
+          hideAppBar: true,
+          onAiDraftNext: (ingredients) {
+            viewModel.saveRecipeDraftIngredients(ingredients);
+            setState(() => _page = 3);
+          },
+        );
+      case 3:
+        return AddRecipeInstructionsPage(
+          key: ValueKey('ai-instructions-${recipe.id}'),
+          recipeId: '',
+          initialVisibility: basicInfo?.visibility ?? 'private',
+          initialAiRecipe: recipe,
+          initialAiRequest: viewModel.generationRequest,
+          userId: viewModel.userId,
+          aiDraftBasicInfo: basicInfo,
+          aiDraftIngredients: viewModel.recipeDraftIngredients,
+          hideProgressBar: true,
+          hideAppBar: true,
+          onAiDraftNext: (draft) {
+            viewModel.saveRecipeDraftInstructions(
+              instructions: draft.instructions,
+              useSections: draft.useSections,
+            );
+            setState(() => _page = 4);
+          },
+        );
+      case 4:
+        if (basicInfo == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _page = 1);
+          });
+          return const SizedBox.shrink();
+        }
+        return AddRecipeReviewPage(
+          key: ValueKey('ai-review-${recipe.id}'),
+          recipeId: '',
+          initialAiRecipe: recipe,
+          initialAiRequest: viewModel.generationRequest,
+          userId: viewModel.userId,
+          aiDraftBasicInfo: basicInfo,
+          aiDraftIngredients: viewModel.recipeDraftIngredients,
+          aiDraftInstructions: viewModel.recipeDraftInstructions,
+          aiDraftUseSections: viewModel.recipeDraftUseSections,
+          hideProgressBar: true,
+          hideAppBar: true,
+          onAiDraftReviewed: viewModel.goToNextStep,
+        );
+      default:
+        return AddRecipeBasicInfoPage(
+          key: ValueKey('ai-basic-${recipe.id}'),
+          recipeId: '',
+          initialAiRecipe: recipe,
+          initialAiRequest: viewModel.generationRequest,
+          userId: viewModel.userId,
+          hideProgressBar: true,
+          hideAppBar: true,
+          onAiDraftNext: (info) {
+            viewModel.saveRecipeDraftBasicInfo(info);
+            setState(() => _page = 2);
+          },
+        );
+    }
   }
 }
 
-class _ReviewStep extends StatelessWidget {
+extension _FirstOrNull<T> on List<T> {
+  T? get firstOrNull => isEmpty ? null : first;
+}
+
+class _ReviewStep extends StatefulWidget {
   final AddMealAiPlan plan;
 
   const _ReviewStep({required this.plan});
 
   @override
+  State<_ReviewStep> createState() => _ReviewStepState();
+}
+
+class _ReviewStepState extends State<_ReviewStep> {
+  bool _isSavingRecipe = false;
+  bool _isSavingBoth = false;
+
+  @override
   Widget build(BuildContext context) {
+    final plan = widget.plan;
     final viewModel = context.watch<GenerateAiMealViewModel>();
     final selectedRecipes = viewModel.selectedRecipes;
 
@@ -1362,10 +1515,11 @@ class _ReviewStep extends StatelessWidget {
           icon: Icons.wb_sunny_outlined,
           title: '${plan.weather.condition} - ${plan.weather.temperature}C',
           subtitle: plan.weather.summary,
+          highlighted: true,
         ),
         const SizedBox(height: AppSpacing.md),
         Text(
-          'Meals planned on ${DateFormat('EEE, d MMM').format(plan.planningDate)}',
+          'Meals planned on ${DateFormat('EEE, d MMM').format(viewModel.selectedDate)}',
           style: context.text.titleMedium,
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -1391,54 +1545,134 @@ class _ReviewStep extends StatelessWidget {
         _PrimaryActionButton(
           label: viewModel.isSaving ? 'Adding...' : 'Add to Meal Plan',
           onPressed: viewModel.isSaving
-              ? () {}
-              : () async {
-                  final success = await context
-                      .read<GenerateAiMealViewModel>()
-                      .saveSelectedRecipesToPlan();
-                  if (!context.mounted) return;
-                  if (!success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          context
-                                  .read<GenerateAiMealViewModel>()
-                                  .errorMessage ??
-                              'Unable to add meal plan.',
-                        ),
-                      ),
-                    );
-                    return;
-                  }
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Meal plan added.')),
-                  );
-                  context.go(
-                    AppRouter.mealPlan,
-                    extra: MealPlanArgs(
-                      initialTabIndex: 0,
-                      userId: viewModel.userId,
-                    ),
-                  );
-                },
+              ? null
+              : () => _saveMealPlan(context, viewModel),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _PrimaryActionButton(
+          label: _isSavingRecipe ? 'Saving...' : 'Save Recipe',
+          onPressed: _isSavingRecipe || !viewModel.hasRecipeDraft
+              ? null
+              : () => _saveRecipe(context, viewModel),
         ),
         const SizedBox(height: AppSpacing.sm),
         OutlinedButton(
-          onPressed: selectedRecipes.isEmpty
+          onPressed:
+              viewModel.isSaving || _isSavingBoth || !viewModel.hasRecipeDraft
               ? null
-              : () {
-                  context.push(
-                    AppRouter.addRecipeBasicInfo,
-                    extra: AddRecipeBasicInfoArgs(
-                      aiRecipe: selectedRecipes.first,
-                      aiRequest: viewModel.generationRequest,
-                      userId: viewModel.userId,
-                    ),
-                  );
-                },
-          child: const Text('Add to Recipe'),
+              : () => _saveBoth(context, viewModel),
+          child: Text(
+            _isSavingBoth ? 'Saving...' : 'Add to Meal Plan & Recipe',
+          ),
         ),
       ],
+    );
+  }
+
+  Future<void> _saveMealPlan(
+    BuildContext context,
+    GenerateAiMealViewModel viewModel,
+  ) async {
+    final success = await viewModel.saveSelectedRecipesToPlan();
+    if (!context.mounted) return;
+    if (!success) {
+      _showSnack(context, viewModel.errorMessage ?? 'Unable to add meal plan.');
+      return;
+    }
+    _goToMealPlan(context, viewModel);
+  }
+
+  Future<void> _saveRecipe(
+    BuildContext context,
+    GenerateAiMealViewModel viewModel,
+  ) async {
+    setState(() => _isSavingRecipe = true);
+    final success = await _saveRecipeDraft(viewModel);
+    if (!context.mounted) return;
+    setState(() => _isSavingRecipe = false);
+    if (!success) return;
+    _showSnack(context, 'Recipe saved.');
+  }
+
+  Future<void> _saveBoth(
+    BuildContext context,
+    GenerateAiMealViewModel viewModel,
+  ) async {
+    setState(() => _isSavingBoth = true);
+    final recipeSaved = await _saveRecipeDraft(viewModel);
+    if (!context.mounted) return;
+    if (!recipeSaved) {
+      setState(() => _isSavingBoth = false);
+      return;
+    }
+    final mealSaved = await viewModel.saveSelectedRecipesToPlan();
+    if (!context.mounted) return;
+    setState(() => _isSavingBoth = false);
+    if (!mealSaved) {
+      _showSnack(context, viewModel.errorMessage ?? 'Unable to add meal plan.');
+      return;
+    }
+    _goToMealPlan(context, viewModel);
+  }
+
+  Future<bool> _saveRecipeDraft(GenerateAiMealViewModel viewModel) async {
+    final basicInfo = viewModel.recipeDraftBasicInfo;
+    if (basicInfo == null) return false;
+
+    final basicResult = await sl<SaveAddRecipeBasicInfoUseCase>().execute(
+      basicInfo,
+    );
+    if (basicResult.isLeft()) {
+      if (mounted) _showSnack(context, basicResult.left?.message);
+      return false;
+    }
+
+    final savedRecipeId = basicResult.right!;
+    final ingredientResult = await sl<SaveAddRecipeIngredientsUseCase>()
+        .execute(
+          recipeId: savedRecipeId,
+          ingredients: viewModel.recipeDraftIngredients,
+        );
+    if (ingredientResult.isLeft()) {
+      if (mounted) _showSnack(context, ingredientResult.left?.message);
+      return false;
+    }
+
+    final instructionResult = await sl<SaveAddRecipeInstructionsUseCase>()
+        .execute(
+          recipeId: savedRecipeId,
+          useSections: viewModel.recipeDraftUseSections,
+          instructions: viewModel.recipeDraftInstructions,
+        );
+    if (instructionResult.isLeft()) {
+      if (mounted) _showSnack(context, instructionResult.left?.message);
+      return false;
+    }
+
+    final completeResult = await sl<CompleteAddRecipeUseCase>().execute(
+      recipeId: savedRecipeId,
+      mode: 'ai_generated',
+    );
+    if (completeResult.isLeft()) {
+      if (mounted) _showSnack(context, completeResult.left?.message);
+      return false;
+    }
+    return true;
+  }
+
+  void _goToMealPlan(BuildContext context, GenerateAiMealViewModel viewModel) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Meal plan added.')));
+    context.go(
+      AppRouter.mealPlan,
+      extra: MealPlanArgs(initialTabIndex: 0, userId: viewModel.userId),
+    );
+  }
+
+  void _showSnack(BuildContext context, String? message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message ?? 'Unable to save recipe.')),
     );
   }
 }
@@ -1889,11 +2123,13 @@ class _FactorCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final bool highlighted;
 
   const _FactorCard({
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.highlighted = false,
   });
 
   @override
@@ -1902,14 +2138,26 @@ class _FactorCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: AppSpacing.cardPadding,
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
+        color: highlighted
+            ? AppColors.secondary.withValues(alpha: 0.18)
+            : Colors.white,
+        border: Border.all(
+          color: highlighted
+              ? AppColors.secondary.withValues(alpha: 0.75)
+              : AppColors.border,
+        ),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.textSecondary, size: 22),
+          Icon(
+            icon,
+            color: highlighted
+                ? const Color(0xFF8A6400)
+                : AppColors.textSecondary,
+            size: 22,
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -1921,7 +2169,6 @@ class _FactorCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.keyboard_arrow_down, size: 18),
         ],
       ),
     );
@@ -1974,6 +2221,12 @@ class _RecipeResultCard extends StatelessWidget {
                     Text(
                       '${recipe.durationLabel}   ${recipe.difficultyLabel}',
                       style: context.text.bodySmall,
+                    ),
+                    Text(
+                      _nutritionSummary(recipe),
+                      style: context.text.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(recipe.description, style: context.text.bodySmall),
                   ],
@@ -2048,46 +2301,290 @@ class _ReviewRecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final macros = [
+      _MacroStat(
+        label: 'Carbs',
+        value: recipe.carbohydrates,
+        color: AppColors.primary,
+      ),
+      _MacroStat(label: 'Protein', value: recipe.protein, color: Colors.blue),
+      _MacroStat(label: 'Fat', value: recipe.fat, color: AppColors.secondary),
+    ];
+    final totalMacros = macros.fold<double>(0, (sum, item) => sum + item.value);
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: AppSpacing.cardPadding,
       decoration: BoxDecoration(
+        color: Colors.white,
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 14,
+            offset: const Offset(0, 7),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: _RecipeThumb(recipe: recipe, size: 70),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            child: Stack(
               children: [
-                Text(recipe.title, style: context.text.titleMedium),
-                Text(
-                  '${recipe.durationLabel} | ${recipe.difficultyLabel} | ${recipe.servingLabel}',
-                  style: context.text.bodySmall,
+                SizedBox(
+                  width: double.infinity,
+                  height: 150,
+                  child: _RecipeThumb(recipe: recipe, size: double.infinity),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(recipe.description, style: context.text.bodySmall),
+                Positioned(
+                  left: AppSpacing.sm,
+                  top: AppSpacing.sm,
+                  child: _ReviewBadge(
+                    icon: Icons.local_fire_department_outlined,
+                    label: '${recipe.calories} kcal',
+                    emphasized: true,
+                  ),
+                ),
               ],
             ),
           ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.remove_circle_outline),
-          ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.add_circle_outline),
+          Padding(
+            padding: AppSpacing.cardPadding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  recipe.title,
+                  style: context.text.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  recipe.description,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.bodySmall?.copyWith(height: 1.35),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    _ReviewBadge(
+                      icon: Icons.schedule,
+                      label: recipe.durationLabel,
+                    ),
+                    _ReviewBadge(
+                      icon: Icons.signal_cellular_alt,
+                      label: recipe.difficultyLabel,
+                    ),
+                    _ReviewBadge(
+                      icon: Icons.room_service_outlined,
+                      label: recipe.servingLabel,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    for (final macro in macros) ...[
+                      Expanded(
+                        child: _MacroSummaryItem(
+                          label: macro.label,
+                          value: macro.value,
+                          color: macro.color,
+                        ),
+                      ),
+                      if (macro != macros.last)
+                        const SizedBox(width: AppSpacing.sm),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: Row(
+                    children: [
+                      for (final macro in macros)
+                        Expanded(
+                          flex: totalMacros <= 0
+                              ? 1
+                              : (macro.value / totalMacros * 100).round().clamp(
+                                  1,
+                                  100,
+                                ),
+                          child: Container(height: 8, color: macro.color),
+                        ),
+                    ],
+                  ),
+                ),
+                if (recipe.reasons.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'Why this fits',
+                    style: context.text.bodySmall?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      for (final reason in recipe.reasons.take(3))
+                        _ReasonChip(reason: reason),
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+class _MacroStat {
+  final String label;
+  final double value;
+  final Color color;
+
+  const _MacroStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+}
+
+class _ReviewBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool emphasized;
+
+  const _ReviewBadge({
+    required this.icon,
+    required this.label,
+    this.emphasized = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = emphasized ? Colors.white : AppColors.textPrimary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: emphasized ? AppColors.primary : const Color(0xFFF8FAF8),
+        borderRadius: BorderRadius.circular(8),
+        border: emphasized ? null : Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: foreground),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: context.text.bodySmall?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MacroSummaryItem extends StatelessWidget {
+  final String label;
+  final double value;
+  final Color color;
+
+  const _MacroSummaryItem({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${_macroValue(value)}g',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.bodySmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReasonChip extends StatelessWidget {
+  final String reason;
+
+  const _ReasonChip({required this.reason});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAF8),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
+      ),
+      child: Text(
+        reason,
+        style: context.text.bodySmall?.copyWith(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+String _nutritionSummary(AddMealAiRecipe recipe) {
+  final macros = [
+    '${recipe.calories} kcal',
+    'C ${_macroValue(recipe.carbohydrates)}g',
+    'P ${_macroValue(recipe.protein)}g',
+    'F ${_macroValue(recipe.fat)}g',
+  ];
+  return macros.join(' | ');
+}
+
+String _macroValue(double value) {
+  return value.toStringAsFixed(value % 1 == 0 ? 0 : 1);
 }
 
 class _DateScroller extends StatelessWidget {
@@ -2115,6 +2612,21 @@ class _DateScroller extends StatelessWidget {
               Text(
                 DateFormat('MMM yyyy').format(selectedDate),
                 style: context.text.bodySmall,
+              ),
+              IconButton(
+                tooltip: 'Open calendar',
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate,
+                    firstDate: DateTime.now().subtract(
+                      const Duration(days: 365),
+                    ),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) onSelected(picked);
+                },
+                icon: const Icon(Icons.event_outlined, size: 18),
               ),
             ],
           ),
@@ -2354,7 +2866,7 @@ class _Pill extends StatelessWidget {
 
 class _PrimaryActionButton extends StatelessWidget {
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const _PrimaryActionButton({required this.label, required this.onPressed});
 

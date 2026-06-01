@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../../../core/services/shared_prefs_manager.dart';
+import '../../../notifications/domain/entities/notification_preference.dart';
+import '../../../notifications/domain/usecases/get_notification_preferences_usecase.dart';
+import '../../../notifications/domain/usecases/update_notification_preference_usecase.dart';
 import '../../domain/entities/user_setup_option.dart';
 import '../../domain/entities/user_setup_preferences.dart';
 import '../../domain/usecases/get_user_setup_options_usecase.dart';
@@ -21,15 +24,25 @@ enum UserSetupNavigationEvent {
 }
 
 class UserSetupViewModel extends ChangeNotifier {
-  static const noneValue = 'None';
   static const noDietValue = 'No specific diet';
   static const totalSteps = 5;
+  static const notificationPreferenceIds = [
+    'new_follower_notification',
+    'new_rating_notification',
+    'new_comment_notification',
+    'new_recipe_notification',
+    'new_reply_notification',
+    'plan_reminder_notification',
+  ];
 
   final String uid;
   final GetUserSetupOptionsUseCase _getOptionsUseCase;
   final SearchUserSetupFoodsUseCase _searchFoodsUseCase;
   final GetUserSetupPreferencesUseCase _getPreferencesUseCase;
   final SaveUserSetupPreferencesUseCase _savePreferencesUseCase;
+  final GetNotificationPreferencesUseCase _getNotificationPreferencesUseCase;
+  final UpdateNotificationPreferenceUseCase
+  _updateNotificationPreferenceUseCase;
 
   bool _isLoading = false;
   bool _isSaving = false;
@@ -39,6 +52,7 @@ class UserSetupViewModel extends ChangeNotifier {
   List<UserSetupOption> _allergyOptions = const [];
   List<UserSetupOption> _dislikeOptions = const [];
   List<UserSetupOption> _searchResults = const [];
+  List<NotificationPreference> _notificationPreferences = const [];
   UserSetupPreferences _preferences = const UserSetupPreferences();
   final Map<String, bool> _notificationSettings = {};
   String _activeSearchQuery = '';
@@ -52,10 +66,17 @@ class UserSetupViewModel extends ChangeNotifier {
     required SearchUserSetupFoodsUseCase searchFoodsUseCase,
     required GetUserSetupPreferencesUseCase getPreferencesUseCase,
     required SaveUserSetupPreferencesUseCase savePreferencesUseCase,
+    required GetNotificationPreferencesUseCase
+    getNotificationPreferencesUseCase,
+    required UpdateNotificationPreferenceUseCase
+    updateNotificationPreferenceUseCase,
   }) : _getOptionsUseCase = getOptionsUseCase,
        _searchFoodsUseCase = searchFoodsUseCase,
        _getPreferencesUseCase = getPreferencesUseCase,
-       _savePreferencesUseCase = savePreferencesUseCase;
+       _savePreferencesUseCase = savePreferencesUseCase,
+       _getNotificationPreferencesUseCase = getNotificationPreferencesUseCase,
+       _updateNotificationPreferenceUseCase =
+           updateNotificationPreferenceUseCase;
 
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
@@ -65,6 +86,8 @@ class UserSetupViewModel extends ChangeNotifier {
   List<UserSetupOption> get allergyOptions => _allergyOptions;
   List<UserSetupOption> get dislikeOptions => _dislikeOptions;
   List<UserSetupOption> get searchResults => _searchResults;
+  List<NotificationPreference> get notificationPreferences =>
+      List.unmodifiable(_notificationPreferences);
   UserSetupPreferences get preferences => _preferences;
   bool notificationValue(String id) =>
       _notificationSettings[id] ??
@@ -89,10 +112,12 @@ class UserSetupViewModel extends ChangeNotifier {
 
     final preferencesResult = await _getPreferencesUseCase.execute(uid);
     preferencesResult.ifLeft((failure) => _errorMessage = failure.message);
-    preferencesResult.ifRight((preferences) => _preferences = preferences);
+    preferencesResult.ifRight((preferences) {
+      _preferences = _withoutEmptyChoices(preferences);
+    });
 
     await Future.wait(optionCategoryIds.map(_loadOptions));
-    _loadNotificationSettings();
+    await _loadNotificationSettings();
 
     _isLoading = false;
     notifyListeners();
@@ -124,7 +149,11 @@ class UserSetupViewModel extends ChangeNotifier {
     if (_isDisposed || _activeSearchQuery != trimmed) return;
 
     result.ifLeft((failure) => _errorMessage = failure.message);
-    result.ifRight((items) => _searchResults = items);
+    result.ifRight((items) {
+      _searchResults = items
+          .where((item) => !_isEmptyChoiceName(item.name))
+          .toList();
+    });
     _isSearching = false;
     notifyListeners();
   }
@@ -145,21 +174,42 @@ class UserSetupViewModel extends ChangeNotifier {
   }
 
   void selectDiet(String value) {
+    if (_isEmptyChoiceName(value)) {
+      clearDiet();
+      return;
+    }
     _preferences = _preferences.copyWith(diet: value);
     notifyListeners();
   }
 
+  void clearDiet() {
+    _preferences = _preferences.copyWith(clearDiet: true);
+    notifyListeners();
+  }
+
   void toggleAllergy(String value) {
+    if (_isEmptyChoiceName(value)) return;
     _preferences = _preferences.copyWith(
       allergies: _toggleValue(_preferences.allergies, value),
     );
     notifyListeners();
   }
 
+  void clearAllergies() {
+    _preferences = _preferences.copyWith(allergies: const []);
+    notifyListeners();
+  }
+
   void toggleDislike(String value) {
+    if (_isEmptyChoiceName(value)) return;
     _preferences = _preferences.copyWith(
       dislikes: _toggleValue(_preferences.dislikes, value),
     );
+    notifyListeners();
+  }
+
+  void clearDislikes() {
+    _preferences = _preferences.copyWith(dislikes: const []);
     notifyListeners();
   }
 
@@ -184,8 +234,39 @@ class UserSetupViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setNotificationsEnabled(bool value) {
+  Future<void> setNotificationsEnabled(bool value) async {
+    _preferences = _preferences.copyWith(
+      notificationsEnabled: value,
+      notificationPreferences: {
+        for (final id in notificationPreferenceIds) id: value,
+      },
+    );
+    await SharedPrefsManager.setNotificationEnabled(value);
+    await Future.wait(
+      notificationPreferenceIds.map((id) {
+        return SharedPrefsManager.setNotificationTypeEnabled(id, value);
+      }),
+    );
+    for (final id in notificationPreferenceIds) {
+      _notificationSettings[id] = value;
+    }
     _preferences = _preferences.copyWith(notificationsEnabled: value);
+    notifyListeners();
+
+    final nextValue = value;
+    for (final item in _notificationPreferences) {
+      await setNotificationValue(item.id, nextValue);
+    }
+  }
+
+  Future<void> toggleNotificationValue(String id, bool value) async {
+    _preferences = _preferences.copyWith(notificationsEnabled: true);
+    await setNotificationValue(id, value);
+    _preferences = _preferences.copyWith(
+      notificationsEnabled: _notificationSettings.values.any(
+        (enabled) => enabled,
+      ),
+    );
     notifyListeners();
   }
 
@@ -197,13 +278,28 @@ class UserSetupViewModel extends ChangeNotifier {
   Future<void> setNotificationValue(String id, bool value) async {
     await SharedPrefsManager.setNotificationTypeEnabled(id, value);
     _notificationSettings[id] = value;
+    _preferences = _preferences.copyWith(
+      notificationPreferences: {..._notificationSettings},
+    );
     notifyListeners();
+    final result = await _updateNotificationPreferenceUseCase.execute(
+      preferenceId: id,
+      enabled: value,
+    );
+    result.ifLeft((failure) => _errorMessage = failure.message);
+    result.ifRight((_) {
+      _notificationSettings[id] = value;
+      _notificationPreferences = _notificationPreferences
+          .map((item) => item.id == id ? item.copyWith(enabled: value) : item)
+          .toList(growable: false);
+      _errorMessage = null;
+    });
+    if (!_isDisposed) notifyListeners();
   }
 
   Future<void> saveDiet() async {
-    final diet = _preferences.diet ?? noDietValue;
     await _save(
-      _preferences.copyWith(diet: diet, currentStep: 2),
+      _preferences.copyWith(currentStep: 2),
       UserSetupNavigationEvent.goToAllergies,
     );
   }
@@ -250,24 +346,24 @@ class UserSetupViewModel extends ChangeNotifier {
     );
   }
 
-  void _loadNotificationSettings() {
-    const ids = [
-      'new_follower_notification',
-      'new_rating_notification',
-      'plan_reminder_notification',
-    ];
-
-    for (final id in ids) {
-      _notificationSettings[id] = SharedPrefsManager.isNotificationTypeEnabled(
-        id,
+  Future<void> _loadNotificationSettings() async {
+    final result = await _getNotificationPreferencesUseCase.execute();
+    result.ifLeft((failure) => _errorMessage = failure.message);
+    result.ifRight((items) {
+      _notificationPreferences = items;
+      _notificationSettings
+        ..clear()
+        ..addEntries(items.map((item) => MapEntry(item.id, item.enabled)));
+      _preferences = _preferences.copyWith(
+        notificationsEnabled: items.any((item) => item.enabled),
+        notificationPreferences: {..._notificationSettings},
       );
-    }
+    });
   }
 
   Future<void> saveDietFromSettings() async {
-    final diet = _preferences.diet ?? noDietValue;
     await _save(
-      _preferences.copyWith(diet: diet, isCompleted: true),
+      _preferences.copyWith(isCompleted: true),
       UserSetupNavigationEvent.closeSettings,
     );
   }
@@ -327,13 +423,19 @@ class UserSetupViewModel extends ChangeNotifier {
     result.ifRight((items) {
       switch (categoryId) {
         case 'meal_preferences':
-          _dietOptions = _withRequiredOption(items, noDietValue);
+          _dietOptions = items
+              .where((item) => !_isEmptyChoiceName(item.name))
+              .toList();
           break;
         case 'allergies':
-          _allergyOptions = _withRequiredOption(items, noneValue);
+          _allergyOptions = items
+              .where((item) => !_isEmptyChoiceName(item.name))
+              .toList();
           break;
         case 'dislikes':
-          _dislikeOptions = _withRequiredOption(items, noneValue);
+          _dislikeOptions = items
+              .where((item) => !_isEmptyChoiceName(item.name))
+              .toList();
           break;
       }
     });
@@ -363,11 +465,7 @@ class UserSetupViewModel extends ChangeNotifier {
   }
 
   List<String> _toggleValue(List<String> source, String value) {
-    if (value == noneValue) {
-      return source.contains(noneValue) ? [] : [noneValue];
-    }
-
-    final values = source.where((item) => item != noneValue).toList();
+    final values = source.where((item) => !_isEmptyChoiceName(item)).toList();
     if (values.contains(value)) {
       values.remove(value);
     } else {
@@ -376,17 +474,25 @@ class UserSetupViewModel extends ChangeNotifier {
     return values;
   }
 
-  List<UserSetupOption> _withRequiredOption(
-    List<UserSetupOption> source,
-    String name,
-  ) {
-    final hasOption = source.any(
-      (item) => item.name.toLowerCase() == name.toLowerCase(),
+  UserSetupPreferences _withoutEmptyChoices(UserSetupPreferences preferences) {
+    final diet = preferences.diet;
+    return preferences.copyWith(
+      clearDiet: diet == null || _isEmptyChoiceName(diet),
+      allergies: preferences.allergies
+          .where((item) => !_isEmptyChoiceName(item))
+          .toList(),
+      dislikes: preferences.dislikes
+          .where((item) => !_isEmptyChoiceName(item))
+          .toList(),
     );
-    if (hasOption) return source;
-    return [
-      UserSetupOption(id: name.toLowerCase().replaceAll(' ', '_'), name: name),
-      ...source,
-    ];
+  }
+
+  bool _isEmptyChoiceName(String name) {
+    final normalized = name.trim().toLowerCase();
+    return normalized == 'none' ||
+        normalized == 'no preference' ||
+        normalized == 'no preferences' ||
+        normalized == 'no dietary preference' ||
+        normalized == noDietValue.toLowerCase();
   }
 }

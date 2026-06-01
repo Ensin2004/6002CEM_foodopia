@@ -85,15 +85,26 @@ class FcmNotificationService {
   }
 
   static Future<void> _showForegroundNotification(RemoteMessage message) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final type = message.data['type']?.toString() ?? '';
+    final enabled = await _isNotificationEnabledForType(uid: uid, type: type);
+    if (!enabled) return;
+
     final title =
         message.notification?.title ?? message.data['title']?.toString();
     final body = message.notification?.body ?? message.data['body']?.toString();
     if (title == null || body == null) return;
 
+    final notificationId = message.data['notificationId']?.toString() ?? '';
+    final dedupeKey = notificationId.isEmpty
+        ? 'fcm_${message.messageId ?? DateTime.now().millisecondsSinceEpoch}'
+        : notificationId;
+    if (!_shownNotificationKeys.add(dedupeKey)) return;
+
     await _showNativeNotification(
       title: title,
       body: body,
-      key: 'fcm_${message.messageId ?? DateTime.now()}',
+      key: 'notification_$dedupeKey',
     );
   }
 
@@ -105,6 +116,7 @@ class FcmNotificationService {
     final startedAt = Timestamp.fromDate(
       DateTime.now().subtract(const Duration(seconds: 10)),
     );
+    var hasDeliveredInitialSnapshot = false;
     _notificationSubscription = FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -114,12 +126,28 @@ class FcmNotificationService {
         .orderBy('createdAt', descending: false)
         .snapshots()
         .listen(
-          (snapshot) {
+          (snapshot) async {
+            if (!hasDeliveredInitialSnapshot) {
+              for (final change in snapshot.docChanges) {
+                if (change.type == DocumentChangeType.added) {
+                  _shownNotificationKeys.add(change.doc.id);
+                }
+              }
+              hasDeliveredInitialSnapshot = true;
+              return;
+            }
+
             for (final change in snapshot.docChanges) {
               if (change.type != DocumentChangeType.added) continue;
               if (!_shownNotificationKeys.add(change.doc.id)) continue;
               final data = change.doc.data() ?? const <String, dynamic>{};
               if (data['createdAt'] == null) continue;
+              final type = data['type']?.toString() ?? '';
+              final enabled = await _isNotificationEnabledForType(
+                uid: uid,
+                type: type,
+              );
+              if (!enabled) continue;
               final title = data['title']?.toString() ?? 'Foodopia';
               final body =
                   data['message']?.toString() ?? 'You have a new notification.';
@@ -136,6 +164,78 @@ class FcmNotificationService {
             );
           },
         );
+  }
+
+  static Future<bool> _isNotificationEnabledForType({
+    required String uid,
+    required String type,
+  }) async {
+    if (uid.isEmpty) return true;
+    final isAdmin = await _isAdmin(uid);
+    const adminTypes = {'newUser', 'systemRating', 'newHelpTicket'};
+    if (isAdmin && !adminTypes.contains(type)) return false;
+    if (!isAdmin && adminTypes.contains(type)) return false;
+
+    final preferenceId = _preferenceIdForNotificationType(type);
+    if (preferenceId == null) return true;
+
+    try {
+      final preferenceDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('notification_preferences')
+          .doc(preferenceId)
+          .get();
+      final enabled = preferenceDoc.data()?['enabled'];
+      return enabled is bool ? enabled : true;
+    } on FirebaseException {
+      return true;
+    }
+  }
+
+  static Future<bool> _isAdmin(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      return doc.data()?['role']?.toString().toLowerCase() == 'admin';
+    } on FirebaseException {
+      return false;
+    }
+  }
+
+  static String? _preferenceIdForNotificationType(String type) {
+    switch (type) {
+      case 'newFollower':
+      case 'follow':
+        return 'new_follower_notification';
+      case 'newRating':
+      case 'rating':
+        return 'new_rating_notification';
+      case 'newComment':
+      case 'comment':
+        return 'new_comment_notification';
+      case 'newRecipe':
+      case 'newPost':
+        return 'new_recipe_notification';
+      case 'newReply':
+      case 'reply':
+        return 'new_reply_notification';
+      case 'newLike':
+      case 'like':
+        return 'new_like_notification';
+      case 'newUser':
+        return 'new_user_notification';
+      case 'systemRating':
+        return 'system_rating_notification';
+      case 'newHelpTicket':
+        return 'new_help_ticket_notification';
+      case 'helpReply':
+        return 'help_center_reply_notification';
+      default:
+        return null;
+    }
   }
 
   static Future<void> _showNativeNotification({

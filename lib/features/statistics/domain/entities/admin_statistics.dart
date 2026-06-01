@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'recipe_performance_statistics.dart';
+
 enum AdminStatisticsSortOrder { ascending, descending }
 
 class AdminDailyStatistic {
@@ -15,6 +17,9 @@ class AdminRankedStatistic {
   final double percent;
   final IconData icon;
   final Color color;
+  final String? imageUrl;
+  final String? markerText;
+  final List<AdminRankedStatisticDetail> details;
 
   const AdminRankedStatistic({
     required this.label,
@@ -22,6 +27,25 @@ class AdminRankedStatistic {
     required this.percent,
     required this.icon,
     required this.color,
+    this.imageUrl,
+    this.markerText,
+    this.details = const [],
+  });
+}
+
+class AdminRankedStatisticDetail {
+  final String title;
+  final String? subtitle;
+  final int quantity;
+  final IconData icon;
+  final String? imageUrl;
+
+  const AdminRankedStatisticDetail({
+    required this.title,
+    this.subtitle,
+    required this.quantity,
+    required this.icon,
+    this.imageUrl,
   });
 }
 
@@ -89,11 +113,13 @@ class AdminPostAnalyticStatistics {
   final String dateRange;
   final List<AdminDailyStatistic> dailyPosts;
   final List<AdminAnalyticSection> sections;
+  final RecipePerformanceStatistics? recipePerformance;
 
   const AdminPostAnalyticStatistics({
     required this.dateRange,
     required this.dailyPosts,
     required this.sections,
+    this.recipePerformance,
   });
 
   AdminDailyStatistic get topDay {
@@ -120,5 +146,69 @@ class AdminDietaryPreferenceStatistics {
     required this.totalUsers,
     required this.topPreference,
     required this.preferences,
+  });
+}
+
+class AdminGenderStatistics {
+  final String dateRange;
+  final int totalUsers;
+  final String mostGender;
+  final List<AdminRankedStatistic> genders;
+
+  const AdminGenderStatistics({
+    required this.dateRange,
+    required this.totalUsers,
+    required this.mostGender,
+    required this.genders,
+  });
+}
+
+class AdminUserUsageStatistics {
+  final String dateRange;
+  final int totalUsers;
+  final String topMonth;
+  final List<AdminMonthlyUserStatistic> monthlyUsers;
+
+  const AdminUserUsageStatistics({
+    required this.dateRange,
+    required this.totalUsers,
+    required this.topMonth,
+    required this.monthlyUsers,
+  });
+}
+
+class AdminHubRatingStatistics {
+  final String dateRange;
+  final int totalRatings;
+  final double averageRating;
+  final List<AdminMonthlyRatingStatistic> monthlyRatings;
+
+  const AdminHubRatingStatistics({
+    required this.dateRange,
+    required this.totalRatings,
+    required this.averageRating,
+    required this.monthlyRatings,
+  });
+}
+
+class AdminMonthlyUserStatistic {
+  final DateTime month;
+  final int newUsers;
+
+  const AdminMonthlyUserStatistic({
+    required this.month,
+    required this.newUsers,
+  });
+}
+
+class AdminMonthlyRatingStatistic {
+  final DateTime month;
+  final int ratingCount;
+  final double averageRating;
+
+  const AdminMonthlyRatingStatistic({
+    required this.month,
+    required this.ratingCount,
+    required this.averageRating,
   });
 }

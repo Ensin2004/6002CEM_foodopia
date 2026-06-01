@@ -35,11 +35,13 @@ class MealPlannedItem {
   final int amount;
   final DateTime plannedDate;
   final IconData icon;
+  final String? imageUrl;
 
   const MealPlannedItem({
     required this.name,
     required this.amount,
     required this.plannedDate,
     required this.icon,
+    this.imageUrl,
   });
 }

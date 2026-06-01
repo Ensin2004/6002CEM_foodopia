@@ -11,17 +11,22 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_grocery_list_plan.dart';
+import '../../domain/usecases/create_grocery_list_usecase.dart';
 import '../../domain/usecases/get_add_grocery_list_plan_usecase.dart';
 import '../viewmodel/add_grocery_list_viewmodel.dart';
 
 class AddGroceryListPage extends StatelessWidget {
-  const AddGroceryListPage({super.key});
+  final String userId;
+
+  const AddGroceryListPage({super.key, required this.userId});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AddGroceryListViewModel(
+        userId: userId,
         getPlanUseCase: sl<GetAddGroceryListPlanUseCase>(),
+        createGroceryListUseCase: sl<CreateGroceryListUseCase>(),
       ),
       child: const _AddGroceryListView(),
     );
@@ -95,7 +100,7 @@ class _AddGroceryListViewState extends State<_AddGroceryListView> {
             Expanded(
               child: viewModel.currentStep == 1
                   ? _BasicInfoStep(plan: plan, nameController: _nameController)
-                  : _SelectMealsStep(plan: plan),
+                  : const _SelectMealsStep(),
             ),
           ],
         ),
@@ -267,21 +272,6 @@ class _IconPicker extends StatelessWidget {
               ),
             );
           }),
-          Container(
-            width: 42,
-            height: 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: const Icon(
-              Icons.add,
-              color: AppColors.textPrimary,
-              size: 20,
-            ),
-          ),
         ],
       ),
     );
@@ -541,14 +531,13 @@ class _ExcludeDayChips extends StatelessWidget {
 }
 
 class _SelectMealsStep extends StatelessWidget {
-  final AddGroceryListPlan plan;
-
-  const _SelectMealsStep({required this.plan});
+  const _SelectMealsStep();
 
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<AddGroceryListViewModel>();
     final selectedDay = viewModel.selectedMealDay;
+    final mealDays = viewModel.visibleMealDays;
 
     return Column(
       children: [
@@ -558,11 +547,11 @@ class _SelectMealsStep extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             scrollDirection: Axis.horizontal,
             itemBuilder: (context, index) {
-              final day = plan.mealDays[index];
+              final day = mealDays[index];
               return _MealDayCard(date: day.date);
             },
             separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
-            itemCount: plan.mealDays.length,
+            itemCount: mealDays.length,
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -578,6 +567,10 @@ class _SelectMealsStep extends StatelessWidget {
                 AppSpacing.lg,
               ),
               children: [
+                if (viewModel.saveErrorMessage != null) ...[
+                  _InlineError(message: viewModel.saveErrorMessage!),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 _SelectedMealDateHeader(
                   date: selectedDay.date,
                   mealCount: selectedDay.sections.fold<int>(
@@ -596,17 +589,29 @@ class _SelectMealsStep extends StatelessWidget {
                 SizedBox(
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () => context.pop(),
+                    onPressed: viewModel.canCreate
+                        ? () async {
+                            final listId = await context
+                                .read<AddGroceryListViewModel>()
+                                .createGroceryList();
+                            if (listId != null && context.mounted) {
+                              context.pop(listId);
+                            }
+                          }
+                        : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.border,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(0),
                       ),
                     ),
                     child: Text(
-                      'Create Grocery List',
+                      viewModel.isSaving
+                          ? 'Creating...'
+                          : 'Create Grocery List',
                       style: context.text.labelLarge?.copyWith(
                         color: Colors.white,
                       ),
@@ -617,6 +622,31 @@ class _SelectMealsStep extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _InlineError extends StatelessWidget {
+  final String message;
+
+  const _InlineError({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: AppSpacing.cardPadding,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F0),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.18)),
+      ),
+      child: Text(
+        message,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+        style: context.text.bodySmall?.copyWith(color: Colors.red.shade700),
+      ),
     );
   }
 }
@@ -789,12 +819,7 @@ class _SelectableMealRow extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              meal.imagePath,
-              width: 48,
-              height: 48,
-              fit: BoxFit.cover,
-            ),
+            child: _MealImage(path: meal.imagePath, width: 48, height: 48),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -817,6 +842,58 @@ class _SelectableMealRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MealImage extends StatelessWidget {
+  final String path;
+  final double width;
+  final double height;
+
+  const _MealImage({
+    required this.path,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isRemote = path.startsWith('http://') || path.startsWith('https://');
+    if (isRemote) {
+      return Image.network(
+        path,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            _ImageFallback(width: width, height: height),
+      );
+    }
+    return Image.asset(
+      path,
+      width: width,
+      height: height,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) =>
+          _ImageFallback(width: width, height: height),
+    );
+  }
+}
+
+class _ImageFallback extends StatelessWidget {
+  final double width;
+  final double height;
+
+  const _ImageFallback({required this.width, required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      color: const Color(0xFFE8F8EB),
+      child: const Icon(Icons.restaurant, color: AppColors.primary),
     );
   }
 }

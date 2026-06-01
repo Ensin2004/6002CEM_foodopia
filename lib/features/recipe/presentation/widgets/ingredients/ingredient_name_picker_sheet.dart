@@ -29,13 +29,11 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
   final TextEditingController _nameController = TextEditingController();
   Timer? _debounce;
   List<AddRecipeFoodSearchResult> _results = [];
-  AddRecipeFoodSearchResult? _selectedFood;
   bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
-    _nameController.text = widget.selectedName;
     _nameController.addListener(_onQueryChanged);
   }
 
@@ -103,8 +101,8 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
               Expanded(child: _buildResults(context, query)),
               const SizedBox(height: AppSpacing.lg),
               PrimaryButton(
-                text: _selectedFood != null ? "Select Ingredient" : "Use Custom Ingredient",
-                onPressed: _selectedFood != null || query.isNotEmpty ? _submitSelection : null,
+                text: "Use Custom Ingredient",
+                onPressed: query.isNotEmpty ? _submitSelection : null,
               ),
             ],
           ),
@@ -143,14 +141,16 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
                   "Search Results",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: context.text.titleMedium,
+                  style: context.text.labelLarge?.copyWith(
+                    color: context.colors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               const Divider(color: AppColors.border),
               ..._results.map((food) {
-                final selected = food.fdcId == _selectedFood?.fdcId;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm,),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                   child: ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
@@ -159,18 +159,7 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    trailing: selected
-                        ? CircleAvatar(
-                            radius: 10,
-                            backgroundColor: AppColors.primary,
-                            child: const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 12,
-                            ),
-                          )
-                        : null,
-                    onTap: () => _toggleFood(food),
+                    onTap: () => Navigator.of(context).pop(IngredientNamePickerSelection.usda(food)),
                   ),
                 );
               }),
@@ -181,25 +170,8 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
     );
   }
 
-  // Toggle Helper
-  void _toggleFood(AddRecipeFoodSearchResult food) {
-    setState(() {
-      if (food.fdcId == _selectedFood?.fdcId) {
-        _selectedFood = null;
-      } else {
-        _selectedFood = food;
-      }
-    });
-  }
-
   // Submit Button Helper
   void _submitSelection() {
-    final selectedFood = _selectedFood;
-    if (selectedFood != null) {
-      Navigator.of(context).pop(IngredientNamePickerSelection.usda(selectedFood));
-      return;
-    }
-
     final customName = _nameController.text.trim();
     if (customName.isEmpty) return;
     Navigator.of(context).pop(IngredientNamePickerSelection.custom(customName));
@@ -207,13 +179,14 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
 
   // Listener Helper
   void _onQueryChanged() {
-    setState(() => _selectedFood = null);
+    setState(() {});
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
       _searchFoods(_nameController.text);
     });
   }
 
+  // Search Helper
   Future<void> _searchFoods(String query) async {
     final trimmed = query.trim();
     if (trimmed.length < 2) {

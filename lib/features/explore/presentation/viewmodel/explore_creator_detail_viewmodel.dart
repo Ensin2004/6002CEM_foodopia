@@ -38,9 +38,11 @@ class ExploreCreatorDetailViewModel extends ChangeNotifier {
   bool get isUpdatingFollow => _isUpdatingFollow;
   String? get errorMessage => _errorMessage;
 
-  List<ExploreRecipe> get visibleRecipes {
+  List<ExploreRecipe> get visibleRecipes => visibleRecipesFor(_selectedTab);
+
+  List<ExploreRecipe> visibleRecipesFor(ExploreCreatorRecipeTab tab) {
     final recipes = [...?_creator?.recipes];
-    switch (_selectedTab) {
+    switch (tab) {
       case ExploreCreatorRecipeTab.all:
         return recipes;
       case ExploreCreatorRecipeTab.popular:
@@ -184,6 +186,7 @@ class ExploreCreatorDetailViewModel extends ChangeNotifier {
       allergenInfo: recipe.allergenInfo,
       totalTime: recipe.totalTime,
       difficulty: recipe.difficulty,
+      servings: recipe.servings,
       rating: recipe.rating,
       ratingCount: recipe.ratingCount,
       commentCount: recipe.commentCount,

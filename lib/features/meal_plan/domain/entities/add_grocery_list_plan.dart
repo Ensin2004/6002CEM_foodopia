@@ -7,6 +7,26 @@ class AddGroceryListPlan {
   const AddGroceryListPlan({required this.iconOptions, required this.mealDays});
 }
 
+class CreateGroceryListRequest {
+  final String userId;
+  final String title;
+  final String iconId;
+  final DateTime startDate;
+  final DateTime endDate;
+  final List<DateTime> excludedDays;
+  final List<String> mealPlanIds;
+
+  const CreateGroceryListRequest({
+    required this.userId,
+    required this.title,
+    required this.iconId,
+    required this.startDate,
+    required this.endDate,
+    required this.excludedDays,
+    required this.mealPlanIds,
+  });
+}
+
 class GroceryIconOption {
   final String id;
   final IconData icon;

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../../../core/services/openai_meal_idea_service.dart';
 import '../../../../core/services/food_search_service.dart';
+import '../../../../core/services/openai_meal_idea_service.dart';
 import '../../domain/entities/add_meal_ai_plan.dart';
 import '../../domain/entities/meal_plan_inspiration_input.dart';
 
@@ -153,6 +153,10 @@ class MealPlanInspirationDataSource {
         'creationMethod': 'method3_generate_with_ai',
         'servings': _servingsFromLabel(recipe.servingLabel),
         'calories': recipe.calories,
+        'carbohydrates': recipe.carbohydrates,
+        'fat': recipe.fat,
+        'protein': recipe.protein,
+        'nutritionSource': 'ai',
         'weatherSnapshot': {
           'condition': request.weather.condition,
           'temperature': request.weather.temperature,
@@ -184,6 +188,17 @@ class MealPlanInspirationDataSource {
           'durationLabel': recipe.durationLabel,
           'difficultyLabel': recipe.difficultyLabel,
           'servingLabel': recipe.servingLabel,
+          'calories': recipe.calories,
+          'carbohydrates': recipe.carbohydrates,
+          'fat': recipe.fat,
+          'protein': recipe.protein,
+          'nutrition': {
+            'calories': recipe.calories,
+            'carbohydrates': recipe.carbohydrates,
+            'fat': recipe.fat,
+            'protein': recipe.protein,
+            'source': 'ai',
+          },
           'reasons': recipe.reasons,
           'ingredients': recipe.ingredients
               .map(
@@ -191,6 +206,13 @@ class MealPlanInspirationDataSource {
                   'name': item.name,
                   'amount': item.amount,
                   'unit': item.unit,
+                  'nutrients': {
+                    'calories': item.calories,
+                    'carbohydrates': item.carbohydrates,
+                    'fat': item.fat,
+                    'protein': item.protein,
+                    'source': 'ai',
+                  },
                 },
               )
               .toList(),

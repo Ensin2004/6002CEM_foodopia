@@ -2,8 +2,49 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+import '../../../../core/services/fcm_sender.dart';
+
 /// Defines behavior for auth remote data source.
 class AuthRemoteDataSource {
+  static const List<Map<String, String>> _defaultNotificationPreferences = [
+    {
+      'id': 'new_follower_notification',
+      'title': 'New Follower Notification',
+      'description': 'Get a notification for new follower',
+    },
+    {
+      'id': 'new_rating_notification',
+      'title': 'New Rating Notification',
+      'description':
+          'Receive a notification when your Recipe is being rated by user',
+    },
+    {
+      'id': 'new_comment_notification',
+      'title': 'New Comment Notification',
+      'description': 'Receive a notification when your recipe has comment',
+    },
+    {
+      'id': 'new_recipe_notification',
+      'title': 'New Recipe Notification',
+      'description': 'Receive a notification when followed creator posts',
+    },
+    {
+      'id': 'new_reply_notification',
+      'title': 'New Reply Notification',
+      'description': 'Receive a notification when someone replies you',
+    },
+    {
+      'id': 'new_like_notification',
+      'title': 'New Like Notification',
+      'description': 'Receive a notification when someone likes your comment',
+    },
+    {
+      'id': 'help_center_reply_notification',
+      'title': 'Help Center Reply Notification',
+      'description': 'Receive a notification when admin replies your ticket',
+    },
+  ];
+
   final firebase_auth.FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
   final FirebaseMessaging _fcm;
@@ -42,6 +83,24 @@ class AuthRemoteDataSource {
   /// Runs the send email verification operation.
   Future<void> sendEmailVerification() async {
     await _auth.currentUser?.sendEmailVerification();
+  }
+
+  /// Checks whether an email is registered in the users collection.
+  Future<bool> emailExistsInFirestore(String email) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) return false;
+
+    final snapshot = await _firestore
+        .collection('users')
+        .where('email', isEqualTo: trimmed)
+        .limit(1)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
+
+  /// Sends a Firebase password reset email.
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
   }
 
   /// Handles the reload user operation.
@@ -114,6 +173,143 @@ class AuthRemoteDataSource {
     required Map<String, dynamic> userData,
   }) async {
     await _firestore.collection('users').doc(uid).set(userData);
+    await ensureNotificationPreferences(uid);
+    await _notifyAdminsNewUser(uid: uid, userData: userData);
+  }
+
+  Future<void> _notifyAdminsNewUser({
+    required String uid,
+    required Map<String, dynamic> userData,
+  }) async {
+    if (userData['role']?.toString().toLowerCase() == 'admin') return;
+
+    try {
+      final rawName = userData['name']?.toString().trim() ?? '';
+      final name = rawName.isNotEmpty
+          ? rawName
+          : userData['email']?.toString().trim() ?? 'A new user';
+      final admins = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'admin')
+          .get();
+
+      for (final admin in admins.docs) {
+        final adminUid = admin.id;
+        if (adminUid.isEmpty || adminUid == uid) continue;
+        final notificationRef = await _firestore
+            .collection('users')
+            .doc(adminUid)
+            .collection('notifications')
+            .add({
+              'type': 'newUser',
+              'title': 'New User',
+              'message': 'New user $name registered an account.',
+              'isRead': false,
+              'senderUid': uid,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
+        if (!await _isAdminNotificationEnabled(
+          adminUid: adminUid,
+          preferenceId: 'new_user_notification',
+        )) {
+          continue;
+        }
+
+        await _sendPushToUser(
+          receiverUid: adminUid,
+          title: 'New User',
+          message: 'New user $name registered an account.',
+          data: {
+            'type': 'newUser',
+            'notificationId': notificationRef.id,
+            'senderUid': uid,
+          },
+        );
+      }
+    } on FirebaseException {
+      // Admin notifications are best-effort and should not block signup.
+    }
+  }
+
+  Future<bool> _isAdminNotificationEnabled({
+    required String adminUid,
+    required String preferenceId,
+  }) async {
+    final preferenceDoc = await _firestore
+        .collection('users')
+        .doc(adminUid)
+        .collection('notification_preferences')
+        .doc(preferenceId)
+        .get();
+    final enabled = preferenceDoc.data()?['enabled'];
+    return enabled is bool ? enabled : true;
+  }
+
+  Future<void> _sendPushToUser({
+    required String receiverUid,
+    required String title,
+    required String message,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(receiverUid)
+          .get();
+      final rawTokens = userDoc.data()?['fcmTokens'];
+      final tokens = rawTokens is Iterable
+          ? rawTokens
+                .map((token) => token?.toString().trim() ?? '')
+                .where((token) => token.isNotEmpty)
+                .toSet()
+          : <String>{};
+
+      for (final token in tokens) {
+        await FcmSender.instance.sendToToken(
+          deviceToken: token,
+          title: title,
+          body: message,
+          data: data,
+        );
+      }
+    } catch (_) {
+      // Push is best-effort; Firestore keeps the in-app notification.
+    }
+  }
+
+  Future<void> ensureNotificationPreferences(String uid) async {
+    if (uid.isEmpty) return;
+
+    final userRef = _firestore.collection('users').doc(uid);
+    final collectionRef = userRef.collection('notification_preferences');
+    final snapshot = await collectionRef.get();
+    final existingIds = snapshot.docs.map((doc) => doc.id).toSet();
+
+    final batch = _firestore.batch();
+    for (final preference in _defaultNotificationPreferences) {
+      final id = preference['id'] ?? '';
+      if (id.isEmpty) continue;
+
+      final ref = collectionRef.doc(id);
+      if (existingIds.contains(id)) {
+        batch.set(ref, {
+          'title': preference['title'] ?? id,
+          'description': preference['description'] ?? '',
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } else {
+        batch.set(ref, {
+          'title': preference['title'] ?? id,
+          'description': preference['description'] ?? '',
+          'enabled': true,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+    }
+
+    await batch.commit();
   }
 
   /// Runs the update user in firestore operation.

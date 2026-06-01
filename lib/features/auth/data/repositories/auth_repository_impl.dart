@@ -36,6 +36,7 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final userDoc = await remoteDataSource.getUserFromFirestore(user.uid);
+      await remoteDataSource.ensureNotificationPreferences(user.uid);
       await remoteDataSource.saveFcmToken(user.uid);
       await FcmNotificationService.initialize();
       final userEntity = UserModel.fromFirebase(user, userDoc);
@@ -169,6 +170,34 @@ class AuthRepositoryImpl implements AuthRepository {
       // Runs the guarded operation that can throw.
       await remoteDataSource.sendEmailVerification();
       return const Right(null);
+    } catch (e) {
+      return Left(AuthFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<AuthFailure, void>> requestPasswordReset({
+    required String email,
+  }) async {
+    try {
+      await remoteDataSource.sendPasswordResetEmail(email);
+      return const Right(null);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'invalid-email':
+          message = 'Invalid email address';
+          break;
+        case 'user-not-found':
+          message = 'Unable to send password reset email';
+          break;
+        case 'user-disabled':
+          message = 'This user has been disabled';
+          break;
+        default:
+          message = e.message ?? 'Unable to send password reset email';
+      }
+      return Left(AuthFailure(message: message, code: e.code));
     } catch (e) {
       return Left(AuthFailure(message: e.toString()));
     }

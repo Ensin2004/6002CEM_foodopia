@@ -20,7 +20,12 @@ abstract class MealPlanRepository {
   getDefaultInspirationIngredients();
   Future<Either<Failure, List<MealPlanInspirationIngredient>>>
   searchInspirationIngredients(String query);
-  Future<Either<Failure, AddGroceryListPlan>> getAddGroceryListPlan();
+  Future<Either<Failure, AddGroceryListPlan>> getAddGroceryListPlan(
+    String userId,
+  );
+  Future<Either<Failure, String>> createGroceryList(
+    CreateGroceryListRequest request,
+  );
   Future<Either<Failure, AddMealAiPlan>> getAddMealAiPlan({
     required String userId,
     required String mealType,
@@ -46,4 +51,24 @@ abstract class MealPlanRepository {
   Future<Either<Failure, ManageGroceryListDetail>> getManageGroceryListDetail(
     String listId,
   );
+  Future<Either<Failure, void>> addGroceryItem(AddGroceryItemRequest request);
+  Future<Either<Failure, void>> deleteGroceryItem({
+    required String listId,
+    required String itemId,
+  });
+  Future<Either<Failure, void>> updateGroceryItemBought({
+    required String listId,
+    required String itemId,
+    required bool bought,
+  });
+  Future<Either<Failure, void>> updateGroceryList({
+    required String listId,
+    required String name,
+    required DateTime startDate,
+    required DateTime endDate,
+  });
+  Future<Either<Failure, void>> updateWeeklyGroceryWeekStartDay({
+    required String userId,
+    required String weekStartDay,
+  });
 }

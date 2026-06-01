@@ -3,17 +3,20 @@ import '../../../../../core/error/failures.dart';
 import '../../../../../core/extensions/either_extensions.dart';
 import '../../../domain/usecases/about/get_about_content_usecase.dart';
 import '../../../domain/usecases/about/save_about_content_usecase.dart';
+import '../../../domain/usecases/about/delete_about_content_usecase.dart';
 
 /// Defines behavior for about editor view model.
 class AboutEditorViewModel extends ChangeNotifier {
   final GetAboutContentUseCase _getAboutContentUseCase;
   final SaveAboutContentUseCase _saveAboutContentUseCase;
+  final DeleteAboutContentUseCase _deleteAboutContentUseCase;
   final String _documentId;
   final String _title;
 
   // State
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isEditing = false;
   String? _errorMessage;
   String _content = '';
   bool _hasChanges = false;
@@ -24,10 +27,12 @@ class AboutEditorViewModel extends ChangeNotifier {
     required String title,
     required GetAboutContentUseCase getAboutContentUseCase,
     required SaveAboutContentUseCase saveAboutContentUseCase,
+    required DeleteAboutContentUseCase deleteAboutContentUseCase,
   }) : _documentId = documentId,
        _title = title,
        _getAboutContentUseCase = getAboutContentUseCase,
-       _saveAboutContentUseCase = saveAboutContentUseCase {
+       _saveAboutContentUseCase = saveAboutContentUseCase,
+       _deleteAboutContentUseCase = deleteAboutContentUseCase {
     /// Loads data for the load content operation.
     loadContent();
   }
@@ -41,6 +46,8 @@ class AboutEditorViewModel extends ChangeNotifier {
   /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
 
+  bool get isEditing => _isEditing;
+
   /// Handles the content operation.
   String get content => _content;
 
@@ -51,7 +58,19 @@ class AboutEditorViewModel extends ChangeNotifier {
   bool get hasChanges => _hasChanges;
 
   /// Handles the is save disabled operation.
-  bool get isSaveDisabled => _isSaving || _content.trim().isEmpty;
+  bool get isSaveDisabled => _isSaving || !_isEditing;
+
+  void startEditing() {
+    _isEditing = true;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  void cancelEditing() {
+    _isEditing = false;
+    _hasChanges = false;
+    loadContent();
+  }
 
   // Load content
   Future<void> loadContent() async {
@@ -82,12 +101,6 @@ class AboutEditorViewModel extends ChangeNotifier {
 
   // Save content
   Future<bool> saveContent() async {
-    if (_content.trim().isEmpty) {
-      _errorMessage = 'Content cannot be empty';
-      notifyListeners();
-      return false;
-    }
-
     _isSaving = true;
     notifyListeners();
 
@@ -104,6 +117,27 @@ class AboutEditorViewModel extends ChangeNotifier {
     }
 
     _hasChanges = false;
+    _isEditing = false;
+    _isSaving = false;
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> deleteContent() async {
+    _isSaving = true;
+    notifyListeners();
+
+    final result = await _deleteAboutContentUseCase.execute(_documentId);
+    if (result.isLeft()) {
+      _errorMessage = _getErrorMessage(result.left!);
+      _isSaving = false;
+      notifyListeners();
+      return false;
+    }
+
+    _content = '';
+    _hasChanges = false;
+    _isEditing = false;
     _isSaving = false;
     notifyListeners();
     return true;

@@ -30,8 +30,10 @@ import 'package:http/http.dart' as http;
 // ============================================================================
 // Core
 import '../../core/services/network_info.dart';
+import '../../core/services/openai_ingredient_data_service.dart';
 import '../../core/services/food_search_service.dart';
 import '../../core/services/openai_meal_idea_service.dart';
+import '../../core/services/openai_video_recipe_service.dart';
 import '../../core/services/open_meteo_weather_service.dart';
 
 // Auth Feature - Data Layer
@@ -68,13 +70,15 @@ import '../../features/explore/domain/usecases/toggle_creator_follow_usecase.dar
 import '../../features/explore/domain/usecases/update_recipe_visibility_usecase.dart';
 import '../../features/explore/domain/usecases/watch_explore_recipes_usecase.dart';
 import '../../features/explore/domain/usecases/watch_explore_recipe_detail_usecase.dart';
-import '../../features/meal_plan/data/datasources/meal_plan_mock_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_inspiration_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_preferences_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_remote_datasource.dart';
 import '../../features/meal_plan/data/datasources/meal_plan_weather_datasource.dart';
 import '../../features/meal_plan/data/repositories/meal_plan_repository_impl.dart';
 import '../../features/meal_plan/domain/repositories/meal_plan_repository.dart';
+import '../../features/meal_plan/domain/usecases/add_grocery_item_usecase.dart';
+import '../../features/meal_plan/domain/usecases/create_grocery_list_usecase.dart';
+import '../../features/meal_plan/domain/usecases/delete_grocery_item_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_add_grocery_list_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/get_add_meal_ai_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/generate_ai_meal_ideas_usecase.dart';
@@ -88,6 +92,9 @@ import '../../features/meal_plan/domain/usecases/get_meal_plan_weather_usecase.d
 import '../../features/meal_plan/domain/usecases/save_ai_meal_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../features/meal_plan/domain/usecases/search_meal_plan_ingredients_usecase.dart';
+import '../../features/meal_plan/domain/usecases/update_grocery_item_bought_usecase.dart';
+import '../../features/meal_plan/domain/usecases/update_grocery_list_usecase.dart';
+import '../../features/meal_plan/domain/usecases/update_weekly_grocery_week_start_day_usecase.dart';
 import '../../features/notifications/data/datasources/notification_local_datasource.dart';
 import '../../features/notifications/data/datasources/notification_remote_datasource.dart';
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
@@ -100,11 +107,13 @@ import '../../features/notifications/domain/usecases/schedule_plan_reminder_usec
 import '../../features/notifications/domain/usecases/update_notification_preference_usecase.dart';
 import '../../features/statistics/data/datasources/statistics_local_datasource.dart';
 import '../../features/statistics/data/datasources/statistics_remote_datasource.dart';
+import '../../features/recipe/data/datasources/add_recipe_video_datasource.dart';
 import '../../features/recipe/data/datasources/add_recipe_remote_datasource.dart';
 import '../../features/recipe/data/repositories/add_recipe_repository_impl.dart';
 import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
 import '../../features/recipe/domain/usecases/finalize_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/complete_add_recipe_usecase.dart';
+import '../../features/recipe/domain/usecases/generate_add_recipe_from_video_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_review_usecase.dart';
@@ -118,12 +127,17 @@ import '../../features/recipe/domain/usecases/update_add_recipe_visibility_useca
 import '../../features/statistics/data/repositories/statistics_repository_impl.dart';
 import '../../features/statistics/domain/repositories/statistics_repository.dart';
 import '../../features/statistics/domain/usecases/get_admin_dietary_preference_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_gender_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_hub_rating_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_meal_analytic_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_post_analytic_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_user_usage_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_calories_intake_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_calories_posted_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_cooking_time_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_difficulty_meal_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_food_analytic_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_grocery_list_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_meal_plan_method_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_meal_planned_time_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_most_cooked_recipe_statistics_usecase.dart';
@@ -179,6 +193,7 @@ import '../../features/admin_manage/domain/usecases/reorder_admin_manage_items_u
 import '../../features/admin_manage/domain/usecases/save_admin_manage_item_usecase.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
+import '../../features/auth/domain/usecases/request_password_reset_usecase.dart';
 import '../../features/auth/domain/usecases/signup_usecase.dart';
 import '../../features/auth/domain/usecases/get_age_groups_usecase.dart';
 import '../../features/auth/domain/usecases/verify_email_usecase.dart';
@@ -201,6 +216,7 @@ import '../../features/settings/domain/repositories/settings_repository.dart';
 // Profile Feature - Domain Layer
 import '../../features/settings/domain/repositories/profile_repository.dart';
 import '../../features/settings/domain/usecases/about/save_about_content_usecase.dart';
+import '../../features/settings/domain/usecases/about/delete_about_content_usecase.dart';
 import '../../features/settings/domain/usecases/account/get_user_email_usecase.dart';
 import '../../features/settings/domain/usecases/account/get_user_profile_usecase.dart';
 import '../../features/settings/domain/usecases/support/faq/add_faq_item_usecase.dart';
@@ -210,6 +226,7 @@ import '../../features/settings/domain/usecases/support/help_center/get_admin_is
 import '../../features/settings/domain/usecases/support/help_center/get_user_issues_usecase.dart';
 import '../../features/settings/domain/usecases/support/help_center/submit_issue_usecase.dart';
 import '../../features/settings/domain/usecases/support/help_center/update_issue_status_usecase.dart';
+import '../../features/settings/domain/usecases/support/help_center/reply_to_issue_usecase.dart';
 import '../../features/settings/domain/usecases/support/help_center/upload_issue_image_usecase.dart';
 import '../../features/settings/domain/usecases/support/rating/delete_rating_usecase.dart';
 import '../../features/settings/domain/usecases/support/faq/get_admin_faq_items_usecase.dart';
@@ -236,6 +253,7 @@ import '../../features/settings/domain/usecases/about/get_about_content_usecase.
 // ============================================================================
 // Auth Feature - Presentation Layer
 import '../../features/admin_manage/presentation/viewmodel/admin_manage_viewmodel.dart';
+import '../../features/auth/presentation/viewmodel/forgot_password_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/login_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/signup_viewmodel.dart';
 
@@ -287,11 +305,21 @@ Future<void> initDependencies() async {
 }
 
 void _initRecipeFeature() {
+  sl.registerLazySingleton(() => OpenAiIngredientDataService(client: sl()));
+  sl.registerLazySingleton(() => OpenAiVideoRecipeService(client: sl()));
+  sl.registerLazySingleton(
+    () => AddRecipeVideoDataSource(
+      firestore: sl(),
+      openAiVideoRecipeService: sl(),
+    ),
+  );
   sl.registerLazySingleton(
     () => AddRecipeRemoteDataSource(
       firestore: sl(),
       auth: sl(),
       foodSearchService: sl(),
+      ingredientAiDataSource: sl(),
+      videoDataSource: sl(),
     ),
   );
   sl.registerLazySingleton<AddRecipeRepository>(
@@ -301,6 +329,7 @@ void _initRecipeFeature() {
   sl.registerLazySingleton(() => GetAddRecipeIngredientUnitsUseCase(sl()));
   sl.registerLazySingleton(() => SearchAddRecipeFoodsUseCase(sl()));
   sl.registerLazySingleton(() => GetAddRecipeFoodNutrientsUseCase(sl()));
+  sl.registerLazySingleton(() => GenerateAddRecipeFromVideoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeInstructionsUseCase(sl()));
@@ -324,6 +353,8 @@ void _initStatisticsFeature() {
 
   sl.registerLazySingleton(() => GetStatisticsDashboardUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlannedTimeStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetCookingTimeStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetGroceryListStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetFoodAnalyticStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetCaloriesIntakeStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetDifficultyMealStatisticsUseCase(sl()));
@@ -339,6 +370,9 @@ void _initStatisticsFeature() {
   sl.registerLazySingleton(
     () => GetAdminDietaryPreferenceStatisticsUseCase(sl()),
   );
+  sl.registerLazySingleton(() => GetAdminGenderStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAdminUserUsageStatisticsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAdminHubRatingStatisticsUseCase(sl()));
 }
 
 void _initExploreFeature() {
@@ -406,7 +440,6 @@ void _initNotificationsFeature() {
 }
 
 void _initMealPlanFeature() {
-  sl.registerLazySingleton(() => MealPlanMockDataSource());
   sl.registerLazySingleton(
     () => MealPlanPreferencesDataSource(firestore: sl()),
   );
@@ -424,7 +457,6 @@ void _initMealPlanFeature() {
 
   sl.registerLazySingleton<MealPlanRepository>(
     () => MealPlanRepositoryImpl(
-      mockDataSource: sl(),
       remoteDataSource: sl(),
       weatherDataSource: sl(),
       preferencesDataSource: sl(),
@@ -439,12 +471,18 @@ void _initMealPlanFeature() {
   sl.registerLazySingleton(() => SearchMealPlanIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlanInspirationOptionsUseCase(sl()));
   sl.registerLazySingleton(() => GetAddGroceryListPlanUseCase(sl()));
+  sl.registerLazySingleton(() => CreateGroceryListUseCase(sl()));
   sl.registerLazySingleton(() => GetAddMealAiPlanUseCase(sl()));
   sl.registerLazySingleton(() => GenerateAiMealIdeasUseCase(sl()));
   sl.registerLazySingleton(() => GetMealCategoriesUseCase(sl()));
   sl.registerLazySingleton(() => SaveAiMealPlanUseCase(sl()));
   sl.registerLazySingleton(() => SaveRecipeMealPlanUseCase(sl()));
   sl.registerLazySingleton(() => GetManageGroceryListDetailUseCase(sl()));
+  sl.registerLazySingleton(() => AddGroceryItemUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteGroceryItemUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateGroceryItemBoughtUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateGroceryListUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateWeeklyGroceryWeekStartDayUseCase(sl()));
 }
 
 void _initUserSetupFeature() {
@@ -600,6 +638,9 @@ void _initAuthFeature() {
   // Verify Email - Checks if user's email is verified
   sl.registerLazySingleton(() => VerifyEmailUseCase(sl()));
 
+  // Request Password Reset - Validates account email and sends reset email
+  sl.registerLazySingleton(() => RequestPasswordResetUseCase(sl()));
+
   // --------------------------------------------------------------------------
   // 4. VIEWMODELS (UI State Management Layer)
   // --------------------------------------------------------------------------
@@ -620,6 +661,11 @@ void _initAuthFeature() {
       getAgeGroupsUseCase: sl(),
       authRepository: sl(),
     ),
+  );
+
+  // Forgot Password ViewModel - Manages reset email flow
+  sl.registerFactory(
+    () => ForgotPasswordViewModel(requestPasswordResetUseCase: sl()),
   );
 }
 
@@ -842,6 +888,7 @@ void _initAboutFeature() {
   sl.registerLazySingleton(
     () => SaveAboutContentUseCase(sl()),
   ); // Changed from Update to Save
+  sl.registerLazySingleton(() => DeleteAboutContentUseCase(sl()));
 
   // --------------------------------------------------------------------------
   // NOTE: AboutViewerViewModel and AboutEditorViewModel are NOT registered here because:
@@ -880,6 +927,7 @@ void _initHelpCenterFeature() {
   sl.registerLazySingleton(() => GetAdminIssuesUseCase(sl()));
   sl.registerLazySingleton(() => SubmitIssueUseCase(sl()));
   sl.registerLazySingleton(() => UpdateIssueStatusUseCase(sl()));
+  sl.registerLazySingleton(() => ReplyToIssueUseCase(sl()));
   sl.registerLazySingleton(() => UploadIssueImageUseCase(sl()));
   sl.registerLazySingleton(() => GetUserEmailUseCase(sl()));
 }

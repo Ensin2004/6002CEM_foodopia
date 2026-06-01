@@ -39,6 +39,10 @@ class MostCookedRecipeViewModel extends ChangeNotifier {
     return items;
   }
 
+  List<MostCookedRecipeItem> get chartRecipes => sortedRecipes.take(5).toList();
+
+  List<MostCookedRecipeDay> get breakdownDays => _statistics?.days ?? const [];
+
   Future<void> loadStatistics() async {
     _isLoading = _statistics == null;
     _errorMessage = null;

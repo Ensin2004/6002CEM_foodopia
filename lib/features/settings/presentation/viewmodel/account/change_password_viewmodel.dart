@@ -21,12 +21,16 @@ class ChangePasswordViewModel extends ChangeNotifier {
 
   // Getters
   bool get isLoading => _isLoading;
+
   /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+
   /// Displays the show current password flow.
   bool get showCurrentPassword => _showCurrentPassword;
+
   /// Displays the show new password flow.
   bool get showNewPassword => _showNewPassword;
+
   /// Displays the show confirm password flow.
   bool get showConfirmPassword => _showConfirmPassword;
 
@@ -63,9 +67,12 @@ class ChangePasswordViewModel extends ChangeNotifier {
   }
 
   /// Handles the validate new password operation.
-  String? validateNewPassword(String? value) {
+  String? validateNewPassword(String? value, {String? currentPassword}) {
     if (value == null || value.isEmpty) {
       return 'Please enter a new password';
+    }
+    if (currentPassword != null && value == currentPassword) {
+      return 'New password cannot be the same as current password';
     }
     if (!_isStrongPassword(value)) {
       return 'Password must meet all requirements below';

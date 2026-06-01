@@ -8,20 +8,17 @@ import '../../domain/entities/meal_plan_dashboard.dart';
 import '../../domain/entities/meal_plan_inspiration_input.dart';
 import '../../domain/repositories/meal_plan_repository.dart';
 import '../datasources/meal_plan_inspiration_datasource.dart';
-import '../datasources/meal_plan_mock_datasource.dart';
 import '../datasources/meal_plan_preferences_datasource.dart';
 import '../datasources/meal_plan_remote_datasource.dart';
 import '../datasources/meal_plan_weather_datasource.dart';
 
 class MealPlanRepositoryImpl implements MealPlanRepository {
-  final MealPlanMockDataSource mockDataSource;
   final MealPlanRemoteDataSource remoteDataSource;
   final MealPlanWeatherDataSource weatherDataSource;
   final MealPlanPreferencesDataSource preferencesDataSource;
   final MealPlanInspirationDataSource inspirationDataSource;
 
   const MealPlanRepositoryImpl({
-    required this.mockDataSource,
     required this.remoteDataSource,
     required this.weatherDataSource,
     required this.preferencesDataSource,
@@ -38,13 +35,7 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
         userId: userId,
         selectedDate: selectedDate,
       );
-      final groceryLists = await mockDataSource.getGroceryListSummaries();
-      return Right(
-        dashboard.copyWith(
-          groceryLists: groceryLists,
-          groceryGroups: mockDataSource.getGroceryGroups(),
-        ),
-      );
+      return Right(dashboard);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -112,10 +103,24 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
   }
 
   @override
-  Future<Either<Failure, AddGroceryListPlan>> getAddGroceryListPlan() async {
+  Future<Either<Failure, AddGroceryListPlan>> getAddGroceryListPlan(
+    String userId,
+  ) async {
     try {
-      final plan = await mockDataSource.getAddGroceryListPlan();
+      final plan = await remoteDataSource.getAddGroceryListPlan(userId);
       return Right(plan);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, String>> createGroceryList(
+    CreateGroceryListRequest request,
+  ) async {
+    try {
+      final listId = await remoteDataSource.createGroceryList(request);
+      return Right(listId);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -240,8 +245,87 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
     String listId,
   ) async {
     try {
-      final detail = await mockDataSource.getManageGroceryListDetail(listId);
+      final detail = await remoteDataSource.getManageGroceryListDetail(listId);
       return Right(detail);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> addGroceryItem(
+    AddGroceryItemRequest request,
+  ) async {
+    try {
+      await remoteDataSource.addGroceryItem(request);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteGroceryItem({
+    required String listId,
+    required String itemId,
+  }) async {
+    try {
+      await remoteDataSource.deleteGroceryItem(listId: listId, itemId: itemId);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateGroceryItemBought({
+    required String listId,
+    required String itemId,
+    required bool bought,
+  }) async {
+    try {
+      await remoteDataSource.updateGroceryItemBought(
+        listId: listId,
+        itemId: itemId,
+        bought: bought,
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateGroceryList({
+    required String listId,
+    required String name,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    try {
+      await remoteDataSource.updateGroceryList(
+        listId: listId,
+        name: name,
+        startDate: startDate,
+        endDate: endDate,
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateWeeklyGroceryWeekStartDay({
+    required String userId,
+    required String weekStartDay,
+  }) async {
+    try {
+      await remoteDataSource.updateWeeklyGroceryWeekStartDay(
+        userId: userId,
+        weekStartDay: weekStartDay,
+      );
+      return const Right(null);
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

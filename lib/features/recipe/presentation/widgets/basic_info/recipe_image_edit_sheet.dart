@@ -7,6 +7,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../../core/widgets/media/app_recipe_media.dart';
 
 class RecipeImageEditSheet extends StatelessWidget {
   final List<File> images;
@@ -137,7 +138,9 @@ class _SelectedMediaTile extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             imageFile != null
-                ? Image.file(imageFile!, fit: BoxFit.cover)
+                ? _MediaTilePreview(file: imageFile!)
+                : isRecipeVideoPath(imageUrl!)
+                ? AppRecipeMediaPreview(mediaPath: imageUrl!, fit: BoxFit.cover)
                 : AppRemoteOrAssetImage(imagePath: imageUrl!, fit: BoxFit.cover),
             Positioned(
               left: AppSpacing.xs,
@@ -185,5 +188,19 @@ class _SelectedMediaTile extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _MediaTilePreview extends StatelessWidget {
+  final File file;
+
+  const _MediaTilePreview({required this.file});
+
+  @override
+  Widget build(BuildContext context) {
+    if (isRecipeVideoPath(file.path)) {
+      return AppRecipeMediaPreview(mediaPath: file.path, fit: BoxFit.cover);
+    }
+    return Image.file(file, fit: BoxFit.cover);
   }
 }

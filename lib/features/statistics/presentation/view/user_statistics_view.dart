@@ -239,15 +239,6 @@ class _OverviewSlide extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 5),
-        Text(
-          'Streak',
-          style: context.text.bodySmall?.copyWith(
-            color: Colors.black,
-            fontWeight: FontWeight.w800,
-            fontSize: 9,
-          ),
-        ),
-        const SizedBox(height: 5),
         Expanded(
           child: Row(
             children: streakMetrics
@@ -414,51 +405,52 @@ class _AchievementSlide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final smallMetrics = slide.metrics
-        .where((metric) => !metric.isWide)
-        .toList();
-    final wideMetric = slide.metrics.where((metric) => metric.isWide).first;
+    final metrics = slide.metrics;
 
     return Column(
       children: [
-        SizedBox(
-          height: 68,
+        Expanded(
           child: Row(
-            children: smallMetrics
-                .map(
-                  (metric) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs,
-                      ),
-                      child: _MetricTile(
-                        metric: metric,
-                        valueColor: AppColors.textSecondary,
-                        labelColor: AppColors.primary,
-                        valueFontSize: 18,
-                        labelFontSize: 12,
-                      ),
-                    ),
-                  ),
-                )
+            children: metrics
+                .take(2)
+                .map((metric) => _AchievementMetricTile(metric: metric))
                 .toList(),
           ),
         ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 58,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            child: _MetricTile(
-              metric: wideMetric,
-              valueColor: AppColors.textSecondary,
-              labelColor: AppColors.primary,
-              valueFontSize: 16,
-              labelFontSize: 12,
-            ),
+        const SizedBox(height: AppSpacing.sm),
+        Expanded(
+          child: Row(
+            children: metrics
+                .skip(2)
+                .take(2)
+                .map((metric) => _AchievementMetricTile(metric: metric))
+                .toList(),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AchievementMetricTile extends StatelessWidget {
+  final StatisticsMetric metric;
+
+  const _AchievementMetricTile({required this.metric});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        child: _MetricTile(
+          metric: metric,
+          valueColor: AppColors.textSecondary,
+          labelColor: AppColors.primary,
+          valueFontSize: 16,
+          labelFontSize: 10,
+          suffixFontSize: 10,
+        ),
+      ),
     );
   }
 }
@@ -470,6 +462,7 @@ class _MetricTile extends StatelessWidget {
   final Color? labelColor;
   final double? valueFontSize;
   final double? labelFontSize;
+  final double? suffixFontSize;
 
   const _MetricTile({
     required this.metric,
@@ -478,6 +471,7 @@ class _MetricTile extends StatelessWidget {
     this.labelColor,
     this.valueFontSize,
     this.labelFontSize,
+    this.suffixFontSize,
   });
 
   @override
@@ -503,24 +497,22 @@ class _MetricTile extends StatelessWidget {
           ),
         ],
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _MetricValue(
-              metric: metric,
-              color: resolvedValueColor,
-              fontSize: resolvedValueFontSize,
-            ),
-            const SizedBox(height: 5),
-            _MetricLabel(
-              metric: metric,
-              color: resolvedLabelColor,
-              fontSize: labelFontSize,
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _MetricValue(
+            metric: metric,
+            color: resolvedValueColor,
+            fontSize: resolvedValueFontSize,
+            suffixFontSize: suffixFontSize,
+          ),
+          const SizedBox(height: 5),
+          _MetricLabel(
+            metric: metric,
+            color: resolvedLabelColor,
+            fontSize: labelFontSize,
+          ),
+        ],
       ),
     );
   }
@@ -530,11 +522,13 @@ class _MetricValue extends StatelessWidget {
   final StatisticsMetric metric;
   final Color color;
   final double fontSize;
+  final double? suffixFontSize;
 
   const _MetricValue({
     required this.metric,
     required this.color,
     this.fontSize = 14,
+    this.suffixFontSize,
   });
 
   @override
@@ -546,12 +540,13 @@ class _MetricValue extends StatelessWidget {
           if (metric.suffix != null)
             TextSpan(
               text: ' ${metric.suffix}',
-              style: const TextStyle(fontSize: 10),
+              style: TextStyle(fontSize: suffixFontSize ?? 10),
             ),
         ],
       ),
-      maxLines: 1,
+      maxLines: 2,
       overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
       style: context.text.titleMedium?.copyWith(
         color: color,
         fontWeight: FontWeight.w700,
@@ -759,12 +754,22 @@ class _StatisticsMenu extends StatelessWidget {
       return;
     }
 
+    if (item.title == 'Time Taken For Cooking') {
+      context.push(AppRouter.cookingTime);
+      return;
+    }
+
+    if (item.title == 'Grocery List') {
+      context.push(AppRouter.groceryListStatistics);
+      return;
+    }
+
     if (item.title == 'Meal Planned Time') {
       context.push(AppRouter.mealPlannedTime);
       return;
     }
 
-    if (item.title == 'Calories Intake') {
+    if (item.title == 'Nutrient Intake' || item.title == 'Calories Intake') {
       context.push(AppRouter.caloriesIntake);
       return;
     }
@@ -784,7 +789,8 @@ class _StatisticsMenu extends StatelessWidget {
       return;
     }
 
-    if (item.title == 'Most Calories Posted Meal') {
+    if (item.title == 'Most Nutrient Posted Meal' ||
+        item.title == 'Most Calories Posted Meal') {
       context.push(AppRouter.caloriesPosted);
       return;
     }

@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/services/cloudinary_service.dart';
+import '../../../../core/services/openai_ingredient_data_service.dart';
 import '../../../../core/services/fcm_sender.dart';
 import '../../../../core/services/food_search_service.dart';
+import '../../domain/entities/add_recipe_ingredient_data.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_food_search_result.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
@@ -11,6 +15,8 @@ import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_option.dart';
 import '../../domain/entities/add_recipe_review.dart';
+import '../../domain/entities/add_recipe_video_result.dart';
+import 'add_recipe_video_datasource.dart';
 import '../models/add_recipe_basic_info_model.dart';
 import '../models/add_recipe_ingredient_model.dart';
 import '../models/add_recipe_instruction_model.dart';
@@ -21,11 +27,15 @@ class AddRecipeRemoteDataSource {
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
   final FoodSearchService foodSearchService;
+  final OpenAiIngredientDataService ingredientAiDataSource;
+  final AddRecipeVideoDataSource videoDataSource;
 
   const AddRecipeRemoteDataSource({
     required this.firestore,
     required this.auth,
     required this.foodSearchService,
+    required this.ingredientAiDataSource,
+    required this.videoDataSource,
   });
 
   Future<AddRecipeSetupModel> getSetup() async {
@@ -143,6 +153,10 @@ class AddRecipeRemoteDataSource {
     return foodSearchService.getUsdaLabelNutrients(fdcId);
   }
 
+  Future<AddRecipeVideoResult> generateRecipeFromVideo(String videoPath) {
+    return videoDataSource.generateFromVideo(videoPath);
+  }
+
   Future<String> saveBasicInfo(AddRecipeBasicInfo info) async {
     final uid = auth.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
@@ -156,6 +170,9 @@ class AddRecipeRemoteDataSource {
     for (final mediaFile in info.mediaFiles) {
       final url = await CloudinaryService.uploadRecipeImage(mediaFile);
       mediaUrls.add(url);
+      if (info.isAiGenerated) {
+        await _deleteVideoWorkingDirForFile(mediaFile);
+      }
     }
 
     final model = AddRecipeBasicInfoModel(
@@ -185,6 +202,20 @@ class AddRecipeRemoteDataSource {
     return doc.id;
   }
 
+  Future<void> _deleteVideoWorkingDirForFile(File file) async {
+    final parent = file.parent;
+    final parentName = parent.path.split(RegExp(r'[\\/]')).last;
+    if (!parentName.startsWith('foodopia_video_')) return;
+
+    try {
+      if (await parent.exists()) {
+        await parent.delete(recursive: true);
+      }
+    } catch (_) {
+      // Temporary FFmpeg files won't affect recipe saving after upload.
+    }
+  }
+
   Future<void> saveIngredients({
     required String recipeId,
     required List<AddRecipeIngredient> ingredients,
@@ -192,13 +223,32 @@ class AddRecipeRemoteDataSource {
     final recipeRef = firestore.collection('recipes').doc(recipeId);
     final ingredientCollection = recipeRef.collection('ingredients');
     final existingIngredients = await ingredientCollection.get();
+    final categories = await _getActiveIngredientCategories();
+    if (categories.isEmpty) {
+      throw StateError('No active ingredient categories configured.');
+    }
+    final unitNames = await _resolveIngredientUnitNames(ingredients);
+    final analysisItems = await ingredientAiDataSource.analyzeIngredients(
+      ingredients: _ingredientAnalysisInputs(
+        ingredients: ingredients,
+        unitNames: unitNames,
+      ),
+      categories: categories,
+    );
+    final analysisByIndex = {
+      for (final item in analysisItems) item.index: item,
+    };
+    final categoryIds = categories.map((item) => item.id).toSet();
+    final othersCategoryId = _getOthersCategoryId(categories);
+    final recipeNutrients = _emptyNutrients();
     final batch = firestore.batch();
 
     for (final doc in existingIngredients.docs) {
       batch.delete(doc.reference);
     }
 
-    for (final ingredient in ingredients) {
+    for (var index = 0; index < ingredients.length; index++) {
+      final ingredient = ingredients[index];
       String? imageUrl = ingredient.existingImageUrl;
       if (ingredient.imageFile != null) {
         imageUrl = await CloudinaryService.uploadIngredientImage(
@@ -208,6 +258,16 @@ class AddRecipeRemoteDataSource {
       final customUnitId = ingredient.customUnit.isNotEmpty
           ? await _saveCustomUnit(ingredient.customUnit)
           : null;
+      final analysis = analysisByIndex[index];
+      final existingCategoryId = ingredient.ingredientCategoryId?.trim() ?? '';
+      final categoryId = categoryIds.contains(existingCategoryId)
+          ? existingCategoryId
+          : categoryIds.contains(analysis?.ingredientCategoryId)
+          ? analysis!.ingredientCategoryId
+          : othersCategoryId;
+      final nutrients = _normalizedNutrients(ingredient.usdaNutrients);
+      final ingredientNutrients = nutrients ?? analysis?.nutrients;
+      _addNutrients(recipeNutrients, ingredientNutrients);
 
       final model = AddRecipeIngredientModel(
         name: ingredient.name,
@@ -216,15 +276,152 @@ class AddRecipeRemoteDataSource {
         unitId: ingredient.unitId.isEmpty ? null : ingredient.unitId,
         customUnitId: customUnitId,
         usdaId: ingredient.usdaId,
-        nutrients: ingredient.usdaNutrients,
+        nutrients: ingredientNutrients,
+        ingredientCategoryId: categoryId,
       );
 
       batch.set(ingredientCollection.doc(), model.toFirestore());
     }
 
-    batch.update(recipeRef, {'updatedAt': FieldValue.serverTimestamp()});
+    batch.update(recipeRef, {
+      'totalNutrients': recipeNutrients,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
 
     await batch.commit();
+  }
+
+  Future<List<AddRecipeIngredientCategory>>
+  _getActiveIngredientCategories() async {
+    final snapshot = await firestore
+        .collection('app_config')
+        .doc('ingredient_categories')
+        .collection('items')
+        .get();
+
+    return snapshot.docs
+        .map((doc) {
+          final data = doc.data();
+          final isActive = data['isActive'] is bool
+              ? data['isActive'] as bool
+              : false;
+          final name = data['name']?.toString().trim() ?? '';
+          if (!isActive || name.isEmpty) return null;
+          return AddRecipeIngredientCategory(id: doc.id, name: name);
+        })
+        .whereType<AddRecipeIngredientCategory>()
+        .toList();
+  }
+
+  List<AddRecipeIngredientDataInput> _ingredientAnalysisInputs({
+    required List<AddRecipeIngredient> ingredients,
+    required Map<String, String> unitNames,
+  }) {
+    return [
+      for (var index = 0; index < ingredients.length; index++)
+        AddRecipeIngredientDataInput(
+          index: index,
+          name: ingredients[index].name,
+          amount: ingredients[index].amount,
+          unit: ingredients[index].customUnit.trim().isNotEmpty
+              ? ingredients[index].customUnit.trim()
+              : unitNames[ingredients[index].unitId] ??
+                    ingredients[index].unitId,
+          usdaNutrients: _normalizedNutrients(ingredients[index].usdaNutrients),
+        ),
+    ];
+  }
+
+  Future<Map<String, String>> _resolveIngredientUnitNames(
+    List<AddRecipeIngredient> ingredients,
+  ) async {
+    final ids = ingredients
+        .map((ingredient) => ingredient.unitId.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final names = <String, String>{};
+
+    for (final id in ids) {
+      final doc = await firestore
+          .collection('app_config')
+          .doc('ingredient_units')
+          .collection('items')
+          .doc(id)
+          .get();
+      final name = doc.data()?['name']?.toString().trim() ?? '';
+      names[id] = name.isEmpty ? id : name;
+    }
+
+    return names;
+  }
+
+  String? _getOthersCategoryId(List<AddRecipeIngredientCategory> categories) {
+    for (final category in categories) {
+      if (category.name.trim().toLowerCase() == 'others') {
+        return category.id;
+      }
+    }
+    return categories.isEmpty ? null : categories.first.id;
+  }
+
+  Map<String, dynamic>? _normalizedNutrients(Map<String, dynamic>? nutrients) {
+    if (nutrients == null || nutrients.isEmpty) return null;
+
+    final normalized = {
+      'calories': _nutrientValue(nutrients, const [
+        'calories',
+        'calorie',
+        'energy',
+      ]),
+      'carbohydrates': _nutrientValue(nutrients, const [
+        'carbohydrates',
+        'carbohydrate',
+        'carbs',
+      ]),
+      'fat': _nutrientValue(nutrients, const ['fat', 'fats', 'totalFat']),
+      'protein': _nutrientValue(nutrients, const ['protein', 'proteins']),
+    };
+
+    if (normalized.values.every((value) => value == 0)) return null;
+    return normalized;
+  }
+
+  double _nutrientValue(Map<String, dynamic> nutrients, List<String> keys) {
+    for (final entry in nutrients.entries) {
+      final normalizedKey = entry.key.toLowerCase().replaceAll(
+        RegExp(r'[^a-z]'),
+        '',
+      );
+      for (final key in keys) {
+        final targetKey = key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+        if (normalizedKey == targetKey || normalizedKey.contains(targetKey)) {
+          return _numericValue(entry.value);
+        }
+      }
+    }
+    return 0;
+  }
+
+  double _numericValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is Map) {
+      return _numericValue(value['value'] ?? value['amount']);
+    }
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  Map<String, dynamic> _emptyNutrients() {
+    return {'calories': 0.0, 'carbohydrates': 0.0, 'fat': 0.0, 'protein': 0.0};
+  }
+
+  void _addNutrients(
+    Map<String, dynamic> total,
+    Map<String, dynamic>? nutrients,
+  ) {
+    if (nutrients == null) return;
+    for (final key in const ['calories', 'carbohydrates', 'fat', 'protein']) {
+      total[key] = _numericValue(total[key]) + _numericValue(nutrients[key]);
+    }
   }
 
   Future<String> _saveCustomUnit(String name) async {
@@ -391,6 +588,9 @@ class AddRecipeRemoteDataSource {
           nutrients: data['nutrients'] is Map<String, dynamic>
               ? data['nutrients'] as Map<String, dynamic>
               : null,
+          ingredientCategoryId: data['ingredient_categories_id']
+              ?.toString()
+              .trim(),
         ),
       );
     }
@@ -545,6 +745,13 @@ class AddRecipeRemoteDataSource {
               'senderUid': recipeOwnerUid,
               'createdAt': FieldValue.serverTimestamp(),
             });
+        if (!await _isNotificationEnabled(
+          receiverUid: followerUid,
+          preferenceId: 'new_recipe_notification',
+        )) {
+          continue;
+        }
+
         await _sendPushToUser(
           receiverUid: followerUid,
           title: 'New Recipe',
@@ -582,6 +789,20 @@ class AddRecipeRemoteDataSource {
     }
 
     return followerUids;
+  }
+
+  Future<bool> _isNotificationEnabled({
+    required String receiverUid,
+    required String preferenceId,
+  }) async {
+    final preferenceDoc = await firestore
+        .collection('users')
+        .doc(receiverUid)
+        .collection('notification_preferences')
+        .doc(preferenceId)
+        .get();
+    final enabled = preferenceDoc.data()?['enabled'];
+    return enabled is bool ? enabled : true;
   }
 
   Future<void> _sendPushToUser({

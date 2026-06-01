@@ -269,8 +269,12 @@ class ExploreRemoteDataSource {
       customIds: _stringList(data['customAllergenIds']),
     );
     final media = _stringList(data['media']);
+    final nutrition = _nutritionFromData(data['totalNutrients']);
     final ingredients = includeCommunity
-        ? await _getIngredients(doc.reference)
+        ? await _getIngredients(
+            doc.reference,
+            totalCalories: nutrition.calories,
+          )
         : const <ExploreIngredient>[];
     final instructions = includeCommunity
         ? await _getInstructionSections(doc.reference)
@@ -289,6 +293,10 @@ class ExploreRemoteDataSource {
             currentRecipeId: doc.id,
           )
         : const <ExploreRecipeSummary>[];
+    final hasRatedByCurrentUser = includeCommunity && currentUid.isNotEmpty
+        ? (await doc.reference.collection('ratings').doc(currentUid).get())
+              .exists
+        : false;
     final ratingCount = _intValue(data['ratingCount']);
     final publishedAt = _dateTime(data['updatedAt'] ?? data['createdAt']);
 
@@ -316,6 +324,7 @@ class ExploreRemoteDataSource {
           : allergenNames.join(', '),
       totalTime: '${_intValue(data['preparationTime'])} min',
       difficulty: _difficultyLabel(data['difficultyLevel']),
+      servings: _intValue(data['servings']).clamp(1, 999),
       rating: _doubleValue(data['averageRating']),
       ratingCount: ratingCount,
       commentCount: _intValue(data['commentCount']),
@@ -324,16 +333,22 @@ class ExploreRemoteDataSource {
       isFollowingAuthor: isFollowingAuthor,
       isFavourite: isFavourite,
       isCreatedByCurrentUser: isCurrentUserCreator,
+      hasRatedByCurrentUser: hasRatedByCurrentUser,
       ingredients: ingredients,
       instructionSections: instructions,
-      nutrition: const ExploreNutrition(
-        calories: 0,
-        carbsGrams: 0,
-        proteinGrams: 0,
-        fatGrams: 0,
-      ),
+      nutrition: nutrition,
       community: community,
       relatedRecipes: relatedRecipes,
+    );
+  }
+
+  ExploreNutrition _nutritionFromData(dynamic value) {
+    final nutrients = value is Map ? value : const {};
+    return ExploreNutrition(
+      calories: _numericValue(nutrients['calories'])?.round() ?? 0,
+      carbsGrams: _numericValue(nutrients['carbohydrates'])?.round() ?? 0,
+      proteinGrams: _numericValue(nutrients['protein'])?.round() ?? 0,
+      fatGrams: _numericValue(nutrients['fat'])?.round() ?? 0,
     );
   }
 
@@ -385,20 +400,14 @@ class ExploreRemoteDataSource {
 
   Future<_CreatorProfile> _getCreator(String creatorUid) async {
     if (creatorUid.isEmpty) {
-      return const _CreatorProfile(
-        name: 'Unknown Creator',
-        profileImage: 'assets/images/onboarding1.png',
-      );
+      return const _CreatorProfile(name: 'Unknown Creator', profileImage: '');
     }
 
     final doc = await firestore.collection('users').doc(creatorUid).get();
     final data = doc.data() ?? {};
     return _CreatorProfile(
       name: _stringValue(data['name'], fallback: 'Unknown Creator'),
-      profileImage: _stringValue(
-        data['profileImage'],
-        fallback: 'assets/images/onboarding1.png',
-      ),
+      profileImage: _stringValue(data['profileImage']),
       followerCount: _intValue(data['followerCount']),
     );
   }
@@ -459,14 +468,23 @@ class ExploreRemoteDataSource {
   }
 
   Future<List<ExploreIngredient>> _getIngredients(
-    DocumentReference<Map<String, dynamic>> recipe,
-  ) async {
+    DocumentReference<Map<String, dynamic>> recipe, {
+    required int totalCalories,
+  }) async {
     final snapshot = await recipe.collection('ingredients').get();
+    final categoryIds = snapshot.docs
+        .map((doc) => _stringValue(doc.data()['ingredient_categories_id']))
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final categoryNames = await _resolveIngredientCategoryNames(categoryIds);
 
     return Future.wait(
       snapshot.docs.map((doc) async {
         final data = doc.data();
         final amount = _doubleValue(data['amount']);
+        final categoryId = _stringValue(data['ingredient_categories_id']);
+        final nutrients = _nutritionFromData(data['nutrients']);
+        final calories = nutrients.calories.toDouble();
         final unit = await _resolveIngredientUnitName(
           customUnitId: _stringValue(data['customUnitId']),
           unitId: _stringValue(data['unitId']),
@@ -476,15 +494,57 @@ class ExploreRemoteDataSource {
           name: _stringValue(data['name'], fallback: 'Ingredient'),
           amount: '${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 1)} $unit'
               .trim(),
-          calories: '',
-          imagePath: _stringValue(
-            data['image'],
-            fallback: 'assets/images/meal1.png',
-          ),
-          nutritionPercent: 0,
+          calories: _caloriesLabel(calories),
+          imagePath: _stringValue(data['image'], fallback: ''),
+          nutritionPercent: totalCalories <= 0
+              ? 0
+              : (calories / totalCalories).clamp(0.0, 1.0),
+          caloriesValue: calories,
+          carbsGrams: nutrients.carbsGrams.toDouble(),
+          proteinGrams: nutrients.proteinGrams.toDouble(),
+          fatGrams: nutrients.fatGrams.toDouble(),
+          ingredientCategoryId: categoryId,
+          ingredientCategoryName: categoryNames[categoryId] ?? '',
         );
       }).toList(),
     );
+  }
+
+  Future<Map<String, String>> _resolveIngredientCategoryNames(
+    Set<String> categoryIds,
+  ) async {
+    if (categoryIds.isEmpty) return const {};
+
+    final entries = await Future.wait(
+      categoryIds.map((id) async {
+        final doc = await firestore
+            .collection('app_config')
+            .doc('ingredient_categories')
+            .collection('items')
+            .doc(id)
+            .get();
+        return MapEntry(id, _stringValue(doc.data()?['name'], fallback: id));
+      }),
+    );
+
+    return Map.fromEntries(entries);
+  }
+
+  String _caloriesLabel(double calories) {
+    if (calories <= 0) return '';
+    return '${_formatNumber(calories)} kcal';
+  }
+
+  double? _numericValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is Map) return _numericValue(value['value'] ?? value['amount']);
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  String _formatNumber(double value) {
+    final rounded = value.roundToDouble();
+    if ((value - rounded).abs() < 0.05) return rounded.toInt().toString();
+    return value.toStringAsFixed(1);
   }
 
   Future<String> _resolveIngredientUnitName({
@@ -547,10 +607,7 @@ class ExploreRemoteDataSource {
           return ExploreInstructionStep(
             title: 'Step ${_intValue(step['stepIndex'])}',
             description: _stringValue(step['description']),
-            imagePath: _stringValue(
-              step['stepImage'],
-              fallback: 'assets/images/meal3(2).png',
-            ),
+            imagePath: _stringValue(step['stepImage'], fallback: ''),
           );
         }).toList(),
       );
@@ -1073,6 +1130,10 @@ class ExploreRemoteDataSource {
             'senderUid': senderUid,
             'createdAt': FieldValue.serverTimestamp(),
           });
+      if (!await _isNotificationEnabled(receiverUid: receiverUid, type: type)) {
+        return;
+      }
+
       await _sendPushToUser(
         receiverUid: receiverUid,
         title: title,
@@ -1086,6 +1147,42 @@ class ExploreRemoteDataSource {
     } on FirebaseException {
       // Notification writes are best-effort; the original action already
       // succeeded and should not be rolled back by notification rules.
+    }
+  }
+
+  Future<bool> _isNotificationEnabled({
+    required String receiverUid,
+    required String type,
+  }) async {
+    final preferenceId = _preferenceIdForNotificationType(type);
+    if (preferenceId == null) return true;
+
+    final preferenceDoc = await firestore
+        .collection('users')
+        .doc(receiverUid)
+        .collection('notification_preferences')
+        .doc(preferenceId)
+        .get();
+    final enabled = preferenceDoc.data()?['enabled'];
+    return enabled is bool ? enabled : true;
+  }
+
+  String? _preferenceIdForNotificationType(String type) {
+    switch (type) {
+      case 'newFollower':
+        return 'new_follower_notification';
+      case 'newRating':
+        return 'new_rating_notification';
+      case 'newComment':
+        return 'new_comment_notification';
+      case 'newRecipe':
+        return 'new_recipe_notification';
+      case 'newReply':
+        return 'new_reply_notification';
+      case 'newLike':
+        return 'new_like_notification';
+      default:
+        return null;
     }
   }
 

@@ -20,7 +20,10 @@ class GroceryListTabMainView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<MealPlanViewModel>();
-    final groceryLists = viewModel.filteredGroceryLists;
+    final weeklyLists = viewModel.filteredWeeklyHistory;
+    final customLists = viewModel.filteredCustomGroceryLists;
+    final isActiveTab =
+        viewModel.selectedGroceryListTab == GroceryListTabFilter.active;
 
     return Stack(
       children: [
@@ -53,15 +56,30 @@ class GroceryListTabMainView extends StatelessWidget {
               const SizedBox(height: AppSpacing.md),
               const _GroceryTipBox(),
               const SizedBox(height: AppSpacing.md),
-              if (groceryLists.isEmpty)
-                const _EmptyGroceryLists()
-              else
-                ...groceryLists.map(
+              if (weeklyLists.isNotEmpty) ...[
+                _SectionHeader(
+                  title: isActiveTab ? 'Weekly Groceries' : 'Weekly History',
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ...weeklyLists.map(
+                  (list) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: _WeeklyGroceriesCard(list: list),
+                  ),
+                ),
+              ],
+              if (customLists.isNotEmpty) ...[
+                const _SectionHeader(title: 'Custom Lists'),
+                const SizedBox(height: AppSpacing.sm),
+                ...customLists.map(
                   (list) => Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
                     child: _GroceryListCard(list: list),
                   ),
                 ),
+              ],
+              if (weeklyLists.isEmpty && customLists.isEmpty)
+                const _EmptyGroceryLists(),
             ],
           ),
         ),
@@ -75,50 +93,228 @@ class GroceryListTabMainView extends StatelessWidget {
   }
 }
 
-class _GrocerySearchRow extends StatelessWidget {
-  const _GrocerySearchRow();
+class _SectionHeader extends StatelessWidget {
+  final String title;
+
+  const _SectionHeader({required this.title});
 
   @override
   Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: context.text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+    );
+  }
+}
+
+class _WeeklyGroceriesCard extends StatelessWidget {
+  final GroceryListSummary list;
+
+  const _WeeklyGroceriesCard({required this.list});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF0FAF2),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => context.push(
+          AppRouter.manageGroceryList,
+          extra: ManageGroceryListArgs(listId: list.id),
+        ),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: AppSpacing.cardPadding,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE0F7E4),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.shopping_basket_outlined,
+                  color: AppColors.primary,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            list.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.text.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const _DefaultBadge(),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${list.itemCount} items',
+                      style: context.text.bodyMedium,
+                    ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_today,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            _formatDateRange(list.startDate, list.endDate),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.text.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Week starts ${_weekStartLabel(list.weekStartDay)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodySmall?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GrocerySearchRow extends StatefulWidget {
+  const _GrocerySearchRow();
+
+  @override
+  State<_GrocerySearchRow> createState() => _GrocerySearchRowState();
+}
+
+class _GrocerySearchRowState extends State<_GrocerySearchRow> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: context.read<MealPlanViewModel>().grocerySearchQuery,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = context.watch<MealPlanViewModel>().grocerySearchQuery;
+    if (_controller.text != query) {
+      _controller.value = TextEditingValue(
+        text: query,
+        selection: TextSelection.collapsed(offset: query.length),
+      );
+    }
+
     return Row(
       children: [
-        const Icon(Icons.tune, color: AppColors.textPrimary, size: 22),
+        IconButton(
+          tooltip: 'Active lists',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => context
+              .read<MealPlanViewModel>()
+              .selectGroceryListTab(GroceryListTabFilter.active),
+          icon: const Icon(Icons.tune, color: AppColors.textPrimary, size: 22),
+        ),
         const SizedBox(width: AppSpacing.sm),
-        const Icon(Icons.filter_alt, color: AppColors.textPrimary, size: 22),
+        IconButton(
+          tooltip: 'Past lists',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => context
+              .read<MealPlanViewModel>()
+              .selectGroceryListTab(GroceryListTabFilter.past),
+          icon: const Icon(
+            Icons.filter_alt,
+            color: AppColors.textPrimary,
+            size: 22,
+          ),
+        ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F8F8),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.search,
-                  color: AppColors.textSecondary.withValues(alpha: 0.35),
-                  size: 22,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: Text(
-                    'Search name, brand, category, ...',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary.withValues(alpha: 0.35),
+          child: TextField(
+            controller: _controller,
+            onChanged: context
+                .read<MealPlanViewModel>()
+                .updateGrocerySearchQuery,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search name, category, date...',
+              prefixIcon: Icon(
+                Icons.search,
+                color: AppColors.textSecondary.withValues(alpha: 0.45),
+              ),
+              suffixIcon: query.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear search',
+                      onPressed: context
+                          .read<MealPlanViewModel>()
+                          .clearGrocerySearchQuery,
+                      icon: const Icon(Icons.close, size: 18),
                     ),
-                  ),
-                ),
-              ],
+              filled: true,
+              fillColor: const Color(0xFFF8F8F8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 0,
+              ),
             ),
           ),
         ),
       ],
     );
   }
+}
+
+String _formatDateRange(DateTime start, DateTime end) {
+  final startText = DateFormat('d MMM').format(start);
+  final endText = DateFormat('d MMM yyyy').format(end);
+  return '$startText - $endText';
+}
+
+String _weekStartLabel(String value) {
+  return value.toLowerCase() == 'sunday' ? 'Sunday' : 'Monday';
 }
 
 class _GroceryTipBox extends StatelessWidget {
@@ -285,8 +481,6 @@ class _GroceryListCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                const Icon(Icons.more_vert, color: AppColors.textPrimary),
               ],
             ),
           ),
@@ -379,7 +573,16 @@ class _AddGroceryListButton extends StatelessWidget {
     return SizedBox(
       height: 54,
       child: ElevatedButton.icon(
-        onPressed: () => context.push(AppRouter.addGroceryList),
+        onPressed: () async {
+          final viewModel = context.read<MealPlanViewModel>();
+          final result = await context.push(
+            AppRouter.addGroceryList,
+            extra: AddGroceryListArgs(userId: viewModel.userId),
+          );
+          if (result != null && context.mounted) {
+            await context.read<MealPlanViewModel>().loadDashboard();
+          }
+        },
         icon: const Icon(Icons.calendar_month, size: 20),
         label: Text(
           'Add Grocery List',

@@ -88,7 +88,7 @@ class _MealPlannedTimeView extends StatelessWidget {
                 Expanded(
                   child: _SummaryTile(
                     icon: Icons.event_available,
-                    title: 'Total Days',
+                    title: 'Meal Time',
                     value: statistics.totalDays.toString(),
                   ),
                 ),
@@ -389,7 +389,7 @@ class _BreakdownSection extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Total Taken',
+                        'Meals planned',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: context.text.bodySmall?.copyWith(
@@ -446,17 +446,7 @@ class _MealItemRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFFECE7CF),
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFD7C98D)),
-            ),
-            child: Icon(meal.icon, color: const Color(0xFF6D642C), size: 18),
-          ),
+          _FoodIcon(icon: meal.icon, imageUrl: meal.imageUrl),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -496,6 +486,39 @@ class _MealItemRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FoodIcon extends StatelessWidget {
+  final IconData icon;
+  final String? imageUrl;
+
+  const _FoodIcon({required this.icon, this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl?.trim() ?? '';
+    return Container(
+      width: 32,
+      height: 32,
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFECE7CF),
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFD7C98D)),
+      ),
+      child: url.isNotEmpty
+          ? Image.network(
+              url,
+              width: 32,
+              height: 32,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Icon(icon, color: const Color(0xFF6D642C), size: 18),
+            )
+          : Icon(icon, color: const Color(0xFF6D642C), size: 18),
     );
   }
 }

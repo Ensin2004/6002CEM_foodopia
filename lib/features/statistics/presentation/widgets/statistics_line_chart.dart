@@ -111,9 +111,13 @@ class StatisticsLineChart extends StatelessWidget {
       0,
       (max, point) => math.max(max, point.value),
     );
-    if (maxPointValue <= 400) return 400;
-    if (maxPointValue <= 1000) return 1000;
-    return ((maxPointValue / 500).ceil()) * 500;
+    if (maxPointValue <= 0) return 4;
+    if (maxPointValue <= 4) return 4;
+    if (maxPointValue <= 10) return 10;
+    if (maxPointValue <= 20) return 20;
+    if (maxPointValue <= 40) return 40;
+    if (maxPointValue <= 100) return 100;
+    return ((maxPointValue / 50).ceil()) * 50;
   }
 
   List<int> _gridValues(int highestValue) {
@@ -151,6 +155,12 @@ class _StatisticsLineChartPainter extends CustomPainter {
     final fillPaint = Paint()
       ..color = color.withValues(alpha: 0.28)
       ..style = PaintingStyle.fill;
+    final dotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final dotBorderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
 
     for (var index = 0; index < gridValues.length; index++) {
       final y = size.height * index / (gridValues.length - 1);
@@ -163,7 +173,7 @@ class _StatisticsLineChartPainter extends CustomPainter {
           ? size.width / 2
           : size.width * index / (points.length - 1);
       final y = size.height - (points[index].value / maxValue) * size.height;
-      pointOffsets.add(Offset(x, y.clamp(0.0, size.height)));
+      pointOffsets.add(Offset(x, y.clamp(2.0, size.height - 2)));
     }
 
     final linePath = _smoothPath(pointOffsets);
@@ -174,6 +184,10 @@ class _StatisticsLineChartPainter extends CustomPainter {
 
     canvas.drawPath(fillPath, fillPaint);
     canvas.drawPath(linePath, linePaint);
+    for (final offset in pointOffsets) {
+      canvas.drawCircle(offset, 5, dotBorderPaint);
+      canvas.drawCircle(offset, 3.5, dotPaint);
+    }
   }
 
   Path _smoothPath(List<Offset> points) {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../domain/entities/explore_recipe.dart';
 
 class ExploreRecipeCard extends StatelessWidget {
@@ -60,11 +61,8 @@ class ExploreRecipeCard extends StatelessWidget {
                             ),
                             child: ColoredBox(
                               color: colors.surfaceContainerHighest,
-                              child: AppRemoteOrAssetImage(
-                                imagePath: recipe.imagePath,
-                                width: double.infinity,
-                                height: double.infinity,
-                                fit: BoxFit.cover,
+                              child: AppRecipeMediaPreview(
+                                mediaPath: recipe.imagePath,
                               ),
                             ),
                           ),
@@ -164,9 +162,7 @@ class ExploreRecipeCard extends StatelessWidget {
                                     width: 1.4,
                                   ),
                                 ),
-                                child: AppRemoteOrAssetAvatar(
-                                  radius: 16,
-                                  backgroundColor: colors.primary,
+                                child: _ExploreAuthorAvatar(
                                   imagePath: recipe.authorAvatarPath,
                                 ),
                               ),
@@ -243,6 +239,31 @@ class _AlreadyAddedBadge extends StatelessWidget {
           fontWeight: FontWeight.w800,
         ),
       ),
+    );
+  }
+}
+
+class _ExploreAuthorAvatar extends StatelessWidget {
+  final String imagePath;
+
+  const _ExploreAuthorAvatar({required this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imagePath.trim().isNotEmpty;
+
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: Colors.white,
+      child: hasImage
+          ? ClipOval(
+              child: AppRemoteOrAssetImage(
+                imagePath: imagePath,
+                width: 32,
+                height: 32,
+              ),
+            )
+          : const Icon(Icons.person, color: AppColors.primary, size: 20),
     );
   }
 }

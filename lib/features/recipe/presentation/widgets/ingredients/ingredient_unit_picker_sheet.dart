@@ -24,13 +24,10 @@ class IngredientUnitPickerSheet extends StatefulWidget {
 
 class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
   final TextEditingController _customUnitController = TextEditingController();
-  AddRecipeIngredientUnit? _selectedUnit;
 
   @override
   void initState() {
     super.initState();
-    _selectedUnit = _unitById(widget.selectedUnitId);
-    _customUnitController.text = widget.selectedCustomUnit;
     _customUnitController.addListener(_onCustomTextChanged);
   }
 
@@ -119,12 +116,14 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                                       entry.key,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: context.text.titleMedium,
+                                      style: context.text.labelLarge?.copyWith(
+                                        color: context.colors.primary,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ),
                                   const Divider(color: AppColors.border),
                                   ...entry.value.map((unit) {
-                                    final selected = unit.id == (_selectedUnit?.id ?? "");
                                     return Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                                       child: ListTile(
@@ -135,18 +134,7 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        trailing: selected
-                                            ? CircleAvatar(
-                                          radius: 10,
-                                          backgroundColor: AppColors.primary,
-                                          child: const Icon(
-                                            Icons.check,
-                                            color: Colors.white,
-                                            size: 12,
-                                          ),
-                                        )
-                                            : null,
-                                        onTap: () => _toggleUnit(unit),
+                                        onTap: () => Navigator.of(context).pop(UnitPickerSelection.fromList(unit)),
                                       ),
                                     );
                                   }),
@@ -159,23 +147,14 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
               ),
               const SizedBox(height: AppSpacing.lg),
               PrimaryButton(
-                text: _selectedUnit != null ? "Select Unit" : "Use Custom Unit",
-                onPressed: _selectedUnit != null || query.isNotEmpty ? _submitSelection : null,
+                text: "Use Custom Unit",
+                onPressed: query.isNotEmpty ? _submitSelection : null,
               ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  // Get Unit by ID
-  AddRecipeIngredientUnit? _unitById(String id) {
-    if (id.isEmpty) return null;
-    for (final unit in widget.units) {
-      if (unit.id == id) return unit;
-    }
-    return null;
   }
 
   // Match, Group Helper
@@ -197,35 +176,28 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
     return grouped;
   }
 
-  // Toggle Helper
-  void _toggleUnit(AddRecipeIngredientUnit unit) {
-    setState(() {
-      if (unit.id == _selectedUnit?.id) {
-        _selectedUnit = null;
-      } else {
-        _selectedUnit = unit;
-      }
-    });
-  }
-
   // Submit Button Helper
   void _submitSelection() {
-    if (_selectedUnit != null) {
-      Navigator.of(context).pop(UnitPickerSelection.fromList(_selectedUnit!));
-      return;
-    }
-
     final customUnit = _customUnitController.text.trim();
     if (customUnit.isEmpty) return;
+    final matchingUnit = _unitByName(customUnit);
+    if (matchingUnit != null) {
+      Navigator.of(context).pop(UnitPickerSelection.fromList(matchingUnit));
+      return;
+    }
     Navigator.of(context).pop(UnitPickerSelection.custom(customUnit));
+  }
+
+  AddRecipeIngredientUnit? _unitByName(String name) {
+    final normalizedName = name.toLowerCase();
+    for (final unit in widget.units) {
+      if (unit.name.toLowerCase() == normalizedName) return unit;
+    }
+    return null;
   }
 
   // Listener Helper
   void _onCustomTextChanged() {
-    if (_selectedUnit != null) {
-      setState(() => _selectedUnit = null);
-      return;
-    }
     setState(() {});
   }
 }
@@ -252,8 +224,9 @@ class UnitPickerSelection {
 
   factory UnitPickerSelection.custom(String unitName) {
     return UnitPickerSelection(
-        unitId: "",
-        unitName: unitName,
-        isCustom: true);
+      unitId: "",
+      unitName: unitName,
+      isCustom: true,
+    );
   }
 }

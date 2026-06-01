@@ -1,8 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -12,12 +10,16 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/entities/library_profile.dart';
 import '../../domain/entities/library_recipe.dart';
 import '../viewmodel/library_viewmodel.dart';
 import '../widgets/library_empty_state.dart';
 import '../widgets/library_recipe_card.dart';
+
+const int _libraryDescriptionWordLimit = 20;
 
 class LibraryPage extends StatelessWidget {
   final bool showAppBar;
@@ -147,7 +149,7 @@ class _LibraryPageViewState extends State<_LibraryPageView>
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
-  Future<void> _showEditProfileSheet() async {
+  Future<void> _showEditDescriptionSheet() async {
     final viewModel = context.read<LibraryViewModel>();
     final profile = viewModel.profile;
     if (profile == null) return;
@@ -161,14 +163,14 @@ class _LibraryPageViewState extends State<_LibraryPageView>
       ),
       builder: (_) => ChangeNotifierProvider.value(
         value: viewModel,
-        child: _EditLibraryProfileSheet(profile: profile),
+        child: _EditLibraryDescriptionSheet(profile: profile),
       ),
     );
 
     if (!mounted || updated != true) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Profile updated')));
+      ..showSnackBar(const SnackBar(content: Text('Description updated')));
   }
 
   Future<void> _toggleFavourite(String recipeId) async {
@@ -204,7 +206,7 @@ class _LibraryPageViewState extends State<_LibraryPageView>
       onExploreNow:
           widget.onExploreNow ?? () => context.push(AppRouter.explore),
       onComingSoonTap: _showComingSoonMessage,
-      onEditProfileTap: _showEditProfileSheet,
+      onEditDescriptionTap: _showEditDescriptionSheet,
       onFavouriteTap: _toggleFavourite,
       onFollowersTap: () => context.push(
         AppRouter.libraryProfileUsers,
@@ -225,7 +227,7 @@ class _LibraryContent extends StatelessWidget {
   final TabController tabController;
   final VoidCallback onExploreNow;
   final VoidCallback onComingSoonTap;
-  final VoidCallback onEditProfileTap;
+  final VoidCallback onEditDescriptionTap;
   final ValueChanged<String> onFavouriteTap;
   final VoidCallback onFollowersTap;
   final VoidCallback onFollowingTap;
@@ -237,7 +239,7 @@ class _LibraryContent extends StatelessWidget {
     required this.tabController,
     required this.onExploreNow,
     required this.onComingSoonTap,
-    required this.onEditProfileTap,
+    required this.onEditDescriptionTap,
     required this.onFavouriteTap,
     required this.onFollowersTap,
     required this.onFollowingTap,
@@ -270,25 +272,91 @@ class _LibraryContent extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final recipes = _focusedFirst(viewModel.visibleRecipes);
-
     return SafeArea(
       top: false,
-      child: CustomScrollView(
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        slivers: [
-          SliverToBoxAdapter(
-            child: _LibraryProfileHeader(
-              profile: profile,
-              postCount: viewModel.postCount,
-              onMoreTap: onComingSoonTap,
-              onEditProfileTap: onEditProfileTap,
-              onFollowersTap: onFollowersTap,
-              onFollowingTap: onFollowingTap,
+      child: Column(
+        children: [
+          _LibraryProfileHeader(
+            profile: profile,
+            postCount: viewModel.postCount,
+            onEditDescriptionTap: onEditDescriptionTap,
+            onFollowersTap: onFollowersTap,
+            onFollowingTap: onFollowingTap,
+          ),
+          _LibraryTabs(tabController: tabController),
+          Expanded(
+            child: TabBarView(
+              controller: tabController,
+              children: LibraryRecipeTab.values.map((tab) {
+                return _LibraryRecipeResults(
+                  key: PageStorageKey(tab),
+                  tab: tab,
+                  recipes: _focusedFirst(viewModel.visibleRecipesFor(tab)),
+                  isEmpty: viewModel.shouldShowEmptyFor(tab),
+                  onRefresh: viewModel.loadLibrary,
+                  onExploreNow: onExploreNow,
+                  focusedRecipeId: focusedRecipeId,
+                  mealPlanSelection: mealPlanSelection,
+                  onComingSoonTap: onComingSoonTap,
+                  onFavouriteTap: onFavouriteTap,
+                );
+              }).toList(),
             ),
           ),
-          SliverToBoxAdapter(child: _LibraryTabs(tabController: tabController)),
-          if (viewModel.shouldShowEmpty)
+        ],
+      ),
+    );
+  }
+
+  List<LibraryRecipe> _focusedFirst(List<LibraryRecipe> recipes) {
+    final focusedId = focusedRecipeId;
+    if (focusedId == null || focusedId.isEmpty) return recipes;
+
+    final focusedIndex = recipes.indexWhere((recipe) => recipe.id == focusedId);
+    if (focusedIndex <= 0) return recipes;
+
+    return [
+      recipes[focusedIndex],
+      ...recipes.take(focusedIndex),
+      ...recipes.skip(focusedIndex + 1),
+    ];
+  }
+}
+
+class _LibraryRecipeResults extends StatelessWidget {
+  final LibraryRecipeTab tab;
+  final List<LibraryRecipe> recipes;
+  final bool isEmpty;
+  final Future<void> Function() onRefresh;
+  final VoidCallback onExploreNow;
+  final String? focusedRecipeId;
+  final MealPlanSelectionArgs? mealPlanSelection;
+  final VoidCallback onComingSoonTap;
+  final ValueChanged<String> onFavouriteTap;
+
+  const _LibraryRecipeResults({
+    super.key,
+    required this.tab,
+    required this.recipes,
+    required this.isEmpty,
+    required this.onRefresh,
+    required this.onExploreNow,
+    required this.focusedRecipeId,
+    required this.mealPlanSelection,
+    required this.onComingSoonTap,
+    required this.onFavouriteTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: CustomScrollView(
+        key: PageStorageKey(tab),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: LibraryEmptyState(onExploreNow: onExploreNow),
@@ -318,6 +386,8 @@ class _LibraryContent extends StatelessWidget {
                     disabled: disabled,
                     onComingSoonTap: onComingSoonTap,
                     onFavouriteTap: () => onFavouriteTap(recipe.id),
+                    onImageLongPress: () =>
+                        showRecipeMediaDialog(context, recipe.imagePath),
                     onTap: () async {
                       await context.push(
                         AppRouter.libraryRecipeDetail,
@@ -329,7 +399,7 @@ class _LibraryContent extends StatelessWidget {
                         ),
                       );
                       if (!context.mounted) return;
-                      await viewModel.loadLibrary();
+                      await onRefresh();
                     },
                   );
                 }, childCount: recipes.length),
@@ -339,35 +409,19 @@ class _LibraryContent extends StatelessWidget {
       ),
     );
   }
-
-  List<LibraryRecipe> _focusedFirst(List<LibraryRecipe> recipes) {
-    final focusedId = focusedRecipeId;
-    if (focusedId == null || focusedId.isEmpty) return recipes;
-
-    final focusedIndex = recipes.indexWhere((recipe) => recipe.id == focusedId);
-    if (focusedIndex <= 0) return recipes;
-
-    return [
-      recipes[focusedIndex],
-      ...recipes.take(focusedIndex),
-      ...recipes.skip(focusedIndex + 1),
-    ];
-  }
 }
 
 class _LibraryProfileHeader extends StatelessWidget {
   final LibraryProfile profile;
   final int postCount;
-  final VoidCallback onMoreTap;
-  final VoidCallback onEditProfileTap;
+  final VoidCallback onEditDescriptionTap;
   final VoidCallback onFollowersTap;
   final VoidCallback onFollowingTap;
 
   const _LibraryProfileHeader({
     required this.profile,
     required this.postCount,
-    required this.onMoreTap,
-    required this.onEditProfileTap,
+    required this.onEditDescriptionTap,
     required this.onFollowersTap,
     required this.onFollowingTap,
   });
@@ -436,41 +490,32 @@ class _LibraryProfileHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              PopupMenuButton<_ProfileMenuAction>(
-                onSelected: (action) {
-                  switch (action) {
-                    case _ProfileMenuAction.editProfile:
-                      onEditProfileTap();
-                      break;
-                    case _ProfileMenuAction.more:
-                      onMoreTap();
-                      break;
-                  }
-                },
-                itemBuilder: (context) => const [
-                  PopupMenuItem(
-                    value: _ProfileMenuAction.editProfile,
-                    child: Text('Edit Profile'),
-                  ),
-                  PopupMenuItem(
-                    value: _ProfileMenuAction.more,
-                    child: Text('More'),
-                  ),
-                ],
-                icon: const Icon(Icons.more_vert),
-              ),
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            profile.bio,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: textTheme.bodyLarge?.copyWith(
-              color: AppColors.textSecondary,
-              height: 1.3,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  profile.bio,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Edit description',
+                onPressed: onEditDescriptionTap,
+                icon: const Icon(Icons.edit_outlined),
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              ),
+            ],
           ),
         ],
       ),
@@ -478,53 +523,51 @@ class _LibraryProfileHeader extends StatelessWidget {
   }
 }
 
-enum _ProfileMenuAction { editProfile, more }
-
-class _EditLibraryProfileSheet extends StatefulWidget {
+class _EditLibraryDescriptionSheet extends StatefulWidget {
   final LibraryProfile profile;
 
-  const _EditLibraryProfileSheet({required this.profile});
+  const _EditLibraryDescriptionSheet({required this.profile});
 
   @override
-  State<_EditLibraryProfileSheet> createState() =>
-      _EditLibraryProfileSheetState();
+  State<_EditLibraryDescriptionSheet> createState() =>
+      _EditLibraryDescriptionSheetState();
 }
 
-class _EditLibraryProfileSheetState extends State<_EditLibraryProfileSheet> {
-  late final TextEditingController _nameController;
+class _EditLibraryDescriptionSheetState
+    extends State<_EditLibraryDescriptionSheet> {
   late final TextEditingController _bioController;
-  final ImagePicker _imagePicker = ImagePicker();
-  File? _selectedImage;
+  late int _wordCount;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.profile.name);
-    _bioController = TextEditingController(text: widget.profile.bio);
+    final initialBio = _limitWords(
+      widget.profile.bio,
+      _libraryDescriptionWordLimit,
+    );
+    _bioController = TextEditingController(text: initialBio);
+    _wordCount = _countWords(initialBio);
+    _bioController.addListener(_updateWordCount);
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _bioController.removeListener(_updateWordCount);
     _bioController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final image = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (image == null || !mounted) return;
-    setState(() => _selectedImage = File(image.path));
+  void _updateWordCount() {
+    final nextCount = _countWords(_bioController.text);
+    if (nextCount == _wordCount) return;
+    setState(() => _wordCount = nextCount);
   }
 
   Future<void> _save() async {
     final viewModel = context.read<LibraryViewModel>();
     final success = await viewModel.updateProfile(
-      name: _nameController.text,
-      bio: _bioController.text,
-      imageFile: _selectedImage,
+      name: widget.profile.name,
+      bio: _limitWords(_bioController.text, _libraryDescriptionWordLimit),
     );
 
     if (!mounted) return;
@@ -533,7 +576,7 @@ class _EditLibraryProfileSheetState extends State<_EditLibraryProfileSheet> {
       return;
     }
 
-    final message = viewModel.errorMessage ?? 'Unable to update profile.';
+    final message = viewModel.errorMessage ?? 'Unable to update description.';
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
@@ -557,7 +600,10 @@ class _EditLibraryProfileSheetState extends State<_EditLibraryProfileSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: Text('Edit Profile', style: context.text.titleLarge),
+                    child: Text(
+                      'Edit Description',
+                      style: context.text.titleLarge,
+                    ),
                   ),
                   IconButton(
                     onPressed: viewModel.isSavingProfile
@@ -568,55 +614,31 @@ class _EditLibraryProfileSheetState extends State<_EditLibraryProfileSheet> {
                 ],
               ),
               const SizedBox(height: 12),
-              Center(
-                child: GestureDetector(
-                  onTap: viewModel.isSavingProfile ? null : _pickImage,
-                  child: Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      CircleAvatar(
-                        radius: 48,
-                        backgroundColor: context.colors.surfaceContainerHighest,
-                        backgroundImage: _selectedImage != null
-                            ? FileImage(_selectedImage!)
-                            : _imageProvider(widget.profile.imageUrl),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _nameController,
-                enabled: !viewModel.isSavingProfile,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 14),
               TextField(
                 controller: _bioController,
                 enabled: !viewModel.isSavingProfile,
+                inputFormatters: const [
+                  _WordLimitTextInputFormatter(_libraryDescriptionWordLimit),
+                ],
                 minLines: 3,
-                maxLines: 4,
+                maxLines: 5,
                 textInputAction: TextInputAction.newline,
                 decoration: const InputDecoration(
                   labelText: 'Description',
                   border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '$_wordCount/$_libraryDescriptionWordLimit',
+                  style: context.text.bodySmall?.copyWith(
+                    color: _wordCount >= _libraryDescriptionWordLimit
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 18),
@@ -628,7 +650,7 @@ class _EditLibraryProfileSheetState extends State<_EditLibraryProfileSheet> {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Save Changes'),
+                    : const Text('Save Description'),
               ),
             ],
           ),
@@ -636,6 +658,40 @@ class _EditLibraryProfileSheetState extends State<_EditLibraryProfileSheet> {
       ),
     );
   }
+}
+
+class _WordLimitTextInputFormatter extends TextInputFormatter {
+  final int maxWords;
+
+  const _WordLimitTextInputFormatter(this.maxWords);
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final limitedText = _limitWords(newValue.text, maxWords);
+    if (limitedText == newValue.text) return newValue;
+
+    final selectionOffset = newValue.selection.end;
+    final nextOffset = selectionOffset > limitedText.length
+        ? limitedText.length
+        : selectionOffset;
+    return TextEditingValue(
+      text: limitedText,
+      selection: TextSelection.collapsed(offset: nextOffset),
+    );
+  }
+}
+
+int _countWords(String value) {
+  return RegExp(r'\S+').allMatches(value.trim()).length;
+}
+
+String _limitWords(String value, int maxWords) {
+  final matches = RegExp(r'\S+').allMatches(value).toList();
+  if (matches.length <= maxWords) return value;
+  return value.substring(0, matches[maxWords - 1].end);
 }
 
 class _ProfileAvatar extends StatelessWidget {
@@ -646,6 +702,8 @@ class _ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasImage = imageUrl.trim().isNotEmpty;
+
     return Container(
       width: size,
       height: size,
@@ -655,8 +713,16 @@ class _ProfileAvatar extends StatelessWidget {
         border: Border.all(color: AppColors.primary, width: 2),
       ),
       child: CircleAvatar(
-        backgroundColor: context.colors.surfaceContainerHighest,
-        backgroundImage: _imageProvider(imageUrl),
+        backgroundColor: Colors.white,
+        child: hasImage
+            ? ClipOval(
+                child: AppRemoteOrAssetImage(
+                  imagePath: imageUrl,
+                  width: size,
+                  height: size,
+                ),
+              )
+            : const Icon(Icons.person, color: AppColors.primary, size: 42),
       ),
     );
   }
@@ -727,7 +793,6 @@ class _LibraryTabs extends StatelessWidget {
       controller: tabController,
       tabs: LibraryRecipeTab.values.map(_tabLabel).toList(),
       isScrollable: false,
-      margin: const EdgeInsets.only(top: 18),
     );
   }
 
@@ -741,13 +806,6 @@ class _LibraryTabs extends StatelessWidget {
         return 'Favourites';
     }
   }
-}
-
-ImageProvider _imageProvider(String path) {
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return NetworkImage(path);
-  }
-  return AssetImage(path);
 }
 
 String _compactCount(int value) {

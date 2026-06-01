@@ -18,6 +18,7 @@ class ExploreRecipe {
   final String allergenInfo;
   final String totalTime;
   final String difficulty;
+  final int servings;
   final double rating;
   final int ratingCount;
   final int commentCount;
@@ -26,6 +27,7 @@ class ExploreRecipe {
   final bool isFollowingAuthor;
   final bool isFavourite;
   final bool isCreatedByCurrentUser;
+  final bool hasRatedByCurrentUser;
   final List<ExploreIngredient> ingredients;
   final List<ExploreInstructionSection> instructionSections;
   final ExploreNutrition nutrition;
@@ -50,6 +52,7 @@ class ExploreRecipe {
     required this.allergenInfo,
     required this.totalTime,
     required this.difficulty,
+    this.servings = 1,
     required this.rating,
     required this.ratingCount,
     required this.commentCount,
@@ -58,6 +61,7 @@ class ExploreRecipe {
     required this.isFollowingAuthor,
     this.isFavourite = false,
     required this.isCreatedByCurrentUser,
+    this.hasRatedByCurrentUser = false,
     required this.ingredients,
     required this.instructionSections,
     required this.nutrition,
@@ -72,6 +76,12 @@ class ExploreIngredient {
   final String calories;
   final String imagePath;
   final double nutritionPercent;
+  final double caloriesValue;
+  final double carbsGrams;
+  final double proteinGrams;
+  final double fatGrams;
+  final String ingredientCategoryId;
+  final String ingredientCategoryName;
 
   const ExploreIngredient({
     required this.name,
@@ -79,6 +89,12 @@ class ExploreIngredient {
     required this.calories,
     required this.imagePath,
     required this.nutritionPercent,
+    this.caloriesValue = 0,
+    this.carbsGrams = 0,
+    this.proteinGrams = 0,
+    this.fatGrams = 0,
+    this.ingredientCategoryId = '',
+    this.ingredientCategoryName = '',
   });
 }
 

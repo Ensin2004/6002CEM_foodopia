@@ -1,13 +1,14 @@
 // Builds the about editor screen.
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../../../app/dependency_injection/injection_container.dart';
 import '../../../../../../core/widgets/custom_app_bar.dart';
 import '../../../../../../core/widgets/dialogs/loading_dialog.dart';
-import '../../../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../domain/usecases/about/get_about_content_usecase.dart';
 import '../../../../domain/usecases/about/save_about_content_usecase.dart';
+import '../../../../domain/usecases/about/delete_about_content_usecase.dart';
 import '../../../viewmodel/about/about_editor_viewmodel.dart';
 
 /// Defines behavior for about editor page.
@@ -32,6 +33,7 @@ class AboutEditorPage extends StatelessWidget {
         title: title,
         getAboutContentUseCase: sl<GetAboutContentUseCase>(),
         saveAboutContentUseCase: sl<SaveAboutContentUseCase>(),
+        deleteAboutContentUseCase: sl<DeleteAboutContentUseCase>(),
       ),
       child: const _AboutEditorPageView(),
     );
@@ -75,19 +77,21 @@ class _AboutEditorPageViewState extends State<_AboutEditorPageView> {
       appBar: CustomAppBar(
         title: viewModel.title,
         centerTitle: true,
-        actions: [
-          /// Creates a icon button instance.
-          IconButton(
-            icon: viewModel.isSaving
-                ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-                : const Icon(Icons.save),
-            onPressed: viewModel.isSaveDisabled ? null : () => _saveAndClose(context, viewModel),
-          ),
-        ],
+        actions: viewModel.isEditing
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: viewModel.isSaving
+                      ? null
+                      : () => _confirmDelete(context, viewModel),
+                ),
+              ]
+            : [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: viewModel.startEditing,
+                ),
+              ],
       ),
       body: viewModel.isLoading
           ? const LoadingDialog()
@@ -103,12 +107,16 @@ class _AboutEditorPageViewState extends State<_AboutEditorPageView> {
       child: Column(
         children: [
           /// Creates a text instance.
-          const Text(
-            'Edit the content below:',
-            style: TextStyle(fontSize: 16),
+          Text(
+            viewModel.isEditing
+                ? 'Edit the content below:'
+                : 'Press edit to update this content.',
+            style: const TextStyle(fontSize: 16),
           ),
+
           /// Creates a sized box instance.
           const SizedBox(height: 8),
+
           /// Creates a row instance.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -119,23 +127,29 @@ class _AboutEditorPageViewState extends State<_AboutEditorPageView> {
                   'No content yet. Start writing...',
                   style: TextStyle(color: Colors.grey),
                 ),
+
               /// Creates a text instance.
               Text(
                 '${viewModel.content.length}/10000',
                 style: TextStyle(
-                  color: viewModel.content.length > 10000 ? Colors.red : Colors.grey,
+                  color: viewModel.content.length > 10000
+                      ? Colors.red
+                      : Colors.grey,
                   fontSize: 12,
                 ),
               ),
             ],
           ),
+
           /// Creates a sized box instance.
           const SizedBox(height: 8),
+
           /// Creates a expanded instance.
           Expanded(
             child: TextField(
               controller: _contentController,
-              onChanged: viewModel.updateContent,
+              readOnly: !viewModel.isEditing,
+              onChanged: viewModel.isEditing ? viewModel.updateContent : null,
               maxLines: null,
               maxLength: 10000,
               decoration: const InputDecoration(
@@ -149,14 +163,57 @@ class _AboutEditorPageViewState extends State<_AboutEditorPageView> {
           ),
           if (viewModel.errorMessage != null)
             _buildErrorMessage(viewModel.errorMessage!),
+
           /// Creates a sized box instance.
           const SizedBox(height: 16),
+
           /// Creates a primary button instance.
-          PrimaryButton(
-            text: 'Save Changes',
-            onPressed: viewModel.isSaveDisabled ? null : () => _saveAndClose(context, viewModel),
-            isLoading: viewModel.isSaving,
-          ),
+          if (viewModel.isEditing)
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: viewModel.isSaving
+                        ? null
+                        : viewModel.cancelEditing,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey.shade700,
+                      side: BorderSide(color: Colors.grey.shade400),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: viewModel.isSaveDisabled
+                        ? null
+                        : () => _saveContent(context, viewModel),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: viewModel.isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Save Changes'),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -177,14 +234,13 @@ class _AboutEditorPageViewState extends State<_AboutEditorPageView> {
         children: [
           /// Creates a icon instance.
           Icon(Icons.error_outline, color: Colors.red.shade700),
+
           /// Creates a sized box instance.
           const SizedBox(width: 8),
+
           /// Creates a expanded instance.
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: Colors.red.shade700),
-            ),
+            child: Text(message, style: TextStyle(color: Colors.red.shade700)),
           ),
         ],
       ),
@@ -192,19 +248,57 @@ class _AboutEditorPageViewState extends State<_AboutEditorPageView> {
   }
 
   /// Handles the save and close operation.
-  Future<void> _saveAndClose(BuildContext context, AboutEditorViewModel viewModel) async {
+  Future<void> _saveContent(
+    BuildContext context,
+    AboutEditorViewModel viewModel,
+  ) async {
     final success = await viewModel.saveContent();
     if (success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         /// Creates a snack bar instance.
         const SnackBar(content: Text('Content saved successfully!')),
       );
-      Navigator.pop(context, true);
     } else if (context.mounted && viewModel.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         /// Creates a snack bar instance.
         SnackBar(content: Text(viewModel.errorMessage!)),
       );
     }
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    AboutEditorViewModel viewModel,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete content?'),
+        content: const Text('This will remove all saved content.'),
+        actions: [
+          TextButton(
+            onPressed: () => dialogContext.pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => dialogContext.pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete != true) return;
+
+    final success = await viewModel.deleteContent();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Content deleted successfully.'
+              : viewModel.errorMessage ?? 'Unable to delete content.',
+        ),
+      ),
+    );
   }
 }

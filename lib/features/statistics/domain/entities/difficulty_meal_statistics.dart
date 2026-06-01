@@ -33,11 +33,13 @@ class DifficultyMealItem {
   final DateTime date;
   final int quantity;
   final IconData icon;
+  final String? imageUrl;
 
   const DifficultyMealItem({
     required this.name,
     required this.date,
     required this.quantity,
     required this.icon,
+    this.imageUrl,
   });
 }

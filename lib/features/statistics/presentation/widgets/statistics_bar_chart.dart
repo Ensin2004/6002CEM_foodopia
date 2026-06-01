@@ -10,6 +10,7 @@ class StatisticsBarChartItem {
   final Color color;
   final String? imageUrl;
   final String? markerText;
+  final Color? markerIconColor;
 
   const StatisticsBarChartItem({
     required this.label,
@@ -18,6 +19,7 @@ class StatisticsBarChartItem {
     required this.color,
     this.imageUrl,
     this.markerText,
+    this.markerIconColor,
   });
 }
 
@@ -35,7 +37,8 @@ class StatisticsBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final highestValue = maxValue ?? _niceMaxValue(items);
+    final visibleItems = _visibleItems(items);
+    final highestValue = maxValue ?? _niceMaxValue(visibleItems);
     final gridValues = _gridValues(highestValue);
 
     return SizedBox(
@@ -96,7 +99,7 @@ class StatisticsBarChart extends StatelessWidget {
                           ),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
-                            children: items.map((item) {
+                            children: visibleItems.map((item) {
                               final ratio = highestValue == 0
                                   ? 0.0
                                   : item.value / highestValue;
@@ -140,7 +143,7 @@ class StatisticsBarChart extends StatelessWidget {
                     SizedBox(
                       height: iconRowHeight,
                       child: Row(
-                        children: items
+                        children: visibleItems
                             .map(
                               (item) => Expanded(
                                 child: Tooltip(
@@ -185,6 +188,12 @@ class StatisticsBarChart extends StatelessWidget {
     if (maxItemValue <= 20) return 20;
     if (maxItemValue <= 40) return 40;
     return ((maxItemValue / 10).ceil()) * 10;
+  }
+
+  List<StatisticsBarChartItem> _visibleItems(
+    List<StatisticsBarChartItem> source,
+  ) {
+    return source.take(5).toList(growable: false);
   }
 
   List<int> _gridValues(int highestValue) {
@@ -233,7 +242,11 @@ class _ChartMarkerContent extends StatelessWidget {
       );
     }
 
-    return Icon(item.icon, size: 17, color: const Color(0xFF6D642C));
+    return Icon(
+      item.icon,
+      size: 17,
+      color: item.markerIconColor ?? const Color(0xFF6D642C),
+    );
   }
 
   String _markerText(String? value) {

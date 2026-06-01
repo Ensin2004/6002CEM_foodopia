@@ -7,6 +7,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/cards/method_card.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../../core/widgets/media/app_recipe_media.dart';
 
 class RecipeImagePicker extends StatefulWidget {
   final List<File> images;
@@ -48,9 +49,9 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
     final imageCount = widget.existingImageUrls.length + widget.images.length;
     if (imageCount == 0) {
       return MethodCard(
-        icon: Icons.add_photo_alternate_outlined,
-        title: "Upload Image",
-        subtitle: "Upload image for your recipe.",
+        icon: Icons.perm_media_outlined,
+        title: "Upload Media",
+        subtitle: "Upload images or videos for your recipe.",
         onTap: widget.onPick,
       );
     }
@@ -81,10 +82,17 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
                     return GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () => existingUrl == null
-                          ? _showExpandedImage(context: context, imageFile: widget.images[fileIndex])
-                          : _showExpandedImage(context: context, imageUrl: existingUrl),
+                          ? showRecipeMediaDialog(context, widget.images[fileIndex].path)
+                          : showRecipeMediaDialog(context, existingUrl),
                       child: existingUrl == null
-                          ? Image.file(widget.images[fileIndex], fit: BoxFit.contain)
+                          ? _RecipeMediaPreview(file: widget.images[fileIndex], fit: BoxFit.contain)
+                          : isRecipeVideoPath(existingUrl)
+                          ? AppRecipeMedia(
+                              mediaPath: existingUrl,
+                              fit: BoxFit.contain,
+                              showVideoControls: true,
+                              allowFullscreen: true,
+                            )
                           : AppRemoteOrAssetImage(
                               imagePath: existingUrl,
                               width: double.infinity,
@@ -108,22 +116,19 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
               ),
             ),
             Positioned(
-              right: AppSpacing.sm,
-              top: AppSpacing.sm,
+              right: 10,
+              top: 10,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: colors.onSurface.withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   "${_currentImageIndex + 1}/$imageCount",
                   style: context.text.bodySmall?.copyWith(
                     color: colors.surface,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -133,48 +138,25 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
       ),
     );
   }
+}
 
-  Future<void> _showExpandedImage({
-    required BuildContext context,
-    File? imageFile,
-    String? imageUrl,
-  }) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return Dialog.fullscreen(
-          backgroundColor: Colors.black,
-          child: SafeArea(
-            child: Stack(
-              children: [
-                Center(
-                  child: InteractiveViewer(
-                    minScale: 1,
-                    maxScale: 4,
-                    child: imageFile != null
-                        ? Image.file(imageFile, fit: BoxFit.contain)
-                        : AppRemoteOrAssetImage(
-                            imagePath: imageUrl ?? "",
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.contain,
-                          ),
-                  ),
-                ),
-                Positioned(
-                  top: AppSpacing.sm,
-                  right: AppSpacing.sm,
-                  child: IconButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+class _RecipeMediaPreview extends StatelessWidget {
+  final File file;
+  final BoxFit fit;
+
+  const _RecipeMediaPreview({required this.file, required this.fit});
+
+  @override
+  Widget build(BuildContext context) {
+    if (isRecipeVideoPath(file.path)) {
+      return AppRecipeMedia(
+        mediaPath: file.path,
+        fit: fit,
+        showVideoControls: true,
+        allowFullscreen: true,
+      );
+    }
+    return Image.file(file, fit: fit);
   }
 }
 
