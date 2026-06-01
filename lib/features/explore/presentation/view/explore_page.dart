@@ -437,6 +437,7 @@ class _FollowingCreatorsList extends StatelessWidget {
                   radius: 28,
                   imageSize: 56,
                   iconSize: 32,
+                  hasBorder: true,
                 ),
                 const SizedBox(width: 18),
                 Expanded(
@@ -466,11 +467,12 @@ class _FollowingCreatorsList extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                OutlinedButton(
+                FilledButton(
                   onPressed: () => onToggleFollow(creator.uid),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
                     visualDensity: VisualDensity.compact,
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     minimumSize: const Size(0, 38),
@@ -1427,30 +1429,42 @@ class _ExploreCreatorAvatar extends StatelessWidget {
   final double radius;
   final double imageSize;
   final double iconSize;
+  final bool hasBorder;
 
   const _ExploreCreatorAvatar({
     required this.imagePath,
     required this.radius,
     required this.imageSize,
     required this.iconSize,
+    this.hasBorder = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final hasImage = imagePath.trim().isNotEmpty;
 
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: Colors.white,
-      child: hasImage
-          ? ClipOval(
-              child: AppRemoteOrAssetImage(
-                imagePath: imagePath,
-                width: imageSize,
-                height: imageSize,
-              ),
-            )
-          : Icon(Icons.person, color: AppColors.primary, size: iconSize),
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      padding: hasBorder ? const EdgeInsets.all(2) : EdgeInsets.zero,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: hasBorder
+            ? Border.all(color: AppColors.primary, width: 1.5)
+            : null,
+      ),
+      child: CircleAvatar(
+        backgroundColor: Colors.white,
+        child: hasImage
+            ? ClipOval(
+                child: AppRemoteOrAssetImage(
+                  imagePath: imagePath,
+                  width: imageSize,
+                  height: imageSize,
+                ),
+              )
+            : Icon(Icons.person, color: AppColors.primary, size: iconSize),
+      ),
     );
   }
 }

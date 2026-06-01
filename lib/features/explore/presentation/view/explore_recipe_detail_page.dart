@@ -2244,6 +2244,7 @@ class _RatingsPanel extends StatelessWidget {
         _RateRecipeCard(
           isSubmitting: isSubmitting,
           canRate: canRate,
+          hasRated: recipe.hasRatedByCurrentUser,
           onRatingSelected: onRatingSelected,
         ),
         const SizedBox(height: 14),
@@ -2261,11 +2262,13 @@ class _RatingsPanel extends StatelessWidget {
 class _RateRecipeCard extends StatefulWidget {
   final bool isSubmitting;
   final bool canRate;
+  final bool hasRated;
   final ValueChanged<int> onRatingSelected;
 
   const _RateRecipeCard({
     required this.isSubmitting,
     required this.canRate,
+    required this.hasRated,
     required this.onRatingSelected,
   });
 
@@ -2288,7 +2291,9 @@ class _RateRecipeCardState extends State<_RateRecipeCard> {
           Text('Rate this Recipe', style: textTheme.titleMedium),
           Text(
             widget.canRate
-                ? 'Tap a star to rate'
+                ? widget.hasRated
+                      ? 'You already rated this recipe'
+                      : 'Tap a star to rate'
                 : 'You cannot rate your own recipe',
             style: textTheme.bodySmall,
           ),
@@ -2305,7 +2310,9 @@ class _RateRecipeCardState extends State<_RateRecipeCard> {
                   children: List.generate(5, (index) {
                     final rating = index + 1;
                     return InkResponse(
-                      onTap: () => setState(() => _selectedRating = rating),
+                      onTap: widget.hasRated
+                          ? null
+                          : () => setState(() => _selectedRating = rating),
                       radius: 26,
                       child: Icon(
                         rating <= _selectedRating
@@ -2317,13 +2324,21 @@ class _RateRecipeCardState extends State<_RateRecipeCard> {
                     );
                   }),
                 ),
-                if (_selectedRating > 0) ...[
+                if (_selectedRating > 0 || widget.hasRated) ...[
                   const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: () => widget.onRatingSelected(_selectedRating),
-                      child: const Text('Submit Rating'),
+                      onPressed: widget.hasRated
+                          ? null
+                          : () => widget.onRatingSelected(_selectedRating),
+                      style: widget.hasRated
+                          ? FilledButton.styleFrom(
+                              disabledBackgroundColor: AppColors.border,
+                              disabledForegroundColor: AppColors.textSecondary,
+                            )
+                          : null,
+                      child: Text(widget.hasRated ? 'Rated' : 'Submit Rating'),
                     ),
                   ),
                 ],
