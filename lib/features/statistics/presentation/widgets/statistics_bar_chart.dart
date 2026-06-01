@@ -37,7 +37,8 @@ class StatisticsBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final highestValue = maxValue ?? _niceMaxValue(items);
+    final visibleItems = _visibleItems(items);
+    final highestValue = maxValue ?? _niceMaxValue(visibleItems);
     final gridValues = _gridValues(highestValue);
 
     return SizedBox(
@@ -98,7 +99,7 @@ class StatisticsBarChart extends StatelessWidget {
                           ),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
-                            children: items.map((item) {
+                            children: visibleItems.map((item) {
                               final ratio = highestValue == 0
                                   ? 0.0
                                   : item.value / highestValue;
@@ -142,7 +143,7 @@ class StatisticsBarChart extends StatelessWidget {
                     SizedBox(
                       height: iconRowHeight,
                       child: Row(
-                        children: items
+                        children: visibleItems
                             .map(
                               (item) => Expanded(
                                 child: Tooltip(
@@ -187,6 +188,12 @@ class StatisticsBarChart extends StatelessWidget {
     if (maxItemValue <= 20) return 20;
     if (maxItemValue <= 40) return 40;
     return ((maxItemValue / 10).ceil()) * 10;
+  }
+
+  List<StatisticsBarChartItem> _visibleItems(
+    List<StatisticsBarChartItem> source,
+  ) {
+    return source.take(5).toList(growable: false);
   }
 
   List<int> _gridValues(int highestValue) {
