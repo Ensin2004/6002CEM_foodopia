@@ -395,20 +395,14 @@ class ExploreRemoteDataSource {
 
   Future<_CreatorProfile> _getCreator(String creatorUid) async {
     if (creatorUid.isEmpty) {
-      return const _CreatorProfile(
-        name: 'Unknown Creator',
-        profileImage: 'assets/images/onboarding1.png',
-      );
+      return const _CreatorProfile(name: 'Unknown Creator', profileImage: '');
     }
 
     final doc = await firestore.collection('users').doc(creatorUid).get();
     final data = doc.data() ?? {};
     return _CreatorProfile(
       name: _stringValue(data['name'], fallback: 'Unknown Creator'),
-      profileImage: _stringValue(
-        data['profileImage'],
-        fallback: 'assets/images/onboarding1.png',
-      ),
+      profileImage: _stringValue(data['profileImage']),
       followerCount: _intValue(data['followerCount']),
     );
   }

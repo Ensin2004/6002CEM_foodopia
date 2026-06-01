@@ -259,10 +259,7 @@ class _CreatorHeader extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: AppRemoteOrAssetAvatar(
-                    radius: 38,
-                    imagePath: summary.avatarPath,
-                  ),
+                  child: _CreatorDetailAvatar(imagePath: summary.avatarPath),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -440,6 +437,31 @@ class _RecipeGrid extends StatelessWidget {
           extra: ExploreRecipeDetailArgs(recipeId: recipe.id),
         );
       },
+    );
+  }
+}
+
+class _CreatorDetailAvatar extends StatelessWidget {
+  final String imagePath;
+
+  const _CreatorDetailAvatar({required this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imagePath.trim().isNotEmpty;
+
+    return CircleAvatar(
+      radius: 38,
+      backgroundColor: Colors.white,
+      child: hasImage
+          ? ClipOval(
+              child: AppRemoteOrAssetImage(
+                imagePath: imagePath,
+                width: 76,
+                height: 76,
+              ),
+            )
+          : const Icon(Icons.person, color: AppColors.primary, size: 44),
     );
   }
 }

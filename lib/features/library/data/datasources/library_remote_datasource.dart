@@ -23,10 +23,7 @@ class LibraryRemoteDataSource {
       auth.currentUser?.displayName,
       'Foodopia User',
     ]);
-    final imageUrl = _firstNotBlank([
-      data['profileImage']?.toString(),
-      'assets/images/onboarding1.png',
-    ]);
+    final imageUrl = _firstNotBlank([data['profileImage']?.toString()]);
 
     return LibraryProfile(
       name: name,
@@ -155,10 +152,7 @@ class LibraryRemoteDataSource {
         data['displayName']?.toString(),
         'Foodopia User',
       ]),
-      imageUrl: _firstNotBlank([
-        data['profileImage']?.toString(),
-        'assets/images/onboarding1.png',
-      ]),
+      imageUrl: _firstNotBlank([data['profileImage']?.toString()]),
       followerCount:
           _intValue(data['followersCount']) ??
           _intValue(data['followerCount']) ??
@@ -353,7 +347,6 @@ class LibraryRemoteDataSource {
       publishedAtLabel: _formatPublishedAt(createdAt),
       authorAvatarPath: _firstNotBlank([
         creatorData['profileImage']?.toString(),
-        'assets/images/onboarding1.png',
       ]),
       imagePath: imagePath,
       imagePaths: media.isEmpty ? null : media,
