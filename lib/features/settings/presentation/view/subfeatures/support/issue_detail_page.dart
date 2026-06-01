@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../../../app/dependency_injection/injection_container.dart';
 import '../../../../../../app/routers/app_router.dart';
 import '../../../../../../app/routers/router_args.dart';
+import '../../../../../../core/theme/app_colors.dart';
 import '../../../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../../../core/widgets/custom_app_bar.dart';
 import '../../../../domain/entities/help_center_issue.dart';
@@ -52,42 +53,39 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: const CustomAppBar(title: 'Issue Details', centerTitle: true),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (widget.isAdmin) _buildUserHeader(context),
-              _InfoRow(label: 'Ticket ID', value: _issue.id),
-              _InfoRow(label: 'Date', value: _formatDateTime(_issue.timestamp)),
-              _buildStatus(),
-              const SizedBox(height: 18),
-              Text('Message', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text(
-                _issue.message,
-                style: Theme.of(context).textTheme.bodyMedium,
+              _buildSummaryCard(context),
+              const SizedBox(height: 16),
+              _buildSectionCard(
+                context: context,
+                title: 'Message',
+                icon: Icons.chat_bubble_outline_rounded,
+                child: Text(
+                  _issue.message,
+                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.45),
+                ),
               ),
               if (_issue.imageUrl?.isNotEmpty == true) ...[
                 const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () => _showFullScreenImage(context, _issue.imageUrl!),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      _issue.imageUrl!,
-                      width: double.infinity,
-                      height: 200,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                _buildSectionCard(
+                  context: context,
+                  title: 'Attachment',
+                  icon: Icons.image_outlined,
+                  child: _buildAttachment(context, _issue.imageUrl!),
                 ),
               ],
-              const SizedBox(height: 22),
+              const SizedBox(height: 16),
               if (widget.isAdmin)
                 _buildAdminReplyBox(context)
               else
@@ -104,17 +102,22 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
   }
 
   Widget _buildUserHeader(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    final theme = Theme.of(context);
+
+    return _buildSectionCard(
+      context: context,
+      title: 'Submitted by',
+      icon: Icons.person_outline_rounded,
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
       child: Row(
         children: [
-          const CircleAvatar(child: Icon(Icons.person_outline)),
+          CircleAvatar(
+            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
+            child: Icon(
+              Icons.person_outline_rounded,
+              color: theme.colorScheme.primary,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -122,14 +125,14 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
               children: [
                 Text(
                   widget.userName ?? 'User',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: theme.textTheme.titleMedium,
                 ),
                 if (widget.userEmail?.isNotEmpty == true)
                   Text(
                     widget.userEmail!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: theme.textTheme.bodySmall,
                   ),
               ],
             ),
@@ -139,90 +142,293 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
-  Widget _buildStatus() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Row(
-        children: [
-          Icon(
-            _issue.isReplied ? Icons.check_circle : Icons.pending,
-            color: _issue.isReplied ? Colors.green : Colors.orange,
+  Widget _buildSummaryCard(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE6E9EE)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
-          const SizedBox(width: 6),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _buildDetailStatusBadge(context),
+              const Spacer(),
+              Icon(
+                Icons.confirmation_number_outlined,
+                color: theme.colorScheme.primary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
           Text(
-            _issue.isReplied ? 'Completed' : 'Pending',
-            style: TextStyle(
-              color: _issue.isReplied ? Colors.green : Colors.orange,
-              fontWeight: FontWeight.w600,
+            'Ticket ID',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
+          ),
+          const SizedBox(height: 4),
+          SelectableText(
+            _issue.id,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildMetaLine(
+            context,
+            icon: Icons.calendar_today_outlined,
+            text: _formatDateTime(_issue.timestamp),
+          ),
+          if (_issue.repliedAt != null) ...[
+            const SizedBox(height: 8),
+            _buildMetaLine(
+              context,
+              icon: Icons.mark_email_read_outlined,
+              text: 'Closed ${_formatDateTime(_issue.repliedAt!)}',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailStatusBadge(BuildContext context) {
+    final theme = Theme.of(context);
+    final isClosed = _issue.normalizedStatus == 'closed';
+    final color = isClosed ? AppColors.error : theme.colorScheme.primary;
+    final label = isClosed ? 'Closed' : 'Open';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: theme.textTheme.labelLarge?.copyWith(color: color),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAdminReplyBox(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildMetaLine(
+    BuildContext context, {
+    required IconData icon,
+    required String text,
+  }) {
+    final theme = Theme.of(context);
+
+    return Row(
       children: [
-        Text('Admin Reply', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _replyController,
-          minLines: 4,
-          maxLines: 7,
-          decoration: const InputDecoration(
-            hintText: 'Write a reply for the user',
-            border: OutlineInputBorder(),
-          ),
+        Icon(
+          icon,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
+          size: 17,
         ),
-        const SizedBox(height: 14),
-        PrimaryButton(
-          text: _issue.isReplied ? 'Update Reply' : 'Reply User',
-          isLoading: _isSaving,
-          onPressed: _isSaving ? null : _replyToUser,
-        ),
-        const SizedBox(height: 10),
-        if (!_issue.isReplied)
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: _isSaving ? null : _markAsComplete,
-              child: const Text('Mark as Complete'),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
             ),
           ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildSectionCard({
+    required BuildContext context,
+    required String title,
+    required IconData icon,
+    required Widget child,
+    EdgeInsetsGeometry? margin,
+  }) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      margin: margin,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE6E9EE)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: theme.colorScheme.primary, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttachment(BuildContext context, String imageUrl) {
+    return GestureDetector(
+      onTap: () => _showFullScreenImage(context, imageUrl),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            Image.network(
+              imageUrl,
+              width: double.infinity,
+              height: 220,
+              fit: BoxFit.cover,
+            ),
+            Positioned(
+              right: 10,
+              bottom: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.58),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.open_in_full_rounded,
+                      color: Colors.white,
+                      size: 15,
+                    ),
+                    SizedBox(width: 6),
+                    Text('View', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminReplyBox(BuildContext context) {
+    return _buildSectionCard(
+      context: context,
+      title: 'Admin Reply',
+      icon: Icons.support_agent_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _replyController,
+            minLines: 4,
+            maxLines: 7,
+            decoration: InputDecoration(
+              hintText: 'Write a reply for the user',
+              filled: true,
+              fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          PrimaryButton(
+            text: _issue.isReplied ? 'Update Reply' : 'Reply User',
+            isLoading: _isSaving,
+            onPressed: _isSaving ? null : _replyToUser,
+          ),
+          const SizedBox(height: 10),
+          if (!_issue.isReplied)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _isSaving ? null : _markAsComplete,
+                child: const Text('Mark as Closed'),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
   Widget _buildUserReply(BuildContext context) {
     if (_issue.adminReply.trim().isEmpty) {
-      return Text(
-        'No admin reply yet.',
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+      return _buildSectionCard(
+        context: context,
+        title: 'Admin Reply',
+        icon: Icons.support_agent_rounded,
+        child: Text(
+          'No admin reply yet.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
       );
     }
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green.shade100),
-      ),
+
+    return _buildSectionCard(
+      context: context,
+      title: 'Admin Reply',
+      icon: Icons.support_agent_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Admin Reply', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Text(_issue.adminReply),
+          Text(
+            _issue.adminReply,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(height: 1.45),
+          ),
           if (_issue.repliedAt != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              _formatDateTime(_issue.repliedAt!),
-              style: Theme.of(context).textTheme.bodySmall,
+            const SizedBox(height: 12),
+            _buildMetaLine(
+              context,
+              icon: Icons.schedule_rounded,
+              text: _formatDateTime(_issue.repliedAt!),
             ),
           ],
         ],
@@ -243,6 +449,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     result.fold((failure) => _errorMessage = failure.message, (_) {
       _issue = _issue.copyWith(
         replied: true,
+        status: 'closed',
         adminReply: _replyController.text.trim(),
         repliedAt: DateTime.now(),
       );
@@ -258,7 +465,11 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     });
     final result = await sl<UpdateIssueStatusUseCase>().execute(_issue.id);
     result.fold((failure) => _errorMessage = failure.message, (_) {
-      _issue = _issue.copyWith(replied: true, repliedAt: DateTime.now());
+      _issue = _issue.copyWith(
+        replied: true,
+        status: 'closed',
+        repliedAt: DateTime.now(),
+      );
       widget.onStatusChanged?.call();
     });
     if (mounted) setState(() => _isSaving = false);
@@ -272,32 +483,6 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     context.push(
       AppRouter.imagePreview,
       extra: ImagePreviewArgs(imageUrl: imageUrl),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _InfoRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 86,
-            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-          ),
-          Expanded(
-            child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -59,8 +59,7 @@ class AdminHelpCenterViewModel extends ChangeNotifier {
     // Apply filter
     List<HelpCenterIssue> filtered = _issues.where((issue) {
       if (_statusFilter == 'All') return true;
-      if (_statusFilter == 'Replied') return issue.isReplied;
-      return issue.isPending;
+      return issue.normalizedStatus == _statusFilter.toLowerCase();
     }).toList();
 
     // Apply sort

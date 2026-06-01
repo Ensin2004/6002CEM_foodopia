@@ -26,23 +26,28 @@ class UserHelpCenterViewModel extends ChangeNotifier {
     required String uid,
     required GetUserIssuesUseCase getUserIssuesUseCase,
     required SubmitIssueUseCase submitIssueUseCase,
-  })  : _uid = uid,
-        _getUserIssuesUseCase = getUserIssuesUseCase,
-        _submitIssueUseCase = submitIssueUseCase {
+  }) : _uid = uid,
+       _getUserIssuesUseCase = getUserIssuesUseCase,
+       _submitIssueUseCase = submitIssueUseCase {
     /// Loads data for the load issues operation.
     loadIssues();
   }
 
   // Getters
   bool get isLoading => _isLoading;
+
   /// Handles the is submitting operation.
   bool get isSubmitting => _isSubmitting;
+
   /// Handles the error message operation.
   String? get errorMessage => _errorMessage;
+
   /// Handles the issues operation.
   List<HelpCenterIssue> get issues => _filteredAndSortedIssues;
+
   /// Handles the filter status operation.
   String get filterStatus => _filterStatus;
+
   /// Handles the sort latest first operation.
   bool get sortLatestFirst => _sortLatestFirst;
 
@@ -51,8 +56,7 @@ class UserHelpCenterViewModel extends ChangeNotifier {
     // Apply filter
     List<HelpCenterIssue> filtered = _issues.where((issue) {
       if (_filterStatus == 'All') return true;
-      if (_filterStatus == 'Replied') return issue.isReplied;
-      return issue.isPending;
+      return issue.normalizedStatus == _filterStatus.toLowerCase();
     }).toList();
 
     // Apply sort
@@ -105,6 +109,7 @@ class UserHelpCenterViewModel extends ChangeNotifier {
     }
 
     _isSubmitting = false;
+
     /// Loads data for the load issues operation.
     await loadIssues(); // Reload to show new issue
     return true;

@@ -55,8 +55,10 @@ import '../../features/settings/presentation/view/subfeatures/account/edit_profi
 import '../../features/settings/presentation/view/subfeatures/admin_age_groups_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/admin_faq_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/admin_help_center_page.dart';
+import '../../features/settings/presentation/view/subfeatures/support/admin_rate_us_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/faq_form_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/issue_detail_page.dart';
+import '../../features/settings/presentation/view/subfeatures/support/rating_detail_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/rate_us_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/user_faq_page.dart';
 import '../../features/settings/presentation/view/subfeatures/support/user_help_center_page.dart';
@@ -79,6 +81,7 @@ class AppRouter {
   static const String about = '/about';
   static const String faq = '/faq';
   static const String rateUs = '/rate-us';
+  static const String ratingDetail = '/rate-us/detail';
   static const String helpCenter = '/help-center';
   static const String notifications = '/notifications';
   static const String addRecipe = '/recipes/add';
@@ -450,7 +453,25 @@ class AppRouter {
       GoRoute(
         name: 'rateUs',
         path: rateUs,
-        builder: (context, state) => const RateUsPage(),
+        builder: (context, state) {
+          final args = state.extra as RateUsArgs?;
+          return args?.isAdmin == true
+              ? const AdminRateUsPage()
+              : const RateUsPage();
+        },
+      ),
+
+      /// Creates a go route instance.
+      GoRoute(
+        name: 'ratingDetail',
+        path: ratingDetail,
+        builder: (context, state) {
+          final args = state.extra as RatingDetailArgs;
+          return RatingDetailPage(
+            rating: args.rating,
+            userProfile: args.userProfile,
+          );
+        },
       ),
 
       /// Creates a go route instance.
