@@ -151,13 +151,15 @@ class _AdminPostAnalyticViewState extends State<_AdminPostAnalyticView> {
 
   Future<void> _pickDateRange(AdminPostAnalyticViewModel viewModel) async {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final defaultStart = DateTime(2026, 5);
     final pickedRange = await showDateRangePicker(
       context: context,
-      firstDate: DateTime(2023),
-      lastDate: DateTime(2026, 12, 31),
+      firstDate: defaultStart,
+      lastDate: today,
       initialDateRange: DateTimeRange(
-        start: viewModel.startDate ?? now.subtract(const Duration(days: 6)),
-        end: viewModel.endDate ?? now,
+        start: viewModel.startDate ?? defaultStart,
+        end: viewModel.endDate ?? today,
       ),
     );
 

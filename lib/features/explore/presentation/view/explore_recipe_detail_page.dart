@@ -80,7 +80,6 @@ class _ExploreRecipeDetailView extends StatefulWidget {
 class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  late bool _isPublished;
 
   @override
   void initState() {
@@ -90,7 +89,6 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       vsync: this,
     );
     _tabController.addListener(_handleTabChanged);
-    _isPublished = widget.isPublished;
   }
 
   void _handleTabChanged() {
@@ -141,74 +139,6 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  Future<void> _confirmVisibilityChange(
-    ExploreRecipeDetailViewModel viewModel,
-  ) async {
-    final nextPublished = !_isPublished;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(
-            nextPublished ? 'Publish recipe?' : 'Make recipe private?',
-          ),
-          content: Text(
-            nextPublished
-                ? 'This recipe will be visible to other users in Explore.'
-                : 'This recipe will be hidden from Explore but remain in your library.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(nextPublished ? 'Publish' : 'Make Private'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    final rootNavigator = Navigator.of(context, rootNavigator: true);
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => LoadingDialog(
-        message: nextPublished ? 'Publishing recipe...' : 'Updating recipe...',
-      ),
-    );
-
-    final success = await viewModel.updateVisibility(
-      isPublished: nextPublished,
-    );
-
-    if (!mounted) return;
-    rootNavigator.pop();
-
-    if (success) {
-      setState(() => _isPublished = nextPublished);
-    }
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? nextPublished
-                      ? 'Recipe published.'
-                      : 'Recipe is now private.'
-                : viewModel.communityActionErrorMessage ??
-                      'Unable to update recipe visibility.',
-          ),
-        ),
-      );
   }
 
   Future<void> _selectForMealPlan(
@@ -278,17 +208,6 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         actions: widget.showLibraryActions
             ? [
                 IconButton(
-                  tooltip: _isPublished ? 'Make private' : 'Publish recipe',
-                  onPressed: viewModel.recipe == null
-                      ? null
-                      : () => _confirmVisibilityChange(viewModel),
-                  icon: Icon(
-                    _isPublished
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                  ),
-                ),
-                IconButton(
                   tooltip: 'Edit recipe',
                   onPressed: viewModel.recipe == null
                       ? null
@@ -304,7 +223,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         onComingSoonTap: _showComingSoonMessage,
         onStartCooking: _openAddMealPlan,
         showLibraryActions: widget.showLibraryActions,
-        isPublished: _isPublished,
+        isPublished: widget.isPublished,
         onFavouriteTap: () => _toggleFavourite(viewModel),
         isMealPlanSelection: widget.mealPlanSelection != null,
       ),
@@ -450,7 +369,7 @@ class _HeroImageState extends State<_HeroImage> {
                   onTap: () => showRecipeMediaDialog(context, images[index]),
                   child: AppRecipeMedia(
                     mediaPath: images[index],
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     showVideoControls: isRecipeVideoPath(images[index]),
                     allowFullscreen: isRecipeVideoPath(images[index]),
                   ),
@@ -1916,9 +1835,11 @@ class _CommunityTab extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.primary, width: 1.4),
               ),
-              child: AppRemoteOrAssetAvatar(
-                radius: 24,
+              child: _RecipeDetailAvatar(
                 imagePath: recipe.authorAvatarPath,
+                radius: 24,
+                imageSize: 48,
+                iconSize: 28,
               ),
             ),
             const SizedBox(width: 12),
@@ -2553,7 +2474,12 @@ class _ReviewTile extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           child: Row(
             children: [
-              AppRemoteOrAssetAvatar(imagePath: review.avatarPath),
+              _RecipeDetailAvatar(
+                imagePath: review.avatarPath,
+                radius: 18,
+                imageSize: 36,
+                iconSize: 22,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -2883,9 +2809,11 @@ class _CommentTileState extends State<_CommentTile> {
             children: [
               Row(
                 children: [
-                  AppRemoteOrAssetAvatar(
-                    radius: 24,
+                  _RecipeDetailAvatar(
                     imagePath: comment.avatarPath,
+                    radius: 24,
+                    imageSize: 48,
+                    iconSize: 28,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -3110,7 +3038,12 @@ class _ReplyTileState extends State<_ReplyTile> {
         children: [
           Row(
             children: [
-              AppRemoteOrAssetAvatar(radius: 16, imagePath: reply.avatarPath),
+              _RecipeDetailAvatar(
+                imagePath: reply.avatarPath,
+                radius: 16,
+                imageSize: 32,
+                iconSize: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Row(
@@ -3227,6 +3160,39 @@ class _ReplyTileState extends State<_ReplyTile> {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _RecipeDetailAvatar extends StatelessWidget {
+  final String imagePath;
+  final double radius;
+  final double imageSize;
+  final double iconSize;
+
+  const _RecipeDetailAvatar({
+    required this.imagePath,
+    required this.radius,
+    required this.imageSize,
+    required this.iconSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imagePath.trim().isNotEmpty;
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.white,
+      child: hasImage
+          ? ClipOval(
+              child: AppRemoteOrAssetImage(
+                imagePath: imagePath,
+                width: imageSize,
+                height: imageSize,
+              ),
+            )
+          : Icon(Icons.person, color: AppColors.primary, size: iconSize),
     );
   }
 }

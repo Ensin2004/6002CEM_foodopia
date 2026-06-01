@@ -58,8 +58,6 @@ class ReviewInstructionItem extends StatelessWidget {
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   instruction.description,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
                   style: context.text.bodyMedium?.copyWith(
                     color: AppColors.textSecondary,
                   ),

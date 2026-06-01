@@ -170,9 +170,6 @@ class StatisticsRemoteDataSource {
   }) async {
     var range = _resolveAdminRange(startDate, endDate);
     final plans = await _getAllMealPlans(range);
-    if (startDate == null && endDate == null) {
-      range = _rangeFromMealPlans(plans);
-    }
     final categoryConfigs = await _getMealCategoryConfigs();
     final mealTimeGroups = <String, List<_MealPlanStat>>{
       for (final category in categoryConfigs) category.name: <_MealPlanStat>[],
@@ -274,12 +271,7 @@ class StatisticsRemoteDataSource {
     var range = _resolveAdminRange(startDate, endDate);
     final recipes = await _getAllSharedRecipes(range);
     final allPlans = await _getAllMealPlans(range);
-    final allPublicRecipes = await _getAllSharedRecipes(
-      _resolveAdminRange(null, null),
-    );
-    if (startDate == null && endDate == null) {
-      range = _rangeFromRecipes(recipes);
-    }
+    final allPublicRecipes = await _getAllSharedRecipes(_allTimeRange());
     final categorySection = await _adminSectionFromPostCategories(
       title: 'Most Rating Category',
       summaryTitle: 'Rated Category',
@@ -369,15 +361,6 @@ class StatisticsRemoteDataSource {
     final users = await firestore.collection('users').get();
     final counts = <String, int>{};
     var totalUsers = 0;
-    if (startDate == null && endDate == null) {
-      final createdDates = users.docs
-          .where((user) => !_isAdminUser(user.data()))
-          .map((user) => _dateTime(user.data()['createdAt']))
-          .where((date) => date.millisecondsSinceEpoch > 0)
-          .toList();
-      range = _rangeFromDates(createdDates);
-    }
-
     for (final user in users.docs) {
       if (_isAdminUser(user.data())) continue;
       final createdAt = _dateTime(user.data()['createdAt']);
@@ -431,15 +414,6 @@ class StatisticsRemoteDataSource {
     final userDocs = users.docs
         .where((user) => !_isAdminUser(user.data()))
         .toList();
-    if (startDate == null && endDate == null) {
-      range = _rangeFromDates(
-        userDocs
-            .map((user) => _dateTime(user.data()['createdAt']))
-            .where((date) => date.millisecondsSinceEpoch > 0)
-            .toList(),
-      );
-    }
-
     final counts = <String, int>{
       'Male': 0,
       'Female': 0,
@@ -486,10 +460,6 @@ class StatisticsRemoteDataSource {
         .map((user) => _dateTime(user.data()['createdAt']))
         .where((date) => date.millisecondsSinceEpoch > 0)
         .toList();
-    if (startDate == null && endDate == null) {
-      range = _rangeFromDates(createdDates);
-    }
-
     final monthlyUsers = _monthsInRange(range).map((month) {
       final count = createdDates.where((date) {
         final userMonth = _startOfMonth(date);
@@ -541,10 +511,6 @@ class StatisticsRemoteDataSource {
               (rating.uid.isEmpty || nonAdminUserIds.contains(rating.uid)),
         )
         .toList();
-    if (startDate == null && endDate == null) {
-      range = _rangeFromDates(ratingRows.map((rating) => rating.date).toList());
-    }
-
     final monthlyRatings = _monthsInRange(range).map((month) {
       final monthRatings = ratingRows.where((rating) {
         final ratingMonth = _startOfMonth(rating.date);
@@ -2694,11 +2660,7 @@ class StatisticsRemoteDataSource {
   ) {
     final now = DateTime.now();
     final defaultEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
-    final defaultStart = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(const Duration(days: 6));
+    final defaultStart = DateTime(2026, 5);
     final start = _startOfDay(startDate ?? defaultStart);
     final end = _endOfDay(endDate ?? defaultEnd);
     return start.isAfter(end)
@@ -2710,38 +2672,13 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   ) {
-    if (startDate == null && endDate == null) {
-      return (
-        start: DateTime.fromMillisecondsSinceEpoch(0),
-        end: DateTime(9999, 12, 31, 23, 59, 59),
-      );
-    }
     return _resolveRange(startDate, endDate);
   }
 
-  ({DateTime start, DateTime end}) _rangeFromMealPlans(
-    List<_MealPlanStat> plans,
-  ) {
-    return _rangeFromDates(plans.map((plan) => plan.date).toList());
-  }
-
-  ({DateTime start, DateTime end}) _rangeFromRecipes(
-    List<_CommunityRecipeStat> recipes,
-  ) {
-    return _rangeFromDates(
-      recipes.map((recipe) => recipe.publishedAt).toList(),
-    );
-  }
-
-  ({DateTime start, DateTime end}) _rangeFromDates(List<DateTime> dates) {
-    final validDates = dates
-        .where((date) => date.millisecondsSinceEpoch > 0)
-        .toList();
-    if (validDates.isEmpty) return _resolveRange(null, null);
-    validDates.sort();
+  ({DateTime start, DateTime end}) _allTimeRange() {
     return (
-      start: _startOfDay(validDates.first),
-      end: _endOfDay(validDates.last),
+      start: DateTime.fromMillisecondsSinceEpoch(0),
+      end: DateTime(9999, 12, 31, 23, 59, 59),
     );
   }
 
