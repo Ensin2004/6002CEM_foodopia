@@ -119,7 +119,10 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                                       entry.key,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: context.text.titleMedium,
+                                      style: context.text.labelLarge?.copyWith(
+                                        color: context.colors.primary,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ),
                                   const Divider(color: AppColors.border),
@@ -137,14 +140,14 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                                         ),
                                         trailing: selected
                                             ? CircleAvatar(
-                                          radius: 10,
-                                          backgroundColor: AppColors.primary,
-                                          child: const Icon(
-                                            Icons.check,
-                                            color: Colors.white,
-                                            size: 12,
-                                          ),
-                                        )
+                                                radius: 10,
+                                                backgroundColor: AppColors.primary,
+                                                child: const Icon(
+                                                  Icons.check,
+                                                  color: Colors.white,
+                                                  size: 12,
+                                                ),
+                                            )
                                             : null,
                                         onTap: () => _toggleUnit(unit),
                                       ),

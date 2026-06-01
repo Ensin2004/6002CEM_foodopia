@@ -143,7 +143,10 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
                   "Search Results",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: context.text.titleMedium,
+                  style: context.text.labelLarge?.copyWith(
+                    color: context.colors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               const Divider(color: AppColors.border),

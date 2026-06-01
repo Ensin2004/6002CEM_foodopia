@@ -422,7 +422,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                             ),
                           )
                         : null,
-                    children: review.ingredients
+                    children: _sortedIngredients(review.ingredients)
                         .map((item) => ReviewIngredientItem(ingredient: item))
                         .toList(),
                   ),
@@ -471,6 +471,13 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
           ],
         ),
       ),
+    );
+  }
+
+  List<AddRecipeReviewIngredient> _sortedIngredients(List<AddRecipeReviewIngredient> ingredients,) {
+    return [...ingredients]..sort(
+      (first, second) =>
+          first.name.toLowerCase().compareTo(second.name.toLowerCase()),
     );
   }
 

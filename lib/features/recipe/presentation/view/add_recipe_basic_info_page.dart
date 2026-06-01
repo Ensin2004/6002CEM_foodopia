@@ -611,19 +611,17 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         .map((id) => _optionById(options: options, id: id))
         .whereType<AddRecipeOption>();
 
-    return [
+    return ([
       ...optionValues.map(
-        (option) => SelectedRecipeOption(
-          id: option.id,
-          name: option.name,
-          isCustom: false,
-        ),
+        (option) => SelectedRecipeOption(id: option.id, name: option.name, isCustom: false,),
       ),
       ...customOptions.map(
-        (option) =>
-            SelectedRecipeOption(id: option, name: option, isCustom: true),
+        (option) => SelectedRecipeOption(id: option, name: option, isCustom: true),
       ),
-    ];
+    ]..sort(
+      (first, second) =>
+          first.name.toLowerCase().compareTo(second.name.toLowerCase()),
+    ));
   }
 
   AddRecipeOption? _optionById({

@@ -139,7 +139,10 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                                       "Custom ${widget.pickType}",
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: context.text.titleMedium,
+                                      style: context.text.labelLarge?.copyWith(
+                                        color: context.colors.primary,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ),
                                   const Divider(color: AppColors.border),
@@ -182,7 +185,10 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                                       "Preset ${widget.pickType}",
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: context.text.titleMedium,
+                                      style: context.text.labelLarge?.copyWith(
+                                        color: context.colors.primary,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ),
                                   const Divider(color: AppColors.border),
@@ -234,7 +240,10 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                                       "Search Results",
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: context.text.titleMedium,
+                                      style: context.text.labelLarge?.copyWith(
+                                        color: context.colors.primary,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ),
                                   const Divider(color: AppColors.border),
@@ -276,7 +285,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
               ),
               const SizedBox(height: AppSpacing.lg),
               PrimaryButton(
-                text: hasSelection ? "Select ${widget.pickType}" : "Use Custom ${widget.pickType}",
+                text: query.isNotEmpty ? "Use Custom ${widget.pickType}" : "Select ${widget.pickType}",
                 onPressed: hasSelection || query.isNotEmpty ? _submitSelection : null,
               ),
             ],
@@ -297,19 +306,29 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
 
   // Match Helper
   List<AddRecipeOption> _matchingOptions(String query) {
-    if (query.isEmpty) return widget.options;
     final normalized = query.toLowerCase();
-    return widget.options
-        .where((option) => option.name.toLowerCase().contains(normalized))
-        .toList();
+    final matches = query.isEmpty
+        ? List<AddRecipeOption>.from(widget.options)
+        : widget.options
+              .where((option) => option.name.toLowerCase().contains(normalized))
+              .toList();
+
+    return matches..sort(
+      (first, second) => first.name.toLowerCase().compareTo(second.name.toLowerCase()),
+    );
   }
 
   List<String> _matchingCustomOptions(String query) {
-    if (query.isEmpty) return _customOptions;
     final normalized = query.toLowerCase();
-    return _customOptions
-        .where((option) => option.toLowerCase().contains(normalized))
-        .toList();
+    final matches = query.isEmpty
+        ? List<String>.from(_customOptions)
+        : _customOptions
+              .where((option) => option.toLowerCase().contains(normalized))
+              .toList();
+
+    return matches..sort(
+      (first, second) => first.toLowerCase().compareTo(second.toLowerCase()),
+    );
   }
 
   // Toggle Helper
