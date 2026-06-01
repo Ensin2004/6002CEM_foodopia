@@ -7,6 +7,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../../core/widgets/media/app_recipe_media.dart';
 
 class RecipeImageEditSheet extends StatelessWidget {
   final List<File> images;
@@ -138,8 +139,8 @@ class _SelectedMediaTile extends StatelessWidget {
           children: [
             imageFile != null
                 ? _MediaTilePreview(file: imageFile!)
-                : _isVideoPath(imageUrl!)
-                ? const _VideoTilePreview()
+                : isRecipeVideoPath(imageUrl!)
+                ? AppRecipeMediaPreview(mediaPath: imageUrl!, fit: BoxFit.cover)
                 : AppRemoteOrAssetImage(imagePath: imageUrl!, fit: BoxFit.cover),
             Positioned(
               left: AppSpacing.xs,
@@ -197,31 +198,9 @@ class _MediaTilePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (_isVideoPath(file.path)) return const _VideoTilePreview();
+    if (isRecipeVideoPath(file.path)) {
+      return AppRecipeMediaPreview(mediaPath: file.path, fit: BoxFit.cover);
+    }
     return Image.file(file, fit: BoxFit.cover);
   }
-}
-
-class _VideoTilePreview extends StatelessWidget {
-  const _VideoTilePreview();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return ColoredBox(
-      color: colors.surfaceContainerHighest,
-      child: const Center(
-        child: Icon(Icons.play_circle_fill_rounded, size: 34),
-      ),
-    );
-  }
-}
-
-bool _isVideoPath(String path) {
-  final value = path.toLowerCase().split('?').first;
-  return value.endsWith('.mp4') ||
-      value.endsWith('.mov') ||
-      value.endsWith('.m4v') ||
-      value.endsWith('.avi') ||
-      value.endsWith('.webm');
 }

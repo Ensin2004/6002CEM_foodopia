@@ -450,7 +450,7 @@ class _HeroImageState extends State<_HeroImage> {
                   onTap: () => showRecipeMediaDialog(context, images[index]),
                   child: AppRecipeMedia(
                     mediaPath: images[index],
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     showVideoControls: isRecipeVideoPath(images[index]),
                     allowFullscreen: isRecipeVideoPath(images[index]),
                   ),
