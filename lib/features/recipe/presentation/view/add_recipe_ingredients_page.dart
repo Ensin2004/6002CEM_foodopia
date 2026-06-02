@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
+import 'package:foodopia/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/ingredients/input_ingredient_field.dart';
 import 'package:provider/provider.dart';
@@ -157,7 +158,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
         : AppSpacing.lg;
 
     if (viewModel.isLoadingUnits) {
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     if (widget.initialAiRecipe == null &&
@@ -170,7 +171,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
           widget.recipeId,
         );
       });
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     final existingReview = viewModel.existingReview;
@@ -758,5 +759,18 @@ class IngredientRowState {
     }
     nameController.dispose();
     amountController.dispose();
+  }
+}
+
+// Loading Page
+class _AddRecipePageLoading extends StatelessWidget {
+  const _AddRecipePageLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: LoadingDialog(message: "Loading...", inline: true),
+    );
   }
 }

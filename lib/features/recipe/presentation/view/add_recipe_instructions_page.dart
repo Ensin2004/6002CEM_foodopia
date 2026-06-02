@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
+import 'package:foodopia/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -174,7 +175,7 @@ class _AddRecipeInstructionsViewState
         : AppSpacing.lg;
 
     if (viewModel.isLoading) {
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     if (widget.initialAiRecipe == null &&
@@ -187,7 +188,7 @@ class _AddRecipeInstructionsViewState
           widget.recipeId,
         );
       });
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     final existingReview = viewModel.existingReview;
@@ -828,5 +829,18 @@ class InstructionSectionState {
     for (final step in steps) {
       step.dispose();
     }
+  }
+}
+
+// Loading Page
+class _AddRecipePageLoading extends StatelessWidget {
+  const _AddRecipePageLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: LoadingDialog(message: "Loading...", inline: true),
+    );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:foodopia/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -125,7 +126,7 @@ class _DietView extends StatelessWidget {
     final viewModel = context.watch<UserSetupViewModel>();
     _handleNavigation(context, viewModel, args);
 
-    if (viewModel.isLoading) return const LoadingDialog();
+    if (viewModel.isLoading) return const _UserSetupPageLoading();
 
     final options = viewModel.dietOptions;
     return UserSetupScaffold(
@@ -180,7 +181,7 @@ class _AllergiesViewState extends State<_AllergiesView> {
     final viewModel = context.watch<UserSetupViewModel>();
     _handleNavigation(context, viewModel, widget.args);
 
-    if (viewModel.isLoading) return const LoadingDialog();
+    if (viewModel.isLoading) return const _UserSetupPageLoading();
 
     return UserSetupScaffold(
       step: 2,
@@ -249,7 +250,7 @@ class _DislikesViewState extends State<_DislikesView> {
     final viewModel = context.watch<UserSetupViewModel>();
     _handleNavigation(context, viewModel, widget.args);
 
-    if (viewModel.isLoading) return const LoadingDialog();
+    if (viewModel.isLoading) return const _UserSetupPageLoading();
 
     return UserSetupScaffold(
       step: 3,
@@ -324,7 +325,7 @@ class _CaloriesViewState extends State<_CaloriesView> {
     final viewModel = context.watch<UserSetupViewModel>();
     _handleNavigation(context, viewModel, widget.args);
 
-    if (viewModel.isLoading) return const LoadingDialog();
+    if (viewModel.isLoading) return const _UserSetupPageLoading();
 
     final target = viewModel.preferences.targetCalories;
     if (_calorieController.text.isEmpty && target != null) {
@@ -407,7 +408,7 @@ class _NotificationView extends StatelessWidget {
     final viewModel = context.watch<UserSetupViewModel>();
     _handleNavigation(context, viewModel, args);
 
-    if (viewModel.isLoading) return const LoadingDialog();
+    if (viewModel.isLoading) return const _UserSetupPageLoading();
 
     return UserSetupScaffold(
       step: 5,
@@ -510,6 +511,18 @@ class _NotificationToggle extends StatelessWidget {
       subtitle: Text(subtitle, style: context.text.bodySmall),
       value: enabled && value,
       onChanged: enabled ? onChanged : null,
+    );
+  }
+}
+
+class _UserSetupPageLoading extends StatelessWidget {
+  const _UserSetupPageLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: LoadingDialog(message: "Loading...", inline: true),
     );
   }
 }
