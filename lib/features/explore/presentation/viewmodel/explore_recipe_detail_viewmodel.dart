@@ -60,6 +60,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   bool _isUpdatingVisibility = false;
   bool _isSavingMealPlan = false;
   bool _isDisposed = false;
+  final Map<String, bool> _pendingCommentLikeStates = {};
+  final Map<String, bool> _pendingReplyLikeStates = {};
   String? _errorMessage;
   String? _communityActionErrorMessage;
 
@@ -160,7 +162,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
         .execute(recipeId)
         .listen(
           (recipe) {
-            _recipe = recipe;
+            _resolvePendingLikeStates(recipe);
+            _recipe = _applyPendingLikeStates(recipe);
             _isLoading = false;
             _errorMessage = null;
             _notifyIfActive();
@@ -182,7 +185,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     if (_isDisposed) return;
 
     result.ifRight((recipe) {
-      _recipe = recipe;
+      _resolvePendingLikeStates(recipe);
+      _recipe = _applyPendingLikeStates(recipe);
     });
     result.ifLeft((failure) {
       _errorMessage = failure.message;
@@ -294,8 +298,18 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   }
 
   Future<bool> toggleCommentLike(String commentId) async {
+    final recipe = _recipe;
+    if (recipe == null || _pendingCommentLikeStates.containsKey(commentId)) {
+      return false;
+    }
+
+    final comment = _findComment(recipe.community.comments, commentId);
+    if (comment == null) return false;
+
+    final nextLiked = !comment.isLiked;
     final previousRecipe = _recipe;
-    _applyOptimisticCommentLike(commentId);
+    _pendingCommentLikeStates[commentId] = nextLiked;
+    _applyOptimisticCommentLike(commentId, isLiked: nextLiked);
     _communityActionErrorMessage = null;
     _notifyIfActive();
 
@@ -309,9 +323,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     result.ifLeft((failure) {
       _communityActionErrorMessage = failure.message;
     });
-    if (success) {
-      await loadRecipe();
-    } else {
+    if (!success) {
+      _pendingCommentLikeStates.remove(commentId);
       _recipe = previousRecipe;
     }
 
@@ -320,8 +333,18 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   }
 
   Future<bool> toggleReplyLike(String replyPath) async {
+    final recipe = _recipe;
+    if (recipe == null || _pendingReplyLikeStates.containsKey(replyPath)) {
+      return false;
+    }
+
+    final reply = _findReply(recipe.community.comments, replyPath);
+    if (reply == null) return false;
+
+    final nextLiked = !reply.isLiked;
     final previousRecipe = _recipe;
-    _applyOptimisticReplyLike(replyPath);
+    _pendingReplyLikeStates[replyPath] = nextLiked;
+    _applyOptimisticReplyLike(replyPath, isLiked: nextLiked);
     _communityActionErrorMessage = null;
     _notifyIfActive();
 
@@ -334,9 +357,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     result.ifLeft((failure) {
       _communityActionErrorMessage = failure.message;
     });
-    if (success) {
-      await loadRecipe();
-    } else {
+    if (!success) {
+      _pendingReplyLikeStates.remove(replyPath);
       _recipe = previousRecipe;
     }
 
@@ -593,17 +615,20 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     );
   }
 
-  void _applyOptimisticCommentLike(String commentId) {
+  void _applyOptimisticCommentLike(String commentId, {required bool isLiked}) {
     final recipe = _recipe;
     if (recipe == null) return;
 
     final comments = recipe.community.comments.map((comment) {
       if (comment.id != commentId) return comment;
-      final nextLiked = !comment.isLiked;
       return _copyComment(
         comment,
-        isLiked: nextLiked,
-        likes: (comment.likes + (nextLiked ? 1 : -1)).clamp(0, 1 << 31).toInt(),
+        isLiked: isLiked,
+        likes: _adjustLikeCount(
+          likes: comment.likes,
+          wasLiked: comment.isLiked,
+          isLiked: isLiked,
+        ),
       );
     }).toList();
 
@@ -613,14 +638,14 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     );
   }
 
-  void _applyOptimisticReplyLike(String replyPath) {
+  void _applyOptimisticReplyLike(String replyPath, {required bool isLiked}) {
     final recipe = _recipe;
     if (recipe == null) return;
 
     final comments = recipe.community.comments.map((comment) {
       return _copyComment(
         comment,
-        replies: _updateReplyLikes(comment.replies, replyPath),
+        replies: _updateReplyLikes(comment.replies, replyPath, isLiked),
       );
     }).toList();
 
@@ -676,20 +701,135 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   List<ExploreCommentReply> _updateReplyLikes(
     List<ExploreCommentReply> replies,
     String replyPath,
+    bool isLiked,
   ) {
     return replies.map((reply) {
-      final childReplies = _updateReplyLikes(reply.replies, replyPath);
+      final childReplies = _updateReplyLikes(reply.replies, replyPath, isLiked);
       if (reply.documentPath != replyPath) {
         return _copyReply(reply, replies: childReplies);
       }
-      final nextLiked = !reply.isLiked;
       return _copyReply(
         reply,
         replies: childReplies,
-        isLiked: nextLiked,
-        likes: (reply.likes + (nextLiked ? 1 : -1)).clamp(0, 1 << 31).toInt(),
+        isLiked: isLiked,
+        likes: _adjustLikeCount(
+          likes: reply.likes,
+          wasLiked: reply.isLiked,
+          isLiked: isLiked,
+        ),
       );
     }).toList();
+  }
+
+  ExploreRecipe _applyPendingLikeStates(ExploreRecipe recipe) {
+    if (_pendingCommentLikeStates.isEmpty && _pendingReplyLikeStates.isEmpty) {
+      return recipe;
+    }
+
+    final comments = recipe.community.comments.map((comment) {
+      var nextComment = comment;
+      final pendingCommentLike = _pendingCommentLikeStates[comment.id];
+      if (pendingCommentLike != null) {
+        nextComment = _copyComment(
+          nextComment,
+          isLiked: pendingCommentLike,
+          likes: _adjustLikeCount(
+            likes: nextComment.likes,
+            wasLiked: nextComment.isLiked,
+            isLiked: pendingCommentLike,
+          ),
+        );
+      }
+
+      return _copyComment(
+        nextComment,
+        replies: _applyPendingReplyLikeStates(nextComment.replies),
+      );
+    }).toList();
+
+    return _copyRecipe(
+      recipe,
+      community: _copyCommunity(recipe.community, comments: comments),
+    );
+  }
+
+  List<ExploreCommentReply> _applyPendingReplyLikeStates(
+    List<ExploreCommentReply> replies,
+  ) {
+    return replies.map((reply) {
+      var nextReply = reply;
+      final pendingReplyLike = _pendingReplyLikeStates[reply.documentPath];
+      if (pendingReplyLike != null) {
+        nextReply = _copyReply(
+          nextReply,
+          isLiked: pendingReplyLike,
+          likes: _adjustLikeCount(
+            likes: nextReply.likes,
+            wasLiked: nextReply.isLiked,
+            isLiked: pendingReplyLike,
+          ),
+        );
+      }
+
+      return _copyReply(
+        nextReply,
+        replies: _applyPendingReplyLikeStates(nextReply.replies),
+      );
+    }).toList();
+  }
+
+  void _resolvePendingLikeStates(ExploreRecipe recipe) {
+    _pendingCommentLikeStates.removeWhere((commentId, isLiked) {
+      final comment = _findComment(recipe.community.comments, commentId);
+      return comment == null || comment.isLiked == isLiked;
+    });
+
+    _pendingReplyLikeStates.removeWhere((replyPath, isLiked) {
+      final reply = _findReply(recipe.community.comments, replyPath);
+      return reply == null || reply.isLiked == isLiked;
+    });
+  }
+
+  ExploreComment? _findComment(
+    List<ExploreComment> comments,
+    String commentId,
+  ) {
+    for (final comment in comments) {
+      if (comment.id == commentId) return comment;
+    }
+    return null;
+  }
+
+  ExploreCommentReply? _findReply(
+    List<ExploreComment> comments,
+    String replyPath,
+  ) {
+    for (final comment in comments) {
+      final reply = _findReplyInReplies(comment.replies, replyPath);
+      if (reply != null) return reply;
+    }
+    return null;
+  }
+
+  ExploreCommentReply? _findReplyInReplies(
+    List<ExploreCommentReply> replies,
+    String replyPath,
+  ) {
+    for (final reply in replies) {
+      if (reply.documentPath == replyPath) return reply;
+      final nestedReply = _findReplyInReplies(reply.replies, replyPath);
+      if (nestedReply != null) return nestedReply;
+    }
+    return null;
+  }
+
+  int _adjustLikeCount({
+    required int likes,
+    required bool wasLiked,
+    required bool isLiked,
+  }) {
+    if (wasLiked == isLiked) return likes;
+    return (likes + (isLiked ? 1 : -1)).clamp(0, 1 << 31).toInt();
   }
 
   List<ExploreCommentReply> _addNestedReply(
