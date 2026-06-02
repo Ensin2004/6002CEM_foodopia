@@ -368,6 +368,40 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   @override
+  Future<Either<Failure, AdminUserUsageStatistics>> getAdminUsageForecast({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      return Right(
+        await remoteDataSource.getAdminUsageForecast(
+          startDate: startDate,
+          endDate: endDate,
+        ),
+      );
+    } catch (_) {
+      return Left(ServerFailure(message: 'Unable to load usage forecast'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, CaloriesIntakeStatistics>> getAdminNutrientInsight({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      return Right(
+        await remoteDataSource.getAdminNutrientInsight(
+          startDate: startDate,
+          endDate: endDate,
+        ),
+      );
+    } catch (_) {
+      return Left(ServerFailure(message: 'Unable to load nutrient insight'));
+    }
+  }
+
+  @override
   Future<Either<Failure, AdminHubRatingStatistics>> getAdminHubRating({
     DateTime? startDate,
     DateTime? endDate,

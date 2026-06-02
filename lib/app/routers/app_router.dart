@@ -32,7 +32,9 @@ import '../../features/statistics/presentation/view/admin_dietary_preference_pag
 import '../../features/statistics/presentation/view/admin_gender_page.dart';
 import '../../features/statistics/presentation/view/admin_hub_rating_page.dart';
 import '../../features/statistics/presentation/view/admin_meal_analytic_page.dart';
+import '../../features/statistics/presentation/view/admin_nutrient_insight_page.dart';
 import '../../features/statistics/presentation/view/admin_post_analytic_page.dart';
+import '../../features/statistics/presentation/view/admin_usage_forecast_page.dart';
 import '../../features/statistics/presentation/view/admin_user_usage_page.dart';
 import '../../features/statistics/presentation/view/calories_intake_page.dart';
 import '../../features/statistics/presentation/view/calories_posted_page.dart';
@@ -108,16 +110,23 @@ class AppRouter {
       '/statistics/admin-dietary-preference';
   static const String adminGender = '/statistics/admin-gender';
   static const String adminUserUsage = '/statistics/admin-user-usage';
+  static const String adminUsageForecast = '/statistics/admin-usage-forecast';
+  static const String adminNutrientInsight =
+      '/statistics/admin-nutrient-insight';
   static const String adminHubRating = '/statistics/admin-hub-rating';
   static const String foodAnalytic = '/statistics/food-analytic';
   static const String cookingTime = '/statistics/cooking-time';
   static const String groceryListStatistics = '/statistics/grocery-list';
   static const String caloriesIntake = '/statistics/calories-intake';
+  static const String nutrientIntakeInsight =
+      '/statistics/nutrient-intake-insight';
   static const String difficultyMeals = '/statistics/difficulty-meals';
   static const String mealPlanMethods = '/statistics/meal-plan-methods';
   static const String mealPlannedTime = '/statistics/meal-planned-time';
   static const String postAnalytic = '/statistics/post-analytic';
   static const String caloriesPosted = '/statistics/calories-posted';
+  static const String postedNutrientInsight =
+      '/statistics/posted-nutrient-insight';
   static const String postedMealTime = '/statistics/posted-meal-time';
   static const String recipePerformance = '/statistics/recipe-performance';
   static const String mostCookedRecipes = '/statistics/most-cooked-recipes';
@@ -779,6 +788,18 @@ class AppRouter {
       ),
 
       GoRoute(
+        name: 'adminUsageForecast',
+        path: adminUsageForecast,
+        builder: (context, state) => const AdminUsageForecastPage(),
+      ),
+
+      GoRoute(
+        name: 'adminNutrientInsight',
+        path: adminNutrientInsight,
+        builder: (context, state) => const AdminNutrientInsightPage(),
+      ),
+
+      GoRoute(
         name: 'adminHubRating',
         path: adminHubRating,
         builder: (context, state) => const AdminHubRatingPage(),
@@ -809,6 +830,13 @@ class AppRouter {
       ),
 
       GoRoute(
+        name: 'nutrientIntakeInsight',
+        path: nutrientIntakeInsight,
+        builder: (context, state) =>
+            const CaloriesIntakePage(showInsight: true),
+      ),
+
+      GoRoute(
         name: 'difficultyMeals',
         path: difficultyMeals,
         builder: (context, state) => const DifficultyMealPage(),
@@ -830,6 +858,13 @@ class AppRouter {
         name: 'caloriesPosted',
         path: caloriesPosted,
         builder: (context, state) => const CaloriesPostedPage(),
+      ),
+
+      GoRoute(
+        name: 'postedNutrientInsight',
+        path: postedNutrientInsight,
+        builder: (context, state) =>
+            const CaloriesPostedPage(showInsight: true),
       ),
 
       GoRoute(

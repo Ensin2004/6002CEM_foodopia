@@ -342,6 +342,16 @@ class _AdminStatisticActions extends StatelessWidget {
       return;
     }
 
+    if (item.title == 'Usage Forecast') {
+      context.push(AppRouter.adminUsageForecast);
+      return;
+    }
+
+    if (item.title == 'Nutrient Insight') {
+      context.push(AppRouter.adminNutrientInsight);
+      return;
+    }
+
     if (item.title == 'Hub Rating') {
       context.push(AppRouter.adminHubRating);
     }

@@ -10,65 +10,67 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../domain/entities/calories_intake_statistics.dart';
-import '../../domain/usecases/get_calories_intake_statistics_usecase.dart';
-import '../viewmodel/calories_intake_viewmodel.dart';
-import '../widgets/statistics_page_helpers.dart';
+import '../../domain/usecases/get_admin_nutrient_insight_statistics_usecase.dart';
+import '../viewmodel/admin_nutrient_insight_viewmodel.dart';
 import '../widgets/statistics_line_chart.dart';
+import '../widgets/statistics_page_helpers.dart';
 
-class CaloriesIntakePage extends StatelessWidget {
-  final bool showInsight;
-
-  const CaloriesIntakePage({super.key, this.showInsight = false});
+class AdminNutrientInsightPage extends StatelessWidget {
+  const AdminNutrientInsightPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => CaloriesIntakeViewModel(
-        getStatisticsUseCase: sl<GetCaloriesIntakeStatisticsUseCase>(),
+      create: (_) => AdminNutrientInsightViewModel(
+        getStatisticsUseCase: sl<GetAdminNutrientInsightStatisticsUseCase>(),
       ),
-      child: _CaloriesIntakeView(showInsight: showInsight),
+      child: const _AdminNutrientInsightView(),
     );
   }
 }
 
-class _CaloriesIntakeView extends StatefulWidget {
-  final bool showInsight;
-
-  const _CaloriesIntakeView({required this.showInsight});
+class _AdminNutrientInsightView extends StatefulWidget {
+  const _AdminNutrientInsightView();
 
   @override
-  State<_CaloriesIntakeView> createState() => _CaloriesIntakeViewState();
+  State<_AdminNutrientInsightView> createState() =>
+      _AdminNutrientInsightViewState();
 }
 
-class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
+class _AdminNutrientInsightViewState extends State<_AdminNutrientInsightView> {
   int _selectedChart = 0;
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<CaloriesIntakeViewModel>();
+    final viewModel = context.watch<AdminNutrientInsightViewModel>();
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: const CustomAppBar(
-        title: 'Daily Nutrient Intake',
+        title: 'Nutrient Insight',
         leading: StatisticsBackButton(),
       ),
-      body: _buildBody(context, viewModel),
+      body: _buildBody(viewModel),
     );
   }
 
-  Widget _buildBody(BuildContext context, CaloriesIntakeViewModel viewModel) {
+  Widget _buildBody(AdminNutrientInsightViewModel viewModel) {
     if (viewModel.isLoading && viewModel.statistics == null) {
-      return const LoadingDialog(inline: true, message: 'Loading nutrients...');
+      return const LoadingDialog(
+        inline: true,
+        message: 'Loading nutrient insight...',
+      );
     }
 
     final statistics = viewModel.statistics;
     if (statistics == null) {
-      return _CaloriesError(
-        message: viewModel.errorMessage ?? 'Unable to load nutrient intake',
+      return StatisticsErrorState(
+        message: viewModel.errorMessage ?? 'Unable to load nutrient insight',
         onRetry: viewModel.loadStatistics,
       );
     }
+
+    final prediction = _predictionForSelectedMetric(statistics, viewModel);
 
     return SafeArea(
       top: false,
@@ -100,28 +102,24 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
                 Expanded(
                   child: _SummaryTile(
                     icon: Icons.room_service_outlined,
-                    title: 'Total Meal',
+                    title: 'Total Planned Meal',
                     value: statistics.totalMeal.toString(),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: _SummaryTile(
-                    icon: Icons.favorite_border,
-                    title: _averageTitle,
-                    value: _averageValue(statistics, viewModel),
+                    icon: Icons.insights_outlined,
+                    title: 'Predict Next Month',
+                    value: '${prediction.value} ${prediction.unit}',
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
-            if (widget.showInsight) ...[
-              _NutrientInsightNote(
-                prediction: _predictionForSelectedMetric(statistics, viewModel),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-            _CaloriesMetricPager(
+            _PredictionNote(prediction: prediction),
+            const SizedBox(height: AppSpacing.lg),
+            _NutrientMetricPager(
               statistics: statistics,
               viewModel: viewModel,
               selectedChart: _selectedChart,
@@ -135,98 +133,38 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
     );
   }
 
-  String get _averageTitle {
-    switch (_selectedChart) {
-      case 1:
-        return 'Average Carbohydrate';
-      case 2:
-        return 'Average Protein';
-      case 3:
-        return 'Average Fat';
-      default:
-        return 'Average Calories';
-    }
-  }
-
-  String _averageValue(
-    CaloriesIntakeStatistics statistics,
-    CaloriesIntakeViewModel viewModel,
-  ) {
-    switch (_selectedChart) {
-      case 1:
-        return '${_averageInt(statistics.dailyIntakes, (day) => day.totalCarbohydrateGram)} g';
-      case 2:
-        return '${_averageInt(statistics.dailyIntakes, (day) => day.totalProteinGram)} g';
-      case 3:
-        return '${_averageInt(statistics.dailyIntakes, (day) => day.totalFatGram)} g';
-      default:
-        return '${viewModel.convertCalories(statistics.averageCaloriesKcal)} ${viewModel.unitLabel}';
-    }
-  }
-
-  int _averageInt(
-    List<CaloriesDailyIntake> days,
-    int Function(CaloriesDailyIntake day) valueForDay,
-  ) {
-    if (days.isEmpty) return 0;
-    final total = days.fold<int>(0, (sum, day) => sum + valueForDay(day));
-    return (total / days.length).round();
-  }
-
   _NutrientPrediction _predictionForSelectedMetric(
     CaloriesIntakeStatistics statistics,
-    CaloriesIntakeViewModel viewModel,
+    AdminNutrientInsightViewModel viewModel,
   ) {
-    final metric = _metricForPrediction(viewModel);
+    final metrics = _NutrientMetricPager.metrics(viewModel);
+    final metric = metrics[_selectedChart];
     final monthly = <DateTime, List<CaloriesDailyIntake>>{};
     for (final day in statistics.dailyIntakes) {
       final month = DateTime(day.date.year, day.date.month);
       monthly.putIfAbsent(month, () => <CaloriesDailyIntake>[]).add(day);
     }
-    final values = monthly.values.map((days) {
-      final total = days.fold<int>(0, (sum, day) => sum + metric.value(day));
+    final values = monthly.entries.map((entry) {
+      final days = entry.value;
+      final total = days.fold<int>(
+        0,
+        (sum, day) => sum + metric.valueForDay(day),
+      );
       return days.isEmpty ? 0 : (total / days.length).round();
     }).toList();
+    final predicted = _predictNext(values);
+    final confidence = statistics.totalMeal < 7
+        ? 'Low confidence'
+        : statistics.totalMeal < 20
+        ? 'Medium confidence'
+        : 'High confidence';
 
     return _NutrientPrediction(
-      title: metric.title,
-      value: _predictNext(values),
+      title: metric.title.replaceAll(' Vs Day', ''),
+      value: predicted,
       unit: metric.unit,
-      confidence: statistics.totalMeal < 7
-          ? 'Low confidence'
-          : statistics.totalMeal < 20
-          ? 'Medium confidence'
-          : 'High confidence',
+      confidence: confidence,
     );
-  }
-
-  _PredictionMetric _metricForPrediction(CaloriesIntakeViewModel viewModel) {
-    switch (_selectedChart) {
-      case 1:
-        return _PredictionMetric(
-          title: 'Carbohydrate intake',
-          unit: 'g',
-          value: (day) => day.totalCarbohydrateGram,
-        );
-      case 2:
-        return _PredictionMetric(
-          title: 'Protein intake',
-          unit: 'g',
-          value: (day) => day.totalProteinGram,
-        );
-      case 3:
-        return _PredictionMetric(
-          title: 'Fat intake',
-          unit: 'g',
-          value: (day) => day.totalFatGram,
-        );
-      default:
-        return _PredictionMetric(
-          title: 'Calories intake',
-          unit: viewModel.unitLabel,
-          value: (day) => viewModel.convertCalories(day.totalCaloriesKcal),
-        );
-    }
   }
 
   int _predictNext(List<int> values) {
@@ -241,18 +179,6 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
   }
 }
 
-class _PredictionMetric {
-  final String title;
-  final String unit;
-  final int Function(CaloriesDailyIntake day) value;
-
-  const _PredictionMetric({
-    required this.title,
-    required this.unit,
-    required this.value,
-  });
-}
-
 class _NutrientPrediction {
   final String title;
   final int value;
@@ -265,103 +191,6 @@ class _NutrientPrediction {
     required this.unit,
     required this.confidence,
   });
-}
-
-class _NutrientInsightNote extends StatelessWidget {
-  final _NutrientPrediction prediction;
-
-  const _NutrientInsightNote({required this.prediction});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEAF8F0),
-        border: Border.all(color: const Color(0xFFC8EBD7)),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          const _SoftIcon(icon: Icons.trending_up),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              '${prediction.title} is estimated at ${prediction.value} ${prediction.unit} next month.',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: context.text.bodySmall?.copyWith(
-                color: Colors.black,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text(
-            prediction.confidence,
-            maxLines: 2,
-            textAlign: TextAlign.end,
-            overflow: TextOverflow.ellipsis,
-            style: context.text.bodySmall?.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class DateRangeBar extends StatelessWidget {
-  final String dateRange;
-
-  const DateRangeBar({super.key, required this.dateRange});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          'Date Range:',
-          style: context.text.bodySmall?.copyWith(
-            color: Colors.black,
-            fontWeight: FontWeight.w800,
-            fontSize: 11,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Container(
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAFAFA),
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    dateRange,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodySmall?.copyWith(
-                      color: AppColors.textPrimary,
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.calendar_month, size: 18),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _SummaryTile extends StatelessWidget {
@@ -407,6 +236,8 @@ class _SummaryTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: context.text.titleMedium?.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w800,
@@ -422,7 +253,7 @@ class _SummaryTile extends StatelessWidget {
   }
 }
 
-class _CaloriesChartMetric {
+class _NutrientChartMetric {
   final String title;
   final String breakdownTitle;
   final String unit;
@@ -430,7 +261,7 @@ class _CaloriesChartMetric {
   final int Function(CaloriesMealItem meal) valueForMeal;
   final bool allowUnitChange;
 
-  const _CaloriesChartMetric({
+  const _NutrientChartMetric({
     required this.title,
     required this.breakdownTitle,
     required this.unit,
@@ -440,50 +271,54 @@ class _CaloriesChartMetric {
   });
 }
 
-class _CaloriesMetricPager extends StatelessWidget {
+class _NutrientMetricPager extends StatelessWidget {
   final CaloriesIntakeStatistics statistics;
-  final CaloriesIntakeViewModel viewModel;
+  final AdminNutrientInsightViewModel viewModel;
   final int selectedChart;
   final ValueChanged<int> onChartChanged;
 
-  const _CaloriesMetricPager({
+  const _NutrientMetricPager({
     required this.statistics,
     required this.viewModel,
     required this.selectedChart,
     required this.onChartChanged,
   });
 
-  List<_CaloriesChartMetric> get _metrics => [
-    _CaloriesChartMetric(
-      title: 'Calories Intake Vs Day',
-      breakdownTitle: 'Calories Breakdown',
-      unit: viewModel.unitLabel,
-      valueForDay: (day) => viewModel.convertCalories(day.totalCaloriesKcal),
-      valueForMeal: (meal) => viewModel.convertCalories(meal.caloriesKcal),
-      allowUnitChange: true,
-    ),
-    const _CaloriesChartMetric(
-      title: 'Carbohydrate Intake Vs Day',
-      breakdownTitle: 'Carbohydrate Breakdown',
-      unit: 'g',
-      valueForDay: _carbohydrateForDay,
-      valueForMeal: _carbohydrateForMeal,
-    ),
-    const _CaloriesChartMetric(
-      title: 'Protein Intake Vs Day',
-      breakdownTitle: 'Protein Breakdown',
-      unit: 'g',
-      valueForDay: _proteinForDay,
-      valueForMeal: _proteinForMeal,
-    ),
-    const _CaloriesChartMetric(
-      title: 'Fat Intake Vs Day',
-      breakdownTitle: 'Fat Breakdown',
-      unit: 'g',
-      valueForDay: _fatForDay,
-      valueForMeal: _fatForMeal,
-    ),
-  ];
+  static List<_NutrientChartMetric> metrics(
+    AdminNutrientInsightViewModel viewModel,
+  ) {
+    return [
+      _NutrientChartMetric(
+        title: 'Calories Insight Vs Day',
+        breakdownTitle: 'Calories Breakdown',
+        unit: viewModel.unitLabel,
+        valueForDay: (day) => viewModel.convertCalories(day.totalCaloriesKcal),
+        valueForMeal: (meal) => viewModel.convertCalories(meal.caloriesKcal),
+        allowUnitChange: true,
+      ),
+      const _NutrientChartMetric(
+        title: 'Carbohydrate Insight Vs Day',
+        breakdownTitle: 'Carbohydrate Breakdown',
+        unit: 'g',
+        valueForDay: _carbohydrateForDay,
+        valueForMeal: _carbohydrateForMeal,
+      ),
+      const _NutrientChartMetric(
+        title: 'Protein Insight Vs Day',
+        breakdownTitle: 'Protein Breakdown',
+        unit: 'g',
+        valueForDay: _proteinForDay,
+        valueForMeal: _proteinForMeal,
+      ),
+      const _NutrientChartMetric(
+        title: 'Fat Insight Vs Day',
+        breakdownTitle: 'Fat Breakdown',
+        unit: 'g',
+        valueForDay: _fatForDay,
+        valueForMeal: _fatForMeal,
+      ),
+    ];
+  }
 
   static int _carbohydrateForDay(CaloriesDailyIntake day) {
     return day.totalCarbohydrateGram;
@@ -511,21 +346,25 @@ class _CaloriesMetricPager extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metrics = _metrics;
-    final metric = metrics[selectedChart];
+    final chartMetrics = metrics(viewModel);
+    final metric = chartMetrics[selectedChart];
 
     return Column(
       children: [
-        _MetricTabs(selectedIndex: selectedChart, onSelected: onChartChanged),
+        AppPillSegmentedControl(
+          labels: const ['Calories', 'Carbohydrate', 'Protein', 'Fat'],
+          selectedIndex: selectedChart,
+          onChanged: onChartChanged,
+        ),
         const SizedBox(height: AppSpacing.md),
         GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onHorizontalDragEnd: (details) => _handleSwipe(details, metrics),
+          onHorizontalDragEnd: (details) => _handleSwipe(details, chartMetrics),
           child: Column(
             children: [
-              _CaloriesChartCard(statistics: statistics, metric: metric),
+              _NutrientChartCard(statistics: statistics, metric: metric),
               const SizedBox(height: AppSpacing.lg),
-              _CaloriesBreakdown(
+              _NutrientBreakdown(
                 dailyIntakes: statistics.dailyIntakes,
                 expandedIndex: viewModel.expandedIndex,
                 metric: metric,
@@ -536,38 +375,21 @@ class _CaloriesMetricPager extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        _MetricDots(count: metrics.length, selectedIndex: selectedChart),
+        _MetricDots(count: chartMetrics.length, selectedIndex: selectedChart),
       ],
     );
   }
 
   void _handleSwipe(
     DragEndDetails details,
-    List<_CaloriesChartMetric> metrics,
+    List<_NutrientChartMetric> chartMetrics,
   ) {
     final velocity = details.primaryVelocity ?? 0;
     if (velocity.abs() < 220) return;
 
     final nextIndex = velocity < 0 ? selectedChart + 1 : selectedChart - 1;
-    if (nextIndex < 0 || nextIndex >= metrics.length) return;
+    if (nextIndex < 0 || nextIndex >= chartMetrics.length) return;
     onChartChanged(nextIndex);
-  }
-}
-
-class _MetricTabs extends StatelessWidget {
-  final int selectedIndex;
-  final ValueChanged<int> onSelected;
-
-  const _MetricTabs({required this.selectedIndex, required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    const labels = ['Calories', 'Carbohydrate', 'Protein', 'Fat'];
-    return AppPillSegmentedControl(
-      labels: labels,
-      selectedIndex: selectedIndex,
-      onChanged: onSelected,
-    );
   }
 }
 
@@ -598,11 +420,11 @@ class _MetricDots extends StatelessWidget {
   }
 }
 
-class _CaloriesChartCard extends StatelessWidget {
+class _NutrientChartCard extends StatelessWidget {
   final CaloriesIntakeStatistics statistics;
-  final _CaloriesChartMetric metric;
+  final _NutrientChartMetric metric;
 
-  const _CaloriesChartCard({required this.statistics, required this.metric});
+  const _NutrientChartCard({required this.statistics, required this.metric});
 
   @override
   Widget build(BuildContext context) {
@@ -676,14 +498,14 @@ class _CaloriesChartCard extends StatelessWidget {
   }
 }
 
-class _CaloriesBreakdown extends StatelessWidget {
+class _NutrientBreakdown extends StatelessWidget {
   final List<CaloriesDailyIntake> dailyIntakes;
   final int? expandedIndex;
-  final _CaloriesChartMetric metric;
+  final _NutrientChartMetric metric;
   final ValueChanged<CaloriesDisplayUnit> onUnitChanged;
   final ValueChanged<int> onToggle;
 
-  const _CaloriesBreakdown({
+  const _NutrientBreakdown({
     required this.dailyIntakes,
     required this.expandedIndex,
     required this.metric,
@@ -739,10 +561,9 @@ class _CaloriesBreakdown extends StatelessWidget {
             child: Column(
               children: List.generate(dailyIntakes.length, (index) {
                 final day = dailyIntakes[index];
-                final isExpanded = expandedIndex == index;
-                return _DailyCaloriesSection(
+                return _DailyNutrientSection(
                   day: day,
-                  isExpanded: isExpanded,
+                  isExpanded: expandedIndex == index,
                   showDivider: index != dailyIntakes.length - 1,
                   unitLabel: metric.unit,
                   onTap: () => onToggle(index),
@@ -792,7 +613,7 @@ class _UnitButton extends StatelessWidget {
   }
 }
 
-class _DailyCaloriesSection extends StatelessWidget {
+class _DailyNutrientSection extends StatelessWidget {
   final CaloriesDailyIntake day;
   final bool isExpanded;
   final bool showDivider;
@@ -800,7 +621,7 @@ class _DailyCaloriesSection extends StatelessWidget {
   final VoidCallback onTap;
   final int Function(CaloriesMealItem meal) valueForMeal;
 
-  const _DailyCaloriesSection({
+  const _DailyNutrientSection({
     required this.day,
     required this.isExpanded,
     required this.showDivider,
@@ -842,7 +663,7 @@ class _DailyCaloriesSection extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Total Taken',
+                        'Total Planned',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: context.text.bodySmall?.copyWith(
@@ -876,7 +697,7 @@ class _DailyCaloriesSection extends StatelessWidget {
         ),
         if (isExpanded)
           ...day.meals.map(
-            (meal) => _CaloriesMealRow(
+            (meal) => _NutrientMealRow(
               meal: meal,
               unitLabel: unitLabel,
               valueForMeal: valueForMeal,
@@ -888,12 +709,12 @@ class _DailyCaloriesSection extends StatelessWidget {
   }
 }
 
-class _CaloriesMealRow extends StatelessWidget {
+class _NutrientMealRow extends StatelessWidget {
   final CaloriesMealItem meal;
   final String unitLabel;
   final int Function(CaloriesMealItem meal) valueForMeal;
 
-  const _CaloriesMealRow({
+  const _NutrientMealRow({
     required this.meal,
     required this.unitLabel,
     required this.valueForMeal,
@@ -932,6 +753,53 @@ class _CaloriesMealRow extends StatelessWidget {
               color: Colors.black,
               fontWeight: FontWeight.w800,
               fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PredictionNote extends StatelessWidget {
+  final _NutrientPrediction prediction;
+
+  const _PredictionNote({required this.prediction});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF8F0),
+        border: Border.all(color: const Color(0xFFC8EBD7)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const _SoftIcon(icon: Icons.trending_up),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              '${prediction.title} is estimated at ${prediction.value} ${prediction.unit} next month.',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall?.copyWith(
+                color: Colors.black,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            prediction.confidence,
+            maxLines: 2,
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.bodySmall?.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
             ),
           ),
         ],
@@ -989,44 +857,6 @@ class _SoftIcon extends StatelessWidget {
         shape: BoxShape.circle,
       ),
       child: Icon(icon, color: AppColors.primary, size: 20),
-    );
-  }
-}
-
-class _CaloriesError extends StatelessWidget {
-  final String message;
-  final Future<void> Function() onRetry;
-
-  const _CaloriesError({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: AppSpacing.cardPadding,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset('assets/images/empty_page.png', height: 140),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: context.text.bodyMedium,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextButton(
-              onPressed: onRetry,
-              child: Text(
-                'Try Again',
-                style: context.text.labelLarge?.copyWith(
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
