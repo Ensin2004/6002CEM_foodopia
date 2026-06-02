@@ -62,6 +62,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   bool _isDisposed = false;
   final Map<String, bool> _pendingCommentLikeStates = {};
   final Map<String, bool> _pendingReplyLikeStates = {};
+  final Set<String> _syncingCommentLikes = {};
+  final Set<String> _syncingReplyLikes = {};
   String? _errorMessage;
   String? _communityActionErrorMessage;
 
@@ -299,71 +301,103 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   Future<bool> toggleCommentLike(String commentId) async {
     final recipe = _recipe;
-    if (recipe == null || _pendingCommentLikeStates.containsKey(commentId)) {
-      return false;
-    }
+    if (recipe == null) return false;
 
     final comment = _findComment(recipe.community.comments, commentId);
     if (comment == null) return false;
 
     final nextLiked = !comment.isLiked;
-    final previousRecipe = _recipe;
     _pendingCommentLikeStates[commentId] = nextLiked;
     _applyOptimisticCommentLike(commentId, isLiked: nextLiked);
     _communityActionErrorMessage = null;
     _notifyIfActive();
 
-    final result = await _toggleRecipeCommentLikeUseCase.execute(
-      recipeId: recipeId,
-      commentId: commentId,
-    );
-    if (_isDisposed) return false;
-
-    final success = result.isRight();
-    result.ifLeft((failure) {
-      _communityActionErrorMessage = failure.message;
-    });
-    if (!success) {
-      _pendingCommentLikeStates.remove(commentId);
-      _recipe = previousRecipe;
+    if (!_syncingCommentLikes.contains(commentId)) {
+      unawaited(_syncCommentLike(commentId));
     }
 
-    _notifyIfActive();
-    return success;
+    return true;
   }
 
   Future<bool> toggleReplyLike(String replyPath) async {
     final recipe = _recipe;
-    if (recipe == null || _pendingReplyLikeStates.containsKey(replyPath)) {
-      return false;
-    }
+    if (recipe == null) return false;
 
     final reply = _findReply(recipe.community.comments, replyPath);
     if (reply == null) return false;
 
     final nextLiked = !reply.isLiked;
-    final previousRecipe = _recipe;
     _pendingReplyLikeStates[replyPath] = nextLiked;
     _applyOptimisticReplyLike(replyPath, isLiked: nextLiked);
     _communityActionErrorMessage = null;
     _notifyIfActive();
 
-    final result = await _toggleRecipeReplyLikeUseCase.execute(
-      replyPath: replyPath,
-    );
-    if (_isDisposed) return false;
-
-    final success = result.isRight();
-    result.ifLeft((failure) {
-      _communityActionErrorMessage = failure.message;
-    });
-    if (!success) {
-      _pendingReplyLikeStates.remove(replyPath);
-      _recipe = previousRecipe;
+    if (!_syncingReplyLikes.contains(replyPath)) {
+      unawaited(_syncReplyLike(replyPath));
     }
 
+    return true;
+  }
+
+  Future<void> _syncCommentLike(String commentId) async {
+    _syncingCommentLikes.add(commentId);
+
+    while (!_isDisposed && _pendingCommentLikeStates.containsKey(commentId)) {
+      final requestedState = _pendingCommentLikeStates[commentId];
+      final result = await _toggleRecipeCommentLikeUseCase.execute(
+        recipeId: recipeId,
+        commentId: commentId,
+      );
+      if (_isDisposed) break;
+
+      final success = result.isRight();
+      result.ifLeft((failure) {
+        _communityActionErrorMessage = failure.message;
+      });
+
+      if (!success) {
+        _pendingCommentLikeStates.remove(commentId);
+        await loadRecipe();
+        break;
+      }
+
+      if (_pendingCommentLikeStates[commentId] == requestedState) {
+        _pendingCommentLikeStates.remove(commentId);
+      }
+    }
+
+    _syncingCommentLikes.remove(commentId);
     _notifyIfActive();
-    return success;
+  }
+
+  Future<void> _syncReplyLike(String replyPath) async {
+    _syncingReplyLikes.add(replyPath);
+
+    while (!_isDisposed && _pendingReplyLikeStates.containsKey(replyPath)) {
+      final requestedState = _pendingReplyLikeStates[replyPath];
+      final result = await _toggleRecipeReplyLikeUseCase.execute(
+        replyPath: replyPath,
+      );
+      if (_isDisposed) break;
+
+      final success = result.isRight();
+      result.ifLeft((failure) {
+        _communityActionErrorMessage = failure.message;
+      });
+
+      if (!success) {
+        _pendingReplyLikeStates.remove(replyPath);
+        await loadRecipe();
+        break;
+      }
+
+      if (_pendingReplyLikeStates[replyPath] == requestedState) {
+        _pendingReplyLikeStates.remove(replyPath);
+      }
+    }
+
+    _syncingReplyLikes.remove(replyPath);
+    _notifyIfActive();
   }
 
   Future<bool> addCommentReply({
