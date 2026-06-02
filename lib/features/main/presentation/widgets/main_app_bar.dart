@@ -154,7 +154,12 @@ class _UnreadNotificationButton extends StatelessWidget {
       builder: (context, snapshot) {
         final hasUnread = (snapshot.data?.docs ?? const []).any((doc) {
           final type = doc.data()['type']?.toString();
-          const adminTypes = {'newUser', 'systemRating'};
+          const adminTypes = {
+            'newUser',
+            'systemRating',
+            'newHelpTicket',
+            'newCategory',
+          };
           return isAdmin
               ? adminTypes.contains(type)
               : !adminTypes.contains(type);

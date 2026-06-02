@@ -70,6 +70,12 @@ class NotificationRemoteDataSource {
       description: 'Receive a notification when user submits help ticket',
       enabled: true,
     ),
+    NotificationPreference(
+      id: 'new_category_notification',
+      title: 'New Category Notification',
+      description: 'Receive a notification when user adds a new category',
+      enabled: true,
+    ),
   ];
 
   final FirebaseFirestore firestore;
@@ -197,7 +203,12 @@ class NotificationRemoteDataSource {
   }
 
   bool _isAllowedType(String? type, bool isAdmin) {
-    const adminTypes = {'newUser', 'systemRating', 'newHelpTicket'};
+    const adminTypes = {
+      'newUser',
+      'systemRating',
+      'newHelpTicket',
+      'newCategory',
+    };
     if (isAdmin) return adminTypes.contains(type);
     return !adminTypes.contains(type);
   }
