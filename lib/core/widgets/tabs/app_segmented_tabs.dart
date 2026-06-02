@@ -8,6 +8,7 @@ class AppSegmentedTabs extends StatelessWidget {
   final List<String> tabs;
   final EdgeInsetsGeometry margin;
   final bool? isScrollable;
+  final ValueChanged<int>? onTap;
 
   const AppSegmentedTabs({
     super.key,
@@ -15,6 +16,7 @@ class AppSegmentedTabs extends StatelessWidget {
     required this.tabs,
     this.margin = EdgeInsets.zero,
     this.isScrollable,
+    this.onTap,
   });
 
   @override
@@ -41,6 +43,7 @@ class AppSegmentedTabs extends StatelessWidget {
             indicatorSize: TabBarIndicatorSize.tab,
             indicatorWeight: 2,
             dividerColor: Colors.transparent,
+            onTap: onTap,
             labelColor: colorScheme.primary,
             unselectedLabelColor: Colors.black54,
             labelStyle: context.text.labelLarge?.copyWith(
