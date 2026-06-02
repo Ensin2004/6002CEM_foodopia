@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
@@ -268,7 +270,8 @@ class MealPlanViewModel extends ChangeNotifier {
     _notifyIfActive();
 
     if (deleted) {
-      await loadDashboard();
+      _removeMealFromDashboard(trimmedId);
+      unawaited(loadDashboard());
     }
     return deleted;
   }
@@ -559,6 +562,78 @@ class MealPlanViewModel extends ChangeNotifier {
       (section) => _filterIdForSection(section) == _selectedFilterId,
     );
     if (!exists) _selectedFilterId = allFilterId;
+  }
+
+  void _removeMealFromDashboard(String mealPlanId) {
+    final current = _dashboard;
+    if (current == null) return;
+
+    var removed = false;
+    final sections = current.sections.map((section) {
+      final meals = section.meals.where((meal) {
+        final shouldKeep = meal.id != mealPlanId;
+        if (!shouldKeep) removed = true;
+        return shouldKeep;
+      }).toList();
+      return MealPlanSection(
+        mealType: section.mealType,
+        mealCategoryId: section.mealCategoryId,
+        meals: meals,
+      );
+    }).toList();
+    if (!removed) return;
+
+    final hasMealsForSelectedDate = sections.any(
+      (section) => section.meals.isNotEmpty,
+    );
+    final monthDays = current.monthDays.map((day) {
+      if (!_sameDay(day.date, current.selectedDate)) return day;
+      return MealPlanDay(
+        date: day.date,
+        isCurrentMonth: day.isCurrentMonth,
+        hasMeals: hasMealsForSelectedDate,
+      );
+    }).toList();
+
+    _dashboard = current.copyWith(
+      sections: sections,
+      monthDays: monthDays,
+      summary: _decrementSummary(current.summary, current.selectedDate),
+    );
+    _normalizeSelectedFilter();
+    _notifyIfActive();
+  }
+
+  MealPlanSummary _decrementSummary(MealPlanSummary summary, DateTime date) {
+    final day = DateTime(date.year, date.month, date.day);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (day.isBefore(today)) {
+      return MealPlanSummary(
+        pastCount: (summary.pastCount - 1).clamp(0, 1 << 31).toInt(),
+        todayCount: summary.todayCount,
+        futureCount: summary.futureCount,
+      );
+    }
+    if (day.isAfter(today)) {
+      return MealPlanSummary(
+        pastCount: summary.pastCount,
+        todayCount: summary.todayCount,
+        futureCount: (summary.futureCount - 1).clamp(0, 1 << 31).toInt(),
+      );
+    }
+    return MealPlanSummary(
+      pastCount: summary.pastCount,
+      todayCount: (summary.todayCount - 1).clamp(0, 1 << 31).toInt(),
+      futureCount: summary.futureCount,
+    );
+  }
+
+  bool _sameDay(DateTime first, DateTime second) {
+    return first.year == second.year &&
+        first.month == second.month &&
+        first.day == second.day;
   }
 
   void _notifyIfActive() {
