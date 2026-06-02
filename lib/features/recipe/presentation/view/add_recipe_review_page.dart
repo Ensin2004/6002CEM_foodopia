@@ -292,34 +292,40 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                 horizontalPadding,
                 AppSpacing.lg,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(child: Label(text: "Review")),
-                      if (widget.aiReview == null)
-                        IconButton(
-                          tooltip: "Delete recipe",
-                          onPressed: viewModel.isDeleting
-                              ? null
-                              : () => _confirmDeleteRecipe(
-                                  context,
-                                  viewModel,
-                                  review,
-                                ),
-                          icon: const Icon(Icons.delete_outline_rounded),
-                          color: AppColors.error,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Label(text: "Review"),
+                        const SizedBox(height: 2),
+                        Text(
+                          "Review your recipe before saving",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.text.bodySmall,
                         ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    "Review your recipe before saving",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodySmall,
-                  ),
+
+                  if (widget.aiReview == null)
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      tooltip: "Delete recipe",
+                      onPressed: viewModel.isDeleting
+                          ? null
+                          : () => _confirmDeleteRecipe(
+                                context,
+                                viewModel,
+                                review,
+                              ),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      color: AppColors.error,
+                    ),
                 ],
               ),
             ),

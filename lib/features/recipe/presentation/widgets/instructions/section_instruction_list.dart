@@ -55,7 +55,7 @@ class SectionInstructionList extends StatelessWidget {
             final section = sections[sectionIndex];
             return Padding(
               key: ValueKey(section.id),
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
               child: _InstructionSectionCard(
                 sectionIndex: sectionIndex,
                 section: section,
@@ -69,12 +69,9 @@ class SectionInstructionList extends StatelessWidget {
             );
           },
         ),
-        Padding(
-          padding: EdgeInsets.only(top: AppSpacing.sm),
-          child: SecondaryButton(
-            text: "+  Add Section",
-            onPressed: onAddSection,
-          ),
+        SecondaryButton(
+          text: "+  Add Section",
+          onPressed: onAddSection,
         ),
       ],
     );
@@ -109,9 +106,10 @@ class _InstructionSectionCard extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.md),
         child: Column(
           children: [
+            const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 ReorderableDragStartListener(
@@ -122,7 +120,7 @@ class _InstructionSectionCard extends StatelessWidget {
                     size: 20,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xs),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: TextField(
                     controller: section.titleController,
@@ -136,17 +134,19 @@ class _InstructionSectionCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                IconButton(
-                  onPressed: onRemoveSection,
-                  icon: const Icon(
+                const SizedBox(width: AppSpacing.sm),
+                InkWell(
+                  onTap: onRemoveSection,
+                  child: const Icon(
                     Icons.delete_outline,
                     color: AppColors.error,
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: AppSpacing.sm),
             const Divider(color: AppColors.border),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.sm),
             ReorderableListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -168,11 +168,18 @@ class _InstructionSectionCard extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: AppSpacing.lg),
             const Divider(color: AppColors.border),
-            TextButton.icon(
+            TextButton(
               onPressed: onAddStep,
-              label: const Text("+  Add Step"),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.sm,
+                ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text("+  Add Step"),
             ),
           ],
         ),
