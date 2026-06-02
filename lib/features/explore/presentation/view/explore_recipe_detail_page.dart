@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +16,7 @@ import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/usecases/get_meal_categories_usecase.dart';
 import '../../../meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../viewmodel/explore_recipe_detail_viewmodel.dart';
@@ -51,6 +53,7 @@ class ExploreRecipeDetailPage extends StatelessWidget {
         updateRecipeVisibilityUseCase: sl(),
         toggleFavouriteUseCase: sl(),
         saveRecipeMealPlanUseCase: sl<SaveRecipeMealPlanUseCase>(),
+        getMealCategoriesUseCase: sl<GetMealCategoriesUseCase>(),
       ),
       child: _ExploreRecipeDetailView(
         showLibraryActions: showLibraryActions,
@@ -141,6 +144,79 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _openMealPlanCalendar(
+    ExploreRecipeDetailViewModel viewModel,
+  ) async {
+    var isShowingLoadingDialog = false;
+    try {
+      if (viewModel.recipe == null || viewModel.isSavingMealPlan) return;
+
+      final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (userId.isEmpty) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(content: Text('Sign in to add this meal plan.')),
+          );
+        return;
+      }
+
+      if (viewModel.mealCategories.isEmpty) {
+        await viewModel.loadMealCategories();
+        if (!mounted) return;
+      }
+
+      final request =
+          await showModalBottomSheet<_RecipeCalendarMealPlanRequest>(
+            context: context,
+            isScrollControlled: true,
+            builder: (_) => _RecipeCalendarMealPlanSheet(
+              categories: viewModel.mealCategories.isEmpty
+                  ? RecipeDetailMealPlanDefaults.categories
+                  : viewModel.mealCategories,
+              initialServings: viewModel.recipe?.servings ?? 1,
+            ),
+          );
+      if (request == null || !mounted) return;
+
+      isShowingLoadingDialog = true;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const LoadingDialog(message: 'Adding meal plan...'),
+      );
+      final result = await viewModel.saveToMealPlanDates(
+        userId: userId,
+        dates: request.dates,
+        mealCategories: request.mealCategories,
+        source: 'recipe_detail_calendar',
+        servingCount: request.servingCount,
+      );
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      isShowingLoadingDialog = false;
+
+      final message = result.isSuccess
+          ? result.savedCount == 1
+                ? 'Meal plan added.'
+                : '${result.savedCount} meal plans added.'
+          : result.errorMessage ?? 'Unable to add meal plan.';
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    } catch (error) {
+      if (!mounted) return;
+      if (isShowingLoadingDialog) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('Unable to open calendar: $error')),
+        );
+    }
+  }
+
   Future<void> _selectForMealPlan(
     ExploreRecipeDetailViewModel viewModel,
   ) async {
@@ -219,17 +295,23 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
           onPressed: () => context.pop(),
           icon: const Icon(Icons.chevron_left),
         ),
-        actions: widget.showLibraryActions
-            ? [
-                IconButton(
-                  tooltip: 'Edit recipe',
-                  onPressed: viewModel.recipe == null
-                      ? null
-                      : () => _openRecipeReview(viewModel),
-                  icon: const Icon(Icons.edit_outlined),
-                ),
-              ]
-            : null,
+        actions: [
+          IconButton(
+            tooltip: 'Add to meal plan',
+            onPressed: viewModel.recipe == null || viewModel.isSavingMealPlan
+                ? null
+                : () => _openMealPlanCalendar(viewModel),
+            icon: const Icon(Icons.calendar_month_outlined),
+          ),
+          if (widget.showLibraryActions)
+            IconButton(
+              tooltip: 'Edit recipe',
+              onPressed: viewModel.recipe == null
+                  ? null
+                  : () => _openRecipeReview(viewModel),
+              icon: const Icon(Icons.edit_outlined),
+            ),
+        ],
       ),
       body: _DetailBody(
         viewModel: viewModel,
@@ -261,6 +343,300 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
                 ),
               ),
             ),
+    );
+  }
+}
+
+class _RecipeCalendarMealPlanRequest {
+  final List<DateTime> dates;
+  final List<AddMealCategoryOption> mealCategories;
+  final int servingCount;
+
+  const _RecipeCalendarMealPlanRequest({
+    required this.dates,
+    required this.mealCategories,
+    required this.servingCount,
+  });
+}
+
+class _RecipeCalendarMealPlanSheet extends StatefulWidget {
+  final List<AddMealCategoryOption> categories;
+  final int initialServings;
+
+  const _RecipeCalendarMealPlanSheet({
+    required this.categories,
+    required this.initialServings,
+  });
+
+  @override
+  State<_RecipeCalendarMealPlanSheet> createState() =>
+      _RecipeCalendarMealPlanSheetState();
+}
+
+class _RecipeCalendarMealPlanSheetState
+    extends State<_RecipeCalendarMealPlanSheet> {
+  late DateTime _focusedDate;
+  late int _servings;
+  final Set<String> _selectedCategoryIds = {};
+  final Set<DateTime> _selectedDates = {};
+
+  @override
+  void initState() {
+    super.initState();
+    final today = _dateOnly(DateTime.now());
+    _focusedDate = today;
+    _selectedDates.add(today);
+    _selectedCategoryIds.add(_preferredInitialCategory(_categories).id);
+    _servings = widget.initialServings.clamp(1, 99);
+  }
+
+  List<AddMealCategoryOption> get _categories {
+    return widget.categories.isEmpty
+        ? RecipeDetailMealPlanDefaults.categories
+        : widget.categories;
+  }
+
+  void _toggleDate(DateTime date) {
+    final normalized = _dateOnly(date);
+    setState(() {
+      if (_selectedDates.contains(normalized)) {
+        _selectedDates.remove(normalized);
+      } else {
+        _selectedDates.add(normalized);
+      }
+    });
+  }
+
+  void _toggleCategory(AddMealCategoryOption category) {
+    setState(() {
+      if (_selectedCategoryIds.contains(category.id)) {
+        _selectedCategoryIds.remove(category.id);
+      } else {
+        _selectedCategoryIds.add(category.id);
+      }
+    });
+  }
+
+  void _submit() {
+    if (_selectedDates.isEmpty || _selectedCategoryIds.isEmpty) return;
+    final dates = _selectedDates.toList()..sort();
+    final categories = _categories
+        .where((category) => _selectedCategoryIds.contains(category.id))
+        .toList();
+    Navigator.of(context).pop(
+      _RecipeCalendarMealPlanRequest(
+        dates: dates,
+        mealCategories: categories,
+        servingCount: _servings,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final today = _dateOnly(DateTime.now());
+    final firstDate = DateTime(today.year - 1, today.month, today.day);
+    final lastDate = DateTime(today.year + 2, today.month, today.day);
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 10, 16, 16 + bottomInset),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Add to meal plan',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleMedium,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text('Meal type', style: textTheme.labelLarge),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _categories.map((category) {
+                  final selected = _selectedCategoryIds.contains(category.id);
+                  return FilterChip(
+                    label: Text(
+                      category.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    selected: selected,
+                    showCheckmark: false,
+                    selectedColor: AppColors.secondary.withValues(alpha: 0.18),
+                    side: BorderSide(
+                      color: selected ? AppColors.secondary : AppColors.border,
+                    ),
+                    onSelected: (_) => _toggleCategory(category),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _selectedCategoryIds.isEmpty
+                    ? 'Select one or more meal types.'
+                    : _selectedCategoryIds.length == 1
+                    ? '1 meal type selected'
+                    : '${_selectedCategoryIds.length} meal types selected',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              Text('Dates', style: textTheme.labelLarge),
+              const SizedBox(height: 8),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: CalendarDatePicker(
+                  initialDate: _focusedDate,
+                  firstDate: firstDate,
+                  lastDate: lastDate,
+                  currentDate: today,
+                  onDateChanged: (date) {
+                    _focusedDate = _dateOnly(date);
+                    _toggleDate(date);
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+              _SelectedDateChips(
+                dates: _selectedDates.toList()..sort(),
+                onRemove: _toggleDate,
+              ),
+              const SizedBox(height: 16),
+              Text('Servings', style: textTheme.labelLarge),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Decrease servings',
+                      onPressed: _servings <= 1
+                          ? null
+                          : () => setState(() => _servings--),
+                      icon: const Icon(Icons.remove),
+                    ),
+                    Expanded(
+                      child: Text(
+                        _servings == 1 ? '1 serving' : '$_servings servings',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Increase servings',
+                      onPressed: _servings >= 99
+                          ? null
+                          : () => setState(() => _servings++),
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed:
+                          _selectedDates.isEmpty || _selectedCategoryIds.isEmpty
+                          ? null
+                          : _submit,
+                      child: const Text('Add meal'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static AddMealCategoryOption _preferredInitialCategory(
+    List<AddMealCategoryOption> categories,
+  ) {
+    return categories.firstWhere(
+      (category) => category.id.toLowerCase() == 'breakfast',
+      orElse: () => categories.first,
+    );
+  }
+}
+
+class _SelectedDateChips extends StatelessWidget {
+  final List<DateTime> dates;
+  final ValueChanged<DateTime> onRemove;
+
+  const _SelectedDateChips({required this.dates, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    if (dates.isEmpty) {
+      return Text('Select one or more dates.', style: context.text.bodySmall);
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: dates.map((date) {
+        return InputChip(
+          label: Text(_dateLabel(date)),
+          onDeleted: () => onRemove(date),
+        );
+      }).toList(),
     );
   }
 }
@@ -3318,3 +3694,24 @@ String _detailTabLabel(ExploreRecipeDetailTab tab) {
       return 'Community';
   }
 }
+
+DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
+String _dateLabel(DateTime date) {
+  return '${_monthNames[date.month - 1]} ${date.day}, ${date.year}';
+}
+
+const _monthNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];

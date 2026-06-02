@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/extensions/either_extensions.dart';
 import '../../../library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/usecases/get_meal_categories_usecase.dart';
 import '../../../meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../../domain/usecases/add_recipe_comment_usecase.dart';
@@ -43,9 +44,11 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   final UpdateRecipeVisibilityUseCase _updateRecipeVisibilityUseCase;
   final ToggleLibraryRecipeFavouriteUseCase _toggleFavouriteUseCase;
   final SaveRecipeMealPlanUseCase? _saveRecipeMealPlanUseCase;
+  final GetMealCategoriesUseCase? _getMealCategoriesUseCase;
   final String recipeId;
 
   ExploreRecipe? _recipe;
+  List<AddMealCategoryOption> _mealCategories = const [];
   StreamSubscription<ExploreRecipe>? _recipeSubscription;
   ExploreRecipeDetailTab _selectedTab = ExploreRecipeDetailTab.recipe;
   ExploreRecipeMethodTab _selectedMethodTab =
@@ -59,9 +62,11 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   bool _isSubmittingCommunityAction = false;
   bool _isUpdatingVisibility = false;
   bool _isSavingMealPlan = false;
+  bool _isLoadingMealCategories = false;
   bool _isDisposed = false;
   String? _errorMessage;
   String? _communityActionErrorMessage;
+  String? _mealCategoryErrorMessage;
 
   ExploreRecipeDetailViewModel({
     required this.recipeId,
@@ -78,6 +83,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     required UpdateRecipeVisibilityUseCase updateRecipeVisibilityUseCase,
     required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
     SaveRecipeMealPlanUseCase? saveRecipeMealPlanUseCase,
+    GetMealCategoriesUseCase? getMealCategoriesUseCase,
   }) : _getRecipeDetailUseCase = getRecipeDetailUseCase,
        _submitRecipeRatingUseCase = submitRecipeRatingUseCase,
        _addRecipeCommentUseCase = addRecipeCommentUseCase,
@@ -90,7 +96,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
        _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
        _updateRecipeVisibilityUseCase = updateRecipeVisibilityUseCase,
        _toggleFavouriteUseCase = toggleFavouriteUseCase,
-       _saveRecipeMealPlanUseCase = saveRecipeMealPlanUseCase {
+       _saveRecipeMealPlanUseCase = saveRecipeMealPlanUseCase,
+       _getMealCategoriesUseCase = getMealCategoriesUseCase {
     Future.microtask(_openRecipe);
     _watchRecipeDetail();
   }
@@ -106,8 +113,11 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   bool get isSubmittingCommunityAction => _isSubmittingCommunityAction;
   bool get isUpdatingVisibility => _isUpdatingVisibility;
   bool get isSavingMealPlan => _isSavingMealPlan;
+  bool get isLoadingMealCategories => _isLoadingMealCategories;
+  List<AddMealCategoryOption> get mealCategories => _mealCategories;
   String? get errorMessage => _errorMessage;
   String? get communityActionErrorMessage => _communityActionErrorMessage;
+  String? get mealCategoryErrorMessage => _mealCategoryErrorMessage;
 
   List<ExploreReview> get visibleReviews {
     final source = _recipe?.community.reviews ?? const <ExploreReview>[];
@@ -541,6 +551,79 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     return success;
   }
 
+  Future<bool> loadMealCategories() async {
+    if (_mealCategories.isNotEmpty) return true;
+    final useCase = _getMealCategoriesUseCase;
+    if (useCase == null || _isLoadingMealCategories) {
+      return _mealCategories.isNotEmpty;
+    }
+
+    _isLoadingMealCategories = true;
+    _mealCategoryErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await useCase.execute();
+    if (_isDisposed) return false;
+
+    result.ifRight((categories) {
+      _mealCategories = categories.isEmpty
+          ? RecipeDetailMealPlanDefaults.categories
+          : categories;
+    });
+    result.ifLeft((failure) {
+      _mealCategoryErrorMessage = failure.message;
+      _mealCategories = RecipeDetailMealPlanDefaults.categories;
+    });
+
+    _isLoadingMealCategories = false;
+    _notifyIfActive();
+    return _mealCategories.isNotEmpty;
+  }
+
+  Future<RecipeDetailMealPlanSaveResult> saveToMealPlanDates({
+    required String userId,
+    required List<DateTime> dates,
+    required List<AddMealCategoryOption> mealCategories,
+    required String source,
+    required int servingCount,
+  }) async {
+    var savedCount = 0;
+    if (dates.isEmpty) {
+      return const RecipeDetailMealPlanSaveResult(
+        savedCount: 0,
+        errorMessage: 'Select at least one date.',
+      );
+    }
+    if (mealCategories.isEmpty) {
+      return const RecipeDetailMealPlanSaveResult(
+        savedCount: 0,
+        errorMessage: 'Select at least one meal type.',
+      );
+    }
+
+    for (final mealCategory in mealCategories) {
+      for (final date in dates) {
+        final success = await saveToMealPlan(
+          userId: userId,
+          date: date,
+          mealCategory: mealCategory,
+          source: source,
+          servingCount: servingCount,
+        );
+        if (!success) {
+          return RecipeDetailMealPlanSaveResult(
+            savedCount: savedCount,
+            errorMessage:
+                _communityActionErrorMessage ?? 'Unable to add meal plan.',
+          );
+        }
+        savedCount++;
+      }
+    }
+
+    return RecipeDetailMealPlanSaveResult(savedCount: savedCount);
+  }
+
   void _applyOptimisticRating(double rating) {
     final recipe = _recipe;
     if (recipe == null) return;
@@ -849,4 +932,27 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     _recipeSubscription?.cancel();
     super.dispose();
   }
+}
+
+class RecipeDetailMealPlanSaveResult {
+  final int savedCount;
+  final String? errorMessage;
+
+  const RecipeDetailMealPlanSaveResult({
+    required this.savedCount,
+    this.errorMessage,
+  });
+
+  bool get isSuccess => errorMessage == null;
+}
+
+class RecipeDetailMealPlanDefaults {
+  static const categories = [
+    AddMealCategoryOption(id: 'breakfast', name: 'Breakfast'),
+    AddMealCategoryOption(id: 'lunch', name: 'Lunch'),
+    AddMealCategoryOption(id: 'dinner', name: 'Dinner'),
+    AddMealCategoryOption(id: 'snack', name: 'Snack'),
+  ];
+
+  const RecipeDetailMealPlanDefaults._();
 }
