@@ -8,6 +8,7 @@ import '../../../../../app/routers/router_args.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
+import '../../../../../core/widgets/buttons/app_filter_chip.dart';
 import '../../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
@@ -118,10 +119,16 @@ class _WeeklyGroceriesCard extends StatelessWidget {
       color: const Color(0xFFF0FAF2),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        onTap: () => context.push(
-          AppRouter.manageGroceryList,
-          extra: ManageGroceryListArgs(listId: list.id),
-        ),
+        onTap: () async {
+          final viewModel = context.read<MealPlanViewModel>();
+          final result = await context.push(
+            AppRouter.manageGroceryList,
+            extra: ManageGroceryListArgs(listId: list.id),
+          );
+          if (result == true && context.mounted) {
+            await viewModel.loadDashboard();
+          }
+        },
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: AppSpacing.cardPadding,
@@ -243,62 +250,64 @@ class _GrocerySearchRowState extends State<_GrocerySearchRow> {
       );
     }
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
-          tooltip: 'Active lists',
-          visualDensity: VisualDensity.compact,
-          onPressed: () => context
-              .read<MealPlanViewModel>()
-              .selectGroceryListTab(GroceryListTabFilter.active),
-          icon: const Icon(Icons.tune, color: AppColors.textPrimary, size: 22),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        IconButton(
-          tooltip: 'Past lists',
-          visualDensity: VisualDensity.compact,
-          onPressed: () => context
-              .read<MealPlanViewModel>()
-              .selectGroceryListTab(GroceryListTabFilter.past),
-          icon: const Icon(
-            Icons.filter_alt,
-            color: AppColors.textPrimary,
-            size: 22,
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              AppFilterChip(
+                label: 'Active lists',
+                selected:
+                    context.watch<MealPlanViewModel>().selectedGroceryListTab ==
+                    GroceryListTabFilter.active,
+                onTap: () => context
+                    .read<MealPlanViewModel>()
+                    .selectGroceryListTab(GroceryListTabFilter.active),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              AppFilterChip(
+                label: 'Past lists',
+                selected:
+                    context.watch<MealPlanViewModel>().selectedGroceryListTab ==
+                    GroceryListTabFilter.past,
+                onTap: () => context
+                    .read<MealPlanViewModel>()
+                    .selectGroceryListTab(GroceryListTabFilter.past),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            onChanged: context
-                .read<MealPlanViewModel>()
-                .updateGrocerySearchQuery,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: 'Search name, category, date...',
-              prefixIcon: Icon(
-                Icons.search,
-                color: AppColors.textSecondary.withValues(alpha: 0.45),
-              ),
-              suffixIcon: query.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: 'Clear search',
-                      onPressed: context
-                          .read<MealPlanViewModel>()
-                          .clearGrocerySearchQuery,
-                      icon: const Icon(Icons.close, size: 18),
-                    ),
-              filled: true,
-              fillColor: const Color(0xFFF8F8F8),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: 0,
-              ),
+        const SizedBox(height: AppSpacing.sm),
+        TextField(
+          controller: _controller,
+          onChanged: context.read<MealPlanViewModel>().updateGrocerySearchQuery,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            hintText: 'Search name, category, date...',
+            prefixIcon: Icon(
+              Icons.search,
+              color: AppColors.textSecondary.withValues(alpha: 0.45),
+            ),
+            suffixIcon: query.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: context
+                        .read<MealPlanViewModel>()
+                        .clearGrocerySearchQuery,
+                    icon: const Icon(Icons.close, size: 18),
+                  ),
+            filled: true,
+            fillColor: const Color(0xFFF8F8F8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: 0,
             ),
           ),
         ),
@@ -387,10 +396,16 @@ class _GroceryListCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          onTap: () => context.push(
-            AppRouter.manageGroceryList,
-            extra: ManageGroceryListArgs(listId: list.id),
-          ),
+          onTap: () async {
+            final viewModel = context.read<MealPlanViewModel>();
+            final result = await context.push(
+              AppRouter.manageGroceryList,
+              extra: ManageGroceryListArgs(listId: list.id),
+            );
+            if (result == true && context.mounted) {
+              await viewModel.loadDashboard();
+            }
+          },
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: AppSpacing.cardPadding,

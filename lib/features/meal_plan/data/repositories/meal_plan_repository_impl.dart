@@ -225,6 +225,7 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
     required AddMealCategoryOption mealCategory,
     required AddMealAiRecipe recipe,
     required String source,
+    required int servingCount,
   }) async {
     try {
       await remoteDataSource.saveRecipeMealPlan(
@@ -233,6 +234,23 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
         mealCategory: mealCategory,
         recipe: recipe,
         source: source,
+        servingCount: servingCount,
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteMealPlan({
+    required String userId,
+    required String mealPlanId,
+  }) async {
+    try {
+      await remoteDataSource.deleteMealPlan(
+        userId: userId,
+        mealPlanId: mealPlanId,
       );
       return const Right(null);
     } catch (e) {

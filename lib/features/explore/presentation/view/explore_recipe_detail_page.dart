@@ -155,6 +155,10 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         );
       return;
     }
+    final servingCount = await _showMealPlanServingDialog(
+      initialServings: viewModel.recipe?.servings ?? 1,
+    );
+    if (servingCount == null || !mounted) return;
 
     final success = await viewModel.saveToMealPlan(
       userId: selection.userId,
@@ -164,6 +168,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         name: selection.mealCategoryName,
       ),
       source: selection.source,
+      servingCount: servingCount,
     );
     if (!mounted) return;
 
@@ -178,6 +183,15 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     context.go(
       AppRouter.mealPlan,
       extra: MealPlanArgs(initialTabIndex: 0, userId: selection.userId),
+    );
+  }
+
+  Future<int?> _showMealPlanServingDialog({required int initialServings}) {
+    return showDialog<int>(
+      context: context,
+      builder: (_) => _MealPlanServingDialog(
+        initialServings: initialServings <= 0 ? 1 : initialServings,
+      ),
     );
   }
 
@@ -247,6 +261,88 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
                 ),
               ),
             ),
+    );
+  }
+}
+
+class _MealPlanServingDialog extends StatefulWidget {
+  final int initialServings;
+
+  const _MealPlanServingDialog({required this.initialServings});
+
+  @override
+  State<_MealPlanServingDialog> createState() => _MealPlanServingDialogState();
+}
+
+class _MealPlanServingDialogState extends State<_MealPlanServingDialog> {
+  late int _servings;
+
+  @override
+  void initState() {
+    super.initState();
+    _servings = widget.initialServings.clamp(1, 99);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Choose servings', style: context.text.titleMedium),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Set the serving count for this planned meal.',
+            style: context.text.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Decrease servings',
+                  onPressed: _servings <= 1
+                      ? null
+                      : () => setState(() => _servings--),
+                  icon: const Icon(Icons.remove),
+                ),
+                Expanded(
+                  child: Text(
+                    _servings == 1 ? '1 serving' : '$_servings servings',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Increase servings',
+                  onPressed: _servings >= 99
+                      ? null
+                      : () => setState(() => _servings++),
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_servings),
+          child: const Text('Add meal'),
+        ),
+      ],
     );
   }
 }

@@ -499,6 +499,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     required DateTime date,
     required AddMealCategoryOption mealCategory,
     required String source,
+    required int servingCount,
   }) async {
     final recipe = _recipe;
     final useCase = _saveRecipeMealPlanUseCase;
@@ -517,7 +518,9 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
         title: recipe.title,
         durationLabel: recipe.totalTime,
         difficultyLabel: recipe.difficulty,
-        servingLabel: '1 serving',
+        servingLabel: servingCount == 1
+            ? '1 serving'
+            : '$servingCount servings',
         imagePath: recipe.imagePath,
         description: recipe.description,
         reasons: const [],
@@ -525,6 +528,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
         categoryName: recipe.category,
       ),
       source: source,
+      servingCount: servingCount,
     );
     if (_isDisposed) return false;
 

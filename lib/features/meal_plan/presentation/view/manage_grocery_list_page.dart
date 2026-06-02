@@ -11,6 +11,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../domain/entities/manage_grocery_list_detail.dart';
 import '../../domain/usecases/add_grocery_item_usecase.dart';
@@ -60,7 +61,7 @@ class _ManageGroceryListView extends StatelessWidget {
       appBar: CustomAppBar(
         title: 'Manage Grocery List',
         leading: IconButton(
-          onPressed: () => context.pop(),
+          onPressed: () => context.pop(viewModel.hasSavedChanges),
           icon: const Icon(Icons.chevron_left),
         ),
       ),
@@ -1481,41 +1482,16 @@ class _MealImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isRemote = path.startsWith('http://') || path.startsWith('https://');
-    if (isRemote) {
-      return Image.network(
-        path,
-        width: width,
-        height: height,
+    // Shared media preview handles both recipe image and video paths.
+    return SizedBox(
+      width: width,
+      height: height,
+      child: AppRecipeMediaPreview(
+        mediaPath: path,
         fit: fit,
-        errorBuilder: (_, __, ___) =>
-            _ImageFallback(width: width, height: height),
-      );
-    }
-    return Image.asset(
-      path,
-      width: width,
-      height: height,
-      fit: fit,
-      errorBuilder: (_, __, ___) =>
-          _ImageFallback(width: width, height: height),
-    );
-  }
-}
-
-class _ImageFallback extends StatelessWidget {
-  final double width;
-  final double height;
-
-  const _ImageFallback({required this.width, required this.height});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      color: const Color(0xFFE8F8EB),
-      child: const Icon(Icons.restaurant, color: AppColors.primary),
+        playOverlaySize: width < 60 ? 30 : 38,
+        playIconSize: width < 60 ? 20 : 26,
+      ),
     );
   }
 }

@@ -8,6 +8,7 @@ import '../../domain/usecases/get_meal_plan_dashboard_usecase.dart';
 import '../../domain/usecases/get_meal_plan_inspiration_options_usecase.dart';
 import '../../domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../domain/usecases/get_meal_plan_weather_usecase.dart';
+import '../../domain/usecases/delete_meal_plan_usecase.dart';
 import '../../domain/usecases/search_meal_plan_ingredients_usecase.dart';
 import '../../domain/usecases/update_weekly_grocery_week_start_day_usecase.dart';
 
@@ -33,6 +34,7 @@ class MealPlanViewModel extends ChangeNotifier {
   final GetMealPlanPreferencesUseCase _getPreferencesUseCase;
   final SearchMealPlanIngredientsUseCase _searchIngredientsUseCase;
   final GetMealPlanInspirationOptionsUseCase _getInspirationOptionsUseCase;
+  final DeleteMealPlanUseCase _deleteMealPlanUseCase;
   final UpdateWeeklyGroceryWeekStartDayUseCase
   _updateWeeklyGroceryWeekStartDayUseCase;
   final String userId;
@@ -50,6 +52,7 @@ class MealPlanViewModel extends ChangeNotifier {
   String? _weatherErrorMessage;
   String? _preferencesErrorMessage;
   String? _groceryActionErrorMessage;
+  String? _mealActionErrorMessage;
   String _grocerySearchQuery = '';
   String _selectedWeatherCategoryId =
       WeatherCategoryService.categories.first.id;
@@ -74,6 +77,7 @@ class MealPlanViewModel extends ChangeNotifier {
     required GetMealPlanPreferencesUseCase getPreferencesUseCase,
     required SearchMealPlanIngredientsUseCase searchIngredientsUseCase,
     required GetMealPlanInspirationOptionsUseCase getInspirationOptionsUseCase,
+    required DeleteMealPlanUseCase deleteMealPlanUseCase,
     required UpdateWeeklyGroceryWeekStartDayUseCase
     updateWeeklyGroceryWeekStartDayUseCase,
   }) : _getDashboardUseCase = getDashboardUseCase,
@@ -81,6 +85,7 @@ class MealPlanViewModel extends ChangeNotifier {
        _getPreferencesUseCase = getPreferencesUseCase,
        _searchIngredientsUseCase = searchIngredientsUseCase,
        _getInspirationOptionsUseCase = getInspirationOptionsUseCase,
+       _deleteMealPlanUseCase = deleteMealPlanUseCase,
        _updateWeeklyGroceryWeekStartDayUseCase =
            updateWeeklyGroceryWeekStartDayUseCase {
     Future.microtask(loadDashboard);
@@ -97,6 +102,7 @@ class MealPlanViewModel extends ChangeNotifier {
   String? get weatherErrorMessage => _weatherErrorMessage;
   String? get preferencesErrorMessage => _preferencesErrorMessage;
   String? get groceryActionErrorMessage => _groceryActionErrorMessage;
+  String? get mealActionErrorMessage => _mealActionErrorMessage;
   String get grocerySearchQuery => _grocerySearchQuery;
   List<WeatherCategory> get weatherCategories =>
       WeatherCategoryService.categories;
@@ -237,6 +243,34 @@ class MealPlanViewModel extends ChangeNotifier {
     if (_selectedFilterId == filterId) return;
     _selectedFilterId = filterId;
     _notifyIfActive();
+  }
+
+  Future<bool> deleteMealPlan(String mealPlanId) async {
+    final trimmedId = mealPlanId.trim();
+    if (trimmedId.isEmpty) {
+      _mealActionErrorMessage = 'Meal plan is missing.';
+      _notifyIfActive();
+      return false;
+    }
+
+    _mealActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _deleteMealPlanUseCase.execute(
+      userId: userId,
+      mealPlanId: trimmedId,
+    );
+    if (_isDisposed) return false;
+
+    var deleted = false;
+    result.ifRight((_) => deleted = true);
+    result.ifLeft((failure) => _mealActionErrorMessage = failure.message);
+    _notifyIfActive();
+
+    if (deleted) {
+      await loadDashboard();
+    }
+    return deleted;
   }
 
   Future<void> loadDashboard() async {
