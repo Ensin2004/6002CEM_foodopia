@@ -3051,6 +3051,108 @@ class _CompactPopupDropdown extends StatelessWidget {
   }
 }
 
+class _CommentFilterDropdown extends StatelessWidget {
+  final String label;
+  final List<_CompactPopupItem> items;
+  final ValueChanged<String> onSelected;
+
+  const _CommentFilterDropdown({
+    required this.label,
+    required this.items,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      position: PopupMenuPosition.under,
+      constraints: const BoxConstraints(minWidth: 140, maxWidth: 220),
+      onSelected: onSelected,
+      itemBuilder: (context) {
+        return items.map((item) {
+          return PopupMenuItem(value: item.value, child: Text(item.label));
+        }).toList();
+      },
+      child: Container(
+        height: 38,
+        constraints: const BoxConstraints(minWidth: 74, maxWidth: 108),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.titleMedium?.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.keyboard_arrow_down,
+              size: 18,
+              color: AppColors.primary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CommentsEmptyState extends StatelessWidget {
+  const _CommentsEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Center(
+        child: Column(
+          children: [
+            Image.asset(
+              'assets/images/empty_page.png',
+              width: 150,
+              height: 128,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'No comments yet',
+              style: context.text.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Start the conversation below.',
+              textAlign: TextAlign.center,
+              style: context.text.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _RatingStars extends StatelessWidget {
   final double size;
   final double rating;
@@ -3120,19 +3222,43 @@ class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = context.text;
     final comments = widget.viewModel.visibleComments;
 
     return _CommunitySectionCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text('${comments.length} Comments', style: textTheme.titleMedium),
-              const Spacer(),
-              _CompactPopupDropdown(
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${comments.length} Comments',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.headlineSmall?.copyWith(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Join the conversation',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodyLarge?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _CommentFilterDropdown(
                 label: _commentDateLabel(widget.viewModel.commentDateFilter),
                 items: ExploreCommunityDateFilter.values.map((filter) {
                   return _CompactPopupItem(
@@ -3149,24 +3275,23 @@ class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
           if (comments.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text('No comments yet', style: textTheme.bodySmall),
-            )
+            const _CommentsEmptyState()
           else
-            ...comments.map((comment) {
-              return _CommentTile(
-                comment: comment,
-                isSubmitting: widget.isSubmitting,
-                onToggleLike: () => widget.onToggleLike(comment.id),
-                onReply: (content) => widget.onReply(comment.id, content),
-                onToggleReplyLike: widget.onToggleReplyLike,
-                onReplyToReply: widget.onReplyToReply,
-              );
-            }),
-          const SizedBox(height: 14),
+            Column(
+              children: comments.map((comment) {
+                return _CommentTile(
+                  comment: comment,
+                  isSubmitting: widget.isSubmitting,
+                  onToggleLike: () => widget.onToggleLike(comment.id),
+                  onReply: (content) => widget.onReply(comment.id, content),
+                  onToggleReplyLike: widget.onToggleReplyLike,
+                  onReplyToReply: widget.onReplyToReply,
+                );
+              }).toList(),
+            ),
+          const SizedBox(height: 16),
           TextField(
             controller: _commentController,
             minLines: 1,
@@ -3278,139 +3403,57 @@ class _CommentTileState extends State<_CommentTile> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = context.text;
     final comment = widget.comment;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: context.colors.surface,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+          border: Border.all(color: AppColors.border.withValues(alpha: 0.38)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(18, 18, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  _RecipeDetailAvatar(
-                    imagePath: comment.avatarPath,
-                    radius: 24,
-                    imageSize: 48,
-                    iconSize: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            comment.author,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.titleMedium?.copyWith(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          comment.timeAgo,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade400,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      comment.content,
-                      style: textTheme.bodyLarge?.copyWith(
-                        color: AppColors.textPrimary.withValues(alpha: 0.82),
-                        fontWeight: FontWeight.w700,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  _LikeIconButton(
-                    isLiked: comment.isLiked,
-                    onTap: widget.isSubmitting ? null : widget.onToggleLike,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: widget.isSubmitting
-                        ? null
-                        : () => setState(() => _isReplying = !_isReplying),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text('Reply'),
-                  ),
-                  const Spacer(),
-                  _LikeCountLabel(
-                    likes: comment.likes,
-                    onTap: widget.isSubmitting ? null : widget.onToggleLike,
-                  ),
-                ],
+              _CommentBodyRow(
+                avatarPath: comment.avatarPath,
+                author: comment.author,
+                timeAgo: comment.timeAgo,
+                content: comment.content,
+                likes: comment.likes,
+                isLiked: comment.isLiked,
+                titleStyle: context.text.titleMedium,
+                contentStyle: context.text.bodyLarge,
+                onToggleLike: widget.isSubmitting ? null : widget.onToggleLike,
+                onReplyTap: widget.isSubmitting
+                    ? null
+                    : () => setState(() => _isReplying = !_isReplying),
               ),
               if (comment.replies.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16),
-                  child: Column(
-                    children: comment.replies.map((reply) {
-                      return _ReplyTile(
-                        reply: reply,
-                        isSubmitting: widget.isSubmitting,
-                        onToggleLike: widget.onToggleReplyLike,
-                        onReply: widget.onReplyToReply,
-                      );
-                    }).toList(),
-                  ),
+                const SizedBox(height: 18),
+                _RepliesTimeline(
+                  replies: comment.replies,
+                  isSubmitting: widget.isSubmitting,
+                  onToggleLike: widget.onToggleReplyLike,
+                  onReply: widget.onReplyToReply,
                 ),
               ],
               if (_isReplying) ...[
-                const SizedBox(height: 10),
-                TextField(
+                const SizedBox(height: 14),
+                _ReplyInputField(
                   controller: _replyController,
-                  minLines: 1,
-                  maxLines: 3,
                   enabled: !widget.isSubmitting,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _submitReply(),
-                  decoration: InputDecoration(
-                    hintText: 'Write a reply',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    suffixIcon: IconButton(
-                      onPressed: widget.isSubmitting ? null : _submitReply,
-                      icon: const Icon(Icons.send),
-                    ),
-                  ),
+                  onSubmit: _submitReply,
                 ),
               ],
             ],
@@ -3421,57 +3464,271 @@ class _CommentTileState extends State<_CommentTile> {
   }
 }
 
-class _LikeIconButton extends StatelessWidget {
+class _CommentBodyRow extends StatelessWidget {
+  final String avatarPath;
+  final String author;
+  final String timeAgo;
+  final String content;
+  final int likes;
   final bool isLiked;
-  final VoidCallback? onTap;
-  final double iconSize;
+  final TextStyle? titleStyle;
+  final TextStyle? contentStyle;
+  final VoidCallback? onToggleLike;
+  final VoidCallback? onReplyTap;
 
-  const _LikeIconButton({
+  const _CommentBodyRow({
+    required this.avatarPath,
+    required this.author,
+    required this.timeAgo,
+    required this.content,
+    required this.likes,
     required this.isLiked,
-    required this.onTap,
-    this.iconSize = 18,
+    required this.titleStyle,
+    required this.contentStyle,
+    required this.onToggleLike,
+    required this.onReplyTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Icon(
-          isLiked ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
-          size: iconSize,
-          color: isLiked ? context.colors.primary : AppColors.textSecondary,
+    const avatarRadius = 20.0;
+    const avatarSize = 38.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _RecipeDetailAvatar(
+              imagePath: avatarPath,
+              radius: avatarRadius,
+              imageSize: avatarSize,
+              iconSize: avatarRadius,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 7),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 5,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      author,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: titleStyle?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    _DatePill(label: timeAgo),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _HeartLikeButton(
+              likes: likes,
+              isLiked: isLiked,
+              onTap: onToggleLike,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          content,
+          overflow: TextOverflow.visible,
+          style: contentStyle?.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w500,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: onReplyTap,
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            minimumSize: const Size(48, 30),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Text(
+            'Reply',
+            style: context.text.titleMedium?.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DatePill extends StatelessWidget {
+  final String label;
+
+  const _DatePill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 112),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: context.colors.surfaceContainerHighest.withValues(alpha: 0.56),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.text.bodySmall?.copyWith(
+          color: AppColors.textSecondary.withValues(alpha: 0.72),
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 }
 
-class _LikeCountLabel extends StatelessWidget {
+class _HeartLikeButton extends StatelessWidget {
   final int likes;
+  final bool isLiked;
   final VoidCallback? onTap;
 
-  const _LikeCountLabel({required this.likes, required this.onTap});
+  const _HeartLikeButton({
+    required this.likes,
+    required this.isLiked,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final color = isLiked ? AppColors.primary : AppColors.textSecondary;
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Text(
-          '$likes',
-          style: context.text.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w800,
-            height: 1,
-          ),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isLiked ? Icons.favorite : Icons.favorite_border,
+              size: 30,
+              color: color,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$likes',
+              style: context.text.titleMedium?.copyWith(
+                color: AppColors.textPrimary.withValues(alpha: 0.86),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+}
+
+class _RepliesTimeline extends StatelessWidget {
+  final List<ExploreCommentReply> replies;
+  final bool isSubmitting;
+  final ValueChanged<String> onToggleLike;
+  final Future<bool> Function(String replyPath, String content) onReply;
+
+  const _RepliesTimeline({
+    required this.replies,
+    required this.isSubmitting,
+    required this.onToggleLike,
+    required this.onReply,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 10),
+      child: Column(
+        children: replies.asMap().entries.map((entry) {
+          final index = entry.key;
+          final reply = entry.value;
+          return _ReplyBranch(
+            isLast: index == replies.length - 1,
+            child: _ReplyTile(
+              reply: reply,
+              isSubmitting: isSubmitting,
+              onToggleLike: onToggleLike,
+              onReply: onReply,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _ReplyBranch extends StatelessWidget {
+  final Widget child;
+  final bool isLast;
+
+  const _ReplyBranch({required this.child, required this.isLast});
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          CustomPaint(
+            painter: _ReplyBranchPainter(
+              color: AppColors.border.withValues(alpha: 0.8),
+              isLast: isLast,
+            ),
+            child: const SizedBox(width: 15),
+          ),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReplyBranchPainter extends CustomPainter {
+  final Color color;
+  final bool isLast;
+
+  const _ReplyBranchPainter({required this.color, required this.isLast});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 0.8
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    const branchY = 20.0;
+    final x = size.width * 0.45;
+
+    canvas.drawLine(
+      Offset(x, 0),
+      Offset(x, isLast ? branchY : size.height),
+      paint,
+    );
+    canvas.drawLine(Offset(x, branchY), Offset(size.width, branchY), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ReplyBranchPainter oldDelegate) {
+    return color != oldDelegate.color || isLast != oldDelegate.isLast;
   }
 }
 
@@ -3515,137 +3772,99 @@ class _ReplyTileState extends State<_ReplyTile> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = context.text;
     final reply = widget.reply;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              _RecipeDetailAvatar(
-                imagePath: reply.avatarPath,
-                radius: 16,
-                imageSize: 32,
-                iconSize: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        reply.author,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.labelLarge?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      reply.timeAgo,
-                      style: textTheme.labelSmall?.copyWith(
-                        color: Colors.grey.shade400,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          _CommentBodyRow(
+            avatarPath: reply.avatarPath,
+            author: reply.author,
+            timeAgo: reply.timeAgo,
+            content: reply.content,
+            likes: reply.likes,
+            isLiked: reply.isLiked,
+            titleStyle: context.text.titleSmall,
+            contentStyle: context.text.bodyMedium,
+            onToggleLike: widget.isSubmitting
+                ? null
+                : () => widget.onToggleLike(reply.documentPath),
+            onReplyTap: widget.isSubmitting
+                ? null
+                : () => setState(() => _isReplying = !_isReplying),
           ),
-          const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  reply.content,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textPrimary.withValues(alpha: 0.82),
-                    fontWeight: FontWeight.w700,
-                    height: 1.32,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              _LikeIconButton(
-                isLiked: reply.isLiked,
-                iconSize: 17,
-                onTap: widget.isSubmitting
-                    ? null
-                    : () => widget.onToggleLike(reply.documentPath),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              TextButton(
-                onPressed: widget.isSubmitting
-                    ? null
-                    : () => setState(() => _isReplying = !_isReplying),
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text('Reply'),
-              ),
-              const Spacer(),
-              _LikeCountLabel(
-                likes: reply.likes,
-                onTap: widget.isSubmitting
-                    ? null
-                    : () => widget.onToggleLike(reply.documentPath),
-              ),
-            ],
-          ),
-          if (reply.replies.isNotEmpty)
+          if (reply.replies.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Padding(
-              padding: const EdgeInsets.only(left: 18, top: 4),
-              child: Column(
-                children: reply.replies.map((nestedReply) {
-                  return _ReplyTile(
-                    reply: nestedReply,
-                    isSubmitting: widget.isSubmitting,
-                    onToggleLike: widget.onToggleLike,
-                    onReply: widget.onReply,
-                  );
-                }).toList(),
-              ),
-            ),
-          if (_isReplying) ...[
-            const SizedBox(height: 6),
-            TextField(
-              controller: _replyController,
-              minLines: 1,
-              maxLines: 3,
-              enabled: !widget.isSubmitting,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _submitReply(),
-              decoration: InputDecoration(
-                hintText: 'Write a reply',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                suffixIcon: IconButton(
-                  onPressed: widget.isSubmitting ? null : _submitReply,
-                  icon: const Icon(Icons.send),
-                ),
+              padding: const EdgeInsets.only(left: 8),
+              child: _RepliesTimeline(
+                replies: reply.replies,
+                isSubmitting: widget.isSubmitting,
+                onToggleLike: widget.onToggleLike,
+                onReply: widget.onReply,
               ),
             ),
           ],
+          if (_isReplying) ...[
+            const SizedBox(height: 8),
+            _ReplyInputField(
+              controller: _replyController,
+              enabled: !widget.isSubmitting,
+              onSubmit: _submitReply,
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _ReplyInputField extends StatelessWidget {
+  final TextEditingController controller;
+  final bool enabled;
+  final VoidCallback onSubmit;
+
+  const _ReplyInputField({
+    required this.controller,
+    required this.enabled,
+    required this.onSubmit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      minLines: 1,
+      maxLines: 3,
+      enabled: enabled,
+      textInputAction: TextInputAction.send,
+      onSubmitted: (_) => onSubmit(),
+      decoration: InputDecoration(
+        hintText: 'Write a reply',
+        filled: true,
+        fillColor: context.colors.surface,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: context.colors.primary, width: 1.4),
+        ),
+        suffixIcon: IconButton(
+          onPressed: enabled ? onSubmit : null,
+          icon: const Icon(Icons.send),
+        ),
       ),
     );
   }
