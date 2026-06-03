@@ -17,7 +17,9 @@ import '../widgets/statistics_page_helpers.dart';
 import '../widgets/statistics_line_chart.dart';
 
 class CaloriesPostedPage extends StatelessWidget {
-  const CaloriesPostedPage({super.key});
+  final bool showInsight;
+
+  const CaloriesPostedPage({super.key, this.showInsight = false});
 
   @override
   Widget build(BuildContext context) {
@@ -25,13 +27,15 @@ class CaloriesPostedPage extends StatelessWidget {
       create: (_) => CaloriesPostedViewModel(
         getStatisticsUseCase: sl<GetCaloriesPostedStatisticsUseCase>(),
       ),
-      child: const _CaloriesPostedView(),
+      child: _CaloriesPostedView(showInsight: showInsight),
     );
   }
 }
 
 class _CaloriesPostedView extends StatefulWidget {
-  const _CaloriesPostedView();
+  final bool showInsight;
+
+  const _CaloriesPostedView({required this.showInsight});
 
   @override
   State<_CaloriesPostedView> createState() => _CaloriesPostedViewState();
@@ -110,6 +114,12 @@ class _CaloriesPostedViewState extends State<_CaloriesPostedView> {
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
+            if (widget.showInsight) ...[
+              _PostedInsightNote(
+                prediction: _predictionForSelectedMetric(statistics, viewModel),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
             _PostedMetricPager(
               statistics: statistics,
               viewModel: viewModel,
@@ -133,7 +143,7 @@ class _CaloriesPostedViewState extends State<_CaloriesPostedView> {
       case 3:
         return 'Average Fat';
       default:
-        return 'Average Nutrient';
+        return 'Average Calories';
     }
   }
 
@@ -151,6 +161,148 @@ class _CaloriesPostedViewState extends State<_CaloriesPostedView> {
       default:
         return '${viewModel.convertCalories(statistics.averageCaloriesKcal)} ${viewModel.unitLabel}';
     }
+  }
+
+  _PostedPrediction _predictionForSelectedMetric(
+    CaloriesPostedStatistics statistics,
+    CaloriesPostedViewModel viewModel,
+  ) {
+    final metric = _metricForPrediction(viewModel);
+    final monthly = <DateTime, List<CaloriesPostedDay>>{};
+    for (final day in statistics.dailyPosts) {
+      final month = DateTime(day.date.year, day.date.month);
+      monthly.putIfAbsent(month, () => <CaloriesPostedDay>[]).add(day);
+    }
+    final values = monthly.values.map((days) {
+      final total = days.fold<int>(0, (sum, day) => sum + metric.value(day));
+      return days.isEmpty ? 0 : (total / days.length).round();
+    }).toList();
+
+    return _PostedPrediction(
+      title: metric.title,
+      value: _predictNext(values),
+      unit: metric.unit,
+      confidence: statistics.totalPost < 7
+          ? 'Low confidence'
+          : statistics.totalPost < 20
+          ? 'Medium confidence'
+          : 'High confidence',
+    );
+  }
+
+  _PostedPredictionMetric _metricForPrediction(
+    CaloriesPostedViewModel viewModel,
+  ) {
+    switch (_selectedChart) {
+      case 1:
+        return _PostedPredictionMetric(
+          title: 'Posted carbohydrate',
+          unit: 'g',
+          value: (day) => day.totalCarbohydrateGram,
+        );
+      case 2:
+        return _PostedPredictionMetric(
+          title: 'Posted protein',
+          unit: 'g',
+          value: (day) => day.totalProteinGram,
+        );
+      case 3:
+        return _PostedPredictionMetric(
+          title: 'Posted fat',
+          unit: 'g',
+          value: (day) => day.totalFatGram,
+        );
+      default:
+        return _PostedPredictionMetric(
+          title: 'Posted calories',
+          unit: viewModel.unitLabel,
+          value: (day) => viewModel.convertCalories(day.totalCaloriesKcal),
+        );
+    }
+  }
+
+  int _predictNext(List<int> values) {
+    if (values.isEmpty) return 0;
+    if (values.length == 1) return values.first;
+    var totalChange = 0;
+    for (var index = 1; index < values.length; index++) {
+      totalChange += values[index] - values[index - 1];
+    }
+    final averageChange = totalChange / (values.length - 1);
+    return (values.last + averageChange).round().clamp(0, 999999).toInt();
+  }
+}
+
+class _PostedPredictionMetric {
+  final String title;
+  final String unit;
+  final int Function(CaloriesPostedDay day) value;
+
+  const _PostedPredictionMetric({
+    required this.title,
+    required this.unit,
+    required this.value,
+  });
+}
+
+class _PostedPrediction {
+  final String title;
+  final int value;
+  final String unit;
+  final String confidence;
+
+  const _PostedPrediction({
+    required this.title,
+    required this.value,
+    required this.unit,
+    required this.confidence,
+  });
+}
+
+class _PostedInsightNote extends StatelessWidget {
+  final _PostedPrediction prediction;
+
+  const _PostedInsightNote({required this.prediction});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF8F0),
+        border: Border.all(color: const Color(0xFFC8EBD7)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const _SoftIcon(icon: Icons.trending_up),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              '${prediction.title} is estimated at ${prediction.value} ${prediction.unit} next month.',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall?.copyWith(
+                color: Colors.black,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            prediction.confidence,
+            maxLines: 2,
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.bodySmall?.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -187,8 +339,8 @@ class _PostedMetricPager extends StatelessWidget {
 
   List<_PostedChartMetric> get _metrics => [
     _PostedChartMetric(
-      title: 'Nutrient Posted Vs Day',
-      breakdownTitle: 'Nutrient Breakdown',
+      title: 'Calories Posted Vs Day',
+      breakdownTitle: 'Calories Breakdown',
       unit: viewModel.unitLabel,
       valueForDay: (day) => viewModel.convertCalories(day.totalCaloriesKcal),
       valueForPost: (post) => viewModel.convertCalories(post.caloriesKcal),
@@ -291,7 +443,7 @@ class _MetricTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['Nutrient', 'Carbohydrate', 'Protein', 'Fat'];
+    const labels = ['Calories', 'Carbohydrate', 'Protein', 'Fat'];
     return AppPillSegmentedControl(
       labels: labels,
       selectedIndex: selectedIndex,

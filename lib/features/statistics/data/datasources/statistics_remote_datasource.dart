@@ -483,6 +483,46 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  Future<AdminUserUsageStatistics> getAdminUsageForecast({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final statistics = await getAdminUserUsage(
+      startDate: startDate,
+      endDate: endDate,
+    );
+    final predictedMonth = _nextMonthForForecast(statistics.monthlyUsers);
+    final predictedUsers = _predictedNextMonthUsers(statistics.monthlyUsers);
+    final forecastMonths = [
+      ...statistics.monthlyUsers,
+      AdminMonthlyUserStatistic(
+        month: predictedMonth,
+        newUsers: predictedUsers,
+        isPrediction: true,
+      ),
+    ];
+
+    return AdminUserUsageStatistics(
+      dateRange: statistics.dateRange,
+      totalUsers: statistics.totalUsers,
+      topMonth: '$predictedUsers next month',
+      monthlyUsers: forecastMonths,
+    );
+  }
+
+  Future<CaloriesIntakeStatistics> getAdminNutrientInsight({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final range = _resolveAdminRange(startDate, endDate);
+    final plannedRecipes = await _getAllPlannedRecipeNutrition(range);
+
+    return _buildCaloriesIntakeStatistics(
+      recipes: plannedRecipes,
+      range: range,
+    );
+  }
+
   Future<AdminHubRatingStatistics> getAdminHubRating({
     DateTime? startDate,
     DateTime? endDate,
@@ -1831,6 +1871,26 @@ class StatisticsRemoteDataSource {
     return items..sort((left, right) => left.date.compareTo(right.date));
   }
 
+  Future<List<_RecipeNutritionStat>> _getAllPlannedRecipeNutrition(
+    ({DateTime start, DateTime end}) range,
+  ) async {
+    final plans = await _getAllMealPlans(range);
+    final items = <_RecipeNutritionStat>[];
+    for (final plan in plans) {
+      final recipeRef = firestore.collection('recipes').doc(plan.recipeId);
+      items.add(
+        _RecipeNutritionStat(
+          id: plan.recipeId,
+          name: plan.recipeName,
+          imageUrl: plan.imageUrl,
+          date: plan.date,
+          nutrition: await _recipeNutrition(recipeRef),
+        ),
+      );
+    }
+    return items..sort((left, right) => left.date.compareTo(right.date));
+  }
+
   Future<List<_RecipeNutritionStat>> _getUserPostedRecipeNutrition(
     String uid,
     ({DateTime start, DateTime end}) range,
@@ -2707,6 +2767,30 @@ class StatisticsRemoteDataSource {
 
   String _monthYearLabel(DateTime month) {
     return DateFormat('MMM yyyy').format(month);
+  }
+
+  DateTime _nextMonthForForecast(List<AdminMonthlyUserStatistic> months) {
+    if (months.isEmpty) {
+      final now = DateTime.now();
+      return DateTime(now.year, now.month + 1);
+    }
+    final lastMonth = months.last.month;
+    return DateTime(lastMonth.year, lastMonth.month + 1);
+  }
+
+  int _predictedNextMonthUsers(List<AdminMonthlyUserStatistic> months) {
+    if (months.isEmpty) return 0;
+    if (months.length == 1) return months.first.newUsers;
+
+    var totalChange = 0;
+    for (var index = 1; index < months.length; index++) {
+      totalChange += months[index].newUsers - months[index - 1].newUsers;
+    }
+    final averageChange = totalChange / (months.length - 1);
+    return (months.last.newUsers + averageChange)
+        .round()
+        .clamp(0, 999999)
+        .toInt();
   }
 
   String _formatGroceryListDuration(Map<String, dynamic> data) {

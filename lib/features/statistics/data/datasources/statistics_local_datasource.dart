@@ -91,6 +91,7 @@ class StatisticsLocalDataSource {
         StatisticsMenuItem(title: 'Time Taken For Cooking'),
         StatisticsMenuItem(title: 'Grocery List'),
         StatisticsMenuItem(title: 'Nutrient Intake'),
+        StatisticsMenuItem(title: 'Nutrient Insight'),
         StatisticsMenuItem(title: 'Meal Planned Time'),
         StatisticsMenuItem(title: 'Method For Creating Plan'),
         StatisticsMenuItem(title: 'Difficulty'),
@@ -98,6 +99,7 @@ class StatisticsLocalDataSource {
       communityMenuItems: [
         StatisticsMenuItem(title: 'Post Analytic'),
         StatisticsMenuItem(title: 'Most Nutrient Posted Meal'),
+        StatisticsMenuItem(title: 'Posted Nutrient Insight'),
         StatisticsMenuItem(title: 'Recipe Performance'),
         StatisticsMenuItem(title: 'Most Cooked Recipe By Others'),
         StatisticsMenuItem(title: 'Difficulty Posted'),
@@ -193,10 +195,12 @@ class StatisticsLocalDataSource {
         StatisticsMenuItem(title: 'Planned Meal Analytic'),
         StatisticsMenuItem(title: 'Post Analytic'),
         StatisticsMenuItem(title: 'Dietary Preference'),
+        StatisticsMenuItem(title: 'Nutrient Insight'),
       ],
       communityMenuItems: [
         StatisticsMenuItem(title: 'Gender'),
         StatisticsMenuItem(title: 'User Usage'),
+        StatisticsMenuItem(title: 'Usage Forecast'),
         StatisticsMenuItem(title: 'Hub Rating'),
       ],
     );

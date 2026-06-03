@@ -769,6 +769,11 @@ class _StatisticsMenu extends StatelessWidget {
       return;
     }
 
+    if (item.title == 'Nutrient Insight') {
+      context.push(AppRouter.nutrientIntakeInsight);
+      return;
+    }
+
     if (item.title == 'Nutrient Intake' || item.title == 'Calories Intake') {
       context.push(AppRouter.caloriesIntake);
       return;
@@ -786,6 +791,11 @@ class _StatisticsMenu extends StatelessWidget {
 
     if (item.title == 'Post Analytic') {
       context.push(AppRouter.postAnalytic);
+      return;
+    }
+
+    if (item.title == 'Posted Nutrient Insight') {
+      context.push(AppRouter.postedNutrientInsight);
       return;
     }
 

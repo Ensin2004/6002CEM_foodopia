@@ -482,14 +482,13 @@ class AddRecipeRemoteDataSource {
         .doc(collectionId)
         .collection('items');
 
-    final existing = await collection
-        .where('name', isEqualTo: name)
-        .where('isActive', isEqualTo: true)
-        .limit(1)
-        .get();
-
-    if (existing.docs.isNotEmpty) {
-      return existing.docs.first.id;
+    final existing = await collection.where('isActive', isEqualTo: true).get();
+    final normalizedName = _normalizeCategoryName(name);
+    for (final doc in existing.docs) {
+      final existingName = doc.data()['name']?.toString() ?? '';
+      if (_normalizeCategoryName(existingName) == normalizedName) {
+        return doc.id;
+      }
     }
 
     final doc = await collection.add({
@@ -687,6 +686,12 @@ class AddRecipeRemoteDataSource {
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
+    await _notifyAdminsOfNewCategories(
+      recipeId: recipeId,
+      recipeData: data,
+      recipeOwnerUid: recipeOwnerUid,
+    );
+
     if (data['visibility']?.toString() == 'public' &&
         !_hasSentPublicNotification(data)) {
       await _notifyFollowersOfNewRecipe(
@@ -765,6 +770,175 @@ class AddRecipeRemoteDataSource {
       }
     } on FirebaseException {
       // Best-effort notification fan-out.
+    }
+  }
+
+  Future<void> _notifyAdminsOfNewCategories({
+    required String recipeId,
+    required Map<String, dynamic> recipeData,
+    required String recipeOwnerUid,
+  }) async {
+    try {
+      final customCategoryNames = await _resolveCustomItemNames(
+        collectionId: 'custom_categories',
+        customIds: _stringList(recipeData['customCategoryIds']),
+      );
+      if (customCategoryNames.isEmpty) return;
+
+      final alreadySent = _stringList(
+        recipeData['adminCategoryNotificationKeys'],
+      ).toSet();
+      final existingCategoryNames = await _existingCategoryNamesForOtherRecipes(
+        recipeId,
+      );
+      final newCategories = <String, String>{};
+
+      for (final categoryName in customCategoryNames) {
+        final normalizedName = _normalizeCategoryName(categoryName);
+        if (normalizedName.isEmpty ||
+            alreadySent.contains(normalizedName) ||
+            existingCategoryNames.contains(normalizedName)) {
+          continue;
+        }
+        newCategories[normalizedName] = categoryName.trim();
+      }
+
+      if (newCategories.isEmpty) return;
+
+      final creatorName = await _currentUserName(recipeOwnerUid);
+      for (final entry in newCategories.entries) {
+        await _notifyAdminsOfNewCategory(
+          categoryName: entry.value,
+          recipeId: recipeId,
+          senderUid: recipeOwnerUid,
+          senderName: creatorName,
+        );
+      }
+
+      await firestore.collection('recipes').doc(recipeId).set({
+        'adminCategoryNotificationKeys': FieldValue.arrayUnion(
+          newCategories.keys.toList(growable: false),
+        ),
+      }, SetOptions(merge: true));
+    } on FirebaseException {
+      // Admin category notifications are best-effort.
+    }
+  }
+
+  Future<Set<String>> _existingCategoryNamesForOtherRecipes(
+    String recipeId,
+  ) async {
+    final names = <String>{};
+    final configNames = await _recipeCategoryNamesById();
+    names.addAll(configNames.values.map(_normalizeCategoryName));
+
+    final recipeSnapshot = await firestore.collection('recipes').get();
+    final customCategoryIds = <String>{};
+
+    for (final doc in recipeSnapshot.docs) {
+      if (doc.id == recipeId) continue;
+      final data = doc.data();
+      for (final categoryId in _stringList(data['categoryIds'])) {
+        final categoryName = configNames[categoryId] ?? categoryId;
+        names.add(_normalizeCategoryName(categoryName));
+      }
+      customCategoryIds.addAll(_stringList(data['customCategoryIds']));
+    }
+
+    final customNames = await _resolveCustomItemNames(
+      collectionId: 'custom_categories',
+      customIds: customCategoryIds.toList(growable: false),
+    );
+    names.addAll(customNames.map(_normalizeCategoryName));
+    names.remove('');
+    return names;
+  }
+
+  Future<Map<String, String>> _recipeCategoryNamesById() async {
+    final snapshot = await firestore
+        .collection('app_config')
+        .doc('recipe_categories')
+        .collection('items')
+        .get();
+
+    return {
+      for (final doc in snapshot.docs)
+        if ((doc.data()['name']?.toString().trim() ?? '').isNotEmpty)
+          doc.id: doc.data()['name']!.toString().trim(),
+    };
+  }
+
+  Future<List<String>> _resolveCustomItemNames({
+    required String collectionId,
+    required List<String> customIds,
+  }) async {
+    final names = <String>[];
+    for (final customId in customIds) {
+      final trimmedId = customId.trim();
+      if (trimmedId.isEmpty) continue;
+      final doc = await firestore
+          .collection('custom')
+          .doc(collectionId)
+          .collection('items')
+          .doc(trimmedId)
+          .get();
+      final name = doc.data()?['name']?.toString().trim() ?? '';
+      if (name.isNotEmpty) names.add(name);
+    }
+    return names;
+  }
+
+  Future<void> _notifyAdminsOfNewCategory({
+    required String categoryName,
+    required String recipeId,
+    required String senderUid,
+    required String senderName,
+  }) async {
+    final admins = await firestore
+        .collection('users')
+        .where('role', isEqualTo: 'admin')
+        .get();
+    final title = 'New Category';
+    final message = '$senderName added new category $categoryName.';
+
+    for (final admin in admins.docs) {
+      final adminUid = admin.id;
+      if (adminUid.isEmpty || adminUid == senderUid) continue;
+
+      final notificationRef = await firestore
+          .collection('users')
+          .doc(adminUid)
+          .collection('notifications')
+          .add({
+            'type': 'newCategory',
+            'title': title,
+            'message': message,
+            'isRead': false,
+            'senderUid': senderUid,
+            'recipeId': recipeId,
+            'categoryName': categoryName,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+      if (!await _isNotificationEnabled(
+        receiverUid: adminUid,
+        preferenceId: 'new_category_notification',
+      )) {
+        continue;
+      }
+
+      await _sendPushToUser(
+        receiverUid: adminUid,
+        title: title,
+        message: message,
+        data: {
+          'type': 'newCategory',
+          'notificationId': notificationRef.id,
+          'senderUid': senderUid,
+          'recipeId': recipeId,
+          'categoryName': categoryName,
+        },
+      );
     }
   }
 
@@ -981,6 +1155,10 @@ class AddRecipeRemoteDataSource {
   List<String> _stringList(dynamic value) {
     if (value is! List) return const [];
     return value.map((item) => item.toString()).toList();
+  }
+
+  String _normalizeCategoryName(String value) {
+    return value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
   }
 
   int _intValue(dynamic value) {

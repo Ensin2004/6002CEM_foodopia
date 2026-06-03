@@ -107,6 +107,16 @@ abstract class StatisticsRepository {
     DateTime? endDate,
   });
 
+  Future<Either<Failure, AdminUserUsageStatistics>> getAdminUsageForecast({
+    DateTime? startDate,
+    DateTime? endDate,
+  });
+
+  Future<Either<Failure, CaloriesIntakeStatistics>> getAdminNutrientInsight({
+    DateTime? startDate,
+    DateTime? endDate,
+  });
+
   Future<Either<Failure, AdminHubRatingStatistics>> getAdminHubRating({
     DateTime? startDate,
     DateTime? endDate,

@@ -194,10 +194,12 @@ class AdminHubRatingStatistics {
 class AdminMonthlyUserStatistic {
   final DateTime month;
   final int newUsers;
+  final bool isPrediction;
 
   const AdminMonthlyUserStatistic({
     required this.month,
     required this.newUsers,
+    this.isPrediction = false,
   });
 }
 
