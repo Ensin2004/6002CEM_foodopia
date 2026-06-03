@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/extensions/either_extensions.dart';
 import '../../../library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/usecases/get_meal_categories_usecase.dart';
 import '../../../meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../../domain/usecases/add_recipe_comment_usecase.dart';
@@ -43,9 +44,11 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   final UpdateRecipeVisibilityUseCase _updateRecipeVisibilityUseCase;
   final ToggleLibraryRecipeFavouriteUseCase _toggleFavouriteUseCase;
   final SaveRecipeMealPlanUseCase? _saveRecipeMealPlanUseCase;
+  final GetMealCategoriesUseCase? _getMealCategoriesUseCase;
   final String recipeId;
 
   ExploreRecipe? _recipe;
+  List<AddMealCategoryOption> _mealCategories = const [];
   StreamSubscription<ExploreRecipe>? _recipeSubscription;
   ExploreRecipeDetailTab _selectedTab = ExploreRecipeDetailTab.recipe;
   ExploreRecipeMethodTab _selectedMethodTab =
@@ -59,9 +62,15 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   bool _isSubmittingCommunityAction = false;
   bool _isUpdatingVisibility = false;
   bool _isSavingMealPlan = false;
+  bool _isLoadingMealCategories = false;
   bool _isDisposed = false;
+  final Map<String, bool> _pendingCommentLikeStates = {};
+  final Map<String, bool> _pendingReplyLikeStates = {};
+  final Set<String> _syncingCommentLikes = {};
+  final Set<String> _syncingReplyLikes = {};
   String? _errorMessage;
   String? _communityActionErrorMessage;
+  String? _mealCategoryErrorMessage;
 
   ExploreRecipeDetailViewModel({
     required this.recipeId,
@@ -78,6 +87,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     required UpdateRecipeVisibilityUseCase updateRecipeVisibilityUseCase,
     required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
     SaveRecipeMealPlanUseCase? saveRecipeMealPlanUseCase,
+    GetMealCategoriesUseCase? getMealCategoriesUseCase,
   }) : _getRecipeDetailUseCase = getRecipeDetailUseCase,
        _submitRecipeRatingUseCase = submitRecipeRatingUseCase,
        _addRecipeCommentUseCase = addRecipeCommentUseCase,
@@ -90,7 +100,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
        _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
        _updateRecipeVisibilityUseCase = updateRecipeVisibilityUseCase,
        _toggleFavouriteUseCase = toggleFavouriteUseCase,
-       _saveRecipeMealPlanUseCase = saveRecipeMealPlanUseCase {
+       _saveRecipeMealPlanUseCase = saveRecipeMealPlanUseCase,
+       _getMealCategoriesUseCase = getMealCategoriesUseCase {
     Future.microtask(_openRecipe);
     _watchRecipeDetail();
   }
@@ -106,8 +117,11 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   bool get isSubmittingCommunityAction => _isSubmittingCommunityAction;
   bool get isUpdatingVisibility => _isUpdatingVisibility;
   bool get isSavingMealPlan => _isSavingMealPlan;
+  bool get isLoadingMealCategories => _isLoadingMealCategories;
+  List<AddMealCategoryOption> get mealCategories => _mealCategories;
   String? get errorMessage => _errorMessage;
   String? get communityActionErrorMessage => _communityActionErrorMessage;
+  String? get mealCategoryErrorMessage => _mealCategoryErrorMessage;
 
   List<ExploreReview> get visibleReviews {
     final source = _recipe?.community.reviews ?? const <ExploreReview>[];
@@ -160,7 +174,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
         .execute(recipeId)
         .listen(
           (recipe) {
-            _recipe = recipe;
+            _resolvePendingLikeStates(recipe);
+            _recipe = _applyPendingLikeStates(recipe);
             _isLoading = false;
             _errorMessage = null;
             _notifyIfActive();
@@ -182,7 +197,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     if (_isDisposed) return;
 
     result.ifRight((recipe) {
-      _recipe = recipe;
+      _resolvePendingLikeStates(recipe);
+      _recipe = _applyPendingLikeStates(recipe);
     });
     result.ifLeft((failure) {
       _errorMessage = failure.message;
@@ -294,54 +310,104 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   }
 
   Future<bool> toggleCommentLike(String commentId) async {
-    final previousRecipe = _recipe;
-    _applyOptimisticCommentLike(commentId);
+    final recipe = _recipe;
+    if (recipe == null) return false;
+
+    final comment = _findComment(recipe.community.comments, commentId);
+    if (comment == null) return false;
+
+    final nextLiked = !comment.isLiked;
+    _pendingCommentLikeStates[commentId] = nextLiked;
+    _applyOptimisticCommentLike(commentId, isLiked: nextLiked);
     _communityActionErrorMessage = null;
     _notifyIfActive();
 
-    final result = await _toggleRecipeCommentLikeUseCase.execute(
-      recipeId: recipeId,
-      commentId: commentId,
-    );
-    if (_isDisposed) return false;
-
-    final success = result.isRight();
-    result.ifLeft((failure) {
-      _communityActionErrorMessage = failure.message;
-    });
-    if (success) {
-      await loadRecipe();
-    } else {
-      _recipe = previousRecipe;
+    if (!_syncingCommentLikes.contains(commentId)) {
+      unawaited(_syncCommentLike(commentId));
     }
 
-    _notifyIfActive();
-    return success;
+    return true;
   }
 
   Future<bool> toggleReplyLike(String replyPath) async {
-    final previousRecipe = _recipe;
-    _applyOptimisticReplyLike(replyPath);
+    final recipe = _recipe;
+    if (recipe == null) return false;
+
+    final reply = _findReply(recipe.community.comments, replyPath);
+    if (reply == null) return false;
+
+    final nextLiked = !reply.isLiked;
+    _pendingReplyLikeStates[replyPath] = nextLiked;
+    _applyOptimisticReplyLike(replyPath, isLiked: nextLiked);
     _communityActionErrorMessage = null;
     _notifyIfActive();
 
-    final result = await _toggleRecipeReplyLikeUseCase.execute(
-      replyPath: replyPath,
-    );
-    if (_isDisposed) return false;
-
-    final success = result.isRight();
-    result.ifLeft((failure) {
-      _communityActionErrorMessage = failure.message;
-    });
-    if (success) {
-      await loadRecipe();
-    } else {
-      _recipe = previousRecipe;
+    if (!_syncingReplyLikes.contains(replyPath)) {
+      unawaited(_syncReplyLike(replyPath));
     }
 
+    return true;
+  }
+
+  Future<void> _syncCommentLike(String commentId) async {
+    _syncingCommentLikes.add(commentId);
+
+    while (!_isDisposed && _pendingCommentLikeStates.containsKey(commentId)) {
+      final requestedState = _pendingCommentLikeStates[commentId];
+      final result = await _toggleRecipeCommentLikeUseCase.execute(
+        recipeId: recipeId,
+        commentId: commentId,
+      );
+      if (_isDisposed) break;
+
+      final success = result.isRight();
+      result.ifLeft((failure) {
+        _communityActionErrorMessage = failure.message;
+      });
+
+      if (!success) {
+        _pendingCommentLikeStates.remove(commentId);
+        await loadRecipe();
+        break;
+      }
+
+      if (_pendingCommentLikeStates[commentId] == requestedState) {
+        _pendingCommentLikeStates.remove(commentId);
+      }
+    }
+
+    _syncingCommentLikes.remove(commentId);
     _notifyIfActive();
-    return success;
+  }
+
+  Future<void> _syncReplyLike(String replyPath) async {
+    _syncingReplyLikes.add(replyPath);
+
+    while (!_isDisposed && _pendingReplyLikeStates.containsKey(replyPath)) {
+      final requestedState = _pendingReplyLikeStates[replyPath];
+      final result = await _toggleRecipeReplyLikeUseCase.execute(
+        replyPath: replyPath,
+      );
+      if (_isDisposed) break;
+
+      final success = result.isRight();
+      result.ifLeft((failure) {
+        _communityActionErrorMessage = failure.message;
+      });
+
+      if (!success) {
+        _pendingReplyLikeStates.remove(replyPath);
+        await loadRecipe();
+        break;
+      }
+
+      if (_pendingReplyLikeStates[replyPath] == requestedState) {
+        _pendingReplyLikeStates.remove(replyPath);
+      }
+    }
+
+    _syncingReplyLikes.remove(replyPath);
+    _notifyIfActive();
   }
 
   Future<bool> addCommentReply({
@@ -499,6 +565,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     required DateTime date,
     required AddMealCategoryOption mealCategory,
     required String source,
+    required int servingCount,
   }) async {
     final recipe = _recipe;
     final useCase = _saveRecipeMealPlanUseCase;
@@ -517,7 +584,9 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
         title: recipe.title,
         durationLabel: recipe.totalTime,
         difficultyLabel: recipe.difficulty,
-        servingLabel: '1 serving',
+        servingLabel: servingCount == 1
+            ? '1 serving'
+            : '$servingCount servings',
         imagePath: recipe.imagePath,
         description: recipe.description,
         reasons: const [],
@@ -525,6 +594,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
         categoryName: recipe.category,
       ),
       source: source,
+      servingCount: servingCount,
     );
     if (_isDisposed) return false;
 
@@ -537,11 +607,86 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     return success;
   }
 
+  Future<bool> loadMealCategories() async {
+    if (_mealCategories.isNotEmpty) return true;
+    final useCase = _getMealCategoriesUseCase;
+    if (useCase == null || _isLoadingMealCategories) {
+      return _mealCategories.isNotEmpty;
+    }
+
+    _isLoadingMealCategories = true;
+    _mealCategoryErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await useCase.execute();
+    if (_isDisposed) return false;
+
+    result.ifRight((categories) {
+      _mealCategories = categories.isEmpty
+          ? RecipeDetailMealPlanDefaults.categories
+          : categories;
+    });
+    result.ifLeft((failure) {
+      _mealCategoryErrorMessage = failure.message;
+      _mealCategories = RecipeDetailMealPlanDefaults.categories;
+    });
+
+    _isLoadingMealCategories = false;
+    _notifyIfActive();
+    return _mealCategories.isNotEmpty;
+  }
+
+  Future<RecipeDetailMealPlanSaveResult> saveToMealPlanDates({
+    required String userId,
+    required List<DateTime> dates,
+    required List<AddMealCategoryOption> mealCategories,
+    required String source,
+    required int servingCount,
+  }) async {
+    var savedCount = 0;
+    if (dates.isEmpty) {
+      return const RecipeDetailMealPlanSaveResult(
+        savedCount: 0,
+        errorMessage: 'Select at least one date.',
+      );
+    }
+    if (mealCategories.isEmpty) {
+      return const RecipeDetailMealPlanSaveResult(
+        savedCount: 0,
+        errorMessage: 'Select at least one meal type.',
+      );
+    }
+
+    for (final mealCategory in mealCategories) {
+      for (final date in dates) {
+        final success = await saveToMealPlan(
+          userId: userId,
+          date: date,
+          mealCategory: mealCategory,
+          source: source,
+          servingCount: servingCount,
+        );
+        if (!success) {
+          return RecipeDetailMealPlanSaveResult(
+            savedCount: savedCount,
+            errorMessage:
+                _communityActionErrorMessage ?? 'Unable to add meal plan.',
+          );
+        }
+        savedCount++;
+      }
+    }
+
+    return RecipeDetailMealPlanSaveResult(savedCount: savedCount);
+  }
+
   void _applyOptimisticRating(double rating) {
     final recipe = _recipe;
     if (recipe == null) return;
 
-    final nextCount = recipe.ratingCount + 1;
+    final nextCount = recipe.hasRatedByCurrentUser
+        ? recipe.ratingCount
+        : recipe.ratingCount + 1;
     final nextAverage =
         ((recipe.rating * recipe.ratingCount) + rating) / nextCount;
     final review = ExploreReview(
@@ -557,6 +702,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
       recipe,
       rating: nextAverage,
       ratingCount: nextCount,
+      hasRatedByCurrentUser: true,
       community: _copyCommunity(
         recipe.community,
         ratingBreakdown: _ratingBreakdown(reviews),
@@ -590,17 +736,20 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     );
   }
 
-  void _applyOptimisticCommentLike(String commentId) {
+  void _applyOptimisticCommentLike(String commentId, {required bool isLiked}) {
     final recipe = _recipe;
     if (recipe == null) return;
 
     final comments = recipe.community.comments.map((comment) {
       if (comment.id != commentId) return comment;
-      final nextLiked = !comment.isLiked;
       return _copyComment(
         comment,
-        isLiked: nextLiked,
-        likes: (comment.likes + (nextLiked ? 1 : -1)).clamp(0, 1 << 31).toInt(),
+        isLiked: isLiked,
+        likes: _adjustLikeCount(
+          likes: comment.likes,
+          wasLiked: comment.isLiked,
+          isLiked: isLiked,
+        ),
       );
     }).toList();
 
@@ -610,14 +759,14 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     );
   }
 
-  void _applyOptimisticReplyLike(String replyPath) {
+  void _applyOptimisticReplyLike(String replyPath, {required bool isLiked}) {
     final recipe = _recipe;
     if (recipe == null) return;
 
     final comments = recipe.community.comments.map((comment) {
       return _copyComment(
         comment,
-        replies: _updateReplyLikes(comment.replies, replyPath),
+        replies: _updateReplyLikes(comment.replies, replyPath, isLiked),
       );
     }).toList();
 
@@ -673,20 +822,135 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   List<ExploreCommentReply> _updateReplyLikes(
     List<ExploreCommentReply> replies,
     String replyPath,
+    bool isLiked,
   ) {
     return replies.map((reply) {
-      final childReplies = _updateReplyLikes(reply.replies, replyPath);
+      final childReplies = _updateReplyLikes(reply.replies, replyPath, isLiked);
       if (reply.documentPath != replyPath) {
         return _copyReply(reply, replies: childReplies);
       }
-      final nextLiked = !reply.isLiked;
       return _copyReply(
         reply,
         replies: childReplies,
-        isLiked: nextLiked,
-        likes: (reply.likes + (nextLiked ? 1 : -1)).clamp(0, 1 << 31).toInt(),
+        isLiked: isLiked,
+        likes: _adjustLikeCount(
+          likes: reply.likes,
+          wasLiked: reply.isLiked,
+          isLiked: isLiked,
+        ),
       );
     }).toList();
+  }
+
+  ExploreRecipe _applyPendingLikeStates(ExploreRecipe recipe) {
+    if (_pendingCommentLikeStates.isEmpty && _pendingReplyLikeStates.isEmpty) {
+      return recipe;
+    }
+
+    final comments = recipe.community.comments.map((comment) {
+      var nextComment = comment;
+      final pendingCommentLike = _pendingCommentLikeStates[comment.id];
+      if (pendingCommentLike != null) {
+        nextComment = _copyComment(
+          nextComment,
+          isLiked: pendingCommentLike,
+          likes: _adjustLikeCount(
+            likes: nextComment.likes,
+            wasLiked: nextComment.isLiked,
+            isLiked: pendingCommentLike,
+          ),
+        );
+      }
+
+      return _copyComment(
+        nextComment,
+        replies: _applyPendingReplyLikeStates(nextComment.replies),
+      );
+    }).toList();
+
+    return _copyRecipe(
+      recipe,
+      community: _copyCommunity(recipe.community, comments: comments),
+    );
+  }
+
+  List<ExploreCommentReply> _applyPendingReplyLikeStates(
+    List<ExploreCommentReply> replies,
+  ) {
+    return replies.map((reply) {
+      var nextReply = reply;
+      final pendingReplyLike = _pendingReplyLikeStates[reply.documentPath];
+      if (pendingReplyLike != null) {
+        nextReply = _copyReply(
+          nextReply,
+          isLiked: pendingReplyLike,
+          likes: _adjustLikeCount(
+            likes: nextReply.likes,
+            wasLiked: nextReply.isLiked,
+            isLiked: pendingReplyLike,
+          ),
+        );
+      }
+
+      return _copyReply(
+        nextReply,
+        replies: _applyPendingReplyLikeStates(nextReply.replies),
+      );
+    }).toList();
+  }
+
+  void _resolvePendingLikeStates(ExploreRecipe recipe) {
+    _pendingCommentLikeStates.removeWhere((commentId, isLiked) {
+      final comment = _findComment(recipe.community.comments, commentId);
+      return comment == null || comment.isLiked == isLiked;
+    });
+
+    _pendingReplyLikeStates.removeWhere((replyPath, isLiked) {
+      final reply = _findReply(recipe.community.comments, replyPath);
+      return reply == null || reply.isLiked == isLiked;
+    });
+  }
+
+  ExploreComment? _findComment(
+    List<ExploreComment> comments,
+    String commentId,
+  ) {
+    for (final comment in comments) {
+      if (comment.id == commentId) return comment;
+    }
+    return null;
+  }
+
+  ExploreCommentReply? _findReply(
+    List<ExploreComment> comments,
+    String replyPath,
+  ) {
+    for (final comment in comments) {
+      final reply = _findReplyInReplies(comment.replies, replyPath);
+      if (reply != null) return reply;
+    }
+    return null;
+  }
+
+  ExploreCommentReply? _findReplyInReplies(
+    List<ExploreCommentReply> replies,
+    String replyPath,
+  ) {
+    for (final reply in replies) {
+      if (reply.documentPath == replyPath) return reply;
+      final nestedReply = _findReplyInReplies(reply.replies, replyPath);
+      if (nestedReply != null) return nestedReply;
+    }
+    return null;
+  }
+
+  int _adjustLikeCount({
+    required int likes,
+    required bool wasLiked,
+    required bool isLiked,
+  }) {
+    if (wasLiked == isLiked) return likes;
+    return (likes + (isLiked ? 1 : -1)).clamp(0, 1 << 31).toInt();
   }
 
   List<ExploreCommentReply> _addNestedReply(
@@ -739,6 +1003,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     int? commentCount,
     bool? isFollowingAuthor,
     bool? isFavourite,
+    bool? hasRatedByCurrentUser,
     ExploreCommunity? community,
   }) {
     return ExploreRecipe(
@@ -768,6 +1033,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
       isFollowingAuthor: isFollowingAuthor ?? recipe.isFollowingAuthor,
       isFavourite: isFavourite ?? recipe.isFavourite,
       isCreatedByCurrentUser: recipe.isCreatedByCurrentUser,
+      hasRatedByCurrentUser:
+          hasRatedByCurrentUser ?? recipe.hasRatedByCurrentUser,
       ingredients: recipe.ingredients,
       instructionSections: recipe.instructionSections,
       nutrition: recipe.nutrition,
@@ -839,4 +1106,27 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     _recipeSubscription?.cancel();
     super.dispose();
   }
+}
+
+class RecipeDetailMealPlanSaveResult {
+  final int savedCount;
+  final String? errorMessage;
+
+  const RecipeDetailMealPlanSaveResult({
+    required this.savedCount,
+    this.errorMessage,
+  });
+
+  bool get isSuccess => errorMessage == null;
+}
+
+class RecipeDetailMealPlanDefaults {
+  static const categories = [
+    AddMealCategoryOption(id: 'breakfast', name: 'Breakfast'),
+    AddMealCategoryOption(id: 'lunch', name: 'Lunch'),
+    AddMealCategoryOption(id: 'dinner', name: 'Dinner'),
+    AddMealCategoryOption(id: 'snack', name: 'Snack'),
+  ];
+
+  const RecipeDetailMealPlanDefaults._();
 }

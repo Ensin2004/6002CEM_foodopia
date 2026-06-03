@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
@@ -8,6 +10,7 @@ import '../../domain/usecases/get_meal_plan_dashboard_usecase.dart';
 import '../../domain/usecases/get_meal_plan_inspiration_options_usecase.dart';
 import '../../domain/usecases/get_meal_plan_preferences_usecase.dart';
 import '../../domain/usecases/get_meal_plan_weather_usecase.dart';
+import '../../domain/usecases/delete_meal_plan_usecase.dart';
 import '../../domain/usecases/search_meal_plan_ingredients_usecase.dart';
 import '../../domain/usecases/update_weekly_grocery_week_start_day_usecase.dart';
 
@@ -33,6 +36,7 @@ class MealPlanViewModel extends ChangeNotifier {
   final GetMealPlanPreferencesUseCase _getPreferencesUseCase;
   final SearchMealPlanIngredientsUseCase _searchIngredientsUseCase;
   final GetMealPlanInspirationOptionsUseCase _getInspirationOptionsUseCase;
+  final DeleteMealPlanUseCase _deleteMealPlanUseCase;
   final UpdateWeeklyGroceryWeekStartDayUseCase
   _updateWeeklyGroceryWeekStartDayUseCase;
   final String userId;
@@ -50,6 +54,7 @@ class MealPlanViewModel extends ChangeNotifier {
   String? _weatherErrorMessage;
   String? _preferencesErrorMessage;
   String? _groceryActionErrorMessage;
+  String? _mealActionErrorMessage;
   String _grocerySearchQuery = '';
   String _selectedWeatherCategoryId =
       WeatherCategoryService.categories.first.id;
@@ -74,6 +79,7 @@ class MealPlanViewModel extends ChangeNotifier {
     required GetMealPlanPreferencesUseCase getPreferencesUseCase,
     required SearchMealPlanIngredientsUseCase searchIngredientsUseCase,
     required GetMealPlanInspirationOptionsUseCase getInspirationOptionsUseCase,
+    required DeleteMealPlanUseCase deleteMealPlanUseCase,
     required UpdateWeeklyGroceryWeekStartDayUseCase
     updateWeeklyGroceryWeekStartDayUseCase,
   }) : _getDashboardUseCase = getDashboardUseCase,
@@ -81,6 +87,7 @@ class MealPlanViewModel extends ChangeNotifier {
        _getPreferencesUseCase = getPreferencesUseCase,
        _searchIngredientsUseCase = searchIngredientsUseCase,
        _getInspirationOptionsUseCase = getInspirationOptionsUseCase,
+       _deleteMealPlanUseCase = deleteMealPlanUseCase,
        _updateWeeklyGroceryWeekStartDayUseCase =
            updateWeeklyGroceryWeekStartDayUseCase {
     Future.microtask(loadDashboard);
@@ -97,6 +104,7 @@ class MealPlanViewModel extends ChangeNotifier {
   String? get weatherErrorMessage => _weatherErrorMessage;
   String? get preferencesErrorMessage => _preferencesErrorMessage;
   String? get groceryActionErrorMessage => _groceryActionErrorMessage;
+  String? get mealActionErrorMessage => _mealActionErrorMessage;
   String get grocerySearchQuery => _grocerySearchQuery;
   List<WeatherCategory> get weatherCategories =>
       WeatherCategoryService.categories;
@@ -237,6 +245,35 @@ class MealPlanViewModel extends ChangeNotifier {
     if (_selectedFilterId == filterId) return;
     _selectedFilterId = filterId;
     _notifyIfActive();
+  }
+
+  Future<bool> deleteMealPlan(String mealPlanId) async {
+    final trimmedId = mealPlanId.trim();
+    if (trimmedId.isEmpty) {
+      _mealActionErrorMessage = 'Meal plan is missing.';
+      _notifyIfActive();
+      return false;
+    }
+
+    _mealActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _deleteMealPlanUseCase.execute(
+      userId: userId,
+      mealPlanId: trimmedId,
+    );
+    if (_isDisposed) return false;
+
+    var deleted = false;
+    result.ifRight((_) => deleted = true);
+    result.ifLeft((failure) => _mealActionErrorMessage = failure.message);
+    _notifyIfActive();
+
+    if (deleted) {
+      _removeMealFromDashboard(trimmedId);
+      unawaited(loadDashboard());
+    }
+    return deleted;
   }
 
   Future<void> loadDashboard() async {
@@ -525,6 +562,78 @@ class MealPlanViewModel extends ChangeNotifier {
       (section) => _filterIdForSection(section) == _selectedFilterId,
     );
     if (!exists) _selectedFilterId = allFilterId;
+  }
+
+  void _removeMealFromDashboard(String mealPlanId) {
+    final current = _dashboard;
+    if (current == null) return;
+
+    var removed = false;
+    final sections = current.sections.map((section) {
+      final meals = section.meals.where((meal) {
+        final shouldKeep = meal.id != mealPlanId;
+        if (!shouldKeep) removed = true;
+        return shouldKeep;
+      }).toList();
+      return MealPlanSection(
+        mealType: section.mealType,
+        mealCategoryId: section.mealCategoryId,
+        meals: meals,
+      );
+    }).toList();
+    if (!removed) return;
+
+    final hasMealsForSelectedDate = sections.any(
+      (section) => section.meals.isNotEmpty,
+    );
+    final monthDays = current.monthDays.map((day) {
+      if (!_sameDay(day.date, current.selectedDate)) return day;
+      return MealPlanDay(
+        date: day.date,
+        isCurrentMonth: day.isCurrentMonth,
+        hasMeals: hasMealsForSelectedDate,
+      );
+    }).toList();
+
+    _dashboard = current.copyWith(
+      sections: sections,
+      monthDays: monthDays,
+      summary: _decrementSummary(current.summary, current.selectedDate),
+    );
+    _normalizeSelectedFilter();
+    _notifyIfActive();
+  }
+
+  MealPlanSummary _decrementSummary(MealPlanSummary summary, DateTime date) {
+    final day = DateTime(date.year, date.month, date.day);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (day.isBefore(today)) {
+      return MealPlanSummary(
+        pastCount: (summary.pastCount - 1).clamp(0, 1 << 31).toInt(),
+        todayCount: summary.todayCount,
+        futureCount: summary.futureCount,
+      );
+    }
+    if (day.isAfter(today)) {
+      return MealPlanSummary(
+        pastCount: summary.pastCount,
+        todayCount: summary.todayCount,
+        futureCount: (summary.futureCount - 1).clamp(0, 1 << 31).toInt(),
+      );
+    }
+    return MealPlanSummary(
+      pastCount: summary.pastCount,
+      todayCount: (summary.todayCount - 1).clamp(0, 1 << 31).toInt(),
+      futureCount: summary.futureCount,
+    );
+  }
+
+  bool _sameDay(DateTime first, DateTime second) {
+    return first.year == second.year &&
+        first.month == second.month &&
+        first.day == second.day;
   }
 
   void _notifyIfActive() {

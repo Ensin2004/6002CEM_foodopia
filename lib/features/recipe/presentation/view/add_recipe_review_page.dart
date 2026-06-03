@@ -211,7 +211,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
         : AppSpacing.lg;
 
     if (widget.aiReview == null && viewModel.isLoading) {
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     final review = widget.aiReview ?? viewModel.review;
@@ -292,34 +292,40 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                 horizontalPadding,
                 AppSpacing.lg,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(child: Label(text: "Review")),
-                      if (widget.aiReview == null)
-                        IconButton(
-                          tooltip: "Delete recipe",
-                          onPressed: viewModel.isDeleting
-                              ? null
-                              : () => _confirmDeleteRecipe(
-                                  context,
-                                  viewModel,
-                                  review,
-                                ),
-                          icon: const Icon(Icons.delete_outline_rounded),
-                          color: AppColors.error,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Label(text: "Review"),
+                        const SizedBox(height: 2),
+                        Text(
+                          "Review your recipe before saving",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.text.bodySmall,
                         ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    "Review your recipe before saving",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodySmall,
-                  ),
+
+                  if (widget.aiReview == null)
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      tooltip: "Delete recipe",
+                      onPressed: viewModel.isDeleting
+                          ? null
+                          : () => _confirmDeleteRecipe(
+                                context,
+                                viewModel,
+                                review,
+                              ),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      color: AppColors.error,
+                    ),
                 ],
               ),
             ),
@@ -474,7 +480,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
-  List<AddRecipeReviewIngredient> _sortedIngredients(List<AddRecipeReviewIngredient> ingredients,) {
+  List<AddRecipeReviewIngredient> _sortedIngredients(List<AddRecipeReviewIngredient> ingredients) {
     return [...ingredients]..sort(
       (first, second) =>
           first.name.toLowerCase().compareTo(second.name.toLowerCase()),
@@ -691,6 +697,20 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
   }
 }
 
+// Loading Page
+class _AddRecipePageLoading extends StatelessWidget {
+  const _AddRecipePageLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: LoadingDialog(message: "Loading...", inline: true),
+    );
+  }
+}
+
+// Error Page
 class _RecipeErrorState extends StatelessWidget {
   final String? message;
 

@@ -15,6 +15,7 @@ class SaveRecipeMealPlanUseCase {
     required AddMealCategoryOption mealCategory,
     required AddMealAiRecipe recipe,
     required String source,
+    required int servingCount,
   }) {
     return repository.saveRecipeMealPlan(
       userId: userId,
@@ -22,6 +23,7 @@ class SaveRecipeMealPlanUseCase {
       mealCategory: mealCategory,
       recipe: recipe,
       source: source,
+      servingCount: servingCount,
     );
   }
 }

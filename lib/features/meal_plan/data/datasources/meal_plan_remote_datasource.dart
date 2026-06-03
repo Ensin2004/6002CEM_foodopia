@@ -609,6 +609,7 @@ class MealPlanRemoteDataSource {
     required AddMealCategoryOption mealCategory,
     required AddMealAiRecipe recipe,
     required String source,
+    required int servingCount,
   }) async {
     final dayStart = DateTime(date.year, date.month, date.day);
     final existing = await _plansForCategory(
@@ -641,7 +642,7 @@ class MealPlanRemoteDataSource {
       'recipeImage': recipe.imagePath,
       'source': source,
       'creationMethod': source,
-      'servings': _servingsFromLabel(recipe.servingLabel),
+      'servings': servingCount.clamp(1, 99),
       'durationLabel': recipe.durationLabel,
       'difficultyLabel': recipe.difficultyLabel,
       'calories': recipe.calories,
@@ -651,6 +652,33 @@ class MealPlanRemoteDataSource {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<void> deleteMealPlan({
+    required String userId,
+    required String mealPlanId,
+  }) async {
+    // Ownership validation prevents deleting another user's planned meal.
+    final mealRef = firestore.collection('meal_plans').doc(mealPlanId);
+    final mealDoc = await mealRef.get();
+    if (!mealDoc.exists) throw StateError('Meal plan not found.');
+    final ownerId = mealDoc.data()?['uid']?.toString() ?? '';
+    if (ownerId != userId) throw StateError('Meal plan access denied.');
+
+    final listsSnapshot = await firestore
+        .collection('grocery_lists')
+        .where('uid', isEqualTo: userId)
+        .where('selectedMealPlanIds', arrayContains: mealPlanId)
+        .get();
+    final batch = firestore.batch();
+    batch.delete(mealRef);
+    for (final listDoc in listsSnapshot.docs) {
+      batch.update(listDoc.reference, {
+        'selectedMealPlanIds': FieldValue.arrayRemove([mealPlanId]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
   }
 
   Future<List<AddMealAiRecipe>> getRecipeDatabaseMatches({
@@ -801,11 +829,25 @@ class MealPlanRemoteDataSource {
             : null;
         _mergeGroceryItems(
           itemsByKey,
-          _itemsFromAiIngredients(mealDoc.id, recipeId, generatedIngredients),
+          _itemsFromAiIngredients(
+            mealDoc.id,
+            recipeId,
+            generatedIngredients,
+            _mealServingScale(meal, null),
+          ),
         );
         continue;
       }
       if (recipeId.isEmpty) continue;
+      final recipeDoc = await firestore
+          .collection('recipes')
+          .doc(recipeId)
+          .get();
+      final recipeData = recipeDoc.data();
+      final recipeServings =
+          _intValue(recipeData?['servings']) ??
+          _intValue(recipeData?['servingSize']);
+      final servingScale = _mealServingScale(meal, recipeServings);
       final ingredients = await firestore
           .collection('recipes')
           .doc(recipeId)
@@ -819,7 +861,13 @@ class MealPlanRemoteDataSource {
         );
         _mergeGroceryItem(
           itemsByKey,
-          _itemFromRecipeIngredient(mealDoc.id, recipeId, ingredient, unit),
+          _itemFromRecipeIngredient(
+            mealDoc.id,
+            recipeId,
+            ingredient,
+            unit,
+            servingScale,
+          ),
         );
       }
     }
@@ -832,6 +880,7 @@ class MealPlanRemoteDataSource {
     String mealPlanId,
     String recipeId,
     Object? ingredients,
+    double servingScale,
   ) {
     if (ingredients is! Iterable) return const [];
     return ingredients.whereType<Map>().map((item) {
@@ -842,7 +891,7 @@ class MealPlanRemoteDataSource {
         categoryName:
             item['categoryName']?.toString().trim() ??
             _categoryNameForIngredient(item['name']?.toString() ?? ''),
-        amount: _doubleValue(item['amount']),
+        amount: _doubleValue(item['amount']) * servingScale,
         unit: item['unit']?.toString() ?? '',
         relatedMealPlanIds: [mealPlanId],
         relatedRecipeIds: recipeId.isEmpty ? const [] : [recipeId],
@@ -856,6 +905,7 @@ class MealPlanRemoteDataSource {
     String recipeId,
     Map<String, dynamic> ingredient,
     String unit,
+    double servingScale,
   ) {
     final categoryId = _ingredientCategoryIdFrom(ingredient) ?? '';
     return _GroceryItemDraft(
@@ -864,12 +914,22 @@ class MealPlanRemoteDataSource {
       categoryName:
           ingredient['categoryName']?.toString().trim() ??
           _categoryNameForIngredient(ingredient['name']?.toString() ?? ''),
-      amount: _doubleValue(ingredient['amount']),
+      amount: _doubleValue(ingredient['amount']) * servingScale,
       unit: unit,
       relatedMealPlanIds: [mealPlanId],
       relatedRecipeIds: recipeId.isEmpty ? const [] : [recipeId],
       sortOrder: _intValue(ingredient['sortOrder']) ?? 0,
     );
+  }
+
+  double _mealServingScale(Map<String, dynamic> meal, int? recipeServings) {
+    // Grocery quantities follow the planned serving count when recipe data has a base serving size.
+    final plannedServings = _intValue(meal['servings']) ?? 1;
+    final baseServings = recipeServings == null || recipeServings <= 0
+        ? plannedServings
+        : recipeServings;
+    if (baseServings <= 0) return 1;
+    return plannedServings / baseServings;
   }
 
   void _mergeGroceryItems(
@@ -1268,7 +1328,8 @@ class MealPlanRemoteDataSource {
           'Untitled Recipe',
       durationLabel: '${_intValue(data['preparationTime']) ?? 0} mins',
       difficultyLabel: _difficultyLabel(_intValue(data['difficultyLevel'])),
-      servingLabel: '${_intValue(data['servingSize']) ?? 1} servings',
+      servingLabel:
+          '${_intValue(data['servings']) ?? _intValue(data['servingSize']) ?? 1} servings',
       imagePath: media.isEmpty ? 'assets/images/meal1.png' : media.first,
       description:
           data['description']?.toString() ?? 'Recipe from your database.',
@@ -1315,11 +1376,6 @@ class MealPlanRemoteDataSource {
     return first.year == second.year &&
         first.month == second.month &&
         first.day == second.day;
-  }
-
-  int _servingsFromLabel(String label) {
-    final match = RegExp(r'\d+').firstMatch(label);
-    return int.tryParse(match?.group(0) ?? '') ?? 1;
   }
 
   List<String> _stringList(Object? value) {

@@ -27,6 +27,7 @@ class ExploreRecipe {
   final bool isFollowingAuthor;
   final bool isFavourite;
   final bool isCreatedByCurrentUser;
+  final bool hasRatedByCurrentUser;
   final List<ExploreIngredient> ingredients;
   final List<ExploreInstructionSection> instructionSections;
   final ExploreNutrition nutrition;
@@ -60,6 +61,7 @@ class ExploreRecipe {
     required this.isFollowingAuthor,
     this.isFavourite = false,
     required this.isCreatedByCurrentUser,
+    this.hasRatedByCurrentUser = false,
     required this.ingredients,
     required this.instructionSections,
     required this.nutrition,

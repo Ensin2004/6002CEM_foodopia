@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
+import 'package:foodopia/core/theme/app_colors.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/basic_info/input_option_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -178,7 +179,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         : AppSpacing.lg;
 
     if (viewModel.isLoading) {
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     final setup = viewModel.setup;
@@ -205,7 +206,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
           recipeId,
         );
       });
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     final existingReview = viewModel.existingReview;
@@ -613,7 +614,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
 
     return ([
       ...optionValues.map(
-        (option) => SelectedRecipeOption(id: option.id, name: option.name, isCustom: false,),
+        (option) => SelectedRecipeOption(id: option.id, name: option.name, isCustom: false),
       ),
       ...customOptions.map(
         (option) => SelectedRecipeOption(id: option, name: option, isCustom: true),
@@ -878,17 +879,6 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   }
 }
 
-// Saved Recipe Option Class
-class _SavedRecipeOption {
-  final List<String> optionIds;
-  final List<String> customNames;
-
-  const _SavedRecipeOption({
-    required this.optionIds,
-    required this.customNames,
-  });
-}
-
 class _AiRecipeImagePreview extends StatelessWidget {
   final String imageBase64;
   final VoidCallback onReplace;
@@ -930,6 +920,17 @@ class _AiRecipeImagePreview extends StatelessWidget {
   }
 }
 
+// Saved Recipe Option Class
+class _SavedRecipeOption {
+  final List<String> optionIds;
+  final List<String> customNames;
+
+  const _SavedRecipeOption({
+    required this.optionIds,
+    required this.customNames,
+  });
+}
+
 // Selected Recipe Option Class
 class SelectedRecipeOption {
   final String id;
@@ -941,6 +942,19 @@ class SelectedRecipeOption {
     required this.name,
     required this.isCustom,
   });
+}
+
+// Loading Page
+class _AddRecipePageLoading extends StatelessWidget {
+  const _AddRecipePageLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: LoadingDialog(message: "Loading...", inline: true),
+    );
+  }
 }
 
 // Error Page

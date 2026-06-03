@@ -26,6 +26,7 @@ class ManageGroceryListViewModel extends ChangeNotifier {
   bool _hideBoughtItems = false;
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _hasSavedChanges = false;
   bool _isDisposed = false;
   String? _errorMessage;
   String? _actionErrorMessage;
@@ -50,6 +51,7 @@ class ManageGroceryListViewModel extends ChangeNotifier {
   bool get hideBoughtItems => _hideBoughtItems;
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
+  bool get hasSavedChanges => _hasSavedChanges;
   String? get errorMessage => _errorMessage;
   String? get actionErrorMessage => _actionErrorMessage;
 
@@ -168,6 +170,7 @@ class ManageGroceryListViewModel extends ChangeNotifier {
     _notifyIfActive();
 
     if (saved) {
+      _hasSavedChanges = true;
       await loadDetail();
     }
     return saved;

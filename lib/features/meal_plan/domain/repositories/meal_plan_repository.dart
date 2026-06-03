@@ -47,6 +47,11 @@ abstract class MealPlanRepository {
     required AddMealCategoryOption mealCategory,
     required AddMealAiRecipe recipe,
     required String source,
+    required int servingCount,
+  });
+  Future<Either<Failure, void>> deleteMealPlan({
+    required String userId,
+    required String mealPlanId,
   });
   Future<Either<Failure, ManageGroceryListDetail>> getManageGroceryListDetail(
     String listId,

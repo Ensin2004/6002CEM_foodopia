@@ -39,7 +39,7 @@ class InputStepField extends StatelessWidget {
                   size: 20,
                 ),
               ),
-              const SizedBox(width: AppSpacing.xs),
+              const SizedBox(width: AppSpacing.sm),
               CircleAvatar(
                 radius: 10,
                 backgroundColor: AppColors.primary,
@@ -61,31 +61,49 @@ class InputStepField extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: TextField(
-                controller: step.descriptionController,
-                minLines: 2,
-                maxLines: 4,
-                textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(
-                  hintText:
+              child: SizedBox(
+                height: 58,
+                child: TextField(
+                  controller: step.descriptionController,
+                  expands: true,
+                  minLines: null,
+                  maxLines: null,
+                  textAlignVertical: TextAlignVertical.center,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    hint: Text(
                       "Describe each step clearly (e.g. Boil water to 80°C)",
-                  isDense: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    borderSide: const BorderSide(color: AppColors.border),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
                   ),
                 ),
               ),
             ),
             if (showNumberBadge) ...[
               const SizedBox(width: AppSpacing.sm),
-              IconButton(
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              InkWell(
+                onTap: onDelete,
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.error,
+                ),
               ),
             ],
           ],

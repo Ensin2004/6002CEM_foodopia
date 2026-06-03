@@ -71,9 +71,11 @@ class _OptionField extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
             borderSide: const BorderSide(color: AppColors.border),
           ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.md,
+          contentPadding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.sm,
+            AppSpacing.md,
           ),
         ),
         child: Row(
@@ -95,11 +97,13 @@ class _OptionField extends StatelessWidget {
               color: AppColors.textSecondary.withValues(alpha: 0.5),
             ),
             if (onDelete != null) ...[
-              const SizedBox(width: AppSpacing.xs),
-              IconButton(
-                onPressed: onDelete,
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              const SizedBox(width: AppSpacing.sm),
+              InkWell(
+                onTap: onDelete,
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.error,
+                ),
               ),
             ],
           ],

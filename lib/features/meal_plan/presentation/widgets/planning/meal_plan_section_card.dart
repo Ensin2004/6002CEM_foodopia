@@ -7,7 +7,8 @@ import '../../../../../app/routers/router_args.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
-import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
 
@@ -198,11 +199,15 @@ class _MealRow extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: AppRemoteOrAssetImage(
-              imagePath: meal.imagePath,
+            child: SizedBox(
               width: 48,
               height: 48,
-              fit: BoxFit.cover,
+              child: AppRecipeMediaPreview(
+                mediaPath: meal.imagePath,
+                fit: BoxFit.cover,
+                playOverlaySize: 30,
+                playIconSize: 20,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -229,8 +234,63 @@ class _MealRow extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: AppSpacing.xs),
+          IconButton(
+            tooltip: 'Remove meal',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => _confirmRemoveMeal(context, meal),
+            icon: const Icon(
+              Icons.delete_outline,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmRemoveMeal(
+    BuildContext context,
+    MealPlanMeal meal,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Remove meal?', style: context.text.titleMedium),
+        content: Text(
+          'Remove ${meal.title} from this meal plan?',
+          style: context.text.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const LoadingDialog(message: 'Removing meal...'),
+    );
+    final viewModel = context.read<MealPlanViewModel>();
+    final removed = await viewModel.deleteMealPlan(meal.id);
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    final message = removed
+        ? 'Meal removed from plan.'
+        : viewModel.mealActionErrorMessage ?? 'Unable to remove meal.';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
