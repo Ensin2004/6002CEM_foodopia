@@ -6,11 +6,13 @@ import 'package:http/http.dart' as http;
 import '../config/env_config.dart';
 import '../../features/recipe/domain/entities/add_recipe_ingredient_data.dart';
 
+/// Sends ingredient to OpenAI and returns category and nutrients info for each ingredient.
 class OpenAiIngredientDataService {
   final http.Client client;
 
   const OpenAiIngredientDataService({required this.client});
 
+  /// Request category and nutrients info and converts the JSON response into app ingredient data entities.
   Future<List<AddRecipeIngredientData>> analyzeIngredients({
     required List<AddRecipeIngredientDataInput> ingredients,
     required List<AddRecipeIngredientCategory> categories,
@@ -63,10 +65,12 @@ class OpenAiIngredientDataService {
       );
     }
 
+    // Error
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('OpenAI ingredient analyze request failed: ${response.body}');
     }
 
+    // Results
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final content = _extractOutputText(decoded);
     final payload = jsonDecode(content) as Map<String, dynamic>;
@@ -78,6 +82,7 @@ class OpenAiIngredientDataService {
         .toList();
   }
 
+  /// Builds the prompt with required info and rules.
   String _buildPrompt(
     List<AddRecipeIngredientDataInput> ingredients,
     List<AddRecipeIngredientCategory> categories,
@@ -117,6 +122,7 @@ Rules:
 ''';
   }
 
+  /// Reads text content from the Responses API output format.
   String _extractOutputText(Map<String, dynamic> decoded) {
     final output = decoded['output'] as List<dynamic>? ?? const [];
     for (final item in output.whereType<Map<String, dynamic>>()) {
@@ -131,6 +137,7 @@ Rules:
     throw StateError('OpenAI response did not include ingredient JSON.');
   }
 
+  /// Converts the results from JSON into desired format.
   AddRecipeIngredientData _analysisFromJson(Map<String, dynamic> json) {
     final nutrients = json['nutrients'] as Map<String, dynamic>? ?? const {};
     return AddRecipeIngredientData(
@@ -146,6 +153,7 @@ Rules:
     );
   }
 
+  /// Converts numeric, nested numeric, and string numeric values into doubles.
   double _numberValue(dynamic value) {
     if (value is num) return value.toDouble();
     if (value is Map) return _numberValue(value['value']);
@@ -153,6 +161,7 @@ Rules:
   }
 }
 
+/// JSON schema for the AI, to ensure the results are provided in correct format.
 const Map<String, dynamic> _ingredientAnalysisSchema = {
   'type': 'object',
   'additionalProperties': false,

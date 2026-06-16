@@ -22,9 +22,12 @@ class AddRecipeVideoDataSource {
     required this.openAiVideoRecipeService,
   });
 
+  /// Extracts audio and scene frames, generates a draft recipe.
   Future<AddRecipeVideoResult> generateFromVideo(String videoPath) async {
     final workingDir = await _createWorkingDir();
     try {
+
+      // Use ffmpeg to extract the audio and frames from the video
       final audioFile = File('${workingDir.path}/audio.m4a');
       final framePattern = '${workingDir.path}/frame_%03d.jpg';
 
@@ -45,6 +48,8 @@ class AddRecipeVideoDataSource {
 
       final categories = await _getActiveRecipeCategories();
       final units = await _getActiveIngredientUnits();
+
+      // Generate the draft recipe using the audio and frames extracted
       final draft = await openAiVideoRecipeService.generateRecipeFromVideo(
         audioFile: audioFile,
         frameFiles: _sampleFrames(frames),
@@ -96,12 +101,14 @@ class AddRecipeVideoDataSource {
     }
   }
 
+  /// Removes working directory after failed generation.
   Future<void> _deleteWorkingDir(Directory workingDir) async {
     if (await workingDir.exists()) {
       await workingDir.delete(recursive: true);
     }
   }
 
+  /// Evenly select frames for faster AI processing.
   List<File> _sampleFrames(List<File> frames) {
     if (frames.length <= 15) return frames;
 
@@ -109,6 +116,7 @@ class AddRecipeVideoDataSource {
     return List.generate(15, (index) => frames[(index * step).floor()]);
   }
 
+  /// Creates a working directory for video processing request.
   Future<Directory> _createWorkingDir() async {
     final baseDir = await getTemporaryDirectory();
     return Directory(
@@ -116,6 +124,7 @@ class AddRecipeVideoDataSource {
     ).create(recursive: true);
   }
 
+  /// Runs ffmpeg command and logs when fails.
   Future<void> _runFfmpeg(String command) async {
     final session = await FFmpegKit.execute(command);
     final returnCode = await session.getReturnCode();
@@ -125,6 +134,7 @@ class AddRecipeVideoDataSource {
     }
   }
 
+  /// Loads active recipe categories for matching AI category names to ids.
   Future<List<AddRecipeOption>> _getActiveRecipeCategories() async {
     final snapshot = await firestore
         .collection('app_config')
@@ -143,6 +153,7 @@ class AddRecipeVideoDataSource {
         .toList();
   }
 
+  /// Loads active ingredient units for matching AI unit names to ids.
   Future<List<AddRecipeIngredientUnit>> _getActiveIngredientUnits() async {
     final snapshot = await firestore
         .collection('app_config')
@@ -167,6 +178,7 @@ class AddRecipeVideoDataSource {
         .toList();
   }
 
+  /// Finds a category id by name.
   String? _categoryIdForName(List<AddRecipeOption> categories, String name) {
     for (final category in categories) {
       if (category.name.toLowerCase() == name.trim().toLowerCase()) {
@@ -176,6 +188,7 @@ class AddRecipeVideoDataSource {
     return null;
   }
 
+  /// Finds an ingredient unit id by name.
   String? _unitIdForName(List<AddRecipeIngredientUnit> units, String name) {
     for (final unit in units) {
       if (unit.name.toLowerCase() == name.trim().toLowerCase()) {
@@ -185,5 +198,6 @@ class AddRecipeVideoDataSource {
     return null;
   }
 
+  /// Escapes double quotes before passing file paths into ffmpeg commands.
   String _escape(String path) => path.replaceAll('"', r'\"');
 }

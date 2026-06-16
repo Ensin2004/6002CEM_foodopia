@@ -226,7 +226,6 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Progress Bar
               if (!widget.hideProgressBar)
                 const Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -345,6 +344,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     );
   }
 
+  // Handle back action
   Future<void> _handleBack(BuildContext context) async {
     if (!_hasUnsavedChanges()) {
       _leaveEditPage(context);
@@ -409,6 +409,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     if (selected == null) return;
     if (!mounted) return;
 
+    // Fetch nutrients from USDA after users select ingredient
     Map<String, dynamic>? nutrients;
     if (!selected.isCustom && selected.usdaId != null) {
       final rootNavigator = Navigator.of(context, rootNavigator: true);

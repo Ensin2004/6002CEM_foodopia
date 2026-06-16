@@ -56,14 +56,19 @@ class FoodSearchService {
     return results;
   }
 
+  // USDA food search
   Future<List<UsdaFoodSearchResult>> searchUsdaFoods(String query) async {
     final trimmed = query.trim().toLowerCase();
+
+    // Avoid searching very short text
     if (trimmed.length < 2) return [];
 
+    // Caching
     final cached = _usdaSearchCache[trimmed];
     if (cached != null) return cached;
     if (apiKey.trim().isEmpty) return [];
 
+    // Search preferred USDA data types one by one
     final results = <UsdaFoodSearchResult>[];
     for (final dataType in _preferredDataTypes) {
       final foods = await _fetchFoods(trimmed, dataType: dataType);
@@ -71,21 +76,25 @@ class FoodSearchService {
       if (results.length >= 10) break;
     }
 
+    // If no curated/generic USDA foods were found, try the full USDA search
     if (results.isEmpty) {
       final fallbackFoods = await _fetchFoods(trimmed);
       _addUsdaFoodResults(results, fallbackFoods);
     }
 
+    // Results
     final limitedResults = results.take(10).toList();
     _usdaSearchCache[trimmed] = limitedResults;
     return limitedResults;
   }
 
+  // USDA food label search
   Future<Map<String, dynamic>?> getUsdaLabelNutrients(int fdcId) async {
     final cached = _labelNutrientsCache[fdcId];
     if (cached != null) return cached;
     if (apiKey.trim().isEmpty) return null;
 
+    // Search food label using fdcId and return the nutrients info
     final uri = Uri.https('api.nal.usda.gov', '/fdc/v1/food/$fdcId', {
       'api_key': apiKey,
     });

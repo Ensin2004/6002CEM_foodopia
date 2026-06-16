@@ -4,6 +4,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 
+/// Input text field shared across the add recipe form.
 class InputTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
