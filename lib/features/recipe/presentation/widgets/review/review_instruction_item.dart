@@ -6,6 +6,7 @@ import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../domain/entities/add_recipe_review.dart';
 
+/// Displays one instruction row in the review page.
 class ReviewInstructionItem extends StatelessWidget {
   final AddRecipeReviewInstruction instruction;
   final bool useSection;

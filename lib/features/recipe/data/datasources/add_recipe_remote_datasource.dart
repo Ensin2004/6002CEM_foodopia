@@ -38,6 +38,7 @@ class AddRecipeRemoteDataSource {
     required this.videoDataSource,
   });
 
+  /// Loads active recipe categories, allergens and fixed difficulty levels for setup screens.
   Future<AddRecipeSetupModel> getSetup() async {
     final categories = await _getActiveOptions(configId: 'recipe_categories');
     final allergens = await _getActiveOptions(configId: 'allergies');
@@ -81,6 +82,7 @@ class AddRecipeRemoteDataSource {
         .toList();
   }
 
+  /// Loads active ingredient units for ingredient selection.
   Future<List<AddRecipeIngredientUnit>> getIngredientUnits() async {
     final categorySnapshot = await firestore
         .collection('app_config')
@@ -139,6 +141,7 @@ class AddRecipeRemoteDataSource {
       });
   }
 
+  /// Searches USDA foods using keywords
   Future<List<AddRecipeFoodSearchResult>> searchFoods(String query) async {
     final foods = await foodSearchService.searchUsdaFoods(query);
     return foods
@@ -153,10 +156,12 @@ class AddRecipeRemoteDataSource {
     return foodSearchService.getUsdaLabelNutrients(fdcId);
   }
 
+  /// Generate draft recipe from video uploaded
   Future<AddRecipeVideoResult> generateRecipeFromVideo(String videoPath) {
     return videoDataSource.generateFromVideo(videoPath);
   }
 
+  /// Saves or updates basic recipe information
   Future<String> saveBasicInfo(AddRecipeBasicInfo info) async {
     final uid = auth.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
@@ -202,6 +207,7 @@ class AddRecipeRemoteDataSource {
     return doc.id;
   }
 
+  /// Delete working directory after recipe generated from video
   Future<void> _deleteVideoWorkingDirForFile(File file) async {
     final parent = file.parent;
     final parentName = parent.path.split(RegExp(r'[\\/]')).last;
@@ -216,6 +222,7 @@ class AddRecipeRemoteDataSource {
     }
   }
 
+  /// Saves or updates ingredients and nutrients info
   Future<void> saveIngredients({
     required String recipeId,
     required List<AddRecipeIngredient> ingredients,
@@ -291,8 +298,8 @@ class AddRecipeRemoteDataSource {
     await batch.commit();
   }
 
-  Future<List<AddRecipeIngredientCategory>>
-  _getActiveIngredientCategories() async {
+  /// Loads active ingredients categories
+  Future<List<AddRecipeIngredientCategory>> _getActiveIngredientCategories() async {
     final snapshot = await firestore
         .collection('app_config')
         .doc('ingredient_categories')
@@ -313,6 +320,7 @@ class AddRecipeRemoteDataSource {
         .toList();
   }
 
+  /// Prepare data for ingredients nutrients calculation
   List<AddRecipeIngredientDataInput> _ingredientAnalysisInputs({
     required List<AddRecipeIngredient> ingredients,
     required Map<String, String> unitNames,
@@ -332,6 +340,7 @@ class AddRecipeRemoteDataSource {
     ];
   }
 
+  /// Fetch unit names for every ingredient based on unitId
   Future<Map<String, String>> _resolveIngredientUnitNames(
     List<AddRecipeIngredient> ingredients,
   ) async {
@@ -355,6 +364,7 @@ class AddRecipeRemoteDataSource {
     return names;
   }
 
+  /// Return the id of "others" category
   String? _getOthersCategoryId(List<AddRecipeIngredientCategory> categories) {
     for (final category in categories) {
       if (category.name.trim().toLowerCase() == 'others') {
@@ -364,20 +374,13 @@ class AddRecipeRemoteDataSource {
     return categories.isEmpty ? null : categories.first.id;
   }
 
+  /// Normalized the key in USDA's results to fetch relevant nutrients data
   Map<String, dynamic>? _normalizedNutrients(Map<String, dynamic>? nutrients) {
     if (nutrients == null || nutrients.isEmpty) return null;
 
     final normalized = {
-      'calories': _nutrientValue(nutrients, const [
-        'calories',
-        'calorie',
-        'energy',
-      ]),
-      'carbohydrates': _nutrientValue(nutrients, const [
-        'carbohydrates',
-        'carbohydrate',
-        'carbs',
-      ]),
+      'calories': _nutrientValue(nutrients, const ['calories', 'calorie', 'energy']),
+      'carbohydrates': _nutrientValue(nutrients, const ['carbohydrates', 'carbohydrate', 'carbs']),
       'fat': _nutrientValue(nutrients, const ['fat', 'fats', 'totalFat']),
       'protein': _nutrientValue(nutrients, const ['protein', 'proteins']),
     };
@@ -386,12 +389,10 @@ class AddRecipeRemoteDataSource {
     return normalized;
   }
 
+  /// Fetch nutrients data
   double _nutrientValue(Map<String, dynamic> nutrients, List<String> keys) {
     for (final entry in nutrients.entries) {
-      final normalizedKey = entry.key.toLowerCase().replaceAll(
-        RegExp(r'[^a-z]'),
-        '',
-      );
+      final normalizedKey = entry.key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
       for (final key in keys) {
         final targetKey = key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
         if (normalizedKey == targetKey || normalizedKey.contains(targetKey)) {
@@ -414,6 +415,7 @@ class AddRecipeRemoteDataSource {
     return {'calories': 0.0, 'carbohydrates': 0.0, 'fat': 0.0, 'protein': 0.0};
   }
 
+  /// Add nutrients together to get total nutrients
   void _addNutrients(
     Map<String, dynamic> total,
     Map<String, dynamic>? nutrients,
@@ -424,6 +426,7 @@ class AddRecipeRemoteDataSource {
     }
   }
 
+  /// Save custom unit in Firestore
   Future<String> _saveCustomUnit(String name) async {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) return '';
@@ -452,6 +455,7 @@ class AddRecipeRemoteDataSource {
     return doc.id;
   }
 
+  /// Save custom category or allergen info in Firestore
   Future<List<String>> _saveCustomItems({
     required String collectionId,
     required List<String> names,
@@ -500,6 +504,7 @@ class AddRecipeRemoteDataSource {
     return doc.id;
   }
 
+  /// Saves or updates instructions
   Future<void> saveInstructions({
     required String recipeId,
     required bool useSections,
@@ -541,6 +546,7 @@ class AddRecipeRemoteDataSource {
     await batch.commit();
   }
 
+  /// Loads recipe basic info, ingredient and instruction for review.
   Future<AddRecipeReviewModel> getReview(String recipeId) async {
     final recipeDoc = await firestore.collection('recipes').doc(recipeId).get();
     final recipe = recipeDoc.data();
@@ -622,6 +628,7 @@ class AddRecipeRemoteDataSource {
     );
   }
 
+  /// Updates recipe visibility and notifies followers when a finalized recipe becomes public.
   Future<void> updateVisibility({
     required String recipeId,
     required String visibility,
@@ -653,6 +660,7 @@ class AddRecipeRemoteDataSource {
     }
   }
 
+  /// Marks recipe as finalized, alerts admins about new custom categories and sends follower notifications for public recipes.
   Future<void> finalizeRecipe(String recipeId) async {
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) {
@@ -707,6 +715,7 @@ class AddRecipeRemoteDataSource {
     }
   }
 
+  /// Return recipe owner id
   String _recipeOwnerUid(
     Map<String, dynamic> data, {
     required String fallbackUid,
@@ -728,6 +737,7 @@ class AddRecipeRemoteDataSource {
     return data?['publicNotificationSentAt'] != null;
   }
 
+  /// Notify followers when new public recipe created
   Future<void> _notifyFollowersOfNewRecipe({
     required String recipeOwnerUid,
     required String recipeTitle,
@@ -773,6 +783,7 @@ class AddRecipeRemoteDataSource {
     }
   }
 
+  /// Notify admin about new custom categories
   Future<void> _notifyAdminsOfNewCategories({
     required String recipeId,
     required Map<String, dynamic> recipeData,
@@ -1017,6 +1028,7 @@ class AddRecipeRemoteDataSource {
     return name.isEmpty ? 'Someone' : name;
   }
 
+  /// Deletes recipe and its ingredients, instructions, ratings, comments, replies and nested like records.
   Future<void> deleteRecipe(String recipeId) async {
     final uid = auth.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
@@ -1083,6 +1095,7 @@ class AddRecipeRemoteDataSource {
     }
   }
 
+  /// Marks recipe as completed.
   Future<void> completeRecipe({
     required String recipeId,
     required String mode,

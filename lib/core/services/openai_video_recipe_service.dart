@@ -7,11 +7,17 @@ import 'package:http/http.dart' as http;
 import '../../features/recipe/domain/entities/add_recipe_video_result.dart';
 import '../config/env_config.dart';
 
+/// Generates a complete recipe draft from extracted audio and frames.
+/// 1. Extract info from audio using OpenAI Whisper
+/// 2. Extract info from frames using OpenAI GPT-4o-mini
+/// 3. Generate recipe draft using OpenAI GPT-4o-mini
+/// 4. Generate image using OpenAI GPT-image-2
 class OpenAiVideoRecipeService {
   final http.Client client;
 
   const OpenAiVideoRecipeService({required this.client});
 
+  /// Generates a complete recipe draft from extracted audio and frames.
   Future<AddRecipeVideoDraft> generateRecipeFromVideo({
     required File audioFile,
     required List<File> frameFiles,
@@ -42,6 +48,7 @@ class OpenAiVideoRecipeService {
     );
   }
 
+  /// Extract info from audio using OpenAI Whisper
   Future<String> _transcribeAudio(File audioFile) async {
     final apiKey = _apiKey();
     final request =
@@ -67,6 +74,7 @@ class OpenAiVideoRecipeService {
     return decoded['text']?.toString().trim() ?? '';
   }
 
+  /// Extract info from frames using OpenAI GPT-4o-mini
   Future<String> _analyzeFrames(List<File> frameFiles) async {
     final apiKey = _apiKey();
     if (frameFiles.isEmpty) return '';
@@ -112,6 +120,7 @@ class OpenAiVideoRecipeService {
     return _extractOutputText(decoded);
   }
 
+  /// Generate recipe draft with the extracted info using OpenAI GPT-4o-mini
   Future<AddRecipeVideoDraft> _synthesizeRecipe({
     required String transcript,
     required String visualNotes,
@@ -160,6 +169,7 @@ class OpenAiVideoRecipeService {
     return _draftFromJson(payload);
   }
 
+  /// Generate image using OpenAI GPT-image-2
   Future<File?> _generateRecipeImage({
     required String prompt,
     required Directory outputDirectory,
@@ -196,6 +206,7 @@ class OpenAiVideoRecipeService {
     return file;
   }
 
+  /// Builds the prompt with required info and rules.
   String _buildPrompt(String transcript, String visualNotes) {
     return '''
 Use the audio transcript and visual frame notes as references, generate one complete recipe.
@@ -207,6 +218,7 @@ Recipe needs: recipe name, recipe category, short description, preparation time,
 ''';
   }
 
+  /// Reads text content from the Responses API output format.
   String _extractOutputText(Map<String, dynamic> decoded) {
     final output = decoded['output'] as List<dynamic>? ?? const [];
     for (final item in output.whereType<Map<String, dynamic>>()) {
@@ -221,6 +233,7 @@ Recipe needs: recipe name, recipe category, short description, preparation time,
     throw StateError('OpenAI response did not include recipe JSON.');
   }
 
+  /// Converts the results from JSON into desired format.
   AddRecipeVideoDraft _draftFromJson(Map<String, dynamic> json) {
     final recipeName = json['recipeName']?.toString().trim() ?? 'Video Recipe';
 
@@ -250,6 +263,7 @@ Recipe needs: recipe name, recipe category, short description, preparation time,
     );
   }
 
+  /// Returns the configured OpenAI API key or stops generation with a clear error.
   String _apiKey() {
     final apiKey = EnvConfig.openAiApiKey.trim();
     if (apiKey.isEmpty) {
@@ -261,6 +275,7 @@ Recipe needs: recipe name, recipe category, short description, preparation time,
   }
 }
 
+/// JSON schema for the AI, to ensure the results are provided in correct format.
 const Map<String, dynamic> _videoRecipeSchema = {
   'type': 'object',
   'additionalProperties': false,

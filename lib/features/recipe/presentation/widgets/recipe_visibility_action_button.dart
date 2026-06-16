@@ -5,6 +5,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 
+/// Displays the current recipe visibility and toggles between private and public.
 class RecipeVisibilityActionButton extends StatelessWidget {
   final String visibility;
   final bool isSaving;
@@ -64,6 +65,7 @@ class RecipeVisibilityActionButton extends StatelessWidget {
   }
 }
 
+/// Confirms recipe visibility changes, runs the update callback, and shows result feedback.
 Future<void> confirmRecipeVisibilityChange({
   required BuildContext context,
   required String currentVisibility,

@@ -2,7 +2,10 @@ class AddRecipeIngredientCategory {
   final String id;
   final String name;
 
-  const AddRecipeIngredientCategory({required this.id, required this.name});
+  const AddRecipeIngredientCategory({
+    required this.id,
+    required this.name,
+  });
 }
 
 class AddRecipeIngredientDataInput {

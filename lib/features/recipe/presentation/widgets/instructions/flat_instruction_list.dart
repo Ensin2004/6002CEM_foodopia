@@ -7,6 +7,7 @@ import '../../../../../core/widgets/buttons/secondary_button.dart';
 import '../../view/add_recipe_instructions_page.dart';
 import 'input_step_field.dart';
 
+/// Reorderable list for recipe's instruction that use step-by-step method.
 class FlatInstructionList extends StatelessWidget {
   final List<InstructionStepState> steps;
   final double horizontalPadding;
@@ -65,6 +66,7 @@ class FlatInstructionList extends StatelessWidget {
   }
 }
 
+/// Card for one flat instruction step with reorder and delete actions.
 class _InstructionStepCard extends StatelessWidget {
   final int index;
   final String title;

@@ -6,6 +6,7 @@ import '../../../../../core/widgets/buttons/secondary_button.dart';
 import '../../view/add_recipe_instructions_page.dart';
 import 'input_step_field.dart';
 
+/// Reorderable list for recipe's instruction that use section method.
 class SectionInstructionList extends StatelessWidget {
   final List<InstructionSectionState> sections;
   final double horizontalPadding;
@@ -78,6 +79,7 @@ class SectionInstructionList extends StatelessWidget {
   }
 }
 
+/// Card for one section instruction with title input, nested steps, reorder controls and delete actions.
 class _InstructionSectionCard extends StatelessWidget {
   final int sectionIndex;
   final InstructionSectionState section;

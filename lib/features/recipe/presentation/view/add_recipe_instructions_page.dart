@@ -243,7 +243,6 @@ class _AddRecipeInstructionsViewState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Progress Bar
               if (!widget.hideProgressBar)
                 const Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -311,6 +310,8 @@ class _AddRecipeInstructionsViewState
                   ],
                 ),
               ),
+
+              // Input Fields
               Expanded(
                 child: _useSections
                     ? SectionInstructionList(
@@ -359,6 +360,7 @@ class _AddRecipeInstructionsViewState
     );
   }
 
+  // Handle back action
   Future<void> _handleBack(BuildContext context) async {
     if (!_hasUnsavedChanges()) {
       _leaveEditPage(context);

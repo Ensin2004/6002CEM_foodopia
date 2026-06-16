@@ -6,6 +6,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../viewmodel/add_recipe_basic_info_viewmodel.dart';
 
+/// Presents recipe difficulty levels as selectable form choices.
 class RecipeDifficultyPicker extends StatelessWidget {
   final List<String> levels;
 

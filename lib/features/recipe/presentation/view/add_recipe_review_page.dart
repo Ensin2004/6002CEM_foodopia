@@ -295,6 +295,8 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+
+                  // Label, Tips
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,6 +313,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                     ),
                   ),
 
+                  // Delete button
                   if (widget.aiReview == null)
                     IconButton(
                       visualDensity: VisualDensity.compact,
@@ -329,6 +332,8 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                 ],
               ),
             ),
+
+            // Information
             Expanded(
               child: ListView(
                 padding: EdgeInsets.fromLTRB(
@@ -338,8 +343,12 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                   0,
                 ),
                 children: [
+
+                  // Recipe Image and Video
                   ReviewHeroImage(media: review.media),
                   const SizedBox(height: AppSpacing.lg),
+
+                  // Basic Info
                   ReviewSectionRow(
                     icon: Icons.info_rounded,
                     title: "Basic Info",
@@ -390,6 +399,8 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.lg),
+
+                  // Nutrients
                   ReviewSectionRow(
                     icon: Icons.science_rounded,
                     title: "Nutrients (AI Estimated)",
@@ -413,6 +424,8 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.lg),
+
+                  // Ingredients
                   ReviewSectionRow(
                     icon: Icons.eco_rounded,
                     title: "Ingredients",
@@ -433,6 +446,8 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                         .toList(),
                   ),
                   const SizedBox(height: AppSpacing.lg),
+
+                  // Instructions
                   ReviewSectionRow(
                     icon: Icons.menu_book_rounded,
                     title: "Instructions",
@@ -480,6 +495,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
+  // Sort Ingredients
   List<AddRecipeReviewIngredient> _sortedIngredients(List<AddRecipeReviewIngredient> ingredients) {
     return [...ingredients]..sort(
       (first, second) =>
@@ -487,6 +503,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
+  // Handle save action
   Future<void> _finishSavedRecipe(
     BuildContext context,
     AddRecipeReviewViewModel viewModel,
@@ -521,6 +538,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
+  // Handle delete action
   Future<void> _confirmDeleteRecipe(
     BuildContext context,
     AddRecipeReviewViewModel viewModel,
@@ -586,6 +604,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
+  // Handle save action (for AI draft)
   Future<void> _saveAiDraft(BuildContext context) async {
     final basicInfo = widget.aiDraftBasicInfo;
     if (basicInfo == null) return;
@@ -643,6 +662,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
+  // Instruction Widgets
   List<Widget> _instructionsWidgets(AddRecipeReview review) {
     if (!review.instructionUseSection) {
       return review.instructions

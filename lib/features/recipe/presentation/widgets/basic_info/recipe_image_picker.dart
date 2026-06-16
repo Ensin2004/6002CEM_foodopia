@@ -9,6 +9,7 @@ import '../../../../../core/widgets/cards/method_card.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../../core/widgets/media/app_recipe_media.dart';
 
+/// Displays recipe media preview box with pick and edit button.
 class RecipeImagePicker extends StatefulWidget {
   final List<File> images;
   final List<String> existingImageUrls;
@@ -27,6 +28,7 @@ class RecipeImagePicker extends StatefulWidget {
   State<RecipeImagePicker> createState() => _RecipeImagePickerState();
 }
 
+/// Tracks the active media preview and keeps the index valid after media changes.
 class _RecipeImagePickerState extends State<RecipeImagePicker> {
   int _currentImageIndex = 0;
 
@@ -140,6 +142,7 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
   }
 }
 
+/// Shows current viewing media in the box.
 class _RecipeMediaPreview extends StatelessWidget {
   final File file;
   final BoxFit fit;
@@ -160,6 +163,7 @@ class _RecipeMediaPreview extends StatelessWidget {
   }
 }
 
+/// Circular icon button used for recipe media picker actions.
 class _ImageActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
