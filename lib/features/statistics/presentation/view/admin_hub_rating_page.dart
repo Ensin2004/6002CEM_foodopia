@@ -15,11 +15,16 @@ import '../widgets/admin_statistics_detail_widgets.dart';
 import '../widgets/statistics_line_chart.dart';
 import '../widgets/statistics_page_helpers.dart';
 
+/// Admin report showing how users rated the application hub.
 class AdminHubRatingPage extends StatelessWidget {
   const AdminHubRatingPage({super.key});
 
   @override
+  // Build the admin hub rating page with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
+    // The ViewModel loads rating history for the selected date range.
     return ChangeNotifierProvider(
       create: (_) => AdminHubRatingViewModel(
         getStatisticsUseCase: sl<GetAdminHubRatingStatisticsUseCase>(),
@@ -29,6 +34,9 @@ class AdminHubRatingPage extends StatelessWidget {
   }
 }
 
+// This widget builds the main content for the admin hub rating view.
+// It reads the ViewModel and chooses loading, error, or data content.
+// Smaller widgets below handle the individual visual sections.
 class _AdminHubRatingView extends StatefulWidget {
   const _AdminHubRatingView();
 
@@ -36,8 +44,14 @@ class _AdminHubRatingView extends StatefulWidget {
   State<_AdminHubRatingView> createState() => _AdminHubRatingViewState();
 }
 
+// This state object manages the changing parts of the admin hub rating view state.
+// It listens to user actions and rebuilds the affected widgets.
+// Controllers and other temporary UI values also belong here.
 class _AdminHubRatingViewState extends State<_AdminHubRatingView> {
   @override
+  // Build the admin hub rating view state with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminHubRatingViewModel>();
 
@@ -52,6 +66,7 @@ class _AdminHubRatingViewState extends State<_AdminHubRatingView> {
   }
 
   Widget _buildBody(AdminHubRatingViewModel viewModel) {
+    // Wait for monthly rating values before building the report.
     if (viewModel.isLoading && viewModel.statistics == null) {
       return const LoadingDialog(
         inline: true,
@@ -79,6 +94,7 @@ class _AdminHubRatingViewState extends State<_AdminHubRatingView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Reload rating history when the admin changes the period.
             AdminStatisticDateRangeBar(
               dateRange: statistics.dateRange,
               onTap: () => _pickDateRange(viewModel),
@@ -113,6 +129,8 @@ class _AdminHubRatingViewState extends State<_AdminHubRatingView> {
     );
   }
 
+  // Open the calendar with the current range already selected.
+  // Send confirmed dates to the ViewModel so it can reload the report.
   Future<void> _pickDateRange(AdminHubRatingViewModel viewModel) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -135,12 +153,18 @@ class _AdminHubRatingViewState extends State<_AdminHubRatingView> {
   }
 }
 
+// This widget turns the report values into the hub rating chart.
+// It prepares labels and values before passing them to the shared chart.
+// Keeping chart setup here avoids mixing it with the main page layout.
 class _HubRatingChart extends StatelessWidget {
   final List<AdminMonthlyRatingStatistic> months;
 
   const _HubRatingChart({required this.months});
 
   @override
+  // Build the hub rating chart from the values supplied by the parent.
+  // Labels, scale, and spacing are prepared before the chart is displayed.
+  // This method only handles presentation and does not change report data.
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMM yy');
     return _SectionCard(
@@ -152,6 +176,11 @@ class _HubRatingChart extends StatelessWidget {
             MediaQuery.sizeOf(context).width - 52,
             double.infinity,
           ),
+          // HUB-RATING LINE-CHART UI CALL STARTS HERE.
+          // Monthly rating values are passed into the shared line chart.
+          // Draws a line chart showing the average hub rating for each month.
+          // Link: AdminHubRatingPage -> StatisticsLineChart.
+          // Widget file: ../widgets/statistics_line_chart.dart.
           child: StatisticsLineChart(
             points: months
                 .map(
@@ -168,12 +197,18 @@ class _HubRatingChart extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed hub rating breakdown.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _HubRatingBreakdown extends StatelessWidget {
   final List<AdminMonthlyRatingStatistic> months;
 
   const _HubRatingBreakdown({required this.months});
 
   @override
+  // Build the visible rows for the hub rating breakdown.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMMM yyyy');
     return _SectionCard(
@@ -194,6 +229,9 @@ class _HubRatingBreakdown extends StatelessWidget {
   }
 }
 
+// This widget represents one section card in the report.
+// It owns the header and the content that belongs to this group.
+// The expanded state decides whether the detailed rows are visible.
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
@@ -206,6 +244,9 @@ class _SectionCard extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the section card.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -238,6 +279,9 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed rating breakdown row.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _RatingBreakdownRow extends StatelessWidget {
   final String label;
   final double averageRating;
@@ -250,6 +294,9 @@ class _RatingBreakdownRow extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the rating breakdown row.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
@@ -291,12 +338,18 @@ class _RatingBreakdownRow extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable stars.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _Stars extends StatelessWidget {
   final double rating;
 
   const _Stars({required this.rating});
 
   @override
+  // Build the visual layout for this stars.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Row(
       children: List.generate(5, (index) {
@@ -311,12 +364,18 @@ class _Stars extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable rating pill.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _RatingPill extends StatelessWidget {
   final double rating;
 
   const _RatingPill({required this.rating});
 
   @override
+  // Build the visual layout for this rating pill.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),

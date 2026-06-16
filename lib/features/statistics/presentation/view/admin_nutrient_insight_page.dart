@@ -15,11 +15,16 @@ import '../viewmodel/admin_nutrient_insight_viewmodel.dart';
 import '../widgets/statistics_line_chart.dart';
 import '../widgets/statistics_page_helpers.dart';
 
+/// Admin report for system-wide nutrient trends and predictions.
 class AdminNutrientInsightPage extends StatelessWidget {
   const AdminNutrientInsightPage({super.key});
 
   @override
+  // Build the admin nutrient insight page with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
+    // The ViewModel controls filtering, units, and expanded daily details.
     return ChangeNotifierProvider(
       create: (_) => AdminNutrientInsightViewModel(
         getStatisticsUseCase: sl<GetAdminNutrientInsightStatisticsUseCase>(),
@@ -29,6 +34,9 @@ class AdminNutrientInsightPage extends StatelessWidget {
   }
 }
 
+// This widget builds the main content for the admin nutrient insight view.
+// It reads the ViewModel and chooses loading, error, or data content.
+// Smaller widgets below handle the individual visual sections.
 class _AdminNutrientInsightView extends StatefulWidget {
   const _AdminNutrientInsightView();
 
@@ -37,10 +45,16 @@ class _AdminNutrientInsightView extends StatefulWidget {
       _AdminNutrientInsightViewState();
 }
 
+// This state object manages the changing parts of the admin nutrient insight view state.
+// It listens to user actions and rebuilds the affected widgets.
+// Controllers and other temporary UI values also belong here.
 class _AdminNutrientInsightViewState extends State<_AdminNutrientInsightView> {
   int _selectedChart = 0;
 
   @override
+  // Build the admin nutrient insight view state with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminNutrientInsightViewModel>();
 
@@ -55,6 +69,7 @@ class _AdminNutrientInsightViewState extends State<_AdminNutrientInsightView> {
   }
 
   Widget _buildBody(AdminNutrientInsightViewModel viewModel) {
+    // Wait for daily nutrient values before creating insights.
     if (viewModel.isLoading && viewModel.statistics == null) {
       return const LoadingDialog(
         inline: true,
@@ -84,6 +99,7 @@ class _AdminNutrientInsightViewState extends State<_AdminNutrientInsightView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // A new period recalculates all nutrient charts and predictions.
             StatisticsDateRangeBar(
               dateRange: statistics.dateRange,
               onTap: () => pickStatisticsDateRange(
@@ -167,7 +183,13 @@ class _AdminNutrientInsightViewState extends State<_AdminNutrientInsightView> {
     );
   }
 
+  // Estimate the next value from the recent direction of the data.
+  // This display forecast does not update any stored statistics.
   int _predictNext(List<int> values) {
+    // Use the last two known values to find the most recent change.
+    // Adding that change to the latest value creates the next estimate.
+    // Negative predictions are prevented because nutrient totals cannot be less
+    // than zero.
     if (values.isEmpty) return 0;
     if (values.length == 1) return values.first;
     var totalChange = 0;
@@ -179,6 +201,9 @@ class _AdminNutrientInsightViewState extends State<_AdminNutrientInsightView> {
   }
 }
 
+// This object keeps the values needed by the nutrient prediction together.
+// It is only used to prepare display data for this page.
+// No loading or database work happens inside this object.
 class _NutrientPrediction {
   final String title;
   final int value;
@@ -193,6 +218,9 @@ class _NutrientPrediction {
   });
 }
 
+// This small widget draws one summary tile.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -205,6 +233,9 @@ class _SummaryTile extends StatelessWidget {
   });
 
   @override
+  // Build the visual layout for this summary tile.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -253,6 +284,9 @@ class _SummaryTile extends StatelessWidget {
   }
 }
 
+// This widget turns the report values into the nutrient chart metric.
+// It prepares labels and values before passing them to the shared chart.
+// Keeping chart setup here avoids mixing it with the main page layout.
 class _NutrientChartMetric {
   final String title;
   final String breakdownTitle;
@@ -271,6 +305,9 @@ class _NutrientChartMetric {
   });
 }
 
+// This widget controls the nutrient metric pager used to move between report views.
+// The selected index comes from the parent or ViewModel.
+// User changes are sent back through the provided callback.
 class _NutrientMetricPager extends StatelessWidget {
   final CaloriesIntakeStatistics statistics;
   final AdminNutrientInsightViewModel viewModel;
@@ -345,6 +382,9 @@ class _NutrientMetricPager extends StatelessWidget {
   }
 
   @override
+  // Build the nutrient metric pager with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     final chartMetrics = metrics(viewModel);
     final metric = chartMetrics[selectedChart];
@@ -380,6 +420,8 @@ class _NutrientMetricPager extends StatelessWidget {
     );
   }
 
+  // Convert the swipe or tap into a valid page index.
+  // Store the index so tabs, content, and page dots stay matched.
   void _handleSwipe(
     DragEndDetails details,
     List<_NutrientChartMetric> chartMetrics,
@@ -393,6 +435,9 @@ class _NutrientMetricPager extends StatelessWidget {
   }
 }
 
+// This widget controls the metric dots used to move between report views.
+// The selected index comes from the parent or ViewModel.
+// User changes are sent back through the provided callback.
 class _MetricDots extends StatelessWidget {
   final int count;
   final int selectedIndex;
@@ -400,6 +445,9 @@ class _MetricDots extends StatelessWidget {
   const _MetricDots({required this.count, required this.selectedIndex});
 
   @override
+  // Build the metric dots with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -420,6 +468,9 @@ class _MetricDots extends StatelessWidget {
   }
 }
 
+// This widget turns the report values into the nutrient chart card.
+// It prepares labels and values before passing them to the shared chart.
+// Keeping chart setup here avoids mixing it with the main page layout.
 class _NutrientChartCard extends StatelessWidget {
   final CaloriesIntakeStatistics statistics;
   final _NutrientChartMetric metric;
@@ -427,6 +478,9 @@ class _NutrientChartCard extends StatelessWidget {
   const _NutrientChartCard({required this.statistics, required this.metric});
 
   @override
+  // Build the nutrient chart card from the values supplied by the parent.
+  // Labels, scale, and spacing are prepared before the chart is displayed.
+  // This method only handles presentation and does not change report data.
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMM d');
 
@@ -466,6 +520,11 @@ class _NutrientChartCard extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
                   width: chartWidth,
+                  // ADMIN NUTRIENT LINE-CHART UI CALL STARTS HERE.
+                  // The selected nutrient values are passed to the shared chart.
+                  // Draws a line chart of the selected nutrient for each day.
+                  // Link: AdminNutrientInsightPage -> StatisticsLineChart.
+                  // Widget file: ../widgets/statistics_line_chart.dart.
                   child: StatisticsLineChart(
                     height: 220,
                     points: statistics.dailyIntakes
@@ -498,6 +557,9 @@ class _NutrientChartCard extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed nutrient breakdown.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _NutrientBreakdown extends StatelessWidget {
   final List<CaloriesDailyIntake> dailyIntakes;
   final int? expandedIndex;
@@ -514,6 +576,9 @@ class _NutrientBreakdown extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the nutrient breakdown.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -578,6 +643,9 @@ class _NutrientBreakdown extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable unit button.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _UnitButton extends StatelessWidget {
   final CaloriesDisplayUnit displayUnit;
   final ValueChanged<CaloriesDisplayUnit> onUnitChanged;
@@ -585,6 +653,9 @@ class _UnitButton extends StatelessWidget {
   const _UnitButton({required this.displayUnit, required this.onUnitChanged});
 
   @override
+  // Build the visual layout for this unit button.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return PopupMenuButton<CaloriesDisplayUnit>(
       tooltip: 'Unit',
@@ -613,6 +684,9 @@ class _UnitButton extends StatelessWidget {
   }
 }
 
+// This widget represents one daily nutrient section in the report.
+// It owns the header and the content that belongs to this group.
+// The expanded state decides whether the detailed rows are visible.
 class _DailyNutrientSection extends StatelessWidget {
   final CaloriesDailyIntake day;
   final bool isExpanded;
@@ -631,6 +705,9 @@ class _DailyNutrientSection extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the daily nutrient section.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     final dateText = DateFormat('MMM d, yyyy').format(day.date);
 
@@ -709,6 +786,9 @@ class _DailyNutrientSection extends StatelessWidget {
   }
 }
 
+// This small widget draws one nutrient meal row.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _NutrientMealRow extends StatelessWidget {
   final CaloriesMealItem meal;
   final String unitLabel;
@@ -721,6 +801,9 @@ class _NutrientMealRow extends StatelessWidget {
   });
 
   @override
+  // Build the visual layout for this nutrient meal row.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFFF7F7F7),
@@ -761,12 +844,18 @@ class _NutrientMealRow extends StatelessWidget {
   }
 }
 
+// This object keeps the values needed by the prediction note together.
+// It is only used to prepare display data for this page.
+// No loading or database work happens inside this object.
 class _PredictionNote extends StatelessWidget {
   final _NutrientPrediction prediction;
 
   const _PredictionNote({required this.prediction});
 
   @override
+  // Build the prediction note with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -808,6 +897,9 @@ class _PredictionNote extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable food icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
   final String? imageUrl;
@@ -815,6 +907,9 @@ class _FoodIcon extends StatelessWidget {
   const _FoodIcon({required this.icon, this.imageUrl});
 
   @override
+  // Build the visual layout for this food icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     final url = imageUrl?.trim() ?? '';
     return Container(
@@ -841,12 +936,18 @@ class _FoodIcon extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable soft icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
   const _SoftIcon({required this.icon});
 
   @override
+  // Build the visual layout for this soft icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       width: 36,

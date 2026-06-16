@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 
+/// One x-axis point with two values to compare.
 class StatisticsDualLinePoint {
   final String label;
   final int firstValue;
@@ -17,6 +18,7 @@ class StatisticsDualLinePoint {
   });
 }
 
+/// One named line used by the multi-line chart.
 class StatisticsLineChartSeries {
   final String label;
   final Color color;
@@ -29,6 +31,7 @@ class StatisticsLineChartSeries {
   });
 }
 
+/// Draws several data lines on the same chart for comparison.
 class StatisticsMultiLineChart extends StatelessWidget {
   final List<String> labels;
   final List<StatisticsLineChartSeries> series;
@@ -141,6 +144,7 @@ class StatisticsMultiLineChart extends StatelessWidget {
   }
 }
 
+/// Convenience chart for comparing exactly two related values.
 class StatisticsDualLineChart extends StatelessWidget {
   final List<StatisticsDualLinePoint> points;
   final Color firstColor;

@@ -10,11 +10,16 @@ import '../viewmodel/admin_dietary_preference_viewmodel.dart';
 import '../widgets/admin_statistics_detail_widgets.dart';
 import '../widgets/statistics_page_helpers.dart';
 
+/// Admin report showing the dietary preferences chosen by users.
 class AdminDietaryPreferencePage extends StatelessWidget {
   const AdminDietaryPreferencePage({super.key});
 
   @override
+  // Build the admin dietary preference page with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
+    // The ViewModel loads preference totals for the selected date range.
     return ChangeNotifierProvider(
       create: (_) => AdminDietaryPreferenceViewModel(
         getStatisticsUseCase: sl<GetAdminDietaryPreferenceStatisticsUseCase>(),
@@ -24,6 +29,9 @@ class AdminDietaryPreferencePage extends StatelessWidget {
   }
 }
 
+// This widget builds the main content for the admin dietary preference view.
+// It reads the ViewModel and chooses loading, error, or data content.
+// Smaller widgets below handle the individual visual sections.
 class _AdminDietaryPreferenceView extends StatefulWidget {
   const _AdminDietaryPreferenceView();
 
@@ -32,9 +40,15 @@ class _AdminDietaryPreferenceView extends StatefulWidget {
       _AdminDietaryPreferenceViewState();
 }
 
+// This state object manages the changing parts of the admin dietary preference view state.
+// It listens to user actions and rebuilds the affected widgets.
+// Controllers and other temporary UI values also belong here.
 class _AdminDietaryPreferenceViewState
     extends State<_AdminDietaryPreferenceView> {
   @override
+  // Build the admin dietary preference view state with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminDietaryPreferenceViewModel>();
 
@@ -49,6 +63,7 @@ class _AdminDietaryPreferenceViewState
   }
 
   Widget _buildBody(AdminDietaryPreferenceViewModel viewModel) {
+    // Wait for preference data before drawing the pie chart.
     if (viewModel.isLoading && viewModel.statistics == null) {
       return const LoadingDialog(
         inline: true,
@@ -101,6 +116,13 @@ class _AdminDietaryPreferenceViewState
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
+            // The pie chart and ranked list use the same preference values.
+            // DIETARY-PREFERENCE PIE-CHART UI CALL STARTS HERE.
+            // The shared card receives the preference values and turns them
+            // into segments for StatisticsPieChart.
+            // Draws a pie chart showing users in each dietary preference.
+            // Link: AdminDietaryPreferencePage -> AdminPreferencePieCard.
+            // Next: admin_statistics_detail_widgets.dart -> StatisticsPieChart.
             AdminPreferencePieCard(
               totalUsers: statistics.totalUsers,
               preferences: statistics.preferences,
@@ -116,6 +138,8 @@ class _AdminDietaryPreferenceViewState
     );
   }
 
+  // Open the calendar with the current range already selected.
+  // Send confirmed dates to the ViewModel so it can reload the report.
   Future<void> _pickDateRange(AdminDietaryPreferenceViewModel viewModel) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

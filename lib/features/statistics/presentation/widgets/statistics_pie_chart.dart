@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 
+/// One coloured section displayed by [StatisticsPieChart].
 class StatisticsPieChartSegment {
   final String label;
   final int value;
@@ -17,6 +18,7 @@ class StatisticsPieChartSegment {
   });
 }
 
+/// Reusable pie chart with a value shown in the centre.
 class StatisticsPieChart extends StatelessWidget {
   final List<StatisticsPieChartSegment> segments;
   final String centerTitle;
@@ -33,6 +35,7 @@ class StatisticsPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Zero-value sections are hidden because they have no visible angle.
     final visibleSegments = segments
         .where((segment) => segment.value > 0)
         .toList();
@@ -42,6 +45,8 @@ class StatisticsPieChart extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
+          // PIE CHART DRAWING SETUP STARTS HERE.
+          // CustomPaint gives the segment data and canvas area to the painter.
           CustomPaint(
             size: Size.square(size),
             painter: _StatisticsPieChartPainter(segments: visibleSegments),
@@ -96,6 +101,9 @@ class _StatisticsPieChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // ACTUAL PIE CHART CANVAS DRAWING STARTS HERE.
+    // This method calculates every slice angle and paints it on the screen.
+    // Every angle is calculated as a part of this combined total.
     final total = segments.fold<int>(0, (sum, segment) => sum + segment.value);
     if (total <= 0) return;
 
@@ -107,10 +115,12 @@ class _StatisticsPieChartPainter extends CustomPainter {
       ..color = Colors.white
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
+    // Start from the top of the circle and draw each section clockwise.
     var startAngle = -math.pi / 2;
     for (final segment in segments) {
       final sweepAngle = (segment.value / total) * math.pi * 2;
       segmentPaint.color = segment.color;
+      // This drawArc call paints one coloured slice of the pie.
       canvas.drawArc(rect, startAngle, sweepAngle, true, segmentPaint);
       canvas.drawArc(rect, startAngle, sweepAngle, true, dividerPaint);
 

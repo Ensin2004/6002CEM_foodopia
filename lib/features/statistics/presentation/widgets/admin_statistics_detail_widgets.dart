@@ -10,6 +10,7 @@ import 'statistics_bar_chart.dart';
 import 'statistics_line_chart.dart';
 import 'statistics_pie_chart.dart';
 
+/// Date-range control shared by the smaller admin reports.
 class AdminStatisticDateRangeBar extends StatelessWidget {
   final String dateRange;
   final VoidCallback? onTap;
@@ -66,6 +67,7 @@ class AdminStatisticDateRangeBar extends StatelessWidget {
   }
 }
 
+/// Compact tile for one important admin total.
 class AdminStatisticSummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -127,6 +129,7 @@ class AdminStatisticSummaryTile extends StatelessWidget {
   }
 }
 
+/// Places a daily line chart inside the standard admin card style.
 class AdminLineChartCard extends StatelessWidget {
   final String title;
   final List<AdminDailyStatistic> values;
@@ -164,6 +167,7 @@ class AdminLineChartCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           LayoutBuilder(
             builder: (context, constraints) {
+              // Give every date enough horizontal space and scroll if needed.
               final chartWidth = (values.length * 52.0).clamp(
                 constraints.maxWidth,
                 double.infinity,
@@ -173,6 +177,12 @@ class AdminLineChartCard extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
                   width: chartWidth,
+                  // LINE CHART CALL STARTS HERE.
+                  // This shared admin card sends the prepared daily points to
+                  // StatisticsLineChart, which draws the actual line.
+                  // Draws a line chart of the supplied daily admin values.
+                  // Linked from: AdminMealAnalyticPage and AdminPostAnalyticPage.
+                  // Links to: statistics_line_chart.dart -> StatisticsLineChart.
                   child: StatisticsLineChart(
                     height: 220,
                     points: values
@@ -194,6 +204,7 @@ class AdminLineChartCard extends StatelessWidget {
   }
 }
 
+/// Lets the admin move between related report sections.
 class AdminAnalyticSectionPager extends StatelessWidget {
   final PageController controller;
   final List<AdminAnalyticSection> sections;
@@ -244,6 +255,8 @@ class AdminAnalyticSectionPager extends StatelessWidget {
               if (custom != null) {
                 return SingleChildScrollView(child: custom);
               }
+              // Difficulty keeps its natural 1-to-5 order. Other lists follow
+              // the sort option selected by the admin.
               final section = sections[index].title == 'Average Difficulty'
                   ? sections[index]
                   : sections[index].sorted(sortOrder);
@@ -320,6 +333,7 @@ class _AdminSectionTabs extends StatelessWidget {
   }
 }
 
+/// Standard layout for a summary, chart, and ranked breakdown.
 class AdminAnalyticSectionCard extends StatelessWidget {
   final AdminAnalyticSection section;
   final AdminStatisticsSortOrder sortOrder;
@@ -334,6 +348,7 @@ class AdminAnalyticSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Use pie charts for parts of a whole and bars for ranked values.
     final chartWidth = (MediaQuery.sizeOf(context).width - 52).clamp(
       288.0,
       340.0,
@@ -418,6 +433,12 @@ class _SectionChart extends StatelessWidget {
     if (section.title == 'Meal Planned Time' ||
         section.title == 'Method Of Creating Meal Plan') {
       final chartSize = MediaQuery.sizeOf(context).width < 360 ? 238.0 : 260.0;
+      // PIE CHART CALL STARTS HERE.
+      // Meal-time and creation-method sections represent parts of a total, so
+      // this branch sends their values to the shared StatisticsPieChart.
+      // Draws a pie chart of meal-time or plan-creation-method totals.
+      // Linked from: AdminMealAnalyticPage through AdminAnalyticSectionPager.
+      // Links to: statistics_pie_chart.dart -> StatisticsPieChart.
       return StatisticsPieChart(
         size: chartSize,
         centerTitle: section.title == 'Method Of Creating Meal Plan'
@@ -439,6 +460,12 @@ class _SectionChart extends StatelessWidget {
     return Center(
       child: SizedBox(
         width: chartWidth,
+        // BAR CHART CALL STARTS HERE.
+        // All other ranked analytic sections send their first five items to
+        // StatisticsBarChart, which builds one vertical bar for each item.
+        // Draws a bar chart of the first five ranked section values.
+        // Linked from: AdminMealAnalyticPage and AdminPostAnalyticPage.
+        // Links to: statistics_bar_chart.dart -> StatisticsBarChart.
         child: StatisticsBarChart(
           height: chartWidth * 0.72,
           items: chartItems
@@ -462,6 +489,7 @@ class _SectionChart extends StatelessWidget {
   }
 }
 
+/// Ranked values that can sort and open extra detail rows.
 class AdminRankedStatisticList extends StatefulWidget {
   final String title;
   final List<AdminRankedStatistic> items;
@@ -549,6 +577,7 @@ class _AdminRankedStatisticListState extends State<AdminRankedStatisticList> {
           ...List.generate(widget.items.length, (index) {
             final item = widget.items[index];
             final isExpanded = _expandedIndex == index;
+            // Only one ranked item stays open at a time.
             void toggleExpanded() {
               setState(() {
                 _expandedIndex = isExpanded ? null : index;
@@ -616,6 +645,12 @@ class AdminPreferencePieCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
+          // PIE CHART CALL STARTS HERE.
+          // Gender and dietary-preference pages call this card. This line sends
+          // their converted segments to the shared pie-chart widget.
+          // Draws a pie chart of gender or dietary-preference distribution.
+          // Linked from: AdminGenderPage and AdminDietaryPreferencePage.
+          // Links to: statistics_pie_chart.dart -> StatisticsPieChart.
           StatisticsPieChart(
             size: chartSize,
             centerTitle: centerTitle,

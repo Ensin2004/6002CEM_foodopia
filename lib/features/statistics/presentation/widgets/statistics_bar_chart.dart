@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 
+/// One value displayed by [StatisticsBarChart].
 class StatisticsBarChartItem {
   final String label;
   final int value;
@@ -23,6 +24,7 @@ class StatisticsBarChartItem {
   });
 }
 
+/// Small reusable bar chart used by the statistics detail pages.
 class StatisticsBarChart extends StatelessWidget {
   final List<StatisticsBarChartItem> items;
   final int? maxValue;
@@ -37,7 +39,12 @@ class StatisticsBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // BAR CHART BUILDING STARTS HERE.
+    // Unlike the pie and line charts, this chart does not use CustomPainter.
+    // It creates each bar from normal Flutter Row, Column, and Container widgets.
+    // Keep the chart readable on phones by showing at most five bars.
     final visibleItems = _visibleItems(items);
+    // Round the highest value so the vertical labels are easy to read.
     final highestValue = maxValue ?? _niceMaxValue(visibleItems);
     final gridValues = _gridValues(highestValue);
 
@@ -97,6 +104,8 @@ class StatisticsBarChart extends StatelessWidget {
                                   Container(height: 1, color: AppColors.border),
                             ),
                           ),
+                          // EACH VERTICAL BAR STARTS HERE.
+                          // Every visible item becomes one Expanded column.
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: visibleItems.map((item) {
@@ -115,6 +124,8 @@ class StatisticsBarChart extends StatelessWidget {
                                         child: FractionallySizedBox(
                                           heightFactor: ratio.clamp(0.0, 1.0),
                                           alignment: Alignment.bottomCenter,
+                                          // This Container is the coloured bar.
+                                          // Its height is based on value / highestValue.
                                           child: Container(
                                             width: 30,
                                             decoration: BoxDecoration(
@@ -180,6 +191,7 @@ class StatisticsBarChart extends StatelessWidget {
   }
 
   int _niceMaxValue(List<StatisticsBarChartItem> items) {
+    // Pick a clean chart limit instead of ending at an uneven value.
     final maxItemValue = items.fold<int>(
       0,
       (max, item) => item.value > max ? item.value : max,

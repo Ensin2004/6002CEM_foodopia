@@ -15,13 +15,18 @@ import '../viewmodel/calories_intake_viewmodel.dart';
 import '../widgets/statistics_page_helpers.dart';
 import '../widgets/statistics_line_chart.dart';
 
+/// Shows daily nutrient intake and optional prediction insights.
 class CaloriesIntakePage extends StatelessWidget {
   final bool showInsight;
 
   const CaloriesIntakePage({super.key, this.showInsight = false});
 
   @override
+  // Build the calories intake page with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
+    // The same page is reused for normal intake and insight mode.
     return ChangeNotifierProvider(
       create: (_) => CaloriesIntakeViewModel(
         getStatisticsUseCase: sl<GetCaloriesIntakeStatisticsUseCase>(),
@@ -31,6 +36,9 @@ class CaloriesIntakePage extends StatelessWidget {
   }
 }
 
+// This widget builds the main content for the calories intake view.
+// It reads the ViewModel and chooses loading, error, or data content.
+// Smaller widgets below handle the individual visual sections.
 class _CaloriesIntakeView extends StatefulWidget {
   final bool showInsight;
 
@@ -40,10 +48,16 @@ class _CaloriesIntakeView extends StatefulWidget {
   State<_CaloriesIntakeView> createState() => _CaloriesIntakeViewState();
 }
 
+// This state object manages the changing parts of the calories intake view state.
+// It listens to user actions and rebuilds the affected widgets.
+// Controllers and other temporary UI values also belong here.
 class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
   int _selectedChart = 0;
 
   @override
+  // Build the calories intake view state with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     final viewModel = context.watch<CaloriesIntakeViewModel>();
 
@@ -58,6 +72,7 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
   }
 
   Widget _buildBody(BuildContext context, CaloriesIntakeViewModel viewModel) {
+    // Show the report only when its daily nutrient data is ready.
     if (viewModel.isLoading && viewModel.statistics == null) {
       return const LoadingDialog(inline: true, message: 'Loading nutrients...');
     }
@@ -82,6 +97,7 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // A new range reloads all nutrient totals and daily values.
             StatisticsDateRangeBar(
               dateRange: statistics.dateRange,
               onTap: () => pickStatisticsDateRange(
@@ -115,6 +131,7 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
+            // Insight mode adds prediction content to the normal report.
             if (widget.showInsight) ...[
               _NutrientInsightNote(
                 prediction: _predictionForSelectedMetric(statistics, viewModel),
@@ -148,6 +165,8 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
     }
   }
 
+  // Calculate one average value from all visible daily records.
+  // Empty data returns a safe zero instead of dividing by zero.
   String _averageValue(
     CaloriesIntakeStatistics statistics,
     CaloriesIntakeViewModel viewModel,
@@ -164,6 +183,8 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
     }
   }
 
+  // Calculate one average value from all visible daily records.
+  // Empty data returns a safe zero instead of dividing by zero.
   int _averageInt(
     List<CaloriesDailyIntake> days,
     int Function(CaloriesDailyIntake day) valueForDay,
@@ -229,6 +250,8 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
     }
   }
 
+  // Estimate the next value from the recent direction of the data.
+  // This display forecast does not update any stored statistics.
   int _predictNext(List<int> values) {
     if (values.isEmpty) return 0;
     if (values.length == 1) return values.first;
@@ -241,6 +264,9 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
   }
 }
 
+// This object keeps the values needed by the prediction metric together.
+// It is only used to prepare display data for this page.
+// No loading or database work happens inside this object.
 class _PredictionMetric {
   final String title;
   final String unit;
@@ -253,6 +279,9 @@ class _PredictionMetric {
   });
 }
 
+// This object keeps the values needed by the nutrient prediction together.
+// It is only used to prepare display data for this page.
+// No loading or database work happens inside this object.
 class _NutrientPrediction {
   final String title;
   final int value;
@@ -267,12 +296,18 @@ class _NutrientPrediction {
   });
 }
 
+// This helper is responsible for the nutrient insight note part of the screen.
+// It keeps one focused piece of presentation logic outside the main layout.
+// The parent widget passes in the data that this helper needs.
 class _NutrientInsightNote extends StatelessWidget {
   final _NutrientPrediction prediction;
 
   const _NutrientInsightNote({required this.prediction});
 
   @override
+  // Build the nutrient insight note with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -314,12 +349,18 @@ class _NutrientInsightNote extends StatelessWidget {
   }
 }
 
+// This helper is responsible for the date range bar part of the screen.
+// It keeps one focused piece of presentation logic outside the main layout.
+// The parent widget passes in the data that this helper needs.
 class DateRangeBar extends StatelessWidget {
   final String dateRange;
 
   const DateRangeBar({super.key, required this.dateRange});
 
   @override
+  // Build the date range bar with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -364,6 +405,9 @@ class DateRangeBar extends StatelessWidget {
   }
 }
 
+// This small widget draws one summary tile.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -376,6 +420,9 @@ class _SummaryTile extends StatelessWidget {
   });
 
   @override
+  // Build the visual layout for this summary tile.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -422,6 +469,9 @@ class _SummaryTile extends StatelessWidget {
   }
 }
 
+// This widget turns the report values into the calories chart metric.
+// It prepares labels and values before passing them to the shared chart.
+// Keeping chart setup here avoids mixing it with the main page layout.
 class _CaloriesChartMetric {
   final String title;
   final String breakdownTitle;
@@ -440,6 +490,9 @@ class _CaloriesChartMetric {
   });
 }
 
+// This widget controls the calories metric pager used to move between report views.
+// The selected index comes from the parent or ViewModel.
+// User changes are sent back through the provided callback.
 class _CaloriesMetricPager extends StatelessWidget {
   final CaloriesIntakeStatistics statistics;
   final CaloriesIntakeViewModel viewModel;
@@ -510,6 +563,9 @@ class _CaloriesMetricPager extends StatelessWidget {
   }
 
   @override
+  // Build the calories metric pager with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     final metrics = _metrics;
     final metric = metrics[selectedChart];
@@ -541,6 +597,8 @@ class _CaloriesMetricPager extends StatelessWidget {
     );
   }
 
+  // Convert the swipe or tap into a valid page index.
+  // Store the index so tabs, content, and page dots stay matched.
   void _handleSwipe(
     DragEndDetails details,
     List<_CaloriesChartMetric> metrics,
@@ -554,6 +612,9 @@ class _CaloriesMetricPager extends StatelessWidget {
   }
 }
 
+// This widget controls the metric tabs used to move between report views.
+// The selected index comes from the parent or ViewModel.
+// User changes are sent back through the provided callback.
 class _MetricTabs extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
@@ -561,6 +622,9 @@ class _MetricTabs extends StatelessWidget {
   const _MetricTabs({required this.selectedIndex, required this.onSelected});
 
   @override
+  // Build the metric tabs with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     const labels = ['Calories', 'Carbohydrate', 'Protein', 'Fat'];
     return AppPillSegmentedControl(
@@ -571,6 +635,9 @@ class _MetricTabs extends StatelessWidget {
   }
 }
 
+// This widget controls the metric dots used to move between report views.
+// The selected index comes from the parent or ViewModel.
+// User changes are sent back through the provided callback.
 class _MetricDots extends StatelessWidget {
   final int count;
   final int selectedIndex;
@@ -578,6 +645,9 @@ class _MetricDots extends StatelessWidget {
   const _MetricDots({required this.count, required this.selectedIndex});
 
   @override
+  // Build the metric dots with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -598,6 +668,9 @@ class _MetricDots extends StatelessWidget {
   }
 }
 
+// This widget turns the report values into the calories chart card.
+// It prepares labels and values before passing them to the shared chart.
+// Keeping chart setup here avoids mixing it with the main page layout.
 class _CaloriesChartCard extends StatelessWidget {
   final CaloriesIntakeStatistics statistics;
   final _CaloriesChartMetric metric;
@@ -605,6 +678,9 @@ class _CaloriesChartCard extends StatelessWidget {
   const _CaloriesChartCard({required this.statistics, required this.metric});
 
   @override
+  // Build the calories chart card from the values supplied by the parent.
+  // Labels, scale, and spacing are prepared before the chart is displayed.
+  // This method only handles presentation and does not change report data.
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMM d');
 
@@ -644,6 +720,11 @@ class _CaloriesChartCard extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
                   width: chartWidth,
+                  // NUTRIENT-INTAKE LINE-CHART UI CALL STARTS HERE.
+                  // The selected nutrient's daily values become chart points.
+                  // Draws a line chart of daily calories, carbs, protein, or fat.
+                  // Link: CaloriesIntakePage -> StatisticsLineChart.
+                  // Widget file: ../widgets/statistics_line_chart.dart.
                   child: StatisticsLineChart(
                     height: 220,
                     points: statistics.dailyIntakes
@@ -676,6 +757,9 @@ class _CaloriesChartCard extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed calories breakdown.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _CaloriesBreakdown extends StatelessWidget {
   final List<CaloriesDailyIntake> dailyIntakes;
   final int? expandedIndex;
@@ -692,6 +776,9 @@ class _CaloriesBreakdown extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the calories breakdown.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -757,6 +844,9 @@ class _CaloriesBreakdown extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable unit button.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _UnitButton extends StatelessWidget {
   final CaloriesDisplayUnit displayUnit;
   final ValueChanged<CaloriesDisplayUnit> onUnitChanged;
@@ -764,6 +854,9 @@ class _UnitButton extends StatelessWidget {
   const _UnitButton({required this.displayUnit, required this.onUnitChanged});
 
   @override
+  // Build the visual layout for this unit button.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return PopupMenuButton<CaloriesDisplayUnit>(
       tooltip: 'Unit',
@@ -792,6 +885,9 @@ class _UnitButton extends StatelessWidget {
   }
 }
 
+// This widget represents one daily calories section in the report.
+// It owns the header and the content that belongs to this group.
+// The expanded state decides whether the detailed rows are visible.
 class _DailyCaloriesSection extends StatelessWidget {
   final CaloriesDailyIntake day;
   final bool isExpanded;
@@ -810,6 +906,9 @@ class _DailyCaloriesSection extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the daily calories section.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     final dateText = DateFormat('MMM d, yyyy').format(day.date);
 
@@ -888,6 +987,9 @@ class _DailyCaloriesSection extends StatelessWidget {
   }
 }
 
+// This small widget draws one calories meal row.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _CaloriesMealRow extends StatelessWidget {
   final CaloriesMealItem meal;
   final String unitLabel;
@@ -900,6 +1002,9 @@ class _CaloriesMealRow extends StatelessWidget {
   });
 
   @override
+  // Build the visual layout for this calories meal row.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFFF7F7F7),
@@ -940,6 +1045,9 @@ class _CaloriesMealRow extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable food icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
   final String? imageUrl;
@@ -947,6 +1055,9 @@ class _FoodIcon extends StatelessWidget {
   const _FoodIcon({required this.icon, this.imageUrl});
 
   @override
+  // Build the visual layout for this food icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     final url = imageUrl?.trim() ?? '';
     return Container(
@@ -973,12 +1084,18 @@ class _FoodIcon extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable soft icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
   const _SoftIcon({required this.icon});
 
   @override
+  // Build the visual layout for this soft icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       width: 36,
@@ -993,6 +1110,9 @@ class _SoftIcon extends StatelessWidget {
   }
 }
 
+// This widget shows the calories error when report data is unavailable.
+// It explains the problem and gives the user a retry action.
+// The retry callback asks the ViewModel to load the report again.
 class _CaloriesError extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;
@@ -1000,6 +1120,9 @@ class _CaloriesError extends StatelessWidget {
   const _CaloriesError({required this.message, required this.onRetry});
 
   @override
+  // Build the calories error with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Center(
       child: Padding(

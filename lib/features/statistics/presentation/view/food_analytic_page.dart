@@ -17,11 +17,16 @@ import '../viewmodel/food_analytic_viewmodel.dart';
 import '../widgets/statistics_bar_chart.dart';
 import '../widgets/statistics_page_helpers.dart';
 
+/// Shows the user's most common meals, ingredients, and food categories.
 class FoodAnalyticPage extends StatelessWidget {
   const FoodAnalyticPage({super.key});
 
   @override
+  // Build the food analytic page with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
+    // The ViewModel controls loading, date filtering, tabs, sorting, and rows.
     return ChangeNotifierProvider(
       create: (_) => FoodAnalyticViewModel(
         getStatisticsUseCase: sl<GetFoodAnalyticStatisticsUseCase>(),
@@ -31,6 +36,9 @@ class FoodAnalyticPage extends StatelessWidget {
   }
 }
 
+// This widget builds the main content for the food analytic view.
+// It reads the ViewModel and chooses loading, error, or data content.
+// Smaller widgets below handle the individual visual sections.
 class _FoodAnalyticView extends StatefulWidget {
   const _FoodAnalyticView();
 
@@ -38,8 +46,14 @@ class _FoodAnalyticView extends StatefulWidget {
   State<_FoodAnalyticView> createState() => _FoodAnalyticViewState();
 }
 
+// This state object manages the changing parts of the food analytic view state.
+// It listens to user actions and rebuilds the affected widgets.
+// Controllers and other temporary UI values also belong here.
 class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
   @override
+  // Build the food analytic view state with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     final viewModel = context.watch<FoodAnalyticViewModel>();
 
@@ -54,6 +68,7 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
   }
 
   Widget _buildBody(BuildContext context, FoodAnalyticViewModel viewModel) {
+    // Show a full loader only before the first successful result.
     if (viewModel.isLoading && viewModel.statistics == null) {
       return const LoadingDialog(
         inline: true,
@@ -82,6 +97,7 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // A new date range reloads every chart on this page.
             StatisticsDateRangeBar(
               dateRange: statistics.dateRange,
               onTap: () => pickStatisticsDateRange(
@@ -144,6 +160,8 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
     );
   }
 
+  // Convert the swipe or tap into a valid page index.
+  // Store the index so tabs, content, and page dots stay matched.
   void _handleSwipe(
     DragEndDetails details,
     FoodAnalyticViewModel viewModel,
@@ -159,12 +177,18 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
   }
 }
 
+// This helper is responsible for the date range bar part of the screen.
+// It keeps one focused piece of presentation logic outside the main layout.
+// The parent widget passes in the data that this helper needs.
 class DateRangeBar extends StatelessWidget {
   final String dateRange;
 
   const DateRangeBar({super.key, required this.dateRange});
 
   @override
+  // Build the date range bar with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -209,6 +233,9 @@ class DateRangeBar extends StatelessWidget {
   }
 }
 
+// This small widget draws one summary tile.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -221,6 +248,9 @@ class _SummaryTile extends StatelessWidget {
   });
 
   @override
+  // Build the visual layout for this summary tile.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -267,6 +297,9 @@ class _SummaryTile extends StatelessWidget {
   }
 }
 
+// This widget turns the report values into the food analytic chart card.
+// It prepares labels and values before passing them to the shared chart.
+// Keeping chart setup here avoids mixing it with the main page layout.
 class _FoodAnalyticChartCard extends StatelessWidget {
   final FoodAnalyticChart chart;
   final StatisticsSortOrder sortOrder;
@@ -283,6 +316,9 @@ class _FoodAnalyticChartCard extends StatelessWidget {
   });
 
   @override
+  // Build the food analytic chart card from the values supplied by the parent.
+  // Labels, scale, and spacing are prepared before the chart is displayed.
+  // This method only handles presentation and does not change report data.
   Widget build(BuildContext context) {
     final availableWidth = MediaQuery.sizeOf(context).width - 52;
     final chartWidth = availableWidth.clamp(288.0, 340.0);
@@ -311,6 +347,11 @@ class _FoodAnalyticChartCard extends StatelessWidget {
           Center(
             child: SizedBox(
               width: chartWidth,
+              // FOOD-ANALYTIC BAR-CHART UI CALL STARTS HERE.
+              // The first five items from the selected analysis become bars.
+              // Draws a bar chart of top meals, ingredients, or categories.
+              // Link: FoodAnalyticPage -> StatisticsBarChart.
+              // Widget file: ../widgets/statistics_bar_chart.dart.
               child: StatisticsBarChart(
                 height: chartHeight,
                 items: chartItems
@@ -341,12 +382,18 @@ class _FoodAnalyticChartCard extends StatelessWidget {
   }
 }
 
+// This widget turns the report values into the chart header.
+// It prepares labels and values before passing them to the shared chart.
+// Keeping chart setup here avoids mixing it with the main page layout.
 class _ChartHeader extends StatelessWidget {
   final String title;
 
   const _ChartHeader({required this.title});
 
   @override
+  // Build the chart header from the values supplied by the parent.
+  // Labels, scale, and spacing are prepared before the chart is displayed.
+  // This method only handles presentation and does not change report data.
   Widget build(BuildContext context) {
     return Text(
       title,
@@ -362,6 +409,9 @@ class _ChartHeader extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed top list.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _TopList extends StatelessWidget {
   final FoodAnalyticChart chart;
   final StatisticsSortOrder sortOrder;
@@ -378,6 +428,9 @@ class _TopList extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the top list.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -423,6 +476,8 @@ class _TopList extends StatelessWidget {
     );
   }
 
+  // This helper prepares a value used by the visible report.
+  // Keeping it outside build makes the widget tree easier to follow.
   String _listTitle(FoodAnalyticChartType type, StatisticsSortOrder sortOrder) {
     final prefix = sortOrder == StatisticsSortOrder.most ? 'Top' : 'Least';
     switch (type) {
@@ -436,6 +491,9 @@ class _TopList extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable sort button.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _SortButton extends StatelessWidget {
   final FoodAnalyticChartType type;
   final StatisticsSortOrder sortOrder;
@@ -448,6 +506,9 @@ class _SortButton extends StatelessWidget {
   });
 
   @override
+  // Build the visual layout for this sort button.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return PopupMenuButton<StatisticsSortOrder>(
       tooltip: 'Sort',
@@ -481,6 +542,8 @@ class _SortButton extends StatelessWidget {
     );
   }
 
+  // This helper prepares a value used by the visible report.
+  // Keeping it outside build makes the widget tree easier to follow.
   String _mostSortLabel(FoodAnalyticChartType type) {
     switch (type) {
       case FoodAnalyticChartType.mealPlanned:
@@ -492,6 +555,8 @@ class _SortButton extends StatelessWidget {
     }
   }
 
+  // This helper prepares a value used by the visible report.
+  // Keeping it outside build makes the widget tree easier to follow.
   String _leastSortLabel(FoodAnalyticChartType type) {
     switch (type) {
       case FoodAnalyticChartType.mealPlanned:
@@ -504,6 +569,9 @@ class _SortButton extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed top list row.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _TopListRow extends StatelessWidget {
   final FoodAnalyticChartType chartType;
   final FoodAnalyticBarItem item;
@@ -518,6 +586,9 @@ class _TopListRow extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the top list row.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     final canViewRecipe =
         chartType == FoodAnalyticChartType.mealPlanned &&
@@ -594,12 +665,18 @@ class _TopListRow extends StatelessWidget {
   }
 }
 
+// This small widget draws one food detail row.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _FoodDetailRow extends StatelessWidget {
   final FoodAnalyticDetailItem detail;
 
   const _FoodDetailRow({required this.detail});
 
   @override
+  // Build the visual layout for this food detail row.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFFF7F7F7),
@@ -647,12 +724,18 @@ class _FoodDetailRow extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable recipe view button.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _RecipeViewButton extends StatelessWidget {
   final String recipeId;
 
   const _RecipeViewButton({required this.recipeId});
 
   @override
+  // Build the visual layout for this recipe view button.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(4),
@@ -681,6 +764,9 @@ class _RecipeViewButton extends StatelessWidget {
   }
 }
 
+// This widget controls the page tabs used to move between report views.
+// The selected index comes from the parent or ViewModel.
+// User changes are sent back through the provided callback.
 class _PageTabs extends StatelessWidget {
   final List<FoodAnalyticChart> charts;
   final int selectedIndex;
@@ -693,6 +779,9 @@ class _PageTabs extends StatelessWidget {
   });
 
   @override
+  // Build the page tabs with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return AppPillSegmentedControl(
       labels: charts.map((chart) => _tabLabel(chart.type)).toList(),
@@ -701,6 +790,8 @@ class _PageTabs extends StatelessWidget {
     );
   }
 
+  // This helper prepares a value used by the visible report.
+  // Keeping it outside build makes the widget tree easier to follow.
   String _tabLabel(FoodAnalyticChartType type) {
     switch (type) {
       case FoodAnalyticChartType.mealPlanned:
@@ -713,12 +804,18 @@ class _PageTabs extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable food icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _FoodIcon extends StatelessWidget {
   final FoodAnalyticBarItem item;
 
   const _FoodIcon({required this.item});
 
   @override
+  // Build the visual layout for this food icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     final url = item.imageUrl?.trim() ?? '';
     return Container(
@@ -757,6 +854,9 @@ class _FoodIcon extends StatelessWidget {
   }
 }
 
+// This widget controls the page dots used to move between report views.
+// The selected index comes from the parent or ViewModel.
+// User changes are sent back through the provided callback.
 class _PageDots extends StatelessWidget {
   final int count;
   final int selectedIndex;
@@ -764,6 +864,9 @@ class _PageDots extends StatelessWidget {
   const _PageDots({required this.count, required this.selectedIndex});
 
   @override
+  // Build the page dots with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -784,12 +887,18 @@ class _PageDots extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable soft icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
   const _SoftIcon({required this.icon});
 
   @override
+  // Build the visual layout for this soft icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       width: 36,
@@ -804,6 +913,9 @@ class _SoftIcon extends StatelessWidget {
   }
 }
 
+// This widget shows the food analytic error when report data is unavailable.
+// It explains the problem and gives the user a retry action.
+// The retry callback asks the ViewModel to load the report again.
 class _FoodAnalyticError extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;
@@ -811,6 +923,9 @@ class _FoodAnalyticError extends StatelessWidget {
   const _FoodAnalyticError({required this.message, required this.onRetry});
 
   @override
+  // Build the food analytic error with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Center(
       child: Padding(

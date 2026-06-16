@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 
+/// Shared back button used by every statistics detail page.
 class StatisticsBackButton extends StatelessWidget {
   const StatisticsBackButton({super.key});
 
@@ -18,6 +19,7 @@ class StatisticsBackButton extends StatelessWidget {
   }
 }
 
+/// Common error layout with a retry action.
 class StatisticsErrorState extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;
@@ -60,6 +62,7 @@ class StatisticsErrorState extends StatelessWidget {
   }
 }
 
+/// Displays the current date range and opens the date picker when tapped.
 class StatisticsDateRangeBar extends StatelessWidget {
   final String dateRange;
   final VoidCallback onTap;
@@ -125,6 +128,7 @@ Future<void> pickStatisticsDateRange({
   required DateTime? endDate,
   required Future<void> Function(DateTime startDate, DateTime endDate) onPicked,
 }) async {
+  // Use the current selection when possible, otherwise start from May 2026.
   final now = DateTime.now();
   final defaultEnd = DateTime(now.year, now.month, now.day);
   final defaultStart = DateTime(2026, 5);
@@ -138,6 +142,7 @@ Future<void> pickStatisticsDateRange({
     ),
   );
 
+  // Closing the picker returns null. Also avoid using a disposed page.
   if (pickedRange == null || !context.mounted) return;
   await onPicked(pickedRange.start, pickedRange.end);
 }

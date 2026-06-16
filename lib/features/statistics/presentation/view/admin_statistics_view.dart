@@ -12,6 +12,7 @@ import '../../domain/entities/statistics_dashboard.dart';
 import '../viewmodel/statistics_viewmodel.dart';
 import '../widgets/statistics_page_helpers.dart';
 
+/// Admin dashboard with system summaries and links to admin reports.
 class AdminStatisticsView extends StatefulWidget {
   const AdminStatisticsView({super.key});
 
@@ -19,6 +20,9 @@ class AdminStatisticsView extends StatefulWidget {
   State<AdminStatisticsView> createState() => _AdminStatisticsViewState();
 }
 
+// This state object manages the changing parts of the admin statistics view state.
+// It listens to user actions and rebuilds the affected widgets.
+// Controllers and other temporary UI values also belong here.
 class _AdminStatisticsViewState extends State<AdminStatisticsView> {
   late final PageController _summaryController;
 
@@ -35,7 +39,11 @@ class _AdminStatisticsViewState extends State<AdminStatisticsView> {
   }
 
   @override
+  // Build the admin statistics view state with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
+    // Listen for loaded data and dashboard selection changes.
     final viewModel = context.watch<StatisticsViewModel>();
 
     if (viewModel.isLoading && viewModel.dashboard == null) {
@@ -50,6 +58,7 @@ class _AdminStatisticsViewState extends State<AdminStatisticsView> {
       );
     }
 
+    // System and Setting use different action lists.
     final selectedMenuItems = viewModel.selectedAudienceIndex == 0
         ? dashboard.menuItems
         : dashboard.communityMenuItems;
@@ -97,6 +106,9 @@ class _AdminStatisticsViewState extends State<AdminStatisticsView> {
   }
 }
 
+// This widget controls the admin summary pager used to move between report views.
+// The selected index comes from the parent or ViewModel.
+// User changes are sent back through the provided callback.
 class _AdminSummaryPager extends StatelessWidget {
   final PageController controller;
   final List<StatisticsHeroSlide> slides;
@@ -111,7 +123,11 @@ class _AdminSummaryPager extends StatelessWidget {
   });
 
   @override
+  // Build the admin summary pager with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
+    // Give admin cards more height because every slide contains four metrics.
     final width = MediaQuery.sizeOf(context).width;
     final textScale = MediaQuery.textScalerOf(
       context,
@@ -141,12 +157,18 @@ class _AdminSummaryPager extends StatelessWidget {
   }
 }
 
+// This widget groups related information inside the admin summary card.
+// The card gives the section a clear visual boundary on the page.
+// Its parent supplies all values, labels, and interaction callbacks.
 class _AdminSummaryCard extends StatelessWidget {
   final StatisticsHeroSlide slide;
 
   const _AdminSummaryCard({required this.slide});
 
   @override
+  // Build the admin summary card with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -202,12 +224,18 @@ class _AdminSummaryCard extends StatelessWidget {
   }
 }
 
+// This small widget draws one admin metric tile.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _AdminMetricTile extends StatelessWidget {
   final StatisticsMetric metric;
 
   const _AdminMetricTile({required this.metric});
 
   @override
+  // Build the visual layout for this admin metric tile.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     final toneColor = _toneColor(metric.tone);
 
@@ -269,12 +297,18 @@ class _AdminMetricTile extends StatelessWidget {
   }
 }
 
+// This helper is responsible for the admin statistic actions part of the screen.
+// It keeps one focused piece of presentation logic outside the main layout.
+// The parent widget passes in the data that this helper needs.
 class _AdminStatisticActions extends StatelessWidget {
   final List<StatisticsMenuItem> items;
 
   const _AdminStatisticActions({required this.items});
 
   @override
+  // Build the admin statistic actions with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Column(
       children: items
@@ -316,7 +350,10 @@ class _AdminStatisticActions extends StatelessWidget {
     );
   }
 
+  // Match the selected menu item with its destination page.
+  // Navigation stays here so the menu layout remains simple.
   void _handleTap(BuildContext context, StatisticsMenuItem item) {
+    // Convert the selected dashboard action into its detail-page route.
     if (item.title == 'Planned Meal Analytic') {
       context.push(AppRouter.adminMealAnalytic);
       return;
@@ -358,13 +395,21 @@ class _AdminStatisticActions extends StatelessWidget {
   }
 }
 
+// This widget controls the page dots used to move between report views.
+// The selected index comes from the parent or ViewModel.
+// User changes are sent back through the provided callback.
 class _PageDots extends StatelessWidget {
+  // One dot is created for every summary card in the PageView.
+  // The larger green dot tells the admin which card is currently visible.
   final int count;
   final int selectedIndex;
 
   const _PageDots({required this.count, required this.selectedIndex});
 
   @override
+  // Build the page dots with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,

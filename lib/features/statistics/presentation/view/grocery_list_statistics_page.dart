@@ -14,11 +14,16 @@ import '../viewmodel/grocery_list_statistics_viewmodel.dart';
 import '../widgets/statistics_line_chart.dart';
 import '../widgets/statistics_page_helpers.dart';
 
+/// Compares grocery-list activity across months.
 class GroceryListStatisticsPage extends StatelessWidget {
   const GroceryListStatisticsPage({super.key});
 
   @override
+  // Build the visible rows for the grocery list statistics page.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
+    // The ViewModel reloads the report and tracks the expanded month.
     return ChangeNotifierProvider(
       create: (_) => GroceryListStatisticsViewModel(
         getStatisticsUseCase: sl<GetGroceryListStatisticsUseCase>(),
@@ -28,10 +33,16 @@ class GroceryListStatisticsPage extends StatelessWidget {
   }
 }
 
+// This widget builds the main content for the grocery list statistics view.
+// It reads the ViewModel and chooses loading, error, or data content.
+// Smaller widgets below handle the individual visual sections.
 class _GroceryListStatisticsView extends StatelessWidget {
   const _GroceryListStatisticsView();
 
   @override
+  // Build the visible rows for the grocery list statistics view.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     final viewModel = context.watch<GroceryListStatisticsViewModel>();
 
@@ -49,6 +60,7 @@ class _GroceryListStatisticsView extends StatelessWidget {
     BuildContext context,
     GroceryListStatisticsViewModel viewModel,
   ) {
+    // Keep loading, error, and loaded content as separate page states.
     if (viewModel.isLoading && viewModel.statistics == null) {
       return const LoadingDialog(
         inline: true,
@@ -76,6 +88,7 @@ class _GroceryListStatisticsView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Reload all month totals after the user chooses a new period.
             StatisticsDateRangeBar(
               dateRange: statistics.dateRange,
               onTap: () => pickStatisticsDateRange(
@@ -111,6 +124,7 @@ class _GroceryListStatisticsView extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             _GroceryListChart(months: statistics.months),
             const SizedBox(height: AppSpacing.lg),
+            // Expand a month to see the lists created in that month.
             _GroceryListBreakdown(
               months: statistics.months,
               expandedIndex: viewModel.expandedIndex,
@@ -123,12 +137,18 @@ class _GroceryListStatisticsView extends StatelessWidget {
   }
 }
 
+// This widget turns the report values into the grocery list chart.
+// It prepares labels and values before passing them to the shared chart.
+// Keeping chart setup here avoids mixing it with the main page layout.
 class _GroceryListChart extends StatelessWidget {
   final List<GroceryListMonthStatistic> months;
 
   const _GroceryListChart({required this.months});
 
   @override
+  // Build the grocery list chart from the values supplied by the parent.
+  // Labels, scale, and spacing are prepared before the chart is displayed.
+  // This method only handles presentation and does not change report data.
   Widget build(BuildContext context) {
     return _SectionCard(
       title: 'Grocery List By Month',
@@ -139,6 +159,11 @@ class _GroceryListChart extends StatelessWidget {
             MediaQuery.sizeOf(context).width - 52,
             double.infinity,
           ),
+          // GROCERY-LIST LINE-CHART UI CALL STARTS HERE.
+          // Monthly grocery-list totals become chart points.
+          // Draws a line chart showing grocery lists created each month.
+          // Link: GroceryListStatisticsPage -> StatisticsLineChart.
+          // Widget file: ../widgets/statistics_line_chart.dart.
           child: StatisticsLineChart(
             color: const Color(0xFF21AEEA),
             points: months
@@ -156,6 +181,9 @@ class _GroceryListChart extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed grocery list breakdown.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _GroceryListBreakdown extends StatelessWidget {
   final List<GroceryListMonthStatistic> months;
   final int? expandedIndex;
@@ -168,6 +196,9 @@ class _GroceryListBreakdown extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the grocery list breakdown.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return _SectionCard(
       title: 'Grocery List Breakdown',
@@ -193,6 +224,9 @@ class _GroceryListBreakdown extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed grocery list month section.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _GroceryListMonthSection extends StatelessWidget {
   final GroceryListMonthStatistic month;
   final bool isExpanded;
@@ -207,6 +241,9 @@ class _GroceryListMonthSection extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the grocery list month section.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Column(
       children: [
@@ -266,6 +303,9 @@ class _GroceryListMonthSection extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed grocery list item row.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _GroceryListItemRow extends StatelessWidget {
   final GroceryListStatisticItem? item;
 
@@ -274,6 +314,9 @@ class _GroceryListItemRow extends StatelessWidget {
   const _GroceryListItemRow.empty() : item = null;
 
   @override
+  // Build the visible rows for the grocery list item row.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     final list = item;
     return Container(
@@ -315,6 +358,9 @@ class _GroceryListItemRow extends StatelessWidget {
   }
 }
 
+// This widget represents one section card in the report.
+// It owns the header and the content that belongs to this group.
+// The expanded state decides whether the detailed rows are visible.
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
@@ -327,6 +373,9 @@ class _SectionCard extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the section card.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -359,6 +408,9 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+// This small widget draws one summary tile.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -371,6 +423,9 @@ class _SummaryTile extends StatelessWidget {
   });
 
   @override
+  // Build the visual layout for this summary tile.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -419,12 +474,18 @@ class _SummaryTile extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable soft icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
   const _SoftIcon({required this.icon});
 
   @override
+  // Build the visual layout for this soft icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       width: 36,
@@ -439,12 +500,18 @@ class _SoftIcon extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable tiny icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _TinyIcon extends StatelessWidget {
   final IconData icon;
 
   const _TinyIcon({required this.icon});
 
   @override
+  // Build the visual layout for this tiny icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       width: 32,
