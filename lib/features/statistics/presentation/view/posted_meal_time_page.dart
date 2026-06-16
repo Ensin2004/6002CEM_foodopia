@@ -14,11 +14,16 @@ import '../viewmodel/posted_meal_time_viewmodel.dart';
 import '../widgets/statistics_page_helpers.dart';
 import '../widgets/statistics_pie_chart.dart';
 
+/// Groups shared recipe posts by breakfast, lunch, and dinner time.
 class PostedMealTimePage extends StatelessWidget {
   const PostedMealTimePage({super.key});
 
   @override
+  // Build the posted meal time page with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
+    // The ViewModel loads the report and tracks the expanded time group.
     return ChangeNotifierProvider(
       create: (_) => PostedMealTimeViewModel(
         getStatisticsUseCase: sl<GetPostedMealTimeStatisticsUseCase>(),
@@ -28,10 +33,16 @@ class PostedMealTimePage extends StatelessWidget {
   }
 }
 
+// This widget builds the main content for the posted meal time view.
+// It reads the ViewModel and chooses loading, error, or data content.
+// Smaller widgets below handle the individual visual sections.
 class _PostedMealTimeView extends StatelessWidget {
   const _PostedMealTimeView();
 
   @override
+  // Build the posted meal time view with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     final viewModel = context.watch<PostedMealTimeViewModel>();
     return Scaffold(
@@ -45,6 +56,7 @@ class _PostedMealTimeView extends StatelessWidget {
   }
 
   Widget _buildBody(BuildContext context, PostedMealTimeViewModel viewModel) {
+    // Wait for grouped post data before drawing the pie chart.
     if (viewModel.isLoading && viewModel.statistics == null) {
       return const LoadingDialog(inline: true, message: 'Loading meal time...');
     }
@@ -67,6 +79,7 @@ class _PostedMealTimeView extends StatelessWidget {
         ),
         child: Column(
           children: [
+            // Reload posted meal-time totals for the chosen period.
             StatisticsDateRangeBar(
               dateRange: statistics.dateRange,
               onTap: () => pickStatisticsDateRange(
@@ -102,6 +115,7 @@ class _PostedMealTimeView extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             _PieCard(statistics: statistics),
             const SizedBox(height: AppSpacing.lg),
+            // Open a time group to see the posts counted inside it.
             _Breakdown(
               segments: statistics.segments,
               expandedIndex: viewModel.expandedIndex,
@@ -114,12 +128,18 @@ class _PostedMealTimeView extends StatelessWidget {
   }
 }
 
+// This widget groups related information inside the pie card.
+// The card gives the section a clear visual boundary on the page.
+// Its parent supplies all values, labels, and interaction callbacks.
 class _PieCard extends StatelessWidget {
   final PostedMealTimeStatistics statistics;
 
   const _PieCard({required this.statistics});
 
   @override
+  // Build the pie card with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     final chartSize = MediaQuery.sizeOf(context).width < 360 ? 238.0 : 260.0;
     return _SectionCard(
@@ -134,6 +154,11 @@ class _PieCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
+          // POSTED-MEAL-TIME PIE-CHART UI CALL STARTS HERE.
+          // Breakfast, lunch, and dinner totals become pie segments.
+          // Draws a pie chart of posts shared for each meal time.
+          // Link: PostedMealTimePage -> StatisticsPieChart.
+          // Widget file: ../widgets/statistics_pie_chart.dart.
           StatisticsPieChart(
             size: chartSize,
             centerTitle: 'Total\nPosts',
@@ -154,6 +179,9 @@ class _PieCard extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed breakdown.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _Breakdown extends StatelessWidget {
   final List<PostedMealTimeSegment> segments;
   final int? expandedIndex;
@@ -166,6 +194,9 @@ class _Breakdown extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the breakdown.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return _SectionCard(
       child: Column(
@@ -204,6 +235,9 @@ class _Breakdown extends StatelessWidget {
   }
 }
 
+// This widget represents one segment section in the report.
+// It owns the header and the content that belongs to this group.
+// The expanded state decides whether the detailed rows are visible.
 class _SegmentSection extends StatelessWidget {
   final PostedMealTimeSegment segment;
   final bool isExpanded;
@@ -218,6 +252,9 @@ class _SegmentSection extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the segment section.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Column(
       children: [
@@ -280,12 +317,18 @@ class _SegmentSection extends StatelessWidget {
   }
 }
 
+// This small widget draws one meal row.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _MealRow extends StatelessWidget {
   final PostedMealTimeItem meal;
 
   const _MealRow({required this.meal});
 
   @override
+  // Build the visual layout for this meal row.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     final date = DateFormat('MMM d, yyyy').format(meal.date);
     return Container(
@@ -335,12 +378,18 @@ class _MealRow extends StatelessWidget {
   }
 }
 
+// This helper is responsible for the date range bar part of the screen.
+// It keeps one focused piece of presentation logic outside the main layout.
+// The parent widget passes in the data that this helper needs.
 class DateRangeBar extends StatelessWidget {
   final String dateRange;
 
   const DateRangeBar({super.key, required this.dateRange});
 
   @override
+  // Build the date range bar with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -370,6 +419,9 @@ class DateRangeBar extends StatelessWidget {
   }
 }
 
+// This small widget draws one summary tile.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -382,6 +434,9 @@ class _SummaryTile extends StatelessWidget {
   });
 
   @override
+  // Build the visual layout for this summary tile.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -419,12 +474,18 @@ class _SummaryTile extends StatelessWidget {
   }
 }
 
+// This widget represents one section card in the report.
+// It owns the header and the content that belongs to this group.
+// The expanded state decides whether the detailed rows are visible.
 class _SectionCard extends StatelessWidget {
   final Widget child;
 
   const _SectionCard({required this.child});
 
   @override
+  // Build the visible rows for the section card.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -444,12 +505,18 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable food icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
 
   const _FoodIcon({required this.icon});
 
   @override
+  // Build the visual layout for this food icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       width: 32,
@@ -465,12 +532,18 @@ class _FoodIcon extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable soft icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
   const _SoftIcon({required this.icon});
 
   @override
+  // Build the visual layout for this soft icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       width: 36,

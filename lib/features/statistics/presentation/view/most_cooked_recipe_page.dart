@@ -14,11 +14,16 @@ import '../viewmodel/most_cooked_recipe_viewmodel.dart';
 import '../widgets/statistics_bar_chart.dart';
 import '../widgets/statistics_page_helpers.dart';
 
+/// Ranks recipes by how often other users planned to cook them.
 class MostCookedRecipePage extends StatelessWidget {
   const MostCookedRecipePage({super.key});
 
   @override
+  // Build the most cooked recipe page with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
+    // The ViewModel handles date filtering, sorting, and expanded recipes.
     return ChangeNotifierProvider(
       create: (_) => MostCookedRecipeViewModel(
         getStatisticsUseCase: sl<GetMostCookedRecipeStatisticsUseCase>(),
@@ -28,10 +33,16 @@ class MostCookedRecipePage extends StatelessWidget {
   }
 }
 
+// This widget builds the main content for the most cooked recipe view.
+// It reads the ViewModel and chooses loading, error, or data content.
+// Smaller widgets below handle the individual visual sections.
 class _MostCookedRecipeView extends StatelessWidget {
   const _MostCookedRecipeView();
 
   @override
+  // Build the most cooked recipe view with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     final viewModel = context.watch<MostCookedRecipeViewModel>();
 
@@ -46,6 +57,7 @@ class _MostCookedRecipeView extends StatelessWidget {
   }
 
   Widget _buildBody(BuildContext context, MostCookedRecipeViewModel viewModel) {
+    // Wait for recipe totals before sorting and drawing the chart.
     if (viewModel.isLoading && viewModel.statistics == null) {
       return const LoadingDialog(
         inline: true,
@@ -73,6 +85,7 @@ class _MostCookedRecipeView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Reload recipe counts for the selected period.
             StatisticsDateRangeBar(
               dateRange: statistics.dateRange,
               onTap: () => pickStatisticsDateRange(
@@ -122,12 +135,18 @@ class _MostCookedRecipeView extends StatelessWidget {
   }
 }
 
+// This widget turns the report values into the recipe chart card.
+// It prepares labels and values before passing them to the shared chart.
+// Keeping chart setup here avoids mixing it with the main page layout.
 class _RecipeChartCard extends StatelessWidget {
   final List<MostCookedRecipeItem> recipes;
 
   const _RecipeChartCard({required this.recipes});
 
   @override
+  // Build the recipe chart card from the values supplied by the parent.
+  // Labels, scale, and spacing are prepared before the chart is displayed.
+  // This method only handles presentation and does not change report data.
   Widget build(BuildContext context) {
     final chartWidth = (MediaQuery.sizeOf(context).width - 48).clamp(
       288.0,
@@ -149,6 +168,11 @@ class _RecipeChartCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           SizedBox(
             width: chartWidth,
+            // MOST-COOKED-RECIPE BAR-CHART UI CALL STARTS HERE.
+            // The highest or lowest ranked recipes become bars.
+            // Draws a bar chart showing how often each recipe was planned.
+            // Link: MostCookedRecipePage -> StatisticsBarChart.
+            // Widget file: ../widgets/statistics_bar_chart.dart.
             child: StatisticsBarChart(
               height: chartWidth * 0.74,
               items: recipes
@@ -170,6 +194,9 @@ class _RecipeChartCard extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed recipe breakdown.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _RecipeBreakdown extends StatelessWidget {
   final List<MostCookedRecipeDay> days;
   final MostCookedRecipeSortOrder sortOrder;
@@ -186,6 +213,9 @@ class _RecipeBreakdown extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the recipe breakdown.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return _SectionCard(
       child: Column(
@@ -263,6 +293,9 @@ class _RecipeBreakdown extends StatelessWidget {
   }
 }
 
+// This widget represents one date section in the report.
+// It owns the header and the content that belongs to this group.
+// The expanded state decides whether the detailed rows are visible.
 class _DateSection extends StatelessWidget {
   final MostCookedRecipeDay day;
   final MostCookedRecipeSortOrder sortOrder;
@@ -279,6 +312,9 @@ class _DateSection extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the date section.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     final plannedDate = DateFormat('MMM d, yyyy').format(day.date);
     final recipes = [...day.recipes]
@@ -358,12 +394,18 @@ class _DateSection extends StatelessWidget {
   }
 }
 
+// This small widget draws one date recipe row.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _DateRecipeRow extends StatelessWidget {
   final MostCookedRecipeDayItem recipe;
 
   const _DateRecipeRow({required this.recipe});
 
   @override
+  // Build the visual layout for this date recipe row.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFFF7F7F7),
@@ -402,12 +444,18 @@ class _DateRecipeRow extends StatelessWidget {
   }
 }
 
+// This helper is responsible for the date range bar part of the screen.
+// It keeps one focused piece of presentation logic outside the main layout.
+// The parent widget passes in the data that this helper needs.
 class DateRangeBar extends StatelessWidget {
   final String dateRange;
 
   const DateRangeBar({super.key, required this.dateRange});
 
   @override
+  // Build the date range bar with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -444,6 +492,9 @@ class DateRangeBar extends StatelessWidget {
   }
 }
 
+// This small widget draws one summary tile.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -456,6 +507,9 @@ class _SummaryTile extends StatelessWidget {
   });
 
   @override
+  // Build the visual layout for this summary tile.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -504,12 +558,18 @@ class _SummaryTile extends StatelessWidget {
   }
 }
 
+// This widget represents one section card in the report.
+// It owns the header and the content that belongs to this group.
+// The expanded state decides whether the detailed rows are visible.
 class _SectionCard extends StatelessWidget {
   final Widget child;
 
   const _SectionCard({required this.child});
 
   @override
+  // Build the visible rows for the section card.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -529,6 +589,9 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable food icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
   final String? imageUrl;
@@ -536,6 +599,9 @@ class _FoodIcon extends StatelessWidget {
   const _FoodIcon({required this.icon, this.imageUrl});
 
   @override
+  // Build the visual layout for this food icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     final url = imageUrl?.trim() ?? '';
     return Container(
@@ -562,12 +628,18 @@ class _FoodIcon extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable soft icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
   const _SoftIcon({required this.icon});
 
   @override
+  // Build the visual layout for this soft icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       width: 36,

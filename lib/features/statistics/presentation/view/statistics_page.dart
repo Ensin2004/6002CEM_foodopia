@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -9,6 +9,10 @@ import '../widgets/statistics_page_helpers.dart';
 import 'admin_statistics_view.dart';
 import 'user_statistics_view.dart';
 
+/// Main entry page for statistics.
+///
+/// This page creates the shared dashboard ViewModel, then chooses the user or
+/// admin layout based on [isAdmin].
 class StatisticsPage extends StatelessWidget {
   final bool isAdmin;
   final bool showAppBar;
@@ -20,12 +24,18 @@ class StatisticsPage extends StatelessWidget {
   });
 
   @override
+  // Build the statistics page with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
+    // Keep the ViewModel above both layouts so every dashboard widget can read
+    // the same loading state, data, and selected tab.
     return ChangeNotifierProvider(
       create: (_) => StatisticsViewModel(
         isAdmin: isAdmin,
         getDashboardUseCase: sl<GetStatisticsDashboardUseCase>(),
       ),
+      // Some parent pages already have an app bar, so they can hide this one.
       child: showAppBar
           ? Scaffold(
               resizeToAvoidBottomInset: true,

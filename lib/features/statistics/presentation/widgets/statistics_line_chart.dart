@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 
+/// One labelled point displayed by [StatisticsLineChart].
 class StatisticsLineChartPoint {
   final String label;
   final int value;
@@ -12,6 +13,7 @@ class StatisticsLineChartPoint {
   const StatisticsLineChartPoint({required this.label, required this.value});
 }
 
+/// Reusable line chart drawn with a custom canvas painter.
 class StatisticsLineChart extends StatelessWidget {
   final List<StatisticsLineChartPoint> points;
   final int? maxValue;
@@ -28,6 +30,7 @@ class StatisticsLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Use a rounded maximum so the chart grid has simple labels.
     final highestValue = maxValue ?? _niceMaxValue(points);
     final gridValues = _gridValues(highestValue);
 
@@ -60,6 +63,8 @@ class StatisticsLineChart extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
+                  // LINE CHART DRAWING SETUP STARTS HERE.
+                  // CustomPaint sends all chart points to the canvas painter.
                   child: CustomPaint(
                     painter: _StatisticsLineChartPainter(
                       points: points,
@@ -141,6 +146,9 @@ class _StatisticsLineChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // ACTUAL LINE CHART CANVAS DRAWING STARTS HERE.
+    // This method converts every value into a screen position and draws it.
+    // There is nothing useful to draw without points or a valid scale.
     if (points.isEmpty || maxValue <= 0) return;
 
     final gridPaint = Paint()
@@ -167,6 +175,7 @@ class _StatisticsLineChartPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
 
+    // Convert each data value into an x/y position inside the canvas.
     final pointOffsets = <Offset>[];
     for (var index = 0; index < points.length; index++) {
       final x = points.length == 1
@@ -182,6 +191,7 @@ class _StatisticsLineChartPainter extends CustomPainter {
       ..lineTo(pointOffsets.first.dx, size.height)
       ..close();
 
+    // Draw the shaded area first, then draw the visible line above it.
     canvas.drawPath(fillPath, fillPaint);
     canvas.drawPath(linePath, linePaint);
     for (final offset in pointOffsets) {

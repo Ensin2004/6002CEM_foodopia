@@ -14,11 +14,16 @@ import '../viewmodel/difficulty_meal_viewmodel.dart';
 import '../widgets/statistics_bar_chart.dart';
 import '../widgets/statistics_page_helpers.dart';
 
+/// Groups the user's cooked meals by difficulty level.
 class DifficultyMealPage extends StatelessWidget {
   const DifficultyMealPage({super.key});
 
   @override
+  // Build the difficulty meal page with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
+    // The ViewModel loads the report and tracks the open difficulty group.
     return ChangeNotifierProvider(
       create: (_) => DifficultyMealViewModel(
         getStatisticsUseCase: sl<GetDifficultyMealStatisticsUseCase>(),
@@ -28,10 +33,16 @@ class DifficultyMealPage extends StatelessWidget {
   }
 }
 
+// This widget builds the main content for the difficulty meal view.
+// It reads the ViewModel and chooses loading, error, or data content.
+// Smaller widgets below handle the individual visual sections.
 class _DifficultyMealView extends StatelessWidget {
   const _DifficultyMealView();
 
   @override
+  // Build the difficulty meal view with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     final viewModel = context.watch<DifficultyMealViewModel>();
 
@@ -46,6 +57,7 @@ class _DifficultyMealView extends StatelessWidget {
   }
 
   Widget _buildBody(BuildContext context, DifficultyMealViewModel viewModel) {
+    // Wait for data before reading difficulty groups.
     if (viewModel.isLoading && viewModel.statistics == null) {
       return const LoadingDialog(
         inline: true,
@@ -73,6 +85,7 @@ class _DifficultyMealView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Reload difficulty values for the selected period.
             StatisticsDateRangeBar(
               dateRange: statistics.dateRange,
               onTap: () => pickStatisticsDateRange(
@@ -108,6 +121,7 @@ class _DifficultyMealView extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             _DifficultyChartCard(statistics: statistics),
             const SizedBox(height: AppSpacing.lg),
+            // Expand a level to see the meals counted in that bar.
             _DifficultyBreakdown(
               groups: statistics.groups,
               expandedDifficulty: viewModel.expandedDifficulty,
@@ -120,12 +134,18 @@ class _DifficultyMealView extends StatelessWidget {
   }
 }
 
+// This helper is responsible for the date range bar part of the screen.
+// It keeps one focused piece of presentation logic outside the main layout.
+// The parent widget passes in the data that this helper needs.
 class DateRangeBar extends StatelessWidget {
   final String dateRange;
 
   const DateRangeBar({super.key, required this.dateRange});
 
   @override
+  // Build the date range bar with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -170,6 +190,9 @@ class DateRangeBar extends StatelessWidget {
   }
 }
 
+// This small widget draws one summary tile.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -182,6 +205,9 @@ class _SummaryTile extends StatelessWidget {
   });
 
   @override
+  // Build the visual layout for this summary tile.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -228,12 +254,18 @@ class _SummaryTile extends StatelessWidget {
   }
 }
 
+// This widget turns the report values into the difficulty chart card.
+// It prepares labels and values before passing them to the shared chart.
+// Keeping chart setup here avoids mixing it with the main page layout.
 class _DifficultyChartCard extends StatelessWidget {
   final DifficultyMealStatistics statistics;
 
   const _DifficultyChartCard({required this.statistics});
 
   @override
+  // Build the difficulty chart card from the values supplied by the parent.
+  // Labels, scale, and spacing are prepared before the chart is displayed.
+  // This method only handles presentation and does not change report data.
   Widget build(BuildContext context) {
     final chartWidth = (MediaQuery.sizeOf(context).width - 48).clamp(
       288.0,
@@ -266,6 +298,11 @@ class _DifficultyChartCard extends StatelessWidget {
           Center(
             child: SizedBox(
               width: chartWidth,
+              // MEAL-DIFFICULTY BAR-CHART UI CALL STARTS HERE.
+              // Each difficulty level becomes one visible bar.
+              // Draws a bar chart showing meal counts for difficulty levels 1-5.
+              // Link: DifficultyMealPage -> StatisticsBarChart.
+              // Widget file: ../widgets/statistics_bar_chart.dart.
               child: StatisticsBarChart(
                 height: chartWidth * 0.74,
                 items: statistics.groups
@@ -287,6 +324,9 @@ class _DifficultyChartCard extends StatelessWidget {
   }
 }
 
+// This widget displays the detailed difficulty breakdown.
+// It converts each data item into a readable row for the user.
+// Expand and sort actions are connected here when the section needs them.
 class _DifficultyBreakdown extends StatelessWidget {
   final List<DifficultyMealGroup> groups;
   final int? expandedDifficulty;
@@ -299,6 +339,9 @@ class _DifficultyBreakdown extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the difficulty breakdown.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -363,6 +406,9 @@ class _DifficultyBreakdown extends StatelessWidget {
   }
 }
 
+// This widget represents one difficulty section in the report.
+// It owns the header and the content that belongs to this group.
+// The expanded state decides whether the detailed rows are visible.
 class _DifficultySection extends StatelessWidget {
   final DifficultyMealGroup group;
   final bool isExpanded;
@@ -377,6 +423,9 @@ class _DifficultySection extends StatelessWidget {
   });
 
   @override
+  // Build the visible rows for the difficulty section.
+  // Each model item becomes one reusable row or expandable group.
+  // Callbacks send taps back to the ViewModel or parent widget.
   Widget build(BuildContext context) {
     return Column(
       children: [
@@ -439,12 +488,18 @@ class _DifficultySection extends StatelessWidget {
   }
 }
 
+// This small widget draws one difficulty meal row.
+// It keeps repeated row styling consistent across the whole report.
+// The values come from the parent section and are not loaded here.
 class _DifficultyMealRow extends StatelessWidget {
   final DifficultyMealItem meal;
 
   const _DifficultyMealRow({required this.meal});
 
   @override
+  // Build the visual layout for this difficulty meal row.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     final date = DateFormat('MMM d, yyyy').format(meal.date);
 
@@ -500,12 +555,18 @@ class _DifficultyMealRow extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable stars.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _Stars extends StatelessWidget {
   final int count;
 
   const _Stars({required this.count});
 
   @override
+  // Build the visual layout for this stars.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -521,6 +582,9 @@ class _Stars extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable food icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
   final String? imageUrl;
@@ -528,6 +592,9 @@ class _FoodIcon extends StatelessWidget {
   const _FoodIcon({required this.icon, this.imageUrl});
 
   @override
+  // Build the visual layout for this food icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     final url = imageUrl?.trim() ?? '';
     return Container(
@@ -554,12 +621,18 @@ class _FoodIcon extends StatelessWidget {
   }
 }
 
+// This helper draws the reusable soft icon.
+// It handles the small visual rules in one place.
+// This keeps the larger report widgets easier to scan.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
   const _SoftIcon({required this.icon});
 
   @override
+  // Build the visual layout for this soft icon.
+  // The widget uses only the values passed through its constructor.
+  // It stays stateless so the parent remains the source of truth.
   Widget build(BuildContext context) {
     return Container(
       width: 36,
@@ -574,6 +647,9 @@ class _SoftIcon extends StatelessWidget {
   }
 }
 
+// This widget shows the difficulty error when report data is unavailable.
+// It explains the problem and gives the user a retry action.
+// The retry callback asks the ViewModel to load the report again.
 class _DifficultyError extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;
@@ -581,6 +657,9 @@ class _DifficultyError extends StatelessWidget {
   const _DifficultyError({required this.message, required this.onRetry});
 
   @override
+  // Build the difficulty error with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
