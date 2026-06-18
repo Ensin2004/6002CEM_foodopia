@@ -23,6 +23,8 @@ abstract class AddRecipeRepository {
     int fdcId,
   );
 
+  Future<Either<Failure, String?>> getIngredientImageUrl(String ingredientName);
+
   Future<Either<Failure, String>> saveBasicInfo(AddRecipeBasicInfo info);
 
   Future<Either<Failure, AddRecipeVideoResult>> generateRecipeFromVideo(

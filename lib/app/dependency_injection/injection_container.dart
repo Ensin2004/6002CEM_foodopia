@@ -36,6 +36,7 @@ import '../../core/services/openai_meal_idea_service.dart';
 import '../../core/services/openai_video_recipe_service.dart';
 import '../../core/services/recipe_search_service.dart';
 import '../../core/services/open_meteo_weather_service.dart';
+import '../../core/services/unsplash_ingredient_image_service.dart';
 
 // Auth Feature - Data Layer
 import '../../features/admin_home/data/datasources/admin_home_remote_datasource.dart';
@@ -118,6 +119,7 @@ import '../../features/recipe/domain/usecases/complete_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/generate_add_recipe_from_video_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
+import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_image_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../features/recipe/domain/usecases/delete_add_recipe_usecase.dart';
@@ -334,6 +336,7 @@ void _initRecipeFeature() {
       firestore: sl(),
       auth: sl(),
       foodSearchService: sl(),
+      unsplashIngredientImageService: sl(),
       ingredientAiDataSource: sl(),
       videoDataSource: sl(),
       recipeAiSearchService: sl(),
@@ -350,6 +353,7 @@ void _initRecipeFeature() {
   sl.registerLazySingleton(() => GetAddRecipeIngredientUnitsUseCase(sl()));
   sl.registerLazySingleton(() => SearchAddRecipeFoodsUseCase(sl()));
   sl.registerLazySingleton(() => GetAddRecipeFoodNutrientsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAddRecipeIngredientImageUseCase(sl()));
   sl.registerLazySingleton(() => GenerateAddRecipeFromVideoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
@@ -677,6 +681,9 @@ Future<void> _initExternal() async {
 
   // Food search service.
   sl.registerLazySingleton(() => FoodSearchService(client: sl()));
+
+  // Unsplash ingredient image service.
+  sl.registerLazySingleton(() => UnsplashIngredientImageService(client: sl()));
 
   // OpenAI meal idea service.
   sl.registerLazySingleton(() => OpenAiMealIdeaService(client: sl()));

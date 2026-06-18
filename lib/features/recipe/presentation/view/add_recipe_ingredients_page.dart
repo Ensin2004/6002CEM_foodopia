@@ -22,6 +22,7 @@ import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
+import '../../domain/usecases/get_add_recipe_ingredient_image_usecase.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
@@ -69,6 +70,7 @@ class AddRecipeIngredientsPage extends StatelessWidget {
             getIngredientUnitsUseCase: sl<GetAddRecipeIngredientUnitsUseCase>(),
             searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
             getFoodNutrientsUseCase: sl<GetAddRecipeFoodNutrientsUseCase>(),
+            getIngredientImageUseCase: sl<GetAddRecipeIngredientImageUseCase>(),
             saveIngredientsUseCase: sl<SaveAddRecipeIngredientsUseCase>(),
             getReviewUseCase: sl<GetAddRecipeReviewUseCase>(),
           ),
@@ -411,6 +413,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
 
     // Fetch nutrients from USDA after users select ingredient
     Map<String, dynamic>? nutrients;
+    String? ingredientImageUrl;
     if (!selected.isCustom && selected.usdaId != null) {
       final rootNavigator = Navigator.of(context, rootNavigator: true);
       showDialog<void>(
@@ -418,7 +421,10 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
         barrierDismissible: false,
         builder: (_) => const LoadingDialog(),
       );
-      nutrients = await viewModel.getFoodNutrients(selected.usdaId!);
+      final nutrientsFuture = viewModel.getFoodNutrients(selected.usdaId!);
+      final imageUrlFuture = viewModel.getIngredientImageUrl(selected.name);
+      nutrients = await nutrientsFuture;
+      ingredientImageUrl = await imageUrlFuture;
       if (mounted) rootNavigator.pop();
     }
 
@@ -427,6 +433,9 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       row.nameController.text = selected.name;
       row.usdaId = selected.usdaId;
       row.usdaNutrients = selected.isCustom ? null : nutrients;
+      if (!selected.isCustom && ingredientImageUrl != null) {
+        row.existingImageUrl = ingredientImageUrl;
+      }
       row.ingredientCategoryId = null;
       row.markAnalysisCurrent();
     });

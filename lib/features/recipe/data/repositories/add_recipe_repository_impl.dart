@@ -63,6 +63,22 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
   }
 
   @override
+  Future<Either<Failure, String?>> getIngredientImageUrl(
+    String ingredientName,
+  ) async {
+    try {
+      final imageUrl = await remoteDataSource.getIngredientImageUrl(
+        ingredientName,
+      );
+      return Right(imageUrl);
+    } catch (_) {
+      return Left(
+        ServerFailure(message: 'Unable to load Unsplash ingredient image.'),
+      );
+    }
+  }
+
+  @override
   Future<Either<Failure, String>> saveBasicInfo(AddRecipeBasicInfo info) async {
     if (info.mediaFiles.isEmpty &&
         info.existingMediaUrls.isEmpty &&

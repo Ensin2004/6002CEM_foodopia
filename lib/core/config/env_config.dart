@@ -47,14 +47,15 @@ class EnvConfig {
   // =========================================================================
 
   /// USDA Food Data Central API key.
-  static const String usdaApiKey = String.fromEnvironment(
-      'USDA_API_KEY'
+  static const String usdaApiKey = String.fromEnvironment('USDA_API_KEY');
+
+  /// Unsplash access key.
+  static const String unsplashAccessKey = String.fromEnvironment(
+    'UNSPLASH_ACCESS_KEY',
   );
 
   /// OpenAI API key.
-  static const String openAiApiKey = String.fromEnvironment(
-      'OPENAI_API_KEY'
-  );
+  static const String openAiApiKey = String.fromEnvironment('OPENAI_API_KEY');
 
   // =========================================================================
   // OPENAI MODEL CONFIGURATION
@@ -90,9 +91,9 @@ class EnvConfig {
     defaultValue: 'gpt-image-2',
   );
 
-// =========================================================================
-// API ENDPOINTS
-// =========================================================================
+  // =========================================================================
+  // API ENDPOINTS
+  // =========================================================================
 
-// static const String baseUrl = 'https://api.xxx.com';
+  // static const String baseUrl = 'https://api.xxx.com';
 }

@@ -8,6 +8,7 @@ import '../../../../core/services/openai_ingredient_data_service.dart';
 import '../../../../core/services/recipe_search_service.dart';
 import '../../../../core/services/fcm_sender.dart';
 import '../../../../core/services/food_search_service.dart';
+import '../../../../core/services/unsplash_ingredient_image_service.dart';
 import '../../domain/entities/add_recipe_ingredient_data.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_food_search_result.dart';
@@ -55,6 +56,7 @@ class AddRecipeRemoteDataSource {
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
   final FoodSearchService foodSearchService;
+  final UnsplashIngredientImageService unsplashIngredientImageService;
   final OpenAiIngredientDataService ingredientAiDataSource;
   final AddRecipeVideoDataSource videoDataSource;
   final RecipeSearchService recipeAiSearchService;
@@ -63,6 +65,7 @@ class AddRecipeRemoteDataSource {
     required this.firestore,
     required this.auth,
     required this.foodSearchService,
+    required this.unsplashIngredientImageService,
     required this.ingredientAiDataSource,
     required this.videoDataSource,
     required this.recipeAiSearchService,
@@ -184,6 +187,12 @@ class AddRecipeRemoteDataSource {
 
   Future<Map<String, dynamic>?> getFoodLabelNutrients(int fdcId) {
     return foodSearchService.getUsdaLabelNutrients(fdcId);
+  }
+
+  Future<String?> getIngredientImageUrl(String ingredientName) {
+    return unsplashIngredientImageService.findIngredientImageUrl(
+      ingredientName,
+    );
   }
 
   /// Generate draft recipe from video uploaded
@@ -413,14 +422,16 @@ class AddRecipeRemoteDataSource {
     if (nutrients == null || nutrients.isEmpty) return null;
 
     final normalized = {
-      'calories': _nutrientValue(
-        nutrients,
-        const ['calories', 'calorie', 'energy'],
-      ),
-      'carbohydrates': _nutrientValue(
-        nutrients,
-        const ['carbohydrates', 'carbohydrate', 'carbs'],
-      ),
+      'calories': _nutrientValue(nutrients, const [
+        'calories',
+        'calorie',
+        'energy',
+      ]),
+      'carbohydrates': _nutrientValue(nutrients, const [
+        'carbohydrates',
+        'carbohydrate',
+        'carbs',
+      ]),
       'fat': _nutrientValue(nutrients, const ['fat', 'fats', 'totalFat']),
       'protein': _nutrientValue(nutrients, const ['protein', 'proteins']),
       'fiber': _nutrientValue(nutrients, const ['fiber', 'dietaryFiber']),
@@ -430,40 +441,41 @@ class AddRecipeRemoteDataSource {
       'calcium': _nutrientValue(nutrients, const ['calcium']),
       'iron': _nutrientValue(nutrients, const ['iron']),
       'magnesium': _nutrientValue(nutrients, const ['magnesium']),
-      'phosphorus': _nutrientValue(
-        nutrients,
-        const ['phosphorus', 'phosphorous'],
-      ),
+      'phosphorus': _nutrientValue(nutrients, const [
+        'phosphorus',
+        'phosphorous',
+      ]),
       'zinc': _nutrientValue(nutrients, const ['zinc']),
-      'vitaminA': _nutrientValue(
-        nutrients,
-        const ['vitaminA', 'vitaminARAE', 'retinol'],
-      ),
+      'vitaminA': _nutrientValue(nutrients, const [
+        'vitaminA',
+        'vitaminARAE',
+        'retinol',
+      ]),
       'vitaminC': _nutrientValue(nutrients, const ['vitaminC', 'ascorbic']),
       'vitaminD': _nutrientValue(nutrients, const ['vitaminD']),
-      'vitaminE': _nutrientValue(
-        nutrients,
-        const ['vitaminE', 'alphatocopherol', 'tocopherol'],
-      ),
+      'vitaminE': _nutrientValue(nutrients, const [
+        'vitaminE',
+        'alphatocopherol',
+        'tocopherol',
+      ]),
       'vitaminK': _nutrientValue(nutrients, const ['vitaminK']),
-      'vitaminB1': _nutrientValue(
-        nutrients,
-        const ['vitaminB1', 'thiamin', 'thiamine'],
-      ),
-      'vitaminB2': _nutrientValue(
-        nutrients,
-        const ['vitaminB2', 'riboflavin'],
-      ),
-      'vitaminB3': _nutrientValue(
-        nutrients,
-        const ['vitaminB3', 'niacin'],
-      ),
+      'vitaminB1': _nutrientValue(nutrients, const [
+        'vitaminB1',
+        'thiamin',
+        'thiamine',
+      ]),
+      'vitaminB2': _nutrientValue(nutrients, const ['vitaminB2', 'riboflavin']),
+      'vitaminB3': _nutrientValue(nutrients, const ['vitaminB3', 'niacin']),
       'vitaminB6': _nutrientValue(nutrients, const ['vitaminB6']),
-      'vitaminB9': _nutrientValue(
-        nutrients,
-        const ['vitaminB9', 'folate', 'folicAcid'],
-      ),
-      'vitaminB12': _nutrientValue(nutrients, const ['vitaminB12', 'cobalamin']),
+      'vitaminB9': _nutrientValue(nutrients, const [
+        'vitaminB9',
+        'folate',
+        'folicAcid',
+      ]),
+      'vitaminB12': _nutrientValue(nutrients, const [
+        'vitaminB12',
+        'cobalamin',
+      ]),
     };
 
     if (normalized.values.every((value) => value == 0)) return null;
@@ -532,8 +544,7 @@ class AddRecipeRemoteDataSource {
   ) {
     if (nutrients == null) return;
     for (final key in _nutrientKeys) {
-      total[key] =
-          _numericValue(total[key]) + _numericValue(nutrients[key]);
+      total[key] = _numericValue(total[key]) + _numericValue(nutrients[key]);
     }
   }
 
@@ -848,12 +859,13 @@ class AddRecipeRemoteDataSource {
           .where((item) => item.isNotEmpty);
     });
     return [
-      data['name'],
-      data['description'],
-      ...((data['otherNames'] as List<dynamic>?) ?? const []),
-      ...ingredientNames,
-      ...instructionText,
-    ].map((value) => value?.toString().trim() ?? '')
+          data['name'],
+          data['description'],
+          ...((data['otherNames'] as List<dynamic>?) ?? const []),
+          ...ingredientNames,
+          ...instructionText,
+        ]
+        .map((value) => value?.toString().trim() ?? '')
         .where((value) => value.isNotEmpty)
         .join('\n');
   }
