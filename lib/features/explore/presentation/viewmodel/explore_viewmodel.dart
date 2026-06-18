@@ -81,14 +81,7 @@ class ExploreViewModel extends ChangeNotifier {
     final normalizedQuery = _query.trim().toLowerCase();
     if (normalizedQuery.isNotEmpty) {
       results = results.where(
-        (recipe) =>
-            recipe.title.toLowerCase().contains(normalizedQuery) ||
-            recipe.otherNames.any(
-              (name) => name.toLowerCase().contains(normalizedQuery),
-            ) ||
-            recipe.author.toLowerCase().contains(normalizedQuery) ||
-            recipe.category.toLowerCase().contains(normalizedQuery) ||
-            recipe.description.toLowerCase().contains(normalizedQuery),
+        (recipe) => _searchScore(recipe, normalizedQuery) > 0.08,
       );
     }
 
@@ -103,8 +96,51 @@ class ExploreViewModel extends ChangeNotifier {
       });
     }
 
-    final sorted = results.toList()..sort(_compareRecipesForTab(tab));
+    final sorted = results.toList();
+    if (normalizedQuery.isNotEmpty) {
+      sorted.sort((first, second) {
+        final relevance = _searchScore(
+          second,
+          normalizedQuery,
+        ).compareTo(_searchScore(first, normalizedQuery));
+        return relevance != 0
+            ? relevance
+            : _compareRecipesForTab(tab)(first, second);
+      });
+    } else {
+      sorted.sort(_compareRecipesForTab(tab));
+    }
     return sorted;
+  }
+
+  double _searchScore(ExploreRecipe recipe, String query) {
+    final searchable = [
+      recipe.title,
+      ...recipe.otherNames,
+      recipe.author,
+      recipe.category,
+      recipe.description,
+      ...recipe.ingredientNames,
+      ...recipe.ingredients.map((ingredient) => ingredient.name),
+    ].join(' ').toLowerCase();
+    final queryTerms = query
+        .split(RegExp(r'\s+'))
+        .where((term) => term.length > 1)
+        .toSet();
+    final textScore = searchable.contains(query)
+        ? 1.0
+        : (queryTerms.isEmpty
+              ? 0.0
+              : queryTerms.where(searchable.contains).length /
+                    queryTerms.length);
+    final normalizedTags = recipe.tags.map((tag) => tag.toLowerCase()).toList();
+    final tagMatches = queryTerms.where(
+      (term) => normalizedTags.any(
+        (tag) => tag.contains(term) || term.contains(tag),
+      ),
+    ).length;
+    final tagScore = queryTerms.isEmpty ? 0.0 : tagMatches / queryTerms.length;
+    return (tagScore * 0.65) + (textScore * 0.35);
   }
 
   bool get shouldShowFollowingEmpty =>
@@ -424,6 +460,8 @@ class ExploreViewModel extends ChangeNotifier {
       category: recipe.category,
       categoryIds: recipe.categoryIds,
       customCategoryIds: recipe.customCategoryIds,
+      tags: recipe.tags,
+      ingredientNames: recipe.ingredientNames,
       allergenInfo: recipe.allergenInfo,
       totalTime: recipe.totalTime,
       difficulty: recipe.difficulty,

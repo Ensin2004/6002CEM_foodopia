@@ -34,6 +34,7 @@ import '../../core/services/openai_ingredient_data_service.dart';
 import '../../core/services/food_search_service.dart';
 import '../../core/services/openai_meal_idea_service.dart';
 import '../../core/services/openai_video_recipe_service.dart';
+import '../../core/services/recipe_search_service.dart';
 import '../../core/services/open_meteo_weather_service.dart';
 
 // Auth Feature - Data Layer
@@ -314,6 +315,7 @@ Future<void> initDependencies() async {
 
 /// Initializes the Recipe feature dependencies.
 void _initRecipeFeature() {
+  sl.registerLazySingleton(() => RecipeSearchService(client: sl()));
   // Register OpenAI services.
   sl.registerLazySingleton(() => OpenAiIngredientDataService(client: sl()));
   sl.registerLazySingleton(() => OpenAiVideoRecipeService(client: sl()));
@@ -334,6 +336,7 @@ void _initRecipeFeature() {
       foodSearchService: sl(),
       ingredientAiDataSource: sl(),
       videoDataSource: sl(),
+      recipeAiSearchService: sl(),
     ),
   );
 

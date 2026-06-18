@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/services/openai_ingredient_data_service.dart';
+import '../../../../core/services/recipe_search_service.dart';
 import '../../../../core/services/fcm_sender.dart';
 import '../../../../core/services/food_search_service.dart';
 import '../../domain/entities/add_recipe_ingredient_data.dart';
@@ -29,6 +30,7 @@ class AddRecipeRemoteDataSource {
   final FoodSearchService foodSearchService;
   final OpenAiIngredientDataService ingredientAiDataSource;
   final AddRecipeVideoDataSource videoDataSource;
+  final RecipeSearchService recipeAiSearchService;
 
   const AddRecipeRemoteDataSource({
     required this.firestore,
@@ -36,6 +38,7 @@ class AddRecipeRemoteDataSource {
     required this.foodSearchService,
     required this.ingredientAiDataSource,
     required this.videoDataSource,
+    required this.recipeAiSearchService,
   });
 
   /// Loads active recipe categories, allergens and fixed difficulty levels for setup screens.
@@ -688,8 +691,14 @@ class AddRecipeRemoteDataSource {
       );
     }
 
+    final searchText = await _buildRecipeSearchText(recipeRef, data);
+    final searchMetadata = await recipeAiSearchService.buildRecipeMetadata(
+      searchText,
+    );
+
     await recipeRef.update({
       'isFinalized': true,
+      'tags': searchMetadata.tags,
       'finalizedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -713,6 +722,32 @@ class AddRecipeRemoteDataSource {
         'publicNotificationSentAt': FieldValue.serverTimestamp(),
       });
     }
+  }
+
+  Future<String> _buildRecipeSearchText(
+    DocumentReference<Map<String, dynamic>> recipeRef,
+    Map<String, dynamic> data,
+  ) async {
+    final ingredients = await recipeRef.collection('ingredients').get();
+    final instructions = await recipeRef.collection('instructions').get();
+    final ingredientNames = ingredients.docs
+        .map((doc) => doc.data()['name']?.toString().trim() ?? '')
+        .where((name) => name.isNotEmpty);
+    final instructionText = instructions.docs.expand((doc) {
+      final value = doc.data();
+      return [value['sectionTitle'], value['description']]
+          .map((item) => item?.toString().trim() ?? '')
+          .where((item) => item.isNotEmpty);
+    });
+    return [
+      data['name'],
+      data['description'],
+      ...((data['otherNames'] as List<dynamic>?) ?? const []),
+      ...ingredientNames,
+      ...instructionText,
+    ].map((value) => value?.toString().trim() ?? '')
+        .where((value) => value.isNotEmpty)
+        .join('\n');
   }
 
   /// Return recipe owner id
