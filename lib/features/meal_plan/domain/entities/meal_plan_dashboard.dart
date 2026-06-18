@@ -171,6 +171,9 @@ class MealPlanMeal {
   /// Path to the meal's image asset.
   final String imagePath;
 
+  /// Estimated calories for the planned meal.
+  final int calories;
+
   /// Creates a new meal plan meal instance.
   const MealPlanMeal({
     this.id = '',
@@ -180,6 +183,7 @@ class MealPlanMeal {
     required this.servingLabel,
     required this.durationLabel,
     required this.imagePath,
+    this.calories = 0,
   });
 }
 
@@ -235,11 +239,23 @@ class MealPlanPreferenceSummary {
   /// List of disliked ingredients.
   final List<String> dislikes;
 
+  /// Daily calorie target value.
+  final int? targetCalories;
+
+  /// Calorie unit label.
+  final String calorieUnit;
+
+  /// Whether calorie target is enabled.
+  final bool calorieTargetEnabled;
+
   /// Creates a new preference summary instance.
   const MealPlanPreferenceSummary({
     required this.diet,
     required this.allergies,
     required this.dislikes,
+    this.targetCalories,
+    this.calorieUnit = 'kcal',
+    this.calorieTargetEnabled = false,
   });
 
   /// Returns a short label summarizing preferences.

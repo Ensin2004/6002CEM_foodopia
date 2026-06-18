@@ -22,6 +22,7 @@ import '../../features/explore/presentation/view/explore_creator_detail_page.dar
 import '../../features/explore/presentation/view/explore_recipe_detail_page.dart';
 import '../../features/library/presentation/view/library_page.dart';
 import '../../features/library/presentation/view/library_profile_users_page.dart';
+import '../../features/meal_plan/domain/entities/meal_calorie_guidance.dart';
 import '../../features/meal_plan/presentation/view/add_grocery_list_page.dart';
 import '../../features/meal_plan/presentation/view/manage_grocery_list_page.dart';
 import '../../features/meal_plan/presentation/view/meal_plan_page.dart';
@@ -337,9 +338,9 @@ class AppRouter {
     // Check if the current page is an auth page.
     final isAuthPage =
         location == login ||
-            location == signup ||
-            location == forgotPassword ||
-            location == forgotPasswordSent;
+        location == signup ||
+        location == forgotPassword ||
+        location == forgotPasswordSent;
 
     // Check if the current page is onboarding.
     final isOnboarding = location == onboarding;
@@ -569,24 +570,24 @@ class AppRouter {
           // Parse tab index.
           final tabIndex =
               int.tryParse(state.uri.queryParameters['tab'] ?? '') ??
-                  args?.initialTabIndex ??
-                  0;
+              args?.initialTabIndex ??
+              0;
 
           // Parse focused recipe ID.
           final focusedRecipeId =
               args?.focusedRecipeId ??
-                  state.uri.queryParameters['focusedRecipeId'];
+              state.uri.queryParameters['focusedRecipeId'];
 
           // Parse focused recipe published status.
           final focusedRecipeIsPublished =
               args?.focusedRecipeIsPublished ??
-                  _boolQuery(state.uri.queryParameters['focusedRecipeIsPublished']);
+              _boolQuery(state.uri.queryParameters['focusedRecipeIsPublished']);
 
           // Parse library refresh token.
           final libraryRefreshToken =
               args?.libraryRefreshToken ??
-                  state.uri.queryParameters['createdAt'] ??
-                  state.uri.queryParameters['deletedAt'];
+              state.uri.queryParameters['createdAt'] ??
+              state.uri.queryParameters['deletedAt'];
 
           // Handles null user gracefully.
           final userEntity = args?.user ?? user;
@@ -925,7 +926,7 @@ class AppRouter {
           return MealPlanPage(
             initialTabIndex: args?.initialTabIndex ?? 0,
             userId:
-            args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+                args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
           );
         },
       ),
@@ -941,8 +942,10 @@ class AppRouter {
             mealCategoryId: args?.mealCategoryId ?? 'breakfast',
             selectedDate: args?.selectedDate ?? DateTime.now(),
             existingRecipeIds: args?.existingRecipeIds ?? const [],
+            calorieBudget:
+                args?.calorieBudget ?? const MealCalorieBudget.empty(),
             userId:
-            args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+                args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
           );
         },
       ),
@@ -958,9 +961,11 @@ class AppRouter {
             mealCategoryId: args?.mealCategoryId,
             selectedDate: args?.selectedDate,
             userId:
-            args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+                args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
             initialRequest: args?.initialRequest,
             autoGenerate: args?.autoGenerate ?? false,
+            calorieBudget:
+                args?.calorieBudget ?? const MealCalorieBudget.empty(),
           );
         },
       ),
@@ -973,7 +978,7 @@ class AppRouter {
           final args = state.extra as AddGroceryListArgs?;
           return AddGroceryListPage(
             userId:
-            args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+                args?.userId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
           );
         },
       ),
@@ -1121,7 +1126,7 @@ class AppRouter {
         name: 'nutrientIntakeInsight',
         path: nutrientIntakeInsight,
         builder: (context, state) =>
-        const CaloriesIntakePage(showInsight: true),
+            const CaloriesIntakePage(showInsight: true),
       ),
 
       GoRoute(
@@ -1152,7 +1157,7 @@ class AppRouter {
         name: 'postedNutrientInsight',
         path: postedNutrientInsight,
         builder: (context, state) =>
-        const CaloriesPostedPage(showInsight: true),
+            const CaloriesPostedPage(showInsight: true),
       ),
 
       GoRoute(

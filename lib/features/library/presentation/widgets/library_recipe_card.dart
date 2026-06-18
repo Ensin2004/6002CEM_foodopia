@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../core/widgets/media/app_recipe_media.dart';
+import '../../../meal_plan/domain/entities/meal_calorie_guidance.dart';
 import '../../domain/entities/library_recipe.dart';
 
 class LibraryRecipeCard extends StatelessWidget {
@@ -14,6 +15,7 @@ class LibraryRecipeCard extends StatelessWidget {
   final VoidCallback? onImageLongPress;
   final bool isHighlighted;
   final bool disabled;
+  final MealCalorieGuidance? calorieGuidance;
 
   const LibraryRecipeCard({
     super.key,
@@ -24,6 +26,7 @@ class LibraryRecipeCard extends StatelessWidget {
     this.onImageLongPress,
     this.isHighlighted = false,
     this.disabled = false,
+    this.calorieGuidance,
   });
 
   @override
@@ -96,6 +99,14 @@ class LibraryRecipeCard extends StatelessWidget {
                         bottom: 8,
                         child: _StatusBadge(recipe: recipe),
                       ),
+                      if (calorieGuidance != null)
+                        Positioned(
+                          right: 8,
+                          bottom: 8,
+                          child: _LibraryCalorieBadge(
+                            guidance: calorieGuidance!,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -283,6 +294,44 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.text.bodySmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+/// Calorie guidance badge for library recipe cards.
+class _LibraryCalorieBadge extends StatelessWidget {
+  /// Guidance details for the recipe.
+  final MealCalorieGuidance guidance;
+
+  /// Creates a new library calorie badge instance.
+  const _LibraryCalorieBadge({required this.guidance});
+
+  @override
+  Widget build(BuildContext context) {
+    // Badge color follows the shared calorie guidance status.
+    final foreground = switch (guidance.status) {
+      MealCalorieGuidanceStatus.exceeds => const Color(0xFFE2762D),
+      MealCalorieGuidanceStatus.nearTarget => AppColors.secondary,
+      MealCalorieGuidanceStatus.fits => AppColors.primary,
+      MealCalorieGuidanceStatus.unknown => AppColors.textSecondary,
+    };
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 104),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        guidance.badgeLabel,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: context.text.bodySmall?.copyWith(

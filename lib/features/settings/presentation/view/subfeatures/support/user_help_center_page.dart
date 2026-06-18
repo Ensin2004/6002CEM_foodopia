@@ -1,7 +1,5 @@
 // Builds the user help center screen.
 
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
@@ -11,14 +9,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../../../app/dependency_injection/injection_container.dart';
 import '../../../../../../app/routers/app_router.dart';
 import '../../../../../../app/routers/router_args.dart';
-import '../../../../../../core/theme/app_colors.dart';
-import '../../../../../../core/theme/app_theme.dart';
 import '../../../../../../core/widgets/custom_app_bar.dart';
 import '../../../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../domain/entities/help_center_issue.dart';
 import '../../../../domain/usecases/support/help_center/get_user_issues_usecase.dart';
 import '../../../../domain/usecases/support/help_center/submit_issue_usecase.dart';
 import '../../../viewmodel/support/user_help_center_viewmodel.dart';
+import '../../../widgets/support/help_center_common_widgets.dart';
 import '../../../widgets/support/issue_submission_form.dart';
 
 /// Defines behavior for user help center page.
@@ -91,12 +88,12 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
       body: viewModel.isLoading
           ? const LoadingDialog()
           : Column(
-        children: [
-          _buildHeroCard(),
-          _buildFilterSortRow(context, viewModel),
-          Expanded(child: _buildIssuesList(context, viewModel)),
-        ],
-      ),
+              children: [
+                _buildHeroCard(),
+                _buildFilterSortRow(context, viewModel),
+                Expanded(child: _buildIssuesList(context, viewModel)),
+              ],
+            ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'add_help_ticket',
         backgroundColor: theme.colorScheme.primary,
@@ -115,114 +112,25 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
 
   /// Builds the hero card with header and search field.
   Widget _buildHeroCard() {
-    // Get the theme for styling.
-    final theme = Theme.of(context);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(18, 22, 18, 14),
-      padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFEAF8F0), Color(0xFFE2F4E9), Color(0xFFF4FBF6)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: 0.08),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Decorative image.
-          Positioned(
-            right: -4,
-            top: 6,
-            child: IgnorePointer(
-              child: Image.asset(
-                'assets/images/help_center.png',
-                width: 132,
-                height: 142,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          // Text content.
-          Padding(
-            padding: const EdgeInsets.only(right: 142),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'How can we help you?',
-                  style: AppTheme.lightTheme.textTheme.headlineSmall?.copyWith(
-                    fontSize: 26,
-                    height: 1.15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  "Tell us what's wrong and we'll get back to you as soon as possible.",
-                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.45),
-                ),
-                const SizedBox(height: 22),
-              ],
-            ),
-          ),
-          // Search field.
-          Padding(
-            padding: const EdgeInsets.only(top: 164),
-            child: _buildSearchField(),
-          ),
-        ],
-      ),
+    return HelpCenterHeroCard(
+      title: 'How can we help you?',
+      message:
+          "Tell us what's wrong and we'll get back to you as soon as possible.",
+      searchField: _buildSearchField(),
     );
   }
 
   /// Builds the search field.
   Widget _buildSearchField() {
-    // Get the theme for styling.
-    final theme = Theme.of(context);
-
-    return TextField(
+    return HelpCenterSearchField(
       controller: _searchController,
+      searchQuery: _searchQuery,
+      hintText: 'Search your tickets...',
       onChanged: (value) => setState(() => _searchQuery = value.trim()),
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Search your tickets...',
-        hintStyle: theme.inputDecorationTheme.hintStyle?.copyWith(fontSize: 14),
-        prefixIcon: Icon(
-          Icons.search_rounded,
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-          size: 22,
-        ),
-        suffixIcon: _searchQuery.isEmpty
-            ? null
-            : IconButton(
-          tooltip: 'Clear search',
-          icon: const Icon(Icons.close_rounded),
-          onPressed: () {
-            _searchController.clear();
-            setState(() => _searchQuery = '');
-          },
-        ),
-        filled: true,
-        fillColor: theme.colorScheme.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide.none,
-        ),
-      ),
+      onClear: () {
+        _searchController.clear();
+        setState(() => _searchQuery = '');
+      },
     );
   }
 
@@ -232,53 +140,18 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
 
   /// Handles the build filter sort row operation.
   Widget _buildFilterSortRow(
-      BuildContext context,
-      UserHelpCenterViewModel viewModel,
-      ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-      child: Row(
-        children: [
-          // Filter chips.
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _FilterChipButton(
-                    label: 'All',
-                    isSelected: viewModel.filterStatus == 'All',
-                    onTap: () => viewModel.setFilter('All'),
-                  ),
-                  const SizedBox(width: 12),
-                  _FilterChipButton(
-                    label: 'Open',
-                    isSelected: viewModel.filterStatus == 'Open',
-                    onTap: () => viewModel.setFilter('Open'),
-                  ),
-                  const SizedBox(width: 12),
-                  _FilterChipButton(
-                    label: 'Closed',
-                    isSelected: viewModel.filterStatus == 'Closed',
-                    onTap: () => viewModel.setFilter('Closed'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Sort menu button.
-          _SortMenuButton(
-            sortLatestFirst: viewModel.sortLatestFirst,
-            onSelected: (latestFirst) {
-              if (viewModel.sortLatestFirst != latestFirst) {
-                viewModel.toggleSortOrder();
-              }
-            },
-          ),
-        ],
-      ),
+    BuildContext context,
+    UserHelpCenterViewModel viewModel,
+  ) {
+    return HelpCenterFilterSortRow(
+      selectedStatus: viewModel.filterStatus,
+      sortLatestFirst: viewModel.sortLatestFirst,
+      onStatusSelected: viewModel.setFilter,
+      onSortSelected: (latestFirst) {
+        if (viewModel.sortLatestFirst != latestFirst) {
+          viewModel.toggleSortOrder();
+        }
+      },
     );
   }
 
@@ -288,9 +161,9 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
 
   /// Handles the build issues list operation.
   Widget _buildIssuesList(
-      BuildContext context,
-      UserHelpCenterViewModel viewModel,
-      ) {
+    BuildContext context,
+    UserHelpCenterViewModel viewModel,
+  ) {
     // Get visible issues based on search query.
     final issues = _visibleIssues(viewModel.issues);
 
@@ -299,7 +172,7 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
       children: [
         // Show empty state if no issues.
         if (issues.isEmpty)
-          _buildEmptyTicketsCard(
+          HelpCenterEmptyTicketsCard(
             title: _searchQuery.isEmpty
                 ? 'No more tickets'
                 : 'No tickets found',
@@ -387,7 +260,7 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
                     // Status badge and view icon.
                     Row(
                       children: [
-                        _buildStatusBadge(issue),
+                        HelpCenterStatusBadge(issue: issue),
                         const Spacer(),
                         const Icon(
                           Icons.visibility_outlined,
@@ -429,119 +302,6 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
     );
   }
 
-  /// Handles the build status badge operation.
-  Widget _buildStatusBadge(HelpCenterIssue issue) {
-    // Get the normalized status.
-    final status = issue.normalizedStatus;
-
-    // Determine label and color based on status.
-    final label = switch (status) {
-      'closed' => 'Closed',
-      _ => 'Open',
-    };
-    final color = switch (status) {
-      'closed' => const Color(0xFFE53935),
-      _ => AppColors.primary,
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =========================================================================
-  // EMPTY STATE
-  // =========================================================================
-
-  /// Builds the empty tickets card.
-  Widget _buildEmptyTicketsCard({
-    required String title,
-    required String message,
-  }) {
-    // Get the theme for styling.
-    final theme = Theme.of(context);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 24, 12, 6),
-      child: CustomPaint(
-        painter: _DashedBorderPainter(
-          color: const Color(0xFFDDE3EA),
-          radius: 18,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 28, 18, 30),
-          child: Column(
-            children: [
-              // Icon container.
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF8F0),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                      blurRadius: 14,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.inventory_2_outlined,
-                  color: Color(0xFF81C991),
-                  size: 34,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Title.
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Message.
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(height: 1.35),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   // =========================================================================
   // NAVIGATION
   // =========================================================================
@@ -565,198 +325,5 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
         child: IssueSubmissionForm(onSubmit: viewModel.loadIssues),
       ),
     );
-  }
-}
-
-// =============================================================================
-// HELPER WIDGETS
-// =============================================================================
-
-/// Filter chip button widget.
-class _FilterChipButton extends StatelessWidget {
-  /// Label text.
-  final String label;
-
-  /// Whether the chip is selected.
-  final bool isSelected;
-
-  /// Callback when tapped.
-  final VoidCallback onTap;
-
-  /// Creates a new filter chip button instance.
-  const _FilterChipButton({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Get the theme for styling.
-    final theme = Theme.of(context);
-
-    // Determine foreground color.
-    final foreground = isSelected
-        ? theme.colorScheme.onPrimary
-        : theme.colorScheme.onSurface;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(28),
-        onTap: onTap,
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : const Color(0xFFE3E6EB),
-            ),
-            boxShadow: [
-              if (isSelected)
-                BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.22),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.labelLarge?.copyWith(color: foreground),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Sort menu button widget.
-class _SortMenuButton extends StatelessWidget {
-  /// Whether to sort latest first.
-  final bool sortLatestFirst;
-
-  /// Callback when sort order is selected.
-  final ValueChanged<bool> onSelected;
-
-  /// Creates a new sort menu button instance.
-  const _SortMenuButton({
-    required this.sortLatestFirst,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Get the theme for styling.
-    final theme = Theme.of(context);
-
-    return PopupMenuButton<bool>(
-      tooltip: 'Sort tickets',
-      onSelected: onSelected,
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: true,
-          child: Row(
-            children: [
-              Icon(
-                Icons.check_rounded,
-                size: 18,
-                color: sortLatestFirst
-                    ? theme.colorScheme.primary
-                    : Colors.transparent,
-              ),
-              const SizedBox(width: 8),
-              const Text('Newest'),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: false,
-          child: Row(
-            children: [
-              Icon(
-                Icons.check_rounded,
-                size: 18,
-                color: !sortLatestFirst
-                    ? theme.colorScheme.primary
-                    : Colors.transparent,
-              ),
-              const SizedBox(width: 8),
-              const Text('Oldest'),
-            ],
-          ),
-        ),
-      ],
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: const Color(0xFFE3E6EB)),
-        ),
-        child: Icon(
-          Icons.tune_rounded,
-          color: theme.colorScheme.onSurface,
-          size: 24,
-        ),
-      ),
-    );
-  }
-}
-
-/// Dashed border painter for empty state cards.
-class _DashedBorderPainter extends CustomPainter {
-  /// Color of the dashed border.
-  final Color color;
-
-  /// Corner radius of the border.
-  final double radius;
-
-  /// Creates a new dashed border painter instance.
-  const _DashedBorderPainter({required this.color, required this.radius});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Create the paint for the dashed border.
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    // Create the rounded rectangle path.
-    final rect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(radius),
-    );
-    final path = Path()..addRRect(rect);
-
-    // Draw dashed border along the path.
-    for (final metric in path.computeMetrics()) {
-      var distance = 0.0;
-      const dashWidth = 7.0;
-      const dashSpace = 6.0;
-
-      while (distance < metric.length) {
-        final next = math.min(distance + dashWidth, metric.length);
-        canvas.drawPath(metric.extractPath(distance, next), paint);
-        distance = next + dashSpace;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.radius != radius;
   }
 }

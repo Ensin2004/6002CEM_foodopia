@@ -402,6 +402,8 @@ class _ExploreContent extends StatelessWidget {
         onCommentTap: onCommentTap,
         onFavouriteTap: viewModel.toggleFavourite,
         onImageLongPress: (recipe) => _showRecipeImage(context, recipe),
+        disabledRecipeIds: mealPlanSelection?.existingRecipeIds.toSet() ?? {},
+        calorieBudget: mealPlanSelection?.calorieBudget,
         onRecipeTap: (recipe) {
           context.push(
             AppRouter.exploreRecipeDetail,

@@ -52,8 +52,8 @@ class GroceryListTabMainView extends StatelessWidget {
               AppPillSegmentedControl(
                 labels: const ['Active', 'Past'],
                 selectedIndex:
-                viewModel.selectedGroceryListTab ==
-                    GroceryListTabFilter.active
+                    viewModel.selectedGroceryListTab ==
+                        GroceryListTabFilter.active
                     ? 0
                     : 1,
                 onChanged: (index) =>
@@ -80,7 +80,7 @@ class GroceryListTabMainView extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 ...weeklyLists.map(
-                      (list) => Padding(
+                  (list) => Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
                     child: _WeeklyGroceriesCard(list: list),
                   ),
@@ -92,7 +92,7 @@ class GroceryListTabMainView extends StatelessWidget {
                 const _SectionHeader(title: 'Custom Lists'),
                 const SizedBox(height: AppSpacing.sm),
                 ...customLists.map(
-                      (list) => Padding(
+                  (list) => Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
                     child: _GroceryListCard(list: list),
                   ),
@@ -307,7 +307,7 @@ class _GrocerySearchRowState extends State<_GrocerySearchRow> {
               AppFilterChip(
                 label: 'Active lists',
                 selected:
-                context.watch<MealPlanViewModel>().selectedGroceryListTab ==
+                    context.watch<MealPlanViewModel>().selectedGroceryListTab ==
                     GroceryListTabFilter.active,
                 onTap: () => context
                     .read<MealPlanViewModel>()
@@ -317,7 +317,7 @@ class _GrocerySearchRowState extends State<_GrocerySearchRow> {
               AppFilterChip(
                 label: 'Past lists',
                 selected:
-                context.watch<MealPlanViewModel>().selectedGroceryListTab ==
+                    context.watch<MealPlanViewModel>().selectedGroceryListTab ==
                     GroceryListTabFilter.past,
                 onTap: () => context
                     .read<MealPlanViewModel>()
@@ -342,12 +342,12 @@ class _GrocerySearchRowState extends State<_GrocerySearchRow> {
             suffixIcon: query.isEmpty
                 ? null
                 : IconButton(
-              tooltip: 'Clear search',
-              onPressed: context
-                  .read<MealPlanViewModel>()
-                  .clearGrocerySearchQuery,
-              icon: const Icon(Icons.close, size: 18),
-            ),
+                    tooltip: 'Clear search',
+                    onPressed: context
+                        .read<MealPlanViewModel>()
+                        .clearGrocerySearchQuery,
+                    icon: const Icon(Icons.close, size: 18),
+                  ),
             filled: true,
             fillColor: const Color(0xFFF8F8F8),
             border: OutlineInputBorder(
@@ -546,10 +546,10 @@ class _GroceryListCard extends StatelessWidget {
                               .take(3)
                               .map(
                                 (category) => Padding(
-                              padding: const EdgeInsets.only(left: 8),
-                              child: _CategoryIcon(category: category),
-                            ),
-                          ),
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: _CategoryIcon(category: category),
+                                ),
+                              ),
                           if (list.extraCategoryCount > 0)
                             Padding(
                               padding: const EdgeInsets.only(left: 8),

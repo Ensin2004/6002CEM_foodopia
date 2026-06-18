@@ -1,3 +1,5 @@
+import 'meal_calorie_guidance.dart';
+
 /// Represents the complete plan for adding AI-generated meals.
 /// Contains all data needed for the AI meal planning interface.
 class AddMealAiPlan {
@@ -84,6 +86,9 @@ class AddMealAiGenerationRequest {
   /// Serving size description.
   final String servingSize;
 
+  /// Calorie budget for the selected planning day.
+  final MealCalorieBudget calorieBudget;
+
   /// Creates a new AI generation request.
   const AddMealAiGenerationRequest({
     required this.planningDate,
@@ -99,6 +104,7 @@ class AddMealAiGenerationRequest {
     required this.difficulty,
     required this.servingCount,
     required this.servingSize,
+    this.calorieBudget = const MealCalorieBudget.empty(),
   });
 }
 
@@ -248,6 +254,9 @@ class AddMealAiIngredient {
   /// Protein content in grams.
   final double protein;
 
+  /// Practical replacement ingredients.
+  final List<String> alternatives;
+
   /// Creates a new AI ingredient instance.
   const AddMealAiIngredient({
     required this.name,
@@ -257,6 +266,7 @@ class AddMealAiIngredient {
     this.carbohydrates = 0,
     this.fat = 0,
     this.protein = 0,
+    this.alternatives = const [],
   });
 }
 

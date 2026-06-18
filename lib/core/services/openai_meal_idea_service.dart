@@ -21,8 +21,8 @@ class OpenAiMealIdeaService {
 
   /// Generates AI meal ideas based on the given request.
   Future<List<AddMealAiRecipe>> generateMealIdeas(
-      AddMealAiGenerationRequest request,
-      ) async {
+    AddMealAiGenerationRequest request,
+  ) async {
     // Get the API key from environment configuration.
     final apiKey = EnvConfig.openAiApiKey.trim();
 
@@ -38,34 +38,34 @@ class OpenAiMealIdeaService {
     try {
       response = await client
           .post(
-        Uri.parse('https://api.openai.com/v1/responses'),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'model': EnvConfig.openAiRecipeModel,
-          'max_output_tokens': 2500,
-          'input': [
-            // System instruction.
-            {
-              'role': 'system',
-              'content':
-              'You are Foodopia recipe AI. Return only valid JSON that matches the requested schema. Create practical home-cooking recipes with safe, concise instructions.',
+            Uri.parse('https://api.openai.com/v1/responses'),
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
             },
-            // User prompt with request data.
-            {'role': 'user', 'content': _buildPrompt(request)},
-          ],
-          'text': {
-            'format': {
-              'type': 'json_schema',
-              'name': 'foodopia_ai_meal_ideas',
-              'schema': _recipeSchema,
-              'strict': true,
-            },
-          },
-        }),
-      )
+            body: jsonEncode({
+              'model': EnvConfig.openAiRecipeModel,
+              'max_output_tokens': 2500,
+              'input': [
+                // System instruction.
+                {
+                  'role': 'system',
+                  'content':
+                      'You are Foodopia recipe AI. Return only valid JSON that matches the requested schema. Create practical home-cooking recipes with safe, concise instructions.',
+                },
+                // User prompt with request data.
+                {'role': 'user', 'content': _buildPrompt(request)},
+              ],
+              'text': {
+                'format': {
+                  'type': 'json_schema',
+                  'name': 'foodopia_ai_meal_ideas',
+                  'schema': _recipeSchema,
+                  'strict': true,
+                },
+              },
+            }),
+          )
           .timeout(const Duration(seconds: 90));
     } on TimeoutException {
       throw TimeoutException(
@@ -110,6 +110,9 @@ class OpenAiMealIdeaService {
 
   /// Builds the prompt for the AI.
   String _buildPrompt(AddMealAiGenerationRequest request) {
+    // Build optional calorie target guidance.
+    final calorieGuidance = _calorieGuidancePrompt(request);
+
     return '''
 Generate exactly 3 AI recipe ideas for this meal plan.
 
@@ -125,15 +128,60 @@ Dish types to avoid: ${request.dishAvoids.join(', ')}
 Cooking time: ${request.cookingTime}
 Difficulty: ${request.difficulty}
 Serving size: ${request.servingSize}
+$calorieGuidance
 
-Each idea needs: name, recipe category, short description, prep time label, difficulty label, serving label, AI-estimated nutrition, 3 recommendation reasons, 4-8 ingredients with amount/unit, 5-8 cooking instructions, and a food photography image prompt.
+Each idea needs: name, recipe category, short description, prep time label, difficulty label, serving label, AI-estimated nutrition, 3 recommendation reasons, 4-8 ingredients with amount/unit, 1-3 practical alternatives for each ingredient, 5-8 cooking instructions, and a food photography image prompt.
 
 Nutrition rules:
 - Use AI estimates only. Do not use or reference USDA data.
 - Recipe nutrition is for the full suggested serving label.
 - Ingredient nutrition is for the provided ingredient amount and unit.
 - Use kcal for calories and grams for carbohydrates, fat, and protein.
+- Ingredient alternatives must avoid listed allergies and disliked/avoid ingredients.
+- Ingredient alternatives should be practical swaps with similar cooking use.
 ''';
+  }
+
+  /// Builds calorie guidance text for AI generation.
+  String _calorieGuidancePrompt(AddMealAiGenerationRequest request) {
+    /*
+     * Daily target guidance nudges generation without blocking creativity.
+     * Empty target data keeps the prompt focused on normal meal factors.
+     */
+    final budget = request.calorieBudget;
+    if (!budget.hasTarget || budget.targetCalories == null) {
+      return 'Daily calorie target: Not set.';
+    }
+
+    final planned = _displayCalories(
+      budget.plannedCalories,
+      budget.calorieUnit,
+    );
+    final target = budget.targetCalories!;
+    final remaining = target - planned;
+    final unit = budget.calorieUnit;
+
+    if (remaining <= 0) {
+      return '''
+Daily target: $target $unit
+Already planned today: $planned $unit
+Remaining budget: 0 $unit
+Meal should be light because the day is already at or above target.
+''';
+    }
+
+    return '''
+Daily target: $target $unit
+Already planned today: $planned $unit
+Remaining budget: $remaining $unit
+Meal should ideally fit within $remaining $unit or less.
+''';
+  }
+
+  /// Converts stored kcal into the selected display unit.
+  int _displayCalories(int kcal, String unit) {
+    if (unit.toLowerCase() == 'kj') return (kcal * 4.184).round();
+    return kcal;
   }
 
   // =========================================================================
@@ -172,15 +220,16 @@ Nutrition rules:
         .whereType<Map<String, dynamic>>()
         .map(
           (item) => AddMealAiIngredient(
-        name: item['name']?.toString().trim() ?? '',
-        amount: (item['amount'] as num?)?.toDouble() ?? 0,
-        unit: item['unit']?.toString().trim() ?? '',
-        calories: _numberValue(item['calories']),
-        carbohydrates: _numberValue(item['carbohydrates']),
-        fat: _numberValue(item['fat']),
-        protein: _numberValue(item['protein']),
-      ),
-    )
+            name: item['name']?.toString().trim() ?? '',
+            amount: (item['amount'] as num?)?.toDouble() ?? 0,
+            unit: item['unit']?.toString().trim() ?? '',
+            calories: _numberValue(item['calories']),
+            carbohydrates: _numberValue(item['carbohydrates']),
+            fat: _numberValue(item['fat']),
+            protein: _numberValue(item['protein']),
+            alternatives: _stringList(item['alternatives']),
+          ),
+        )
         .where((item) => item.name.isNotEmpty)
         .toList();
 
@@ -216,6 +265,17 @@ Nutrition rules:
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
+  /// Converts a dynamic value to a clean string list.
+  List<String> _stringList(dynamic value) {
+    // Alternatives are expected as an array from the structured schema.
+    if (value is! List) return const [];
+
+    return value
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
   // =========================================================================
   // IMAGE GENERATION
   // =========================================================================
@@ -229,20 +289,20 @@ Nutrition rules:
       // Make the image generation request.
       final response = await client
           .post(
-        Uri.parse('https://api.openai.com/v1/images/generations'),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'model': EnvConfig.openAiImageModel,
-          'prompt':
-          '${recipe.imagePrompt}. App recipe card food photography, natural light, appetizing plated dish, no text.',
-          'size': '1024x1024',
-          'quality': 'low',
-          'n': 1,
-        }),
-      )
+            Uri.parse('https://api.openai.com/v1/images/generations'),
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'model': EnvConfig.openAiImageModel,
+              'prompt':
+                  '${recipe.imagePrompt}. App recipe card food photography, natural light, appetizing plated dish, no text.',
+              'size': '1024x1024',
+              'quality': 'low',
+              'n': 1,
+            }),
+          )
           .timeout(const Duration(seconds: 45));
 
       // Return the original recipe if image generation fails.
@@ -347,6 +407,7 @@ const Map<String, dynamic> _recipeSchema = {
                 'carbohydrates',
                 'fat',
                 'protein',
+                'alternatives',
               ],
               'properties': {
                 'name': {'type': 'string'},
@@ -356,6 +417,12 @@ const Map<String, dynamic> _recipeSchema = {
                 'carbohydrates': {'type': 'number'},
                 'fat': {'type': 'number'},
                 'protein': {'type': 'number'},
+                'alternatives': {
+                  'type': 'array',
+                  'minItems': 1,
+                  'maxItems': 3,
+                  'items': {'type': 'string'},
+                },
               },
             },
           },

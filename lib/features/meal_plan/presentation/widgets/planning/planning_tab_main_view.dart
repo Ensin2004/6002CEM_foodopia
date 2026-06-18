@@ -65,6 +65,13 @@ class PlanningTabMainView extends StatelessWidget {
             ),
           const SizedBox(height: AppSpacing.md),
 
+          // Daily calorie progress.
+          _DailyCaloriesCard(
+            sections: dashboard.sections,
+            preferences: viewModel.preferences,
+          ),
+          const SizedBox(height: AppSpacing.md),
+
           // Calendar.
           MealPlanCalendar(
             selectedDate: selectedDate,
@@ -86,7 +93,7 @@ class PlanningTabMainView extends StatelessWidget {
             const _EmptyMeals()
           else
             ...viewModel.filteredSections.map(
-                  (section) => Padding(
+              (section) => Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: MealPlanSectionCard(section: section),
               ),
@@ -94,6 +101,237 @@ class PlanningTabMainView extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Daily calorie progress card.
+class _DailyCaloriesCard extends StatelessWidget {
+  /// Meal sections for the selected date.
+  final List<MealPlanSection> sections;
+
+  /// User preference summary with calorie target.
+  final MealPlanPreferenceSummary? preferences;
+
+  /// Creates a new daily calories card instance.
+  const _DailyCaloriesCard({required this.sections, required this.preferences});
+
+  @override
+  Widget build(BuildContext context) {
+    // Planned calories are calculated from visible selected-date meals.
+    final plannedCalories = _plannedCalories;
+    final targetCalories = preferences?.calorieTargetEnabled == true
+        ? preferences?.targetCalories
+        : null;
+    final unit = preferences?.calorieUnit ?? 'kcal';
+    final plannedDisplayCalories = _displayCalories(plannedCalories, unit);
+    final progress = targetCalories == null || targetCalories <= 0
+        ? 0.0
+        : (plannedDisplayCalories / targetCalories).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF4E3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.local_fire_department_outlined,
+                  color: Color(0xFFC76A00),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Daily Calories',
+                      style: context.text.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      targetCalories == null
+                          ? '$plannedDisplayCalories $unit planned'
+                          : '$plannedDisplayCalories / $targetCalories $unit',
+                      style: context.text.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _CalorieStatusChip(
+                plannedCalories: plannedDisplayCalories,
+                targetCalories: targetCalories,
+                unit: unit,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              minHeight: 8,
+              value: targetCalories == null ? null : progress,
+              backgroundColor: const Color(0xFFE9EEF0),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                _progressColor(progress, targetCalories),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _MealCalorieBreakdown(sections: sections, unit: unit),
+        ],
+      ),
+    );
+  }
+
+  /// Total planned calories for the selected date.
+  int get _plannedCalories {
+    return sections.fold<int>(0, (sectionTotal, section) {
+      return sectionTotal +
+          section.meals.fold<int>(0, (mealTotal, meal) {
+            return mealTotal + meal.calories;
+          });
+    });
+  }
+
+  /// Converts stored kcal into the selected display unit.
+  int _displayCalories(int kcal, String unit) {
+    if (unit.toLowerCase() == 'kj') return (kcal * 4.184).round();
+    return kcal;
+  }
+
+  /// Progress color based on target usage.
+  Color _progressColor(double progress, int? targetCalories) {
+    // Neutral color is used when no target exists.
+    if (targetCalories == null || targetCalories <= 0) return AppColors.primary;
+
+    // Values above target use a warm warning color.
+    if (progress >= 1) return const Color(0xFFE2762D);
+
+    return AppColors.primary;
+  }
+}
+
+/// Calorie target status chip.
+class _CalorieStatusChip extends StatelessWidget {
+  /// Planned calories for the selected date.
+  final int plannedCalories;
+
+  /// Daily target calories.
+  final int? targetCalories;
+
+  /// Calorie unit label.
+  final String unit;
+
+  /// Creates a new calorie status chip instance.
+  const _CalorieStatusChip({
+    required this.plannedCalories,
+    required this.targetCalories,
+    required this.unit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final target = targetCalories;
+    final text = target == null || target <= 0
+        ? 'No target'
+        : plannedCalories > target
+        ? '+${plannedCalories - target} $unit'
+        : '${target - plannedCalories} $unit left';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F7F8),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: context.text.bodySmall?.copyWith(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// Meal-type calorie breakdown.
+class _MealCalorieBreakdown extends StatelessWidget {
+  /// Meal sections for the selected date.
+  final List<MealPlanSection> sections;
+
+  /// Calorie unit label.
+  final String unit;
+
+  /// Creates a new meal calorie breakdown instance.
+  const _MealCalorieBreakdown({required this.sections, required this.unit});
+
+  @override
+  Widget build(BuildContext context) {
+    // Only sections with meals are shown in the compact breakdown row.
+    final items = sections
+        .map((section) {
+          final total = section.meals.fold<int>(
+            0,
+            (sum, meal) => sum + meal.calories,
+          );
+          return MapEntry(section.mealType, _displayCalories(total));
+        })
+        .where((item) => item.value > 0)
+        .toList();
+
+    if (items.isEmpty) {
+      return Text(
+        'No meal calories planned yet',
+        style: context.text.bodySmall?.copyWith(color: AppColors.textSecondary),
+      );
+    }
+
+    return Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.xs,
+      children: [
+        for (final item in items)
+          Text(
+            '${item.key} ${item.value} $unit',
+            style: context.text.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Converts stored kcal into the selected display unit.
+  int _displayCalories(int kcal) {
+    if (unit.toLowerCase() == 'kj') return (kcal * 4.184).round();
+    return kcal;
   }
 }
 

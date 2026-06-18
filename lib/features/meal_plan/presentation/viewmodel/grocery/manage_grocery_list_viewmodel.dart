@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
 
-import '../../../../core/extensions/either_extensions.dart';
-import '../../domain/entities/manage_grocery_list_detail.dart';
-import '../../domain/usecases/add_grocery_item_usecase.dart';
-import '../../domain/usecases/delete_grocery_item_usecase.dart';
-import '../../domain/usecases/get_manage_grocery_list_detail_usecase.dart';
-import '../../domain/usecases/update_grocery_item_bought_usecase.dart';
-import '../../domain/usecases/update_grocery_list_usecase.dart';
+import '../../../../../core/extensions/either_extensions.dart';
+import '../../../domain/entities/manage_grocery_list_detail.dart';
+import '../../../domain/usecases/add_grocery_item_usecase.dart';
+import '../../../domain/usecases/delete_grocery_item_usecase.dart';
+import '../../../domain/usecases/get_manage_grocery_list_detail_usecase.dart';
+import '../../../domain/usecases/update_grocery_item_bought_usecase.dart';
+import '../../../domain/usecases/update_grocery_list_usecase.dart';
 
 /// View mode for the grocery list management screen.
 enum ManageGroceryViewMode {
@@ -95,10 +95,10 @@ class ManageGroceryListViewModel extends ChangeNotifier {
     required UpdateGroceryItemBoughtUseCase updateItemBoughtUseCase,
     required UpdateGroceryListUseCase updateGroceryListUseCase,
   }) : _getDetailUseCase = getDetailUseCase,
-        _addGroceryItemUseCase = addGroceryItemUseCase,
-        _deleteGroceryItemUseCase = deleteGroceryItemUseCase,
-        _updateItemBoughtUseCase = updateItemBoughtUseCase,
-        _updateGroceryListUseCase = updateGroceryListUseCase {
+       _addGroceryItemUseCase = addGroceryItemUseCase,
+       _deleteGroceryItemUseCase = deleteGroceryItemUseCase,
+       _updateItemBoughtUseCase = updateItemBoughtUseCase,
+       _updateGroceryListUseCase = updateGroceryListUseCase {
     // Load the detail asynchronously after construction.
     Future.microtask(loadDetail);
   }
@@ -135,9 +135,9 @@ class ManageGroceryListViewModel extends ChangeNotifier {
   int get totalItemCount =>
       _detail?.categories.fold<int>(
         0,
-            (sum, category) => sum + category.items.length,
+        (sum, category) => sum + category.items.length,
       ) ??
-          0;
+      0;
 
   /// Number of bought items.
   int get boughtCount => _boughtItemIds.length;
