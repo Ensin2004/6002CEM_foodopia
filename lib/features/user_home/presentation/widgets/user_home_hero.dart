@@ -5,11 +5,19 @@ import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../domain/entities/user_home_dashboard.dart';
 
+/// Hero section for the user home page.
+/// Displays user greeting, name, and weather information.
 class UserHomeHero extends StatelessWidget {
+  /// The user home dashboard data.
   final UserHomeDashboard dashboard;
+
+  /// Whether weather data is loading.
   final bool isWeatherLoading;
+
+  /// Error message from weather loading.
   final String? weatherErrorMessage;
 
+  /// Creates a new user home hero instance.
   const UserHomeHero({
     super.key,
     required this.dashboard,
@@ -22,6 +30,7 @@ class UserHomeHero extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
+        // Background image.
         Positioned(
           top: 0,
           left: 0,
@@ -31,11 +40,13 @@ class UserHomeHero extends StatelessWidget {
             alignment: Alignment.topCenter,
           ),
         ),
+        // Content overlay.
         Padding(
           padding: AppSpacing.pagePadding.copyWith(top: AppSpacing.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Greeting.
               Text(
                 '${dashboard.greeting},',
                 style: context.text.bodyMedium?.copyWith(
@@ -44,6 +55,8 @@ class UserHomeHero extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
+
+              // User name.
               Text(
                 dashboard.userName,
                 style: context.text.headlineSmall?.copyWith(
@@ -52,6 +65,8 @@ class UserHomeHero extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
+
+              // Motivational subtitle.
               Text(
                 "Let's make today a healthy one!",
                 style: context.text.bodySmall?.copyWith(
@@ -60,6 +75,8 @@ class UserHomeHero extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
+
+              // Weather card.
               _WeatherCard(
                 weather: dashboard.weather,
                 isLoading: isWeatherLoading,
@@ -73,11 +90,18 @@ class UserHomeHero extends StatelessWidget {
   }
 }
 
+/// Weather card widget.
 class _WeatherCard extends StatelessWidget {
+  /// Weather data.
   final UserHomeWeather? weather;
+
+  /// Whether weather is loading.
   final bool isLoading;
+
+  /// Error message.
   final String? errorMessage;
 
+  /// Creates a new weather card instance.
   const _WeatherCard({
     required this.weather,
     required this.isLoading,
@@ -103,7 +127,9 @@ class _WeatherCard extends StatelessWidget {
     );
   }
 
+  /// Builds the content based on state.
   Widget _buildContent(BuildContext context) {
+    // Show loading state.
     if (isLoading) {
       return const SizedBox(
         height: 110,
@@ -111,6 +137,7 @@ class _WeatherCard extends StatelessWidget {
       );
     }
 
+    // Show error state.
     final message = errorMessage;
     if (message != null && message.isNotEmpty) {
       return SizedBox(
@@ -128,6 +155,7 @@ class _WeatherCard extends StatelessWidget {
       );
     }
 
+    // Show empty state.
     final weatherData = weather;
     if (weatherData == null) {
       return SizedBox(
@@ -145,12 +173,16 @@ class _WeatherCard extends StatelessWidget {
       );
     }
 
+    // Show weather data.
     return Column(
       children: [
+        // Main weather row.
         Row(
           children: [
             _WeatherIcon(condition: weatherData.condition),
             const SizedBox(width: AppSpacing.md),
+
+            // Temperature and condition.
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,6 +203,8 @@ class _WeatherCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // Summary.
             Expanded(
               child: Text(
                 '${weatherData.summary}\nGreat day for something fresh and cool.',
@@ -184,6 +218,8 @@ class _WeatherCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.md),
+
+        // Weather metrics row.
         Row(
           children: [
             Expanded(
@@ -214,14 +250,20 @@ class _WeatherCard extends StatelessWidget {
   }
 }
 
+/// Weather icon widget.
 class _WeatherIcon extends StatelessWidget {
+  /// Weather condition string.
   final String condition;
 
+  /// Creates a new weather icon instance.
   const _WeatherIcon({required this.condition});
 
   @override
   Widget build(BuildContext context) {
+    // Normalize the condition string.
     final normalized = condition.toLowerCase();
+
+    // Determine the icon based on condition.
     final icon = normalized.contains('rain')
         ? Icons.umbrella_outlined
         : normalized.contains('cloud')
@@ -240,11 +282,18 @@ class _WeatherIcon extends StatelessWidget {
   }
 }
 
+/// Weather metric widget.
 class _WeatherMetric extends StatelessWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Label text.
   final String label;
+
+  /// Value text.
   final String value;
 
+  /// Creates a new weather metric instance.
   const _WeatherMetric({
     required this.icon,
     required this.label,

@@ -11,7 +11,9 @@ import '../datasources/auth_remote_datasource.dart';
 import '../models/user_model.dart';
 
 /// Defines behavior for auth repository impl.
+/// Implements the AuthRepository interface using remote data source.
 class AuthRepositoryImpl implements AuthRepository {
+  /// Remote data source for authentication operations.
   final AuthRemoteDataSource remoteDataSource;
 
   /// Creates a auth repository impl instance.
@@ -30,20 +32,33 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
       );
 
+      // Get the authenticated user.
       final user = credential.user;
       if (user == null) {
         return Left(AuthFailure(message: 'Login failed'));
       }
 
+      // Fetch user data from Firestore.
       final userDoc = await remoteDataSource.getUserFromFirestore(user.uid);
+
+      // Ensure notification preferences exist.
       await remoteDataSource.ensureNotificationPreferences(user.uid);
+
+      // Save FCM token.
       await remoteDataSource.saveFcmToken(user.uid);
+
+      // Initialize FCM notification service.
       await FcmNotificationService.initialize();
+
+      // Create user entity.
       final userEntity = UserModel.fromFirebase(user, userDoc);
 
       return Right(userEntity);
     } on firebase_auth.FirebaseAuthException catch (e) {
+      // Handle Firebase Auth specific errors.
       String message;
+
+      // Map error codes to user-friendly messages.
       switch (e.code) {
         case 'user-not-found':
           message = 'No user found with this email';
@@ -60,8 +75,10 @@ class AuthRepositoryImpl implements AuthRepository {
         default:
           message = e.message ?? 'Login failed';
       }
+
       return Left(AuthFailure(message: message, code: e.code));
     } catch (e) {
+      // Map any other exception to an auth failure.
       return Left(AuthFailure(message: e.toString()));
     }
   }
@@ -83,18 +100,23 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
       );
 
+      // Get the authenticated user.
       final user = credential.user;
       if (user == null) {
         return Left(AuthFailure(message: 'Signup failed'));
       }
 
+      // Get FCM token.
       final fcmToken = await remoteDataSource.getFCMToken();
+
+      // Split name into first and last name.
       final nameParts = name.trim().split(RegExp(r'\s+'));
       final firstName = nameParts.isNotEmpty ? nameParts.first : name.trim();
       final lastName = nameParts.length > 1
           ? nameParts.sublist(1).join(' ')
           : '';
 
+      // Save user data to Firestore.
       await remoteDataSource.saveUserToFirestore(
         uid: user.uid,
         userData: {
@@ -110,15 +132,22 @@ class AuthRepositoryImpl implements AuthRepository {
           'role': RoleManager().getDefaultRole(),
         },
       );
+
+      // Save FCM token.
       await remoteDataSource.saveFcmToken(user.uid);
 
+      // Send email verification.
       await remoteDataSource.sendEmailVerification();
 
+      // Create user entity.
       final userEntity = UserModel.fromFirebase(user, null);
 
       return Right(userEntity);
     } on firebase_auth.FirebaseAuthException catch (e) {
+      // Handle Firebase Auth specific errors.
       String message;
+
+      // Map error codes to user-friendly messages.
       switch (e.code) {
         case 'email-already-in-use':
           message = 'Email already in use';
@@ -132,8 +161,10 @@ class AuthRepositoryImpl implements AuthRepository {
         default:
           message = e.message ?? 'Signup failed';
       }
+
       return Left(AuthFailure(message: message, code: e.code));
     } catch (e) {
+      // Map any other exception to an auth failure.
       return Left(AuthFailure(message: e.toString()));
     }
   }
@@ -146,6 +177,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.sendEmailVerification();
       return const Right(null);
     } catch (e) {
+      // Map any exception to an auth failure.
       return Left(AuthFailure(message: e.toString()));
     }
   }
@@ -156,9 +188,14 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       // Runs the guarded operation that can throw.
       await remoteDataSource.reloadUser();
+
+      // Get the current user.
       final user = remoteDataSource.getCurrentUser();
+
+      // Return email verification status.
       return Right(user?.emailVerified ?? false);
     } catch (e) {
+      // Map any exception to an auth failure.
       return Left(AuthFailure(message: e.toString()));
     }
   }
@@ -171,10 +208,12 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.sendEmailVerification();
       return const Right(null);
     } catch (e) {
+      // Map any exception to an auth failure.
       return Left(AuthFailure(message: e.toString()));
     }
   }
 
+  /// Requests a password reset email.
   @override
   Future<Either<AuthFailure, void>> requestPasswordReset({
     required String email,
@@ -183,7 +222,10 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.sendPasswordResetEmail(email);
       return const Right(null);
     } on firebase_auth.FirebaseAuthException catch (e) {
+      // Handle Firebase Auth specific errors.
       String message;
+
+      // Map error codes to user-friendly messages.
       switch (e.code) {
         case 'invalid-email':
           message = 'Invalid email address';
@@ -197,8 +239,10 @@ class AuthRepositoryImpl implements AuthRepository {
         default:
           message = e.message ?? 'Unable to send password reset email';
       }
+
       return Left(AuthFailure(message: message, code: e.code));
     } catch (e) {
+      // Map any other exception to an auth failure.
       return Left(AuthFailure(message: e.toString()));
     }
   }
@@ -211,6 +255,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.logout();
       return const Right(null);
     } catch (e) {
+      // Map any exception to an auth failure.
       return Left(AuthFailure(message: e.toString()));
     }
   }
@@ -219,30 +264,36 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<AuthFailure, List<Map<String, dynamic>>>> getAgeGroups() async {
     try {
+      // Fetch age groups from remote data source.
       final snapshot = await remoteDataSource.getAgeGroups();
+
+      // Map documents to maps.
       final ageGroups = snapshot.docs
           .map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            final name = data['name']?.toString() ?? '';
-            final description = data['description']?.toString() ?? '';
-            final sortOrder = data['sortOrder'] is int
-                ? data['sortOrder'] as int
-                : 0;
-            final isActive = data['isActive'] is bool
-                ? data['isActive'] as bool
-                : true;
-            return {
-              'id': doc.id,
-              'name': name,
-              'description': description,
-              'sortOrder': sortOrder,
-              'isActive': isActive,
-            };
-          })
+        final data = doc.data() as Map<String, dynamic>;
+        final name = data['name']?.toString() ?? '';
+        final description = data['description']?.toString() ?? '';
+        final sortOrder = data['sortOrder'] is int
+            ? data['sortOrder'] as int
+            : 0;
+        final isActive = data['isActive'] is bool
+            ? data['isActive'] as bool
+            : true;
+
+        return {
+          'id': doc.id,
+          'name': name,
+          'description': description,
+          'sortOrder': sortOrder,
+          'isActive': isActive,
+        };
+      })
           .where((item) => item['isActive'] == true)
           .toList();
+
       return Right(ageGroups);
     } catch (e) {
+      // Map any exception to an auth failure.
       return Left(AuthFailure(message: e.toString()));
     }
   }

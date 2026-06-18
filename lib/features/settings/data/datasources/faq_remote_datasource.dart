@@ -5,13 +5,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/services/cloudinary_service.dart';
 
 /// Defines behavior for faq remote data source.
+/// Handles CRUD operations for FAQ items in the support center.
 class FaqRemoteDataSource {
+  /// Firestore instance used for database operations.
   final FirebaseFirestore _firestore;
 
   /// Creates a faq remote data source instance.
   FaqRemoteDataSource({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  /// Reference to the FAQ items subcollection.
   CollectionReference<Map<String, dynamic>> get _collection =>
       _firestore.collection('support_center').doc('faq').collection('items');
 
@@ -20,6 +23,7 @@ class FaqRemoteDataSource {
     return await _collection.orderBy('createdAt', descending: true).get();
   }
 
+  /// Streams real-time updates for user FAQ items.
   Stream<QuerySnapshot<Map<String, dynamic>>> watchUserFaqItems() {
     return _collection.orderBy('createdAt', descending: true).snapshots();
   }
@@ -29,6 +33,7 @@ class FaqRemoteDataSource {
     return await _collection.orderBy('createdAt', descending: true).get();
   }
 
+  /// Streams real-time updates for admin FAQ items.
   Stream<QuerySnapshot<Map<String, dynamic>>> watchAdminFaqItems() {
     return _collection.orderBy('createdAt', descending: true).snapshots();
   }

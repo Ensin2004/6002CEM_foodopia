@@ -15,9 +15,11 @@ import 'features/auth/domain/entities/user_entity.dart';
 
 /// Handles the main operation.
 Future<void> main() async {
+  // Ensure Flutter bindings are initialized.
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    // Initialize Firebase.
     await Firebase.initializeApp();
     print('✅ Firebase initialized successfully');
 
@@ -31,25 +33,29 @@ Future<void> main() async {
     };
   } catch (e, stack) {
     print('❌ Error initializing Firebase: $e');
+
     // Only record this if Firebase initialized enough for Crashlytics to work.
-    // If Firebase failed completely, this may also fail, so keep it guarded.
     try {
       await FirebaseCrashlytics.instance.recordError(e, stack, fatal: true);
     } catch (_) {}
   }
 
-  // Initialize dependencies
+  // Initialize dependencies.
   await initDependencies();
 
-  // Initialize SharedPreferences Manager
+  // Initialize SharedPreferences Manager.
   await SharedPrefsManager.init();
 
-  // Check onboarding status using the manager
+  // Check onboarding status using the manager.
   final seenOnboarding = SharedPrefsManager.hasCompletedOnboarding();
 
+  // Get the current authenticated user.
   final currentUser = FirebaseAuth.instance.currentUser;
+
+  // User entity to pass to the app.
   UserEntity? userEntity;
 
+  // Fetch user data if logged in and email verified.
   if (currentUser != null && currentUser.emailVerified) {
     try {
       final userDoc = await FirebaseFirestore.instance
@@ -61,6 +67,7 @@ Future<void> main() async {
     } catch (e, stack) {
       print('Error fetching user data: $e');
 
+      // Record the error in Crashlytics.
       await FirebaseCrashlytics.instance.recordError(
         e,
         stack,
@@ -70,14 +77,16 @@ Future<void> main() async {
     }
   }
 
+  // Determine if the user is logged in.
   final isLoggedIn =
       currentUser != null && currentUser.emailVerified && userEntity != null;
 
+  // Initialize FCM notification service if logged in.
   if (isLoggedIn) {
     await FcmNotificationService.initialize();
   }
 
-  // Debug prints
+  // Debug prints.
   print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   print('🔍 APP STARTUP DEBUG INFO:');
   print('📱 seenOnboarding: $seenOnboarding');

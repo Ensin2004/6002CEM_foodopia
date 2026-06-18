@@ -14,6 +14,7 @@ import '../widgets/curved_header.dart';
 import '../widgets/email_verification_dialog.dart';
 
 /// Runs the signup screen operation.
+/// Screen for user registration with validation and age group selection.
 class SignupScreen extends StatelessWidget {
   /// Runs the signup screen operation.
   const SignupScreen({super.key});
@@ -41,16 +42,24 @@ class _SignupView extends StatefulWidget {
 
 /// Defines behavior for signup view state.
 class _SignupViewState extends State<_SignupView> {
+  /// Controller for the name input field.
   final _nameController = TextEditingController();
+
+  /// Controller for the email input field.
   final _emailController = TextEditingController();
+
+  /// Controller for the password input field.
   final _passwordController = TextEditingController();
+
+  /// Controller for the confirm password input field.
   final _confirmPasswordController = TextEditingController();
 
   /// Initializes state before the first widget build.
   @override
   void initState() {
     super.initState();
-    // Load age groups when screen initializes
+
+    // Load age groups when screen initializes.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SignupViewModel>().loadAgeGroups();
     });
@@ -69,6 +78,7 @@ class _SignupViewState extends State<_SignupView> {
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<SignupViewModel>();
 
     /// Handles the scaffold operation.
@@ -77,6 +87,7 @@ class _SignupViewState extends State<_SignupView> {
         child: SingleChildScrollView(
           child: Column(
             children: [
+              // Curved header with navigation buttons.
               /// Creates a curved header instance.
               CurvedHeader(
                 onLeadingPressed: () {
@@ -91,6 +102,7 @@ class _SignupViewState extends State<_SignupView> {
                 trailingText: "Login",
               ),
 
+              // Signup form.
               /// Creates a padding instance.
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -101,56 +113,56 @@ class _SignupViewState extends State<_SignupView> {
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
-                    // Email Field
+                    // Email Field.
                     _buildEmailField(viewModel),
 
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
-                    // Name Field
+                    // Name Field.
                     _buildNameField(viewModel),
 
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
-                    // Gender Field
+                    // Gender Field.
                     _buildGenderField(viewModel),
 
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
-                    // Age Group Field
+                    // Age Group Field.
                     _buildAgeGroupField(viewModel),
 
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
-                    // Password Field
+                    // Password Field.
                     _buildPasswordField(viewModel),
 
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
-                    // Confirm Password Field
+                    // Confirm Password Field.
                     _buildConfirmPasswordField(viewModel),
 
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
-                    // Terms and Conditions
+                    // Terms and Conditions.
                     _buildTermsField(viewModel),
 
                     /// Creates a sized box instance.
                     const SizedBox(height: 24),
 
-                    // Error Message
+                    // Error Message.
                     if (viewModel.errorMessage != null)
                       _buildErrorMessage(viewModel.errorMessage!),
 
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
-                    // Sign Up Button
+                    // Sign Up Button.
                     PrimaryButton(
                       text: 'Sign Up',
                       onPressed: viewModel.isLoading
@@ -162,7 +174,7 @@ class _SignupViewState extends State<_SignupView> {
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
 
-                    // Login Link
+                    // Login Link.
                     _buildLoginLink(context),
                   ],
                 ),
@@ -173,6 +185,10 @@ class _SignupViewState extends State<_SignupView> {
       ),
     );
   }
+
+  // =========================================================================
+  // WIDGET BUILDERS
+  // =========================================================================
 
   /// Handles the build title operation.
   Widget _buildTitle(BuildContext context) {
@@ -222,8 +238,9 @@ class _SignupViewState extends State<_SignupView> {
           },
           onTap: () => viewModel.markEmailTouched(),
         ),
+        // Email error message.
         if (viewModel.getEmailError() != null)
-          /// Creates a padding instance.
+        /// Creates a padding instance.
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
@@ -269,8 +286,9 @@ class _SignupViewState extends State<_SignupView> {
           },
           onTap: () => viewModel.markNameTouched(),
         ),
+        // Name error message.
         if (viewModel.getNameError() != null)
-          /// Creates a padding instance.
+        /// Creates a padding instance.
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
@@ -328,8 +346,9 @@ class _SignupViewState extends State<_SignupView> {
           selected: viewModel.selectedGender == "Prefer not to say",
           onTap: () => viewModel.selectGender("Prefer not to say"),
         ),
+        // Gender error message.
         if (viewModel.genderTouched && viewModel.selectedGender.isEmpty)
-          /// Creates a padding instance.
+        /// Creates a padding instance.
           const Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text(
@@ -378,6 +397,7 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  /// Builds the age group field with picker.
   Widget _buildAgeGroupField(SignupViewModel viewModel) {
     /// Handles the column operation.
     return Column(
@@ -388,13 +408,16 @@ class _SignupViewState extends State<_SignupView> {
 
         /// Creates a sized box instance.
         const SizedBox(height: 8),
+
+        // Show loading indicator while age groups are loading.
         if (viewModel.ageGroups.isEmpty)
-          /// Creates a linear progress indicator instance.
+        /// Creates a linear progress indicator instance.
           const LinearProgressIndicator()
         else
-          /// Creates a gesture detector instance.
+        /// Creates a gesture detector instance.
           GestureDetector(
             onTap: () async {
+              // Show age group picker dialog.
               final picked = await showDialog<Map<String, dynamic>>(
                 context: context,
                 builder: (_) => AgeGroupPickerDialog(
@@ -402,6 +425,8 @@ class _SignupViewState extends State<_SignupView> {
                   selectedId: viewModel.selectedAgeGroupId,
                 ),
               );
+
+              // Update selection if picked.
               if (picked != null) {
                 viewModel.selectAgeGroup(picked['id'], picked['name']);
               }
@@ -422,8 +447,10 @@ class _SignupViewState extends State<_SignupView> {
               ),
             ),
           ),
+
+        // Age group error message.
         if (viewModel.ageGroupTouched && viewModel.selectedAgeGroupId == null)
-          /// Creates a padding instance.
+        /// Creates a padding instance.
           const Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text(
@@ -471,9 +498,10 @@ class _SignupViewState extends State<_SignupView> {
           },
           onTap: () => viewModel.markPasswordTouched(),
         ),
-        // Password strength indicator
+
+        // Password strength indicator.
         if (viewModel.password.isNotEmpty)
-          /// Creates a padding instance.
+        /// Creates a padding instance.
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Column(
@@ -487,8 +515,10 @@ class _SignupViewState extends State<_SignupView> {
               }).toList(),
             ),
           ),
+
+        // Password error message.
         if (viewModel.getPasswordError() != null)
-          /// Creates a padding instance.
+        /// Creates a padding instance.
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
@@ -536,8 +566,10 @@ class _SignupViewState extends State<_SignupView> {
           },
           onTap: () => viewModel.markConfirmTouched(),
         ),
+
+        // Confirm password error message.
         if (viewModel.getConfirmPasswordError() != null)
-          /// Creates a padding instance.
+        /// Creates a padding instance.
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
@@ -607,8 +639,10 @@ class _SignupViewState extends State<_SignupView> {
             ),
           ],
         ),
+
+        // Terms error message.
         if (viewModel.termsTouched && !viewModel.acceptedTerms)
-          /// Creates a padding instance.
+        /// Creates a padding instance.
           const Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text(
@@ -670,10 +704,13 @@ class _SignupViewState extends State<_SignupView> {
     );
   }
 
+  // =========================================================================
+  // DIALOG HELPERS
+  // =========================================================================
+
   /// Handles the show terms and conditions operation.
   void _showTermsAndConditions(BuildContext context) {
-    // Navigate to terms and conditions page
-    // Implement based on the existing AboutViewerPage.
+    // Navigate to terms and conditions page.
     ScaffoldMessenger.of(context).showSnackBar(
       /// Creates a snack bar instance.
       const SnackBar(content: Text('Terms and Conditions feature coming soon')),
@@ -682,20 +719,24 @@ class _SignupViewState extends State<_SignupView> {
 
   /// Handles the show privacy policy operation.
   void _showPrivacyPolicy(BuildContext context) {
-    // Navigate to privacy policy page
+    // Navigate to privacy policy page.
     ScaffoldMessenger.of(context).showSnackBar(
       /// Creates a snack bar instance.
       const SnackBar(content: Text('Privacy Policy feature coming soon')),
     );
   }
 
+  // =========================================================================
+  // ACTION HANDLERS
+  // =========================================================================
+
   /// Handles the handle signup operation.
   Future<void> _handleSignup(
-    BuildContext context,
-    SignupViewModel viewModel,
-  ) async {
+      BuildContext context,
+      SignupViewModel viewModel,
+      ) async {
+    // Validate age group selection.
     final ageGroupId = viewModel.selectedAgeGroupId;
-
     if (ageGroupId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         /// Creates a snack bar instance.
@@ -708,21 +749,21 @@ class _SignupViewState extends State<_SignupView> {
       return;
     }
 
-    // Show loading dialog
+    // Show loading dialog.
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const LoadingDialog(),
     );
 
-    // Get data from controllers
+    // Get data from controllers.
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final name = _nameController.text.trim();
     final gender = viewModel.selectedGender;
     final ageGroupName = viewModel.selectedAgeGroupName ?? '';
 
-    // Call ViewModel with data
+    // Call ViewModel with data.
     final user = await viewModel.signup(
       email: email,
       password: password,
@@ -732,13 +773,14 @@ class _SignupViewState extends State<_SignupView> {
       ageGroupName: ageGroupName,
     );
 
-    // Close loading dialog
+    // Close loading dialog.
     if (context.mounted) {
       Navigator.of(context).pop();
     }
 
-    // Screen handles navigation based on result
+    // Screen handles navigation based on result.
     if (user != null && context.mounted) {
+      // Show email verification dialog.
       final verified = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
@@ -748,6 +790,7 @@ class _SignupViewState extends State<_SignupView> {
         ),
       );
 
+      // Navigate to home if verified.
       if (verified == true && context.mounted) {
         _navigateToHome(context, user);
       } else if (verified == false && context.mounted) {
@@ -756,13 +799,15 @@ class _SignupViewState extends State<_SignupView> {
     }
   }
 
-  /// Handles the navigate to user_home operation.
+  /// Handles the navigate to user home operation.
   void _navigateToHome(BuildContext context, dynamic user) {
+    // Get role manager.
     final roleManager = RoleManager();
 
-    // Use the roleToString method
+    // Use the roleToString method.
     final roleString = roleManager.roleToString(user.role);
 
+    // Navigate to diet setup.
     context.go(
       AppRouter.setupDiet,
       extra: UserSetupArgs(uid: user.uid, user: user, role: roleString),

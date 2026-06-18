@@ -6,13 +6,16 @@ import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/services/fcm_sender.dart';
 
 /// Defines behavior for help center remote data source.
+/// Handles CRUD operations for help tickets and admin notifications.
 class HelpCenterRemoteDataSource {
+  /// Firestore instance used for database operations.
   final FirebaseFirestore _firestore;
 
   /// Creates a help center remote data source instance.
   HelpCenterRemoteDataSource({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  /// Reference to the help tickets subcollection.
   CollectionReference<Map<String, dynamic>> get _collection => _firestore
       .collection('support_center')
       .doc('help_tickets')
@@ -43,17 +46,21 @@ class HelpCenterRemoteDataSource {
     });
   }
 
+  /// Replies to an issue and notifies the user.
   Future<void> replyToIssue({
     required String issueId,
     required String userUid,
     required String reply,
   }) async {
+    // Update the issue with the reply.
     await _collection.doc(issueId).update({
       'status': 'replied',
       'adminReply': reply,
       'repliedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    // Notify the user of the reply.
     await _notifyUserOfReply(userUid: userUid, issueId: issueId, reply: reply);
   }
 
@@ -67,6 +74,7 @@ class HelpCenterRemoteDataSource {
     return await _firestore.collection('users').doc(uid).get();
   }
 
+  /// Retrieves all admin users.
   Future<QuerySnapshot<Map<String, dynamic>>> getAdminUsers() async {
     return await _firestore
         .collection('users')
@@ -74,35 +82,45 @@ class HelpCenterRemoteDataSource {
         .get();
   }
 
+  /// Notifies all admins of a new help ticket.
   Future<void> _notifyAdminsOfNewTicket(
-    String issueId,
-    Map<String, dynamic> issueData,
-  ) async {
+      String issueId,
+      Map<String, dynamic> issueData,
+      ) async {
     try {
+      // Get all admin users.
       final admins = await getAdminUsers();
+
+      // Get user details for the ticket.
       final userUid = issueData['uid']?.toString() ?? '';
       final userDoc = await getUserData(userUid);
       final user = userDoc.data() as Map<String, dynamic>?;
       final name = user?['name']?.toString().trim();
+
+      // Build notification data.
       final title = 'New Help Ticket';
       final message =
           '${name?.isNotEmpty == true ? name : 'A user'} submitted a help ticket.';
 
+      // Send notification to each admin.
       for (final adminDoc in admins.docs) {
         final adminUid = adminDoc.id;
+
+        // Create notification document.
         final notificationRef = await _firestore
             .collection('users')
             .doc(adminUid)
             .collection('notifications')
             .add({
-              'type': 'newHelpTicket',
-              'title': title,
-              'message': message,
-              'isRead': false,
-              'createdAt': FieldValue.serverTimestamp(),
-              'issueId': issueId,
-            });
+          'type': 'newHelpTicket',
+          'title': title,
+          'message': message,
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'issueId': issueId,
+        });
 
+        // Check if notification preference is enabled.
         if (!await _isNotificationEnabled(
           uid: adminUid,
           preferenceId: 'new_help_ticket_notification',
@@ -110,6 +128,7 @@ class HelpCenterRemoteDataSource {
           continue;
         }
 
+        // Send push notification.
         await _sendPushToUser(
           uid: adminUid,
           title: title,
@@ -126,29 +145,34 @@ class HelpCenterRemoteDataSource {
     }
   }
 
+  /// Notifies a user of a reply to their help ticket.
   Future<void> _notifyUserOfReply({
     required String userUid,
     required String issueId,
     required String reply,
   }) async {
     try {
+      // Build notification data.
       final title = 'Help Center Reply';
       final message = reply.length > 90
           ? '${reply.substring(0, 90)}...'
           : reply;
+
+      // Create notification document.
       final notificationRef = await _firestore
           .collection('users')
           .doc(userUid)
           .collection('notifications')
           .add({
-            'type': 'helpReply',
-            'title': title,
-            'message': message,
-            'isRead': false,
-            'createdAt': FieldValue.serverTimestamp(),
-            'issueId': issueId,
-          });
+        'type': 'helpReply',
+        'title': title,
+        'message': message,
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+        'issueId': issueId,
+      });
 
+      // Check if notification preference is enabled.
       if (!await _isNotificationEnabled(
         uid: userUid,
         preferenceId: 'help_center_reply_notification',
@@ -156,6 +180,7 @@ class HelpCenterRemoteDataSource {
         return;
       }
 
+      // Send push notification.
       await _sendPushToUser(
         uid: userUid,
         title: title,
@@ -171,6 +196,7 @@ class HelpCenterRemoteDataSource {
     }
   }
 
+  /// Checks if a notification preference is enabled.
   Future<bool> _isNotificationEnabled({
     required String uid,
     required String preferenceId,
@@ -181,25 +207,31 @@ class HelpCenterRemoteDataSource {
         .collection('notification_preferences')
         .doc(preferenceId)
         .get();
+
     final enabled = preferenceDoc.data()?['enabled'];
     return enabled is bool ? enabled : true;
   }
 
+  /// Sends a push notification to a user.
   Future<void> _sendPushToUser({
     required String uid,
     required String title,
     required String message,
     required Map<String, dynamic> data,
   }) async {
+    // Get the user's FCM tokens.
     final userDoc = await getUserData(uid);
     final rawTokens = (userDoc.data() as Map<String, dynamic>?)?['fcmTokens'];
+
+    // Extract and validate tokens.
     final tokens = rawTokens is Iterable
         ? rawTokens
-              .map((token) => token?.toString().trim() ?? '')
-              .where((token) => token.isNotEmpty)
-              .toSet()
+        .map((token) => token?.toString().trim() ?? '')
+        .where((token) => token.isNotEmpty)
+        .toSet()
         : <String>{};
 
+    // Send push to each token.
     for (final token in tokens) {
       await FcmSender.instance.sendToToken(
         deviceToken: token,

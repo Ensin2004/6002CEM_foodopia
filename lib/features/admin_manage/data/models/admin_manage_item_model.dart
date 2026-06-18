@@ -2,7 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/entities/admin_manage_item.dart';
 
+/// Model class for admin manage items.
+/// Maps between domain entities and Firestore documents.
 class AdminManageItemModel extends AdminManageItem {
+  /// Creates a new admin manage item model instance.
   const AdminManageItemModel({
     super.id = '',
     required super.name,
@@ -12,9 +15,11 @@ class AdminManageItemModel extends AdminManageItem {
     super.isActive = true,
   });
 
+  /// Creates a model from a Firestore document.
   factory AdminManageItemModel.fromFirestore(
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
+      QueryDocumentSnapshot<Map<String, dynamic>> doc,
+      ) {
+    // Extract data from the document.
     final data = doc.data();
 
     return AdminManageItemModel(
@@ -27,6 +32,7 @@ class AdminManageItemModel extends AdminManageItem {
     );
   }
 
+  /// Creates a model from a domain entity.
   factory AdminManageItemModel.fromEntity(AdminManageItem item) {
     return AdminManageItemModel(
       id: item.id,
@@ -38,6 +44,7 @@ class AdminManageItemModel extends AdminManageItem {
     );
   }
 
+  /// Converts this model to Firestore data.
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,

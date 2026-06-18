@@ -6,11 +6,22 @@ import '../../domain/entities/add_meal_ai_plan.dart';
 import '../../domain/entities/manage_grocery_list_detail.dart';
 import '../../domain/entities/meal_plan_dashboard.dart';
 
+/// Remote data source implementation for meal planning operations.
+/// Handles all Firestore interactions for meal plans, grocery lists,
+/// and related recipe data.
 class MealPlanRemoteDataSource {
+  /// Firestore instance used for all database operations.
   final FirebaseFirestore firestore;
 
+  /// Creates a new instance with the required Firestore reference.
   const MealPlanRemoteDataSource({required this.firestore});
 
+  // =========================================================================
+  // DASHBOARD
+  // =========================================================================
+
+  /// Retrieves the meal plan dashboard for a specific user and date.
+  /// Fetches meal plans, grocery lists, and generates calendar data.
   Future<MealPlanDashboard> getDashboard({
     required String userId,
     required DateTime selectedDate,
@@ -21,40 +32,63 @@ class MealPlanRemoteDataSource {
       selectedDate.month,
       selectedDate.day,
     );
+
+    // Start of the month for range queries.
     final monthStart = DateTime(selectedDate.year, selectedDate.month);
+
+    // Start of the next month for range end.
     final nextMonth = DateTime(selectedDate.year, selectedDate.month + 1);
+
+    // Fetch all available meal categories from app configuration.
     final categories = await getMealCategories();
+
+    // Fetch all meal plans for the current month.
     final monthPlans = await _mealPlansBetween(
       userId: userId,
       start: monthStart,
       end: nextMonth,
     );
+
+    // Filter plans that fall on the selected date.
     final selectedPlans = monthPlans.where((doc) {
       final value = doc.data()['date'];
       return value is Timestamp && _sameDay(value.toDate(), dayStart);
     }).toList();
+
+    // Get today's date without time component for comparison.
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
+    // Count meal plans from past dates.
     final pastCount = monthPlans.where((doc) {
       final value = doc.data()['date'];
       return value is Timestamp && value.toDate().isBefore(today);
     }).length;
+
+    // Count meal plans for today.
     final todayCount = monthPlans.where((doc) {
       final value = doc.data()['date'];
       return value is Timestamp && _sameDay(value.toDate(), today);
     }).length;
+
+    // Count meal plans for future dates.
     final futureCount = monthPlans.where((doc) {
       final value = doc.data()['date'];
       return value is Timestamp && value.toDate().isAfter(today);
     }).length;
 
+    // Ensure weekly grocery list exists for the user.
     if (userId.trim().isNotEmpty) {
       await ensureCurrentWeeklyGroceryList(userId);
     }
+
+    // Fetch grocery list summaries.
     final groceryLists = await getGroceryListSummaries(userId);
+
+    // Fetch grocery list groups.
     final groceryGroups = await getGroceryGroups(userId);
 
+    // Build and return the complete dashboard object.
     return MealPlanDashboard(
       selectedDate: dayStart,
       weather: null,
@@ -72,22 +106,39 @@ class MealPlanRemoteDataSource {
     );
   }
 
+  // =========================================================================
+  // ADD GROCERY LIST PLAN
+  // =========================================================================
+
+  /// Retrieves the plan data needed to create a new grocery list.
+  /// Fetches meal plans from the last 30 days to the next year.
   Future<AddGroceryListPlan> getAddGroceryListPlan(String userId) async {
+    // Get current date without time.
     final now = DateTime.now();
+
+    // Start date: 30 days ago.
     final start = DateTime(
       now.year,
       now.month,
       now.day,
     ).subtract(const Duration(days: 30));
+
+    // End date: approximately one year from start.
     final end = start.add(const Duration(days: 395));
+
+    // Fetch meal categories.
     final categories = await getMealCategories();
+
+    // Fetch all meal plans within the date range.
     final plans = await _mealPlansBetween(
       userId: userId,
       start: start,
       end: end,
     );
+
+    // Group plans by date.
     final plansByDate =
-        <DateTime, List<QueryDocumentSnapshot<Map<String, dynamic>>>>{};
+    <DateTime, List<QueryDocumentSnapshot<Map<String, dynamic>>>>{};
 
     for (final doc in plans) {
       final value = doc.data()['date'];
@@ -97,6 +148,7 @@ class MealPlanRemoteDataSource {
       plansByDate.putIfAbsent(day, () => []).add(doc);
     }
 
+    // Convert grouped plans to grocery meal day plans.
     final days = plansByDate.entries.map((entry) {
       return GroceryMealDayPlan(
         date: entry.key,
@@ -104,6 +156,7 @@ class MealPlanRemoteDataSource {
       );
     }).toList()..sort((first, second) => first.date.compareTo(second.date));
 
+    // Return the plan with icon options and meal days.
     return AddGroceryListPlan(
       iconOptions: const [
         GroceryIconOption(id: 'basket', icon: Icons.shopping_basket_outlined),
@@ -118,21 +171,39 @@ class MealPlanRemoteDataSource {
     );
   }
 
+  // =========================================================================
+  // CREATE GROCERY LIST
+  // =========================================================================
+
+  /// Creates a new custom grocery list from selected meal plan IDs.
+  /// Returns the newly created document ID.
   Future<String> createGroceryList(CreateGroceryListRequest request) async {
+    // Validate that at least one meal plan is selected.
     if (request.mealPlanIds.isEmpty) {
       throw StateError('Select at least one planned meal.');
     }
 
+    // Fetch the meal plan documents.
     final mealDocs = await _getMealPlanDocs(request.mealPlanIds);
+
+    // Create a reference for the new grocery list.
     final listRef = firestore.collection('grocery_lists').doc();
+
+    // Build grocery items from the meal plans.
     final items = await _buildGroceryItems(mealDocs);
+
+    // Validate that items were generated.
     if (items.isEmpty) {
       throw StateError('Selected meals do not have saved ingredients yet.');
     }
+
+    // Extract unique category IDs from items.
     final categories = items
         .map((item) => item.ingredientCategoryId)
         .where((id) => id.isNotEmpty)
         .toSet();
+
+    // Start a batch write for atomic operation.
     final batch = firestore.batch();
 
     // Grocery metadata keeps reference IDs only so display data stays fresh.
@@ -157,29 +228,47 @@ class MealPlanRemoteDataSource {
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
+    // Add all grocery items as subcollections.
     for (final item in items) {
       final itemRef = listRef.collection('items').doc();
       batch.set(itemRef, item.toFirestore());
     }
 
+    // Commit the batch write.
     await batch.commit();
     return listRef.id;
   }
 
+  // =========================================================================
+  // WEEKLY GROCERY LIST MANAGEMENT
+  // =========================================================================
+
+  /// Ensures the current weekly grocery list exists for the user.
+  /// Creates or syncs the list based on the user's week start day setting.
   Future<void> ensureCurrentWeeklyGroceryList(String userId) async {
+    // Get the user's preferred week start day.
     final weekStartDay = await _getWeeklyStartDay(userId);
+
+    // Get current date without time.
     final now = DateTime.now();
+
+    // Calculate the start and end of the current week.
     final weekStart = _weekStartFor(now, weekStartDay);
     final weekEnd = weekStart.add(const Duration(days: 6));
+
+    // Query for existing weekly grocery lists.
     final existing = await firestore
         .collection('grocery_lists')
         .where('uid', isEqualTo: userId)
         .where('type', isEqualTo: 'weekly')
         .get()
         .timeout(const Duration(seconds: 8));
+
+    // Check if a list already exists for the current week.
     for (final doc in existing.docs) {
       final existingStart = _timestampDate(doc.data()['weekStartDate']);
       if (existingStart != null && _sameDay(existingStart, weekStart)) {
+        // Sync the existing list with current meal plans.
         await _syncWeeklyGroceryList(
           listRef: doc.reference,
           userId: userId,
@@ -192,6 +281,7 @@ class MealPlanRemoteDataSource {
       }
     }
 
+    // Create a new weekly grocery list if none exists.
     await _syncWeeklyGroceryList(
       listRef: firestore.collection('grocery_lists').doc(),
       userId: userId,
@@ -202,6 +292,8 @@ class MealPlanRemoteDataSource {
     );
   }
 
+  /// Syncs a weekly grocery list with the current week's meal plans.
+  /// Adds new items and removes items from meals that are no longer planned.
   Future<void> _syncWeeklyGroceryList({
     required DocumentReference<Map<String, dynamic>> listRef,
     required String userId,
@@ -210,18 +302,26 @@ class MealPlanRemoteDataSource {
     required DateTime weekEnd,
     required bool isNewList,
   }) async {
+    // Fetch all meal plans for the week.
     final mealDocs = await _mealPlansBetween(
       userId: userId,
       start: weekStart,
       end: weekEnd.add(const Duration(days: 1)),
     );
+
+    // Build grocery items from the meal plans.
     final items = await _buildGroceryItems(mealDocs);
+
+    // Extract unique category IDs.
     final categoryIds = items
         .map((item) => item.ingredientCategoryId)
         .where((id) => id.isNotEmpty)
         .toSet();
+
+    // Start a batch write.
     final batch = firestore.batch();
 
+    // Prepare metadata for the grocery list.
     final metadata = <String, dynamic>{
       'uid': userId,
       'type': 'weekly',
@@ -241,12 +341,19 @@ class MealPlanRemoteDataSource {
       'totalMeals': mealDocs.length,
       'updatedAt': FieldValue.serverTimestamp(),
     };
+
+    // Set createdAt only for new lists.
     if (isNewList) {
       metadata['createdAt'] = FieldValue.serverTimestamp();
     }
+
+    // Set the list metadata.
     batch.set(listRef, metadata, SetOptions(merge: true));
 
+    // Get current item IDs for comparison.
     final itemIds = items.map(_groceryItemDocId).toSet();
+
+    // If updating an existing list, remove items no longer needed.
     if (!isNewList) {
       final existingItems = await listRef.collection('items').get();
       for (final doc in existingItems.docs) {
@@ -256,6 +363,7 @@ class MealPlanRemoteDataSource {
       }
     }
 
+    // Add or update all grocery items.
     for (final item in items) {
       batch.set(
         listRef.collection('items').doc(_groceryItemDocId(item)),
@@ -263,40 +371,59 @@ class MealPlanRemoteDataSource {
         SetOptions(merge: true),
       );
     }
+
+    // Commit the batch write.
     await batch.commit();
   }
 
+  /// Updates the user's week start day preference.
+  /// Moves existing active weekly lists to past status if they don't match.
   Future<void> updateWeeklyGroceryWeekStartDay({
     required String userId,
     required String weekStartDay,
   }) async {
+    // Normalize the week start day value.
     final normalized = _normalizeWeekStartDay(weekStartDay);
+
+    // Save the preference in user settings.
     await firestore
         .collection('users')
         .doc(userId)
         .collection('settings')
         .doc('grocery')
         .set({
-          'weekStartDay': normalized,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+      'weekStartDay': normalized,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    // Move any conflicting weekly lists to past status.
     await _moveOtherActiveWeeklyListsToPast(userId, normalized);
+
+    // Ensure the current weekly list exists with the new start day.
     await ensureCurrentWeeklyGroceryList(userId);
   }
 
+  /// Moves active weekly lists that don't match the current week to past status.
   Future<void> _moveOtherActiveWeeklyListsToPast(
-    String userId,
-    String weekStartDay,
-  ) async {
+      String userId,
+      String weekStartDay,
+      ) async {
+    // Calculate the current week's start date.
     final currentStart = _weekStartFor(DateTime.now(), weekStartDay);
+
+    // Query all active weekly lists for the user.
     final snapshot = await firestore
         .collection('grocery_lists')
         .where('uid', isEqualTo: userId)
         .where('type', isEqualTo: 'weekly')
         .where('status', isEqualTo: 'active')
         .get();
+
+    // Prepare batch update.
     final batch = firestore.batch();
     var hasUpdates = false;
+
+    // Update any lists that don't match the current week.
     for (final doc in snapshot.docs) {
       final startDate = _timestampDate(doc.data()['weekStartDate']);
       if (startDate == null || _sameDay(startDate, currentStart)) continue;
@@ -306,61 +433,89 @@ class MealPlanRemoteDataSource {
       });
       hasUpdates = true;
     }
+
+    // Commit updates if any were made.
     if (hasUpdates) await batch.commit();
   }
 
+  // =========================================================================
+  // GROCERY LIST QUERIES
+  // =========================================================================
+
+  /// Retrieves summaries of all grocery lists for a user.
+  /// Returns a sorted list with the most recent first.
   Future<List<GroceryListSummary>> getGroceryListSummaries(
-    String userId,
-  ) async {
+      String userId,
+      ) async {
+    // Query all grocery lists for the user.
     final snapshot = await firestore
         .collection('grocery_lists')
         .where('uid', isEqualTo: userId)
         .get()
         .timeout(const Duration(seconds: 8));
+
+    // Get today's date without time.
     final today = _dateOnly(DateTime.now());
+
+    // Map each document to a summary object.
     final lists =
-        snapshot.docs.map((doc) {
-          final data = doc.data();
-          final startDate = _timestampDate(data['startDate']) ?? today;
-          final endDate = _timestampDate(data['endDate']) ?? startDate;
-          final status = data['status']?.toString();
-          final type = data['type']?.toString() == 'weekly'
-              ? GroceryListType.weekly
-              : GroceryListType.custom;
-          return GroceryListSummary(
-            id: doc.id,
-            title:
-                data['name']?.toString() ??
-                data['title']?.toString() ??
-                'Grocery List',
-            itemCount:
-                _intValue(data['totalItems']) ??
-                _intValue(data['itemCount']) ??
-                0,
-            startDate: startDate,
-            endDate: endDate,
-            status: status == 'past' || endDate.isBefore(today)
-                ? GroceryListStatus.past
-                : GroceryListStatus.active,
-            type: type,
-            weekStartDay: data['weekStartDay']?.toString() ?? 'monday',
-            isDefault: type == GroceryListType.weekly,
-            categories: const [],
-            extraCategoryCount: _intValue(data['totalCategories']) ?? 0,
-          );
-        }).toList()..sort(
+    snapshot.docs.map((doc) {
+      final data = doc.data();
+
+      // Parse start and end dates.
+      final startDate = _timestampDate(data['startDate']) ?? today;
+      final endDate = _timestampDate(data['endDate']) ?? startDate;
+
+      // Determine list type.
+      final status = data['status']?.toString();
+      final type = data['type']?.toString() == 'weekly'
+          ? GroceryListType.weekly
+          : GroceryListType.custom;
+
+      // Build the summary object.
+      return GroceryListSummary(
+        id: doc.id,
+        title:
+        data['name']?.toString() ??
+            data['title']?.toString() ??
+            'Grocery List',
+        itemCount:
+        _intValue(data['totalItems']) ??
+            _intValue(data['itemCount']) ??
+            0,
+        startDate: startDate,
+        endDate: endDate,
+        status: status == 'past' || endDate.isBefore(today)
+            ? GroceryListStatus.past
+            : GroceryListStatus.active,
+        type: type,
+        weekStartDay: data['weekStartDay']?.toString() ?? 'monday',
+        isDefault: type == GroceryListType.weekly,
+        categories: const [],
+        extraCategoryCount: _intValue(data['totalCategories']) ?? 0,
+      );
+    }).toList()..sort(
           (first, second) => second.startDate.compareTo(first.startDate),
-        );
+    );
+
     return lists;
   }
 
+  /// Retrieves grocery list groups categorized by their categories.
   Future<List<GroceryListGroup>> getGroceryGroups(String userId) async {
+    // Get all grocery lists for the user.
     final lists = await getGroceryListSummaries(userId);
+
+    // Collect all category names from all lists.
     final categoryNames = <String>{};
     for (final list in lists) {
       categoryNames.addAll(list.categories);
     }
+
+    // Return empty if no categories exist.
     if (categoryNames.isEmpty) return const [];
+
+    // Build a group containing all categories.
     return [
       GroceryListGroup(
         title: 'Categories',
@@ -369,52 +524,83 @@ class MealPlanRemoteDataSource {
     ];
   }
 
+  // =========================================================================
+  // GROCERY LIST DETAIL MANAGEMENT
+  // =========================================================================
+
+  /// Retrieves detailed information about a specific grocery list.
+  /// Includes items, categories, timeline, and upcoming meals.
   Future<ManageGroceryListDetail> getManageGroceryListDetail(
-    String listId,
-  ) async {
+      String listId,
+      ) async {
+    // Fetch the grocery list document.
     final doc = await firestore.collection('grocery_lists').doc(listId).get();
     if (!doc.exists) throw StateError('Grocery list not found.');
 
+    // Get the document data.
     final data = doc.data() ?? <String, dynamic>{};
+
+    // Extract meal plan IDs from the list.
     final mealPlanIds = _stringList(
       data['selectedMealPlanIds'] ?? data['mealPlanIds'],
     );
+
+    // Fetch the associated meal plan documents.
     final mealDocs = await _getMealPlanDocs(mealPlanIds);
+
+    // Build meal snapshots from the documents.
     final mealSnapshots = await _buildMealSnapshots(mealDocs);
+
+    // Fetch all items in the grocery list.
     final itemsSnapshot = await doc.reference.collection('items').get();
+
+    // Resolve missing category information for items.
     final categoryOverrides = await _resolveMissingGroceryItemCategories(
       itemsSnapshot,
     );
+
+    // Resolve category names from app configuration.
     final categoryNames = await _resolveIngredientCategoryNames(
       itemsSnapshot,
       categoryOverrides,
     );
+
+    // Build item records from the snapshot data.
     final items =
-        itemsSnapshot.docs
-            .map(
-              (itemDoc) => _GroceryItemRecord.fromDoc(
-                itemDoc,
-                categoryNames,
-                categoryOverrides[itemDoc.id],
-              ),
-            )
-            .toList()
-          ..sort((first, second) => first.name.compareTo(second.name));
+    itemsSnapshot.docs
+        .map(
+          (itemDoc) => _GroceryItemRecord.fromDoc(
+        itemDoc,
+        categoryNames,
+        categoryOverrides[itemDoc.id],
+      ),
+    )
+        .toList()
+      ..sort((first, second) => first.name.compareTo(second.name));
+
+    // Build categorized view of items.
     final categories = _buildManageCategories(items);
+
+    // Build timeline days from items and meals.
     final timelineDays = _buildTimelineDays(items, mealSnapshots);
+
+    // Build upcoming meals list.
     final upcomingMeals = _buildUpcomingMeals(mealSnapshots);
+
+    // Parse start and end dates.
     final startDate = _timestampDate(data['startDate']) ?? DateTime.now();
     final endDate = _timestampDate(data['endDate']) ?? startDate;
 
+    // Return the complete detail object.
     return ManageGroceryListDetail(
       id: doc.id,
       title:
-          data['name']?.toString() ??
+      data['name']?.toString() ??
           data['title']?.toString() ??
           'Grocery List',
       itemCount: items.length,
       mealCount:
-          _intValue(data['totalMeals']) ??
+      _intValue(data['totalMeals']) ??
           _intValue(data['mealCount']) ??
           upcomingMeals.length,
       categoryCount: categories.length,
@@ -426,31 +612,41 @@ class MealPlanRemoteDataSource {
     );
   }
 
+  /// Updates the bought status of a grocery list item.
   Future<void> updateGroceryItemBought({
     required String listId,
     required String itemId,
     required bool bought,
   }) async {
+    // Update the item's bought status and timestamp.
     await firestore
         .collection('grocery_lists')
         .doc(listId)
         .collection('items')
         .doc(itemId)
         .update({
-          'isBought': bought,
-          'boughtAt': bought ? FieldValue.serverTimestamp() : null,
-        });
+      'isBought': bought,
+      'boughtAt': bought ? FieldValue.serverTimestamp() : null,
+    });
   }
 
+  /// Adds a new manual item to a grocery list.
   Future<void> addGroceryItem(AddGroceryItemRequest request) async {
+    // Validate the item name.
     final trimmedName = request.name.trim();
     if (trimmedName.isEmpty) throw StateError('Ingredient name is required.');
 
+    // Get reference to the grocery list.
     final listRef = firestore.collection('grocery_lists').doc(request.listId);
+
+    // Verify the list exists.
     final listDoc = await listRef.get();
     if (!listDoc.exists) throw StateError('Grocery list not found.');
 
+    // Create a reference for the new item.
     final itemRef = listRef.collection('items').doc();
+
+    // Use provided category or default to 'Uncategorized'.
     final category = request.categoryName.trim().isEmpty
         ? 'Uncategorized'
         : request.categoryName.trim();
@@ -471,51 +667,76 @@ class MealPlanRemoteDataSource {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    // Refresh the list's summary counts.
     await _refreshGroceryListTotals(listRef);
   }
 
+  /// Deletes an item from a grocery list.
   Future<void> deleteGroceryItem({
     required String listId,
     required String itemId,
   }) async {
+    // Get references to the list and item.
     final listRef = firestore.collection('grocery_lists').doc(listId);
     final itemRef = listRef.collection('items').doc(itemId);
+
+    // Verify the item exists.
     final itemDoc = await itemRef.get();
     if (!itemDoc.exists) throw StateError('Grocery item not found.');
 
+    // Delete the item.
     await itemRef.delete();
+
+    // Refresh the list's summary counts.
     await _refreshGroceryListTotals(listRef);
   }
 
+  /// Updates the details of a grocery list.
+  /// Synchronizes items with the current meal plans for the date range.
   Future<void> updateGroceryList({
     required String listId,
     required String name,
     required DateTime startDate,
     required DateTime endDate,
   }) async {
+    // Get reference to the list.
     final listRef = firestore.collection('grocery_lists').doc(listId);
+
+    // Verify the list exists.
     final listDoc = await listRef.get();
     if (!listDoc.exists) throw StateError('Grocery list not found.');
 
+    // Get the user ID from the list data.
     final data = listDoc.data() ?? <String, dynamic>{};
     final userId = data['uid']?.toString() ?? '';
     if (userId.isEmpty) throw StateError('Grocery list owner is missing.');
 
+    // Normalize dates to start of day.
     final normalizedStart = _dateOnly(startDate);
     final normalizedEnd = _dateOnly(endDate);
     final rangeEnd = normalizedEnd.add(const Duration(days: 1));
+
+    // Fetch meal plans for the date range.
     final mealDocs = await _mealPlansBetween(
       userId: userId,
       start: normalizedStart,
       end: rangeEnd,
     );
+
+    // Build grocery items from the meal plans.
     final items = await _buildGroceryItems(mealDocs);
+
+    // Extract unique category IDs.
     final categoryIds = items
         .map((item) => item.ingredientCategoryId)
         .where((id) => id.isNotEmpty)
         .toSet();
+
+    // Start a batch write.
     final batch = firestore.batch();
 
+    // Update the list metadata.
     batch.set(listRef, {
       'name': name.trim(),
       'startDate': Timestamp.fromDate(normalizedStart),
@@ -530,6 +751,7 @@ class MealPlanRemoteDataSource {
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
+    // Remove items that are no longer needed.
     final itemIds = items.map(_groceryItemDocId).toSet();
     final existingItems = await listRef.collection('items').get();
     for (final doc in existingItems.docs) {
@@ -537,6 +759,8 @@ class MealPlanRemoteDataSource {
         batch.delete(doc.reference);
       }
     }
+
+    // Add or update all items.
     for (final item in items) {
       batch.set(
         listRef.collection('items').doc(_groceryItemDocId(item)),
@@ -544,24 +768,37 @@ class MealPlanRemoteDataSource {
         SetOptions(merge: true),
       );
     }
+
+    // Commit the batch write.
     await batch.commit();
   }
 
+  // =========================================================================
+  // GROCERY LIST UTILITY
+  // =========================================================================
+
+  /// Refreshes the summary counters for a grocery list.
+  /// Updates total items and categories based on the current items subcollection.
   Future<void> _refreshGroceryListTotals(
-    DocumentReference<Map<String, dynamic>> listRef,
-  ) async {
+      DocumentReference<Map<String, dynamic>> listRef,
+      ) async {
     // Summary counters stay aligned with the items subcollection.
+
+    // Fetch all items in the list.
     final items = await listRef.collection('items').get();
+
+    // Count unique categories from items.
     final categories = items.docs
         .map((doc) {
-          final data = doc.data();
-          final id = data['ingredientCategoryId']?.toString() ?? '';
-          if (id.isNotEmpty) return id;
-          return data['categoryName']?.toString().trim() ?? 'Uncategorized';
-        })
+      final data = doc.data();
+      final id = data['ingredientCategoryId']?.toString() ?? '';
+      if (id.isNotEmpty) return id;
+      return data['categoryName']?.toString().trim() ?? 'Uncategorized';
+    })
         .where((value) => value.isNotEmpty)
         .toSet();
 
+    // Update the list with new counts.
     await listRef.set({
       'totalItems': items.docs.length,
       'totalCategories': categories.length,
@@ -569,32 +806,44 @@ class MealPlanRemoteDataSource {
     }, SetOptions(merge: true));
   }
 
+  // =========================================================================
+  // MEAL CATEGORIES
+  // =========================================================================
+
+  /// Retrieves all meal categories from app configuration.
+  /// Returns a list of category options sorted by sort order.
   Future<List<AddMealCategoryOption>> getMealCategories() async {
+    // Fetch categories from app configuration.
     final snapshot = await firestore
         .collection('app_config')
         .doc('meal_categories')
         .collection('items')
         .get()
         .timeout(const Duration(seconds: 8));
+
+    // Sort by sort order.
     final docs = snapshot.docs.toList()
       ..sort((first, second) {
         final left = first.data()['sortOrder'];
         final right = second.data()['sortOrder'];
         return (left is int ? left : 0).compareTo(right is int ? right : 0);
       });
+
+    // Map to category options, filtering inactive or unnamed categories.
     final categories = docs
         .map((doc) {
-          final data = doc.data();
-          final name = data['name']?.toString().trim() ?? '';
-          final active = data['isActive'] is bool
-              ? data['isActive'] as bool
-              : true;
-          if (!active || name.isEmpty) return null;
-          return AddMealCategoryOption(id: doc.id, name: name);
-        })
+      final data = doc.data();
+      final name = data['name']?.toString().trim() ?? '';
+      final active = data['isActive'] is bool
+          ? data['isActive'] as bool
+          : true;
+      if (!active || name.isEmpty) return null;
+      return AddMealCategoryOption(id: doc.id, name: name);
+    })
         .whereType<AddMealCategoryOption>()
         .toList();
 
+    // Return categories or fallback defaults.
     if (categories.isNotEmpty) return categories;
     return const [
       AddMealCategoryOption(id: 'breakfast', name: 'Breakfast'),
@@ -603,6 +852,12 @@ class MealPlanRemoteDataSource {
     ];
   }
 
+  // =========================================================================
+  // MEAL PLAN CRUD
+  // =========================================================================
+
+  /// Saves a recipe as a meal plan for a specific date and category.
+  /// Throws if the recipe is already planned or category has 5+ recipes.
   Future<void> saveRecipeMealPlan({
     required String userId,
     required DateTime date,
@@ -611,12 +866,17 @@ class MealPlanRemoteDataSource {
     required String source,
     required int servingCount,
   }) async {
+    // Normalize the date to start of day.
     final dayStart = DateTime(date.year, date.month, date.day);
+
+    // Check for existing plans in the same category on this date.
     final existing = await _plansForCategory(
       userId: userId,
       date: dayStart,
       mealCategoryId: mealCategory.id,
     );
+
+    // Prevent duplicate recipe in the same category on the same date.
     final alreadyPlanned = existing.docs.any((doc) {
       return doc.data()['recipeId']?.toString() == recipe.id;
     });
@@ -625,6 +885,7 @@ class MealPlanRemoteDataSource {
         '${recipe.title} is already added to ${mealCategory.name} for this date.',
       );
     }
+
     // Each meal category allows up to five recipes for the same planning date.
     if (existing.docs.length >= 5) {
       throw StateError(
@@ -632,6 +893,7 @@ class MealPlanRemoteDataSource {
       );
     }
 
+    // Save the meal plan document.
     await firestore.collection('meal_plans').add({
       'uid': userId,
       'date': Timestamp.fromDate(dayStart),
@@ -654,72 +916,109 @@ class MealPlanRemoteDataSource {
     });
   }
 
+  /// Deletes a meal plan and removes it from any grocery lists.
+  /// Verifies ownership before deletion.
   Future<void> deleteMealPlan({
     required String userId,
     required String mealPlanId,
   }) async {
     // Ownership validation prevents deleting another user's planned meal.
+
+    // Fetch the meal plan document.
     final mealRef = firestore.collection('meal_plans').doc(mealPlanId);
     final mealDoc = await mealRef.get();
+
+    // Verify the meal plan exists.
     if (!mealDoc.exists) throw StateError('Meal plan not found.');
+
+    // Verify the user owns the meal plan.
     final ownerId = mealDoc.data()?['uid']?.toString() ?? '';
     if (ownerId != userId) throw StateError('Meal plan access denied.');
 
+    // Find grocery lists that contain this meal plan.
     final listsSnapshot = await firestore
         .collection('grocery_lists')
         .where('uid', isEqualTo: userId)
         .where('selectedMealPlanIds', arrayContains: mealPlanId)
         .get();
+
+    // Start a batch write.
     final batch = firestore.batch();
+
+    // Delete the meal plan.
     batch.delete(mealRef);
+
+    // Remove the meal plan ID from all grocery lists.
     for (final listDoc in listsSnapshot.docs) {
       batch.update(listDoc.reference, {
         'selectedMealPlanIds': FieldValue.arrayRemove([mealPlanId]),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     }
+
+    // Commit the batch write.
     await batch.commit();
   }
 
+  // =========================================================================
+  // RECIPE SEARCH
+  // =========================================================================
+
+  /// Searches for recipes matching a meal type and keywords.
+  /// Returns up to 8 matching recipes from the database.
   Future<List<AddMealAiRecipe>> getRecipeDatabaseMatches({
     required String userId,
     required String mealType,
     List<String> keywords = const [],
   }) async {
+    // Fetch up to 50 recipes from the database.
     final snapshot = await firestore
         .collection('recipes')
         .limit(50)
         .get()
         .timeout(const Duration(seconds: 8));
+
+    // Build search terms from meal type and keywords.
     final terms = {
       mealType.toLowerCase(),
       ...keywords.map((item) => item.toLowerCase()),
     }.where((item) => item.trim().isNotEmpty).toList();
+
+    // Filter recipes by search terms.
     final matches = snapshot.docs
         .where((doc) {
-          final data = doc.data();
-          final haystack = [
-            data['name'],
-            data['recipeName'],
-            data['description'],
-            ..._stringList(data['categories']),
-            ..._stringList(data['categoryIds']),
-          ].join(' ').toLowerCase();
-          if (terms.isEmpty) return true;
-          return terms.any(haystack.contains);
-        })
+      final data = doc.data();
+      final haystack = [
+        data['name'],
+        data['recipeName'],
+        data['description'],
+        ..._stringList(data['categories']),
+        ..._stringList(data['categoryIds']),
+      ].join(' ').toLowerCase();
+      if (terms.isEmpty) return true;
+      return terms.any(haystack.contains);
+    })
         .map(_aiRecipeFromRecipeDoc)
         .toList();
 
+    // Return up to 8 matches.
     return matches.take(8).toList();
   }
 
+  // =========================================================================
+  // PRIVATE QUERY HELPERS
+  // =========================================================================
+
+  /// Queries meal plans for a specific category on a given date.
   Future<QuerySnapshot<Map<String, dynamic>>> _plansForCategory({
     required String userId,
     required DateTime date,
     required String mealCategoryId,
   }) {
+    // Calculate the end of the day.
     final dayEnd = date.add(const Duration(days: 1));
+
+    // Query meal plans by user, category, and date range.
     return firestore
         .collection('meal_plans')
         .where('uid', isEqualTo: userId)
@@ -729,11 +1028,13 @@ class MealPlanRemoteDataSource {
         .get();
   }
 
+  /// Retrieves meal plans between two dates for a user.
   Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _mealPlansBetween({
     required String userId,
     required DateTime start,
     required DateTime end,
   }) async {
+    // Query meal plans by user and date range.
     final snapshot = await firestore
         .collection('meal_plans')
         .where('uid', isEqualTo: userId)
@@ -743,64 +1044,13 @@ class MealPlanRemoteDataSource {
     return snapshot.docs;
   }
 
-  List<MealPlanSection> _buildSections(
-    List<AddMealCategoryOption> categories,
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> plans,
-  ) {
-    return categories.map((category) {
-      final meals = plans
-          .where((doc) {
-            final data = doc.data();
-            final id = data['mealCategoryId']?.toString() ?? '';
-            final name = data['mealCategoryName']?.toString() ?? '';
-            return id == category.id ||
-                name.toLowerCase() == category.name.toLowerCase();
-          })
-          .map(_mealFromDoc)
-          .toList();
-      return MealPlanSection(
-        mealType: category.name,
-        mealCategoryId: category.id,
-        meals: meals,
-      );
-    }).toList();
-  }
-
-  List<GroceryMealSectionPlan> _buildGroceryMealSections(
-    List<AddMealCategoryOption> categories,
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> plans,
-  ) {
-    return categories
-        .map((category) {
-          final meals = plans
-              .where((doc) {
-                final data = doc.data();
-                final id = data['mealCategoryId']?.toString() ?? '';
-                final name = data['mealCategoryName']?.toString() ?? '';
-                return id == category.id ||
-                    name.toLowerCase() == category.name.toLowerCase();
-              })
-              .map((doc) {
-                final data = doc.data();
-                return GroceryMealPlanItem(
-                  id: doc.id,
-                  title: data['recipeName']?.toString() ?? 'Untitled Meal',
-                  imagePath:
-                      data['recipeImage']?.toString() ??
-                      'assets/images/meal1.png',
-                );
-              })
-              .toList();
-          return GroceryMealSectionPlan(title: category.name, meals: meals);
-        })
-        .where((section) => section.meals.isNotEmpty)
-        .toList();
-  }
-
+  /// Retrieves multiple meal plan documents by their IDs.
   Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _getMealPlanDocs(
-    List<String> ids,
-  ) async {
+      List<String> ids,
+      ) async {
     final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+
+    // Process IDs in chunks of 10 to avoid Firestore limitations.
     for (final chunk in _chunks(ids, 10)) {
       final snapshot = await firestore
           .collection('meal_plans')
@@ -811,18 +1061,135 @@ class MealPlanRemoteDataSource {
     return docs;
   }
 
+  // =========================================================================
+  // PRIVATE BUILD HELPERS
+  // =========================================================================
+
+  /// Builds the sections for the meal plan dashboard.
+  List<MealPlanSection> _buildSections(
+      List<AddMealCategoryOption> categories,
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> plans,
+      ) {
+    // Map each category to a section containing its meals.
+    return categories.map((category) {
+      // Filter plans that match the category.
+      final meals = plans
+          .where((doc) {
+        final data = doc.data();
+        final id = data['mealCategoryId']?.toString() ?? '';
+        final name = data['mealCategoryName']?.toString() ?? '';
+        return id == category.id ||
+            name.toLowerCase() == category.name.toLowerCase();
+      })
+          .map(_mealFromDoc)
+          .toList();
+
+      // Create a section for the category.
+      return MealPlanSection(
+        mealType: category.name,
+        mealCategoryId: category.id,
+        meals: meals,
+      );
+    }).toList();
+  }
+
+  /// Builds grocery meal sections for the grocery list plan screen.
+  List<GroceryMealSectionPlan> _buildGroceryMealSections(
+      List<AddMealCategoryOption> categories,
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> plans,
+      ) {
+    // Map each category to a section with its meals.
+    return categories
+        .map((category) {
+      // Filter plans that match the category.
+      final meals = plans
+          .where((doc) {
+        final data = doc.data();
+        final id = data['mealCategoryId']?.toString() ?? '';
+        final name = data['mealCategoryName']?.toString() ?? '';
+        return id == category.id ||
+            name.toLowerCase() == category.name.toLowerCase();
+      })
+          .map((doc) {
+        final data = doc.data();
+        return GroceryMealPlanItem(
+          id: doc.id,
+          title: data['recipeName']?.toString() ?? 'Untitled Meal',
+          imagePath:
+          data['recipeImage']?.toString() ??
+              'assets/images/meal1.png',
+        );
+      })
+          .toList();
+
+      // Return the section if it has meals.
+      return GroceryMealSectionPlan(title: category.name, meals: meals);
+    })
+        .where((section) => section.meals.isNotEmpty)
+        .toList();
+  }
+
+  /// Builds the month days grid for the dashboard calendar.
+  List<MealPlanDay> _buildMonthDays(
+      DateTime selectedDate,
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> plans,
+      ) {
+    // Calculate the first day of the month.
+    final firstDay = DateTime(selectedDate.year, selectedDate.month);
+
+    // Calculate leading days (days from previous month).
+    final leadingDays = firstDay.weekday - 1;
+
+    // Calculate the start of the grid (Sunday).
+    final gridStart = firstDay.subtract(Duration(days: leadingDays));
+
+    // Extract planned dates from meal plans.
+    final plannedDays = plans
+        .map((doc) {
+      final value = doc.data()['date'];
+      if (value is! Timestamp) return null;
+      final date = value.toDate();
+      return DateTime(date.year, date.month, date.day);
+    })
+        .whereType<DateTime>()
+        .toList();
+
+    // Generate 42 days (6 weeks) for the grid.
+    return List.generate(42, (index) {
+      final date = gridStart.add(Duration(days: index));
+      return MealPlanDay(
+        date: date,
+        isCurrentMonth: date.month == selectedDate.month,
+        hasMeals: plannedDays.any((plannedDate) => _sameDay(plannedDate, date)),
+      );
+    });
+  }
+
+  // =========================================================================
+  // PRIVATE GROCERY ITEM BUILDING
+  // =========================================================================
+
+  /// Builds grocery items from meal plan documents.
+  /// Aggregates ingredients from recipes and AI contexts.
   Future<List<_GroceryItemDraft>> _buildGroceryItems(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> mealDocs,
-  ) async {
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> mealDocs,
+      ) async {
+    // Map to deduplicate items by key.
     final itemsByKey = <String, _GroceryItemDraft>{};
+
+    // Process each meal plan.
     for (final mealDoc in mealDocs) {
       final meal = mealDoc.data();
       final recipeId = meal['recipeId']?.toString() ?? '';
+
+      // Try to get AI-generated recipe context.
       final aiContext = await mealDoc.reference
           .collection('ai_context')
           .doc('context')
           .get();
+
       if (aiContext.exists) {
+        // Extract ingredients from AI context.
         final generated = aiContext.data()?['generatedRecipe'];
         final generatedIngredients = generated is Map<String, dynamic>
             ? generated['ingredients']
@@ -838,27 +1205,41 @@ class MealPlanRemoteDataSource {
         );
         continue;
       }
+
+      // Skip if no recipe ID.
       if (recipeId.isEmpty) continue;
+
+      // Fetch recipe document.
       final recipeDoc = await firestore
           .collection('recipes')
           .doc(recipeId)
           .get();
       final recipeData = recipeDoc.data();
+
+      // Calculate serving scale.
       final recipeServings =
           _intValue(recipeData?['servings']) ??
-          _intValue(recipeData?['servingSize']);
+              _intValue(recipeData?['servingSize']);
       final servingScale = _mealServingScale(meal, recipeServings);
+
+      // Fetch ingredients from recipe.
       final ingredients = await firestore
           .collection('recipes')
           .doc(recipeId)
           .collection('ingredients')
           .get();
+
+      // Process each ingredient.
       for (final ingredientDoc in ingredients.docs) {
         final ingredient = ingredientDoc.data();
+
+        // Resolve unit name.
         final unit = await _resolveIngredientUnitName(
           unitId: ingredient['unitId']?.toString() ?? '',
           customUnitId: ingredient['customUnitId']?.toString() ?? '',
         );
+
+        // Add item to the map.
         _mergeGroceryItem(
           itemsByKey,
           _itemFromRecipeIngredient(
@@ -871,25 +1252,31 @@ class MealPlanRemoteDataSource {
         );
       }
     }
+
+    // Return sorted items by name.
     return itemsByKey.values.toList()..sort(
-      (first, second) => first.ingredientName.compareTo(second.ingredientName),
+          (first, second) => first.ingredientName.compareTo(second.ingredientName),
     );
   }
 
+  /// Creates grocery item drafts from AI ingredient data.
   Iterable<_GroceryItemDraft> _itemsFromAiIngredients(
-    String mealPlanId,
-    String recipeId,
-    Object? ingredients,
-    double servingScale,
-  ) {
+      String mealPlanId,
+      String recipeId,
+      Object? ingredients,
+      double servingScale,
+      ) {
+    // Return empty if ingredients is not an iterable.
     if (ingredients is! Iterable) return const [];
+
+    // Map each ingredient to a draft item.
     return ingredients.whereType<Map>().map((item) {
       final categoryId = _ingredientCategoryIdFrom(item) ?? '';
       return _GroceryItemDraft(
         ingredientName: item['name']?.toString() ?? 'Ingredient',
         ingredientCategoryId: categoryId,
         categoryName:
-            item['categoryName']?.toString().trim() ??
+        item['categoryName']?.toString().trim() ??
             _categoryNameForIngredient(item['name']?.toString() ?? ''),
         amount: _doubleValue(item['amount']) * servingScale,
         unit: item['unit']?.toString() ?? '',
@@ -900,19 +1287,20 @@ class MealPlanRemoteDataSource {
     });
   }
 
+  /// Creates a grocery item draft from a recipe ingredient.
   _GroceryItemDraft _itemFromRecipeIngredient(
-    String mealPlanId,
-    String recipeId,
-    Map<String, dynamic> ingredient,
-    String unit,
-    double servingScale,
-  ) {
+      String mealPlanId,
+      String recipeId,
+      Map<String, dynamic> ingredient,
+      String unit,
+      double servingScale,
+      ) {
     final categoryId = _ingredientCategoryIdFrom(ingredient) ?? '';
     return _GroceryItemDraft(
       ingredientName: ingredient['name']?.toString() ?? 'Ingredient',
       ingredientCategoryId: categoryId,
       categoryName:
-          ingredient['categoryName']?.toString().trim() ??
+      ingredient['categoryName']?.toString().trim() ??
           _categoryNameForIngredient(ingredient['name']?.toString() ?? ''),
       amount: _doubleValue(ingredient['amount']) * servingScale,
       unit: unit,
@@ -922,34 +1310,50 @@ class MealPlanRemoteDataSource {
     );
   }
 
+  /// Calculates the serving scale between planned servings and recipe servings.
   double _mealServingScale(Map<String, dynamic> meal, int? recipeServings) {
     // Grocery quantities follow the planned serving count when recipe data has a base serving size.
+
+    // Get planned servings or default to 1.
     final plannedServings = _intValue(meal['servings']) ?? 1;
+
+    // Use recipe servings or planned servings as base.
     final baseServings = recipeServings == null || recipeServings <= 0
         ? plannedServings
         : recipeServings;
     if (baseServings <= 0) return 1;
+
+    // Calculate scale factor.
     return plannedServings / baseServings;
   }
 
+  // =========================================================================
+  // PRIVATE GROCERY ITEM MERGING
+  // =========================================================================
+
+  /// Merges multiple grocery items into a target map.
   void _mergeGroceryItems(
-    Map<String, _GroceryItemDraft> target,
-    Iterable<_GroceryItemDraft> items,
-  ) {
+      Map<String, _GroceryItemDraft> target,
+      Iterable<_GroceryItemDraft> items,
+      ) {
     for (final item in items) {
       _mergeGroceryItem(target, item);
     }
   }
 
+  /// Merges a grocery item into the target map, combining duplicate items.
   void _mergeGroceryItem(
-    Map<String, _GroceryItemDraft> target,
-    _GroceryItemDraft item,
-  ) {
+      Map<String, _GroceryItemDraft> target,
+      _GroceryItemDraft item,
+      ) {
+    // Create a unique key for the item.
     final key = [
       item.ingredientName.trim().toLowerCase(),
       item.ingredientCategoryId,
       item.unit.trim().toLowerCase(),
     ].join('|');
+
+    // Merge with existing item or add new one.
     final existing = target[key];
     if (existing == null) {
       target[key] = item;
@@ -958,55 +1362,71 @@ class MealPlanRemoteDataSource {
     target[key] = existing.merge(item);
   }
 
+  // =========================================================================
+  // PRIVATE CATEGORY BUILDING
+  // =========================================================================
+
+  /// Builds categorized items for the grocery list detail view.
   List<ManageGroceryCategory> _buildManageCategories(
-    List<_GroceryItemRecord> items,
-  ) {
+      List<_GroceryItemRecord> items,
+      ) {
+    // Group items by category name.
     final grouped = <String, List<ManageGroceryItem>>{};
     for (final item in items) {
       grouped.putIfAbsent(item.categoryName, () => []).add(item.toEntity());
     }
+
+    // Convert groups to category objects and sort by name.
     final categories =
-        grouped.entries
-            .map(
-              (entry) =>
-                  ManageGroceryCategory(title: entry.key, items: entry.value),
-            )
-            .toList()
-          ..sort((first, second) => first.title.compareTo(second.title));
+    grouped.entries
+        .map(
+          (entry) =>
+          ManageGroceryCategory(title: entry.key, items: entry.value),
+    )
+        .toList()
+      ..sort((first, second) => first.title.compareTo(second.title));
     return categories;
   }
 
+  /// Builds the upcoming meals list for the grocery list detail.
   List<ManageUpcomingMeal> _buildUpcomingMeals(
-    Map<String, _MealPlanSnapshot> meals,
-  ) {
+      Map<String, _MealPlanSnapshot> meals,
+      ) {
     return meals.values
         .map(
           (meal) => ManageUpcomingMeal(
-            title: meal.recipeName,
-            mealType: meal.mealType,
-            date: meal.date,
-            imagePath: meal.recipeImage,
-          ),
-        )
+        title: meal.recipeName,
+        mealType: meal.mealType,
+        date: meal.date,
+        imagePath: meal.recipeImage,
+      ),
+    )
         .toList()
       ..sort((first, second) => first.date.compareTo(second.date));
   }
 
+  /// Builds the timeline days for the grocery list detail.
   List<ManageGroceryTimelineDay> _buildTimelineDays(
-    List<_GroceryItemRecord> items,
-    Map<String, _MealPlanSnapshot> meals,
-  ) {
+      List<_GroceryItemRecord> items,
+      Map<String, _MealPlanSnapshot> meals,
+      ) {
+    // Group meals by date.
     final byDay = <DateTime, List<_MealPlanSnapshot>>{};
     for (final meal in meals.values) {
       byDay.putIfAbsent(_dateOnly(meal.date), () => []).add(meal);
     }
+
+    // Sort dates.
     final dates = byDay.keys.toList()..sort();
+
+    // Build timeline days with meals and their ingredients.
     return dates.asMap().entries.map((entry) {
       final date = entry.value;
       return ManageGroceryTimelineDay(
         date: date,
         dayNumber: entry.key + 1,
         meals: (byDay[date] ?? const <_MealPlanSnapshot>[]).map((meal) {
+          // Get items related to this meal.
           final mealItems = items
               .where((item) => item.relatedMealPlanIds.contains(meal.id))
               .map((item) => item.toEntity())
@@ -1023,31 +1443,47 @@ class MealPlanRemoteDataSource {
     }).toList();
   }
 
+  // =========================================================================
+  // PRIVATE RESOLUTION HELPERS
+  // =========================================================================
+
+  /// Builds meal snapshots from meal plan documents.
+  /// Fetches recipe data for each meal.
   Future<Map<String, _MealPlanSnapshot>> _buildMealSnapshots(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> mealDocs,
-  ) async {
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> mealDocs,
+      ) async {
     final snapshots = <String, _MealPlanSnapshot>{};
+
+    // Process each meal plan.
     for (final doc in mealDocs) {
       final data = doc.data();
       final recipeId = data['recipeId']?.toString() ?? '';
+
+      // Fetch recipe if ID exists.
       final recipeDoc = recipeId.isEmpty
           ? null
           : await firestore.collection('recipes').doc(recipeId).get();
       final recipeData = recipeDoc?.data();
+
+      // Get image from recipe media or fallback.
       final media = _stringList(recipeData?['media']);
       final imageFromMedia = media.isEmpty ? '' : media.first;
+
+      // Resolve meal category name.
+      final mealType = await _resolveMealCategoryName(
+        data['mealCategoryId']?.toString() ?? '',
+      ) ??
+          data['mealCategoryName']?.toString() ??
+          'Meal';
+
+      // Build the snapshot.
       snapshots[doc.id] = _MealPlanSnapshot(
         id: doc.id,
         date: _timestampDate(data['date']) ?? DateTime.now(),
-        mealType:
-            await _resolveMealCategoryName(
-              data['mealCategoryId']?.toString() ?? '',
-            ) ??
-            data['mealCategoryName']?.toString() ??
-            'Meal',
+        mealType: mealType,
         recipeId: recipeId,
         recipeName:
-            recipeData?['name']?.toString() ??
+        recipeData?['name']?.toString() ??
             data['recipeName']?.toString() ??
             'Untitled Meal',
         recipeImage: imageFromMedia.isNotEmpty
@@ -1058,30 +1494,38 @@ class MealPlanRemoteDataSource {
     return snapshots;
   }
 
+  /// Resolves a meal category name from its ID.
   Future<String?> _resolveMealCategoryName(String categoryId) async {
     if (categoryId.isEmpty) return null;
+
+    // Fetch category from app configuration.
     final doc = await firestore
         .collection('app_config')
         .doc('meal_categories')
         .collection('items')
         .doc(categoryId)
         .get();
+
     final name = doc.data()?['name']?.toString().trim() ?? '';
     return name.isEmpty ? null : name;
   }
 
+  /// Resolves ingredient category names for a list of items.
   Future<Map<String, String>> _resolveIngredientCategoryNames(
-    QuerySnapshot<Map<String, dynamic>> itemsSnapshot,
-    Map<String, _ResolvedGroceryCategory> categoryOverrides,
-  ) async {
+      QuerySnapshot<Map<String, dynamic>> itemsSnapshot,
+      Map<String, _ResolvedGroceryCategory> categoryOverrides,
+      ) async {
+    // Collect all unique category IDs.
     final ids = <String>{};
     for (final doc in itemsSnapshot.docs) {
       final categoryId =
           _ingredientCategoryIdFrom(doc.data()) ??
-          categoryOverrides[doc.id]?.id ??
-          '';
+              categoryOverrides[doc.id]?.id ??
+              '';
       if (categoryId.isNotEmpty) ids.add(categoryId);
     }
+
+    // Fetch category names from app configuration.
     final names = <String, String>{};
     for (final id in ids) {
       final doc = await firestore
@@ -1096,65 +1540,85 @@ class MealPlanRemoteDataSource {
     return names;
   }
 
+  /// Resolves missing grocery item categories by looking at related recipes.
   Future<Map<String, _ResolvedGroceryCategory>>
   _resolveMissingGroceryItemCategories(
-    QuerySnapshot<Map<String, dynamic>> itemsSnapshot,
-  ) async {
+      QuerySnapshot<Map<String, dynamic>> itemsSnapshot,
+      ) async {
     final overrides = <String, _ResolvedGroceryCategory>{};
+
+    // Process each item.
     for (final itemDoc in itemsSnapshot.docs) {
       final data = itemDoc.data();
+
+      // Skip if category already exists.
       final existingId = _ingredientCategoryIdFrom(data) ?? '';
       final existingName = data['categoryName']?.toString().trim() ?? '';
       if (existingId.isNotEmpty || existingName.isNotEmpty) continue;
 
+      // Get ingredient name and related recipe IDs.
       final ingredientName =
           data['ingredientName']?.toString() ?? data['name']?.toString() ?? '';
       final recipeIds = _stringList(
         data['relatedRecipeIds'] ?? data['recipeIds'] ?? data['recipeId'],
       );
+
+      // Try to resolve category from related recipes.
       final resolved = await _resolveCategoryFromRelatedRecipes(
         ingredientName,
         recipeIds,
       );
+
+      // Use resolved category or fallback to generated category.
       overrides[itemDoc.id] =
           resolved ??
-          _ResolvedGroceryCategory(
-            id: '',
-            name: _categoryNameForIngredient(ingredientName),
-          );
+              _ResolvedGroceryCategory(
+                id: '',
+                name: _categoryNameForIngredient(ingredientName),
+              );
     }
     return overrides;
   }
 
+  /// Resolves a category from related recipes by matching ingredient name.
   Future<_ResolvedGroceryCategory?> _resolveCategoryFromRelatedRecipes(
-    String ingredientName,
-    List<String> recipeIds,
-  ) async {
+      String ingredientName,
+      List<String> recipeIds,
+      ) async {
     final normalizedName = ingredientName.trim().toLowerCase();
     if (normalizedName.isEmpty) return null;
 
+    // Check each related recipe.
     for (final recipeId in recipeIds) {
+      // Get ingredients from the recipe.
       final snapshot = await firestore
           .collection('recipes')
           .doc(recipeId)
           .collection('ingredients')
           .get();
+
+      // Find matching ingredient.
       for (final doc in snapshot.docs) {
         final data = doc.data();
         final name = data['name']?.toString().trim().toLowerCase() ?? '';
         if (name != normalizedName) continue;
+
+        // Return the category if found.
         final categoryId = _ingredientCategoryIdFrom(data) ?? '';
-        if (categoryId.isEmpty) continue;
-        return _ResolvedGroceryCategory(id: categoryId, name: '');
+        if (categoryId.isNotEmpty) {
+          return _ResolvedGroceryCategory(id: categoryId, name: '');
+        }
       }
     }
     return null;
   }
 
+  /// Resolves a unit name from unit ID or custom unit ID.
   Future<String> _resolveIngredientUnitName({
     required String unitId,
     required String customUnitId,
   }) async {
+    // Try standard unit first.
     if (unitId.isNotEmpty) {
       final doc = await firestore
           .collection('app_config')
@@ -1165,6 +1629,8 @@ class MealPlanRemoteDataSource {
       final name = doc.data()?['name']?.toString().trim() ?? '';
       return name.isEmpty ? unitId : name;
     }
+
+    // Try custom unit.
     if (customUnitId.isNotEmpty) {
       final doc = await firestore
           .collection('custom')
@@ -1175,9 +1641,15 @@ class MealPlanRemoteDataSource {
       final name = doc.data()?['name']?.toString().trim() ?? '';
       return name.isEmpty ? customUnitId : name;
     }
+
     return '';
   }
 
+  // =========================================================================
+  // PRIVATE DATE UTILITIES
+  // =========================================================================
+
+  /// Extracts a date (without time) from a Timestamp or returns null.
   DateTime? _timestampDate(Object? value) {
     if (value is Timestamp) {
       final date = value.toDate();
@@ -1186,9 +1658,11 @@ class MealPlanRemoteDataSource {
     return null;
   }
 
+  /// Returns a date without time components.
   DateTime _dateOnly(DateTime date) =>
       DateTime(date.year, date.month, date.day);
 
+  /// Gets the user's preferred week start day from settings.
   Future<String> _getWeeklyStartDay(String userId) async {
     final doc = await firestore
         .collection('users')
@@ -1199,6 +1673,7 @@ class MealPlanRemoteDataSource {
     return _normalizeWeekStartDay(doc.data()?['weekStartDay']?.toString());
   }
 
+  /// Extracts an ingredient category ID from various possible field names.
   String? _ingredientCategoryIdFrom(Map<dynamic, dynamic> data) {
     final values = [
       data['ingredientCategoryId'],
@@ -1212,6 +1687,7 @@ class MealPlanRemoteDataSource {
     return null;
   }
 
+  /// Generates a category name based on ingredient name keywords.
   String _categoryNameForIngredient(String ingredientName) {
     final value = ingredientName.toLowerCase();
     if (value.contains('milk') ||
@@ -1260,11 +1736,13 @@ class MealPlanRemoteDataSource {
     return 'Uncategorized';
   }
 
+  /// Normalizes week start day to 'sunday' or 'monday'.
   String _normalizeWeekStartDay(String? value) {
     final normalized = value?.trim().toLowerCase();
     return normalized == 'sunday' ? 'sunday' : 'monday';
   }
 
+  /// Calculates the start of the week for a given date and week start day.
   DateTime _weekStartFor(DateTime date, String weekStartDay) {
     final normalizedDate = _dateOnly(date);
     final startWeekday = weekStartDay == 'sunday'
@@ -1274,19 +1752,28 @@ class MealPlanRemoteDataSource {
     return normalizedDate.subtract(Duration(days: offset));
   }
 
+  // =========================================================================
+  // PRIVATE UTILITY FUNCTIONS
+  // =========================================================================
+
+  /// Generates a stable document ID for a grocery item based on its properties.
   String _groceryItemDocId(_GroceryItemDraft item) {
     final raw = [
       item.ingredientName,
       item.ingredientCategoryId,
       item.unit,
     ].join('_').toLowerCase();
+
+    // Sanitize the string for Firestore document ID.
     final sanitized = raw
         .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
         .replaceAll(RegExp(r'^_+|_+$'), '');
+
     if (sanitized.isEmpty) return 'ingredient';
     return sanitized.length > 120 ? sanitized.substring(0, 120) : sanitized;
   }
 
+  /// Splits a list into chunks of a given size.
   List<List<String>> _chunks(List<String> source, int size) {
     final chunks = <List<String>>[];
     for (var index = 0; index < source.length; index += size) {
@@ -1295,6 +1782,7 @@ class MealPlanRemoteDataSource {
     return chunks;
   }
 
+  /// Converts a query document snapshot to a meal plan meal entity.
   MealPlanMeal _mealFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();
     final servings = data['servings'];
@@ -1312,9 +1800,10 @@ class MealPlanRemoteDataSource {
     );
   }
 
+  /// Converts a recipe document to an AI recipe entity.
   AddMealAiRecipe _aiRecipeFromRecipeDoc(
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
+      QueryDocumentSnapshot<Map<String, dynamic>> doc,
+      ) {
     final data = doc.data();
     final media = _stringList(data['media']);
     final categories = _stringList(data['categories']).isNotEmpty
@@ -1323,16 +1812,16 @@ class MealPlanRemoteDataSource {
     return AddMealAiRecipe(
       id: doc.id,
       title:
-          data['name']?.toString() ??
+      data['name']?.toString() ??
           data['recipeName']?.toString() ??
           'Untitled Recipe',
       durationLabel: '${_intValue(data['preparationTime']) ?? 0} mins',
       difficultyLabel: _difficultyLabel(_intValue(data['difficultyLevel'])),
       servingLabel:
-          '${_intValue(data['servings']) ?? _intValue(data['servingSize']) ?? 1} servings',
+      '${_intValue(data['servings']) ?? _intValue(data['servingSize']) ?? 1} servings',
       imagePath: media.isEmpty ? 'assets/images/meal1.png' : media.first,
       description:
-          data['description']?.toString() ?? 'Recipe from your database.',
+      data['description']?.toString() ?? 'Recipe from your database.',
       reasons: const [
         'Matched with the selected meal category',
         'Available in the recipe database',
@@ -1345,39 +1834,14 @@ class MealPlanRemoteDataSource {
     );
   }
 
-  List<MealPlanDay> _buildMonthDays(
-    DateTime selectedDate,
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> plans,
-  ) {
-    final firstDay = DateTime(selectedDate.year, selectedDate.month);
-    final leadingDays = firstDay.weekday - 1;
-    final gridStart = firstDay.subtract(Duration(days: leadingDays));
-    final plannedDays = plans
-        .map((doc) {
-          final value = doc.data()['date'];
-          if (value is! Timestamp) return null;
-          final date = value.toDate();
-          return DateTime(date.year, date.month, date.day);
-        })
-        .whereType<DateTime>()
-        .toList();
-
-    return List.generate(42, (index) {
-      final date = gridStart.add(Duration(days: index));
-      return MealPlanDay(
-        date: date,
-        isCurrentMonth: date.month == selectedDate.month,
-        hasMeals: plannedDays.any((plannedDate) => _sameDay(plannedDate, date)),
-      );
-    });
-  }
-
+  /// Compares two dates without time components.
   bool _sameDay(DateTime first, DateTime second) {
     return first.year == second.year &&
         first.month == second.month &&
         first.day == second.day;
   }
 
+  /// Converts a value to a list of strings.
   List<String> _stringList(Object? value) {
     if (value is Iterable) {
       return value
@@ -1388,17 +1852,20 @@ class MealPlanRemoteDataSource {
     return const [];
   }
 
+  /// Converts a value to an integer, or returns null.
   int? _intValue(Object? value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '');
   }
 
+  /// Converts a value to a double, or returns 0.
   double _doubleValue(Object? value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
+  /// Converts difficulty level to a readable label.
   String _difficultyLabel(int? level) {
     switch (level) {
       case 1:
@@ -1417,6 +1884,11 @@ class MealPlanRemoteDataSource {
   }
 }
 
+// =============================================================================
+// PRIVATE DATA CLASSES
+// =============================================================================
+
+/// Draft representation of a grocery item used during aggregation.
 class _GroceryItemDraft {
   final String ingredientName;
   final String ingredientCategoryId;
@@ -1438,6 +1910,7 @@ class _GroceryItemDraft {
     required this.sortOrder,
   });
 
+  /// Merges this draft with another, combining amounts and IDs.
   _GroceryItemDraft merge(_GroceryItemDraft other) {
     return _GroceryItemDraft(
       ingredientName: ingredientName,
@@ -1457,6 +1930,7 @@ class _GroceryItemDraft {
     );
   }
 
+  /// Converts to Firestore document data.
   Map<String, dynamic> toFirestore() {
     return {
       'ingredientName': ingredientName,
@@ -1472,6 +1946,7 @@ class _GroceryItemDraft {
     };
   }
 
+  /// Converts to Firestore data for sync operations.
   Map<String, dynamic> toFirestoreForSync() {
     return {
       'ingredientName': ingredientName,
@@ -1486,6 +1961,7 @@ class _GroceryItemDraft {
   }
 }
 
+/// Record representation of a grocery item for display.
 class _GroceryItemRecord {
   final String id;
   final String name;
@@ -1507,14 +1983,15 @@ class _GroceryItemRecord {
     required this.bought,
   });
 
+  /// Creates a record from a Firestore document.
   factory _GroceryItemRecord.fromDoc(
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-    Map<String, String> categoryNames,
-    _ResolvedGroceryCategory? categoryOverride,
-  ) {
+      QueryDocumentSnapshot<Map<String, dynamic>> doc,
+      Map<String, String> categoryNames,
+      _ResolvedGroceryCategory? categoryOverride,
+      ) {
     final data = doc.data();
     final categoryId =
-        data['ingredientCategoryId']?.toString().trim().isNotEmpty == true
+    data['ingredientCategoryId']?.toString().trim().isNotEmpty == true
         ? data['ingredientCategoryId'].toString().trim()
         : data['ingredient_categories_id']?.toString().trim().isNotEmpty == true
         ? data['ingredient_categories_id'].toString().trim()
@@ -1523,14 +2000,14 @@ class _GroceryItemRecord {
         : categoryOverride?.id ?? '';
     final name =
         data['ingredientName']?.toString() ??
-        data['name']?.toString() ??
-        'Ingredient';
+            data['name']?.toString() ??
+            'Ingredient';
     return _GroceryItemRecord(
       id: doc.id,
       name: name,
       categoryId: categoryId,
       categoryName:
-          categoryNames[categoryId] ??
+      categoryNames[categoryId] ??
           categoryOverride?.name ??
           data['categoryName']?.toString() ??
           _fallbackCategoryName(name),
@@ -1543,6 +2020,7 @@ class _GroceryItemRecord {
     );
   }
 
+  /// Converts to a grocery item entity.
   ManageGroceryItem toEntity() {
     return ManageGroceryItem(
       id: id,
@@ -1634,6 +2112,7 @@ class _GroceryItemRecord {
   }
 }
 
+/// Resolved grocery category with ID and name.
 class _ResolvedGroceryCategory {
   final String id;
   final String name;
@@ -1641,6 +2120,7 @@ class _ResolvedGroceryCategory {
   const _ResolvedGroceryCategory({required this.id, required this.name});
 }
 
+/// Snapshot of a meal plan with key details.
 class _MealPlanSnapshot {
   final String id;
   final DateTime date;

@@ -12,13 +12,18 @@ import '../widgets/admin_home_stat_card.dart';
 import '../widgets/admin_quick_access_card.dart';
 import '../widgets/admin_review_card.dart';
 
+/// Admin home page for the application.
+/// Displays dashboard with metrics, quick access, and pending items.
 class AdminHomePage extends StatelessWidget {
+  /// Name of the admin user.
   final String adminName;
 
+  /// Creates a new admin home page instance.
   const AdminHomePage({super.key, required this.adminName});
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model to the widget tree.
     return ChangeNotifierProvider(
       create: (_) => AdminHomeViewModel(
         adminName: adminName,
@@ -29,18 +34,25 @@ class AdminHomePage extends StatelessWidget {
   }
 }
 
+/// Internal view for the admin home page.
 class _AdminHomeView extends StatelessWidget {
+  /// Creates a new admin home view instance.
   const _AdminHomeView();
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AdminHomeViewModel>();
 
+    // Show loading indicator.
     if (viewModel.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
+    // Get the dashboard.
     final dashboard = viewModel.dashboard;
+
+    // Show error state if dashboard is null.
     if (dashboard == null) {
       return Center(
         child: Text(
@@ -55,8 +67,11 @@ class _AdminHomeView extends StatelessWidget {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
+          // Hero section with stats.
           _HeroStatsSection(dashboard: dashboard),
           const SizedBox(height: AppSpacing.lg),
+
+          // Quick access section.
           _Section(
             title: 'Quick Access',
             child: IntrinsicHeight(
@@ -77,6 +92,8 @@ class _AdminHomeView extends StatelessWidget {
               ),
             ),
           ),
+
+          // Pending review section.
           _Section(
             title: 'Pending Review',
             actionLabel: 'View All',
@@ -84,15 +101,17 @@ class _AdminHomeView extends StatelessWidget {
               children: dashboard.pendingReviews
                   .map(
                     (review) => Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: AppSpacing.sm),
-                        child: AdminReviewCard(review: review),
-                      ),
-                    ),
-                  )
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.sm),
+                    child: AdminReviewCard(review: review),
+                  ),
+                ),
+              )
                   .toList(),
             ),
           ),
+
+          // Rating and feedback section.
           _Section(
             title: 'Rating & Feedback',
             actionLabel: 'View All',
@@ -100,12 +119,12 @@ class _AdminHomeView extends StatelessWidget {
               children: dashboard.feedbackItems
                   .map(
                     (feedback) => Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: AppSpacing.sm),
-                        child: AdminFeedbackCard(feedback: feedback),
-                      ),
-                    ),
-                  )
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.sm),
+                    child: AdminFeedbackCard(feedback: feedback),
+                  ),
+                ),
+              )
                   .toList(),
             ),
           ),
@@ -116,15 +135,19 @@ class _AdminHomeView extends StatelessWidget {
   }
 }
 
+/// Hero stats section with admin greeting and metric cards.
 class _HeroStatsSection extends StatelessWidget {
+  /// The admin home dashboard data.
   final AdminHomeDashboard dashboard;
 
+  /// Creates a new hero stats section instance.
   const _HeroStatsSection({required this.dashboard});
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
+        // Background image.
         Image.asset(
           'assets/images/home.png',
           height: 220,
@@ -132,6 +155,7 @@ class _HeroStatsSection extends StatelessWidget {
           fit: BoxFit.cover,
         ),
 
+        // Content overlay.
         Padding(
           padding: AppSpacing.pagePadding.copyWith(
             top: AppSpacing.lg,
@@ -139,6 +163,7 @@ class _HeroStatsSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Greeting.
               RichText(
                 text: TextSpan(
                   style: context.text.headlineSmall?.copyWith(
@@ -157,6 +182,7 @@ class _HeroStatsSection extends StatelessWidget {
 
               const SizedBox(height: AppSpacing.sm),
 
+              // Subtitle.
               Text(
                 "Welcome back! Here's an overview\nof Foodopia today.",
                 style: context.text.bodyMedium?.copyWith(height: 1.35),
@@ -164,6 +190,7 @@ class _HeroStatsSection extends StatelessWidget {
 
               const SizedBox(height: AppSpacing.lg),
 
+              // Metrics cards.
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -192,6 +219,7 @@ class _HeroStatsSection extends StatelessWidget {
                               ),
                             ),
 
+                            // Divider between metrics.
                             if (!isLast)
                               VerticalDivider(
                                 width: 1,
@@ -213,11 +241,18 @@ class _HeroStatsSection extends StatelessWidget {
   }
 }
 
+/// Section widget with title and content.
 class _Section extends StatelessWidget {
+  /// Section title.
   final String title;
+
+  /// Action label (e.g., "View All").
   final String? actionLabel;
+
+  /// Child content.
   final Widget child;
 
+  /// Creates a new section instance.
   const _Section({required this.title, required this.child, this.actionLabel});
 
   @override
@@ -230,6 +265,7 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header row with title and action.
           Row(
             children: [
               Expanded(
@@ -251,6 +287,8 @@ class _Section extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
+
+          // Child content.
           child,
         ],
       ),

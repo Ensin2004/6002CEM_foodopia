@@ -13,6 +13,7 @@ import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../../domain/entities/add_meal_ai_plan.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
 
+/// List of quick inspiration items.
 const _quickInspirationItems = [
   MealPlanQuickInspiration(
     title: 'What can I cook with what I have?',
@@ -46,14 +47,21 @@ const _quickInspirationItems = [
   ),
 ];
 
+/// Main view for the Inspiration tab in the meal plan page.
+/// Provides AI recipe generation and quick inspiration cards.
 class InspirationTabMainView extends StatelessWidget {
+  /// The meal plan dashboard data.
   final MealPlanDashboard dashboard;
 
+  /// Creates a new inspiration tab main view instance.
   const InspirationTabMainView({super.key, required this.dashboard});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<MealPlanViewModel>();
+
+    // Get preferences and weather.
     final preferences = viewModel.effectivePreferences;
     final weather = dashboard.weather;
 
@@ -68,6 +76,7 @@ class InspirationTabMainView extends StatelessWidget {
           AppSpacing.xl,
         ),
         children: [
+          // Smart inspiration box.
           _SmartInspirationBox(
             weather: weather,
             preferences: preferences,
@@ -76,6 +85,8 @@ class InspirationTabMainView extends StatelessWidget {
             isPreferencesLoading: viewModel.isPreferencesLoading,
           ),
           const SizedBox(height: AppSpacing.lg),
+
+          // Build inspiration request section.
           Text(
             'Build your inspiration request',
             style: context.text.titleMedium?.copyWith(
@@ -88,6 +99,8 @@ class InspirationTabMainView extends StatelessWidget {
             style: context.text.bodyMedium?.copyWith(height: 1.35),
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Weather input card.
           _WeatherInputCard(
             weather: weather,
             isLoading: viewModel.isWeatherLoading,
@@ -96,17 +109,24 @@ class InspirationTabMainView extends StatelessWidget {
             onChanged: viewModel.selectWeatherCategory,
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Ingredient input card.
           _IngredientInputCard(viewModel: viewModel),
           const SizedBox(height: AppSpacing.md),
+
+          // Preference input card.
           _PreferenceInputCard(
             preferences: preferences,
             onExpand: () => _showPreferenceEditor(context, viewModel),
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Generate button.
           SizedBox(
             height: 48,
             child: ElevatedButton(
               onPressed: () {
+                // Build the generation request.
                 final weatherSnapshot = weather;
                 final request = AddMealAiGenerationRequest(
                   planningDate: dashboard.selectedDate,
@@ -114,10 +134,10 @@ class InspirationTabMainView extends StatelessWidget {
                   weather: AddMealWeather(
                     temperature: weatherSnapshot?.currentTemp ?? 28,
                     condition:
-                        weatherSnapshot?.condition ??
+                    weatherSnapshot?.condition ??
                         viewModel.selectedWeatherCategory.label,
                     summary:
-                        weatherSnapshot?.summary ??
+                    weatherSnapshot?.summary ??
                         'Use the selected weather category.',
                   ),
                   preferences: AddMealPreferenceSnapshot(
@@ -137,6 +157,8 @@ class InspirationTabMainView extends StatelessWidget {
                   servingCount: 1,
                   servingSize: '1 serving',
                 );
+
+                // Navigate to AI generation page.
                 context.push(
                   AppRouter.generateAiMeal,
                   extra: GenerateAiMealArgs(
@@ -162,6 +184,8 @@ class InspirationTabMainView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
+
+          // Quick inspiration section.
           Text(
             'Quick Inspiration',
             style: context.text.titleMedium?.copyWith(
@@ -175,10 +199,11 @@ class InspirationTabMainView extends StatelessWidget {
     );
   }
 
+  /// Shows the preference editor bottom sheet.
   void _showPreferenceEditor(
-    BuildContext context,
-    MealPlanViewModel viewModel,
-  ) {
+      BuildContext context,
+      MealPlanViewModel viewModel,
+      ) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -194,13 +219,24 @@ class InspirationTabMainView extends StatelessWidget {
   }
 }
 
+/// Smart inspiration box widget.
 class _SmartInspirationBox extends StatelessWidget {
+  /// Weather data.
   final MealPlanWeather? weather;
+
+  /// User preferences.
   final MealPlanPreferenceSummary? preferences;
+
+  /// Ingredients label.
   final String ingredientsLabel;
+
+  /// Whether weather is loading.
   final bool isWeatherLoading;
+
+  /// Whether preferences are loading.
   final bool isPreferencesLoading;
 
+  /// Creates a new smart inspiration box instance.
   const _SmartInspirationBox({
     required this.weather,
     required this.preferences,
@@ -211,6 +247,7 @@ class _SmartInspirationBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get current weather and preference labels.
     final currentWeather = weather;
     final preferenceLabel = isPreferencesLoading
         ? 'Loading...'
@@ -237,6 +274,7 @@ class _SmartInspirationBox extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // Top indicator bar.
           Align(
             alignment: Alignment.centerLeft,
             child: Container(
@@ -249,6 +287,8 @@ class _SmartInspirationBox extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Header row.
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -288,6 +328,8 @@ class _SmartInspirationBox extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Metrics.
           Column(
             children: [
               _SmartMetric(
@@ -315,7 +357,11 @@ class _SmartInspirationBox extends StatelessWidget {
   }
 }
 
+/// Smart chip widget.
 class _SmartChip extends StatelessWidget {
+  /// Creates a new smart chip instance.
+  const _SmartChip();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -342,11 +388,18 @@ class _SmartChip extends StatelessWidget {
   }
 }
 
+/// Smart metric widget.
 class _SmartMetric extends StatelessWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Title text.
   final String title;
+
+  /// Value text.
   final String value;
 
+  /// Creates a new smart metric instance.
   const _SmartMetric({
     required this.icon,
     required this.title,
@@ -396,13 +449,24 @@ class _SmartMetric extends StatelessWidget {
   }
 }
 
+/// Weather input card widget.
 class _WeatherInputCard extends StatelessWidget {
+  /// Weather data.
   final MealPlanWeather? weather;
+
+  /// Whether loading.
   final bool isLoading;
+
+  /// Error message.
   final String? errorMessage;
+
+  /// Selected weather category ID.
   final String selectedCategoryId;
+
+  /// Callback when weather category changes.
   final ValueChanged<String> onChanged;
 
+  /// Creates a new weather input card instance.
   const _WeatherInputCard({
     required this.weather,
     required this.isLoading,
@@ -413,7 +477,10 @@ class _WeatherInputCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get current weather.
     final currentWeather = weather;
+
+    // Build title and message.
     final title = isLoading
         ? 'Loading weather'
         : currentWeather == null
@@ -421,8 +488,8 @@ class _WeatherInputCard extends StatelessWidget {
         : '${currentWeather.condition} - ${currentWeather.currentTemp}C';
     final message =
         currentWeather?.summary ??
-        errorMessage ??
-        'Weather data will appear here.';
+            errorMessage ??
+            'Weather data will appear here.';
 
     return _InputCard(
       icon: Icons.wb_sunny_outlined,
@@ -430,6 +497,7 @@ class _WeatherInputCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Weather category dropdown.
           DropdownButtonFormField<String>(
             initialValue: selectedCategoryId,
             isExpanded: true,
@@ -461,6 +529,8 @@ class _WeatherInputCard extends StatelessWidget {
             },
           ),
           const SizedBox(height: AppSpacing.sm),
+
+          // Weather details.
           Text(title, style: context.text.bodyMedium),
           const SizedBox(height: 4),
           Text(
@@ -476,13 +546,17 @@ class _WeatherInputCard extends StatelessWidget {
   }
 }
 
+/// Ingredient input card widget.
 class _IngredientInputCard extends StatelessWidget {
+  /// The view model.
   final MealPlanViewModel viewModel;
 
+  /// Creates a new ingredient input card instance.
   const _IngredientInputCard({required this.viewModel});
 
   @override
   Widget build(BuildContext context) {
+    // Get selected ingredients.
     final selected = viewModel.selectedIngredients;
 
     return _InputCard(
@@ -492,6 +566,7 @@ class _IngredientInputCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Selected ingredients chips or empty message.
           if (selected.isEmpty)
             Text(
               'Search foods or add a custom ingredient.',
@@ -504,6 +579,8 @@ class _IngredientInputCard extends StatelessWidget {
               onTap: viewModel.toggleIngredient,
             ),
           const SizedBox(height: AppSpacing.sm),
+
+          // Add ingredient action.
           _AddIngredientAction(
             label: selected.isEmpty ? 'Add ingredient' : 'Add another',
           ),
@@ -512,6 +589,7 @@ class _IngredientInputCard extends StatelessWidget {
     );
   }
 
+  /// Shows the ingredient picker bottom sheet.
   void _showIngredientSheet(BuildContext context, MealPlanViewModel viewModel) {
     showModalBottomSheet<void>(
       context: context,
@@ -528,9 +606,12 @@ class _IngredientInputCard extends StatelessWidget {
   }
 }
 
+/// Add ingredient action button.
 class _AddIngredientAction extends StatelessWidget {
+  /// Button label.
   final String label;
 
+  /// Creates a new add ingredient action instance.
   const _AddIngredientAction({required this.label});
 
   @override
@@ -561,10 +642,15 @@ class _AddIngredientAction extends StatelessWidget {
   }
 }
 
+/// Preference input card widget.
 class _PreferenceInputCard extends StatelessWidget {
+  /// User preferences.
   final MealPlanPreferenceSummary? preferences;
+
+  /// Callback when expanded.
   final VoidCallback onExpand;
 
+  /// Creates a new preference input card instance.
   const _PreferenceInputCard({
     required this.preferences,
     required this.onExpand,
@@ -572,6 +658,7 @@ class _PreferenceInputCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get preference values.
     final mealPreference = preferences?.diet ?? 'Any';
     final allergy = preferences?.allergies.isNotEmpty == true
         ? preferences!.allergies.first
@@ -614,11 +701,18 @@ class _PreferenceInputCard extends StatelessWidget {
   }
 }
 
+/// Preference metric widget.
 class _PreferenceMetric extends StatelessWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Title text.
   final String title;
+
+  /// Value text.
   final String value;
 
+  /// Creates a new preference metric instance.
   const _PreferenceMetric({
     required this.icon,
     required this.title,
@@ -661,13 +755,24 @@ class _PreferenceMetric extends StatelessWidget {
   }
 }
 
+/// Input card widget.
 class _InputCard extends StatelessWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Title text.
   final String title;
+
+  /// Child widget.
   final Widget child;
+
+  /// Trailing icon.
   final IconData? trailing;
+
+  /// Callback when tapped.
   final VoidCallback? onTap;
 
+  /// Creates a new input card instance.
   const _InputCard({
     required this.icon,
     required this.title,
@@ -698,6 +803,7 @@ class _InputCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Icon container.
             Container(
               width: 38,
               height: 38,
@@ -708,6 +814,8 @@ class _InputCard extends StatelessWidget {
               child: Icon(icon, size: 21, color: const Color(0xFF8A6400)),
             ),
             const SizedBox(width: AppSpacing.md),
+
+            // Content.
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -745,11 +853,18 @@ class _InputCard extends StatelessWidget {
   }
 }
 
+/// Ingredient chips widget.
 class _IngredientChips extends StatelessWidget {
+  /// List of ingredients.
   final List<MealPlanInspirationIngredient> ingredients;
+
+  /// Function to check if an ingredient is selected.
   final bool Function(MealPlanInspirationIngredient ingredient) isSelected;
+
+  /// Callback when an ingredient is tapped.
   final ValueChanged<MealPlanInspirationIngredient> onTap;
 
+  /// Creates a new ingredient chips instance.
   const _IngredientChips({
     required this.ingredients,
     required this.isSelected,
@@ -773,11 +888,18 @@ class _IngredientChips extends StatelessWidget {
   }
 }
 
+/// Mini choice chip widget.
 class _MiniChoiceChip extends StatelessWidget {
+  /// Chip label.
   final String label;
+
+  /// Whether selected.
   final bool selected;
+
+  /// Callback when tapped.
   final VoidCallback onTap;
 
+  /// Creates a new mini choice chip instance.
   const _MiniChoiceChip({
     required this.label,
     required this.selected,
@@ -812,14 +934,18 @@ class _MiniChoiceChip extends StatelessWidget {
   }
 }
 
+/// Ingredient picker bottom sheet.
 class _IngredientPickerSheet extends StatefulWidget {
+  /// Creates a new ingredient picker sheet instance.
   const _IngredientPickerSheet();
 
   @override
   State<_IngredientPickerSheet> createState() => _IngredientPickerSheetState();
 }
 
+/// State for the ingredient picker sheet.
 class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
+  /// Text controller for search input.
   final _controller = TextEditingController();
 
   @override
@@ -830,7 +956,10 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<MealPlanViewModel>();
+
+    // Get bottom inset for keyboard.
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Padding(
@@ -847,6 +976,7 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Drag handle.
             Center(
               child: Container(
                 width: 42,
@@ -858,8 +988,12 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            // Header.
             Text('Ingredients you have', style: context.text.titleMedium),
             const SizedBox(height: AppSpacing.md),
+
+            // Search input.
             TextField(
               controller: _controller,
               textInputAction: TextInputAction.search,
@@ -874,6 +1008,8 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
               onSubmitted: viewModel.addCustomIngredient,
             ),
             const SizedBox(height: AppSpacing.sm),
+
+            // Add custom button.
             SizedBox(
               width: double.infinity,
               height: 42,
@@ -896,9 +1032,12 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
+
+            // Selected ingredients.
             Expanded(
               child: ListView(
                 children: [
+                  // Selected section.
                   Text('Selected', style: context.text.titleMedium),
                   const SizedBox(height: AppSpacing.sm),
                   if (viewModel.selectedIngredients.isEmpty)
@@ -912,6 +1051,8 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
                       isSelected: (_) => true,
                       onTap: viewModel.toggleIngredient,
                     ),
+
+                  // Search results section.
                   Text('Search results', style: context.text.titleMedium),
                   const SizedBox(height: AppSpacing.sm),
                   if (viewModel.isIngredientSearching)
@@ -925,19 +1066,19 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
                       style: context.text.bodyMedium,
                     )
                   else if (viewModel.ingredientSearchResults.isEmpty)
-                    Center(
-                      child: Image.asset(
-                        'assets/images/empty_page.png',
-                        height: 110,
+                      Center(
+                        child: Image.asset(
+                          'assets/images/empty_page.png',
+                          height: 110,
+                        ),
+                      )
+                    else
+                      _IngredientChips(
+                        ingredients: viewModel.ingredientSearchResults,
+                        isSelected: (item) =>
+                            viewModel.isIngredientSelected(item.name),
+                        onTap: viewModel.toggleIngredient,
                       ),
-                    )
-                  else
-                    _IngredientChips(
-                      ingredients: viewModel.ingredientSearchResults,
-                      isSelected: (item) =>
-                          viewModel.isIngredientSelected(item.name),
-                      onTap: viewModel.toggleIngredient,
-                    ),
                 ],
               ),
             ),
@@ -948,15 +1089,21 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
   }
 }
 
+/// Preference editor bottom sheet.
 class _PreferenceEditorSheet extends StatefulWidget {
+  /// Creates a new preference editor sheet instance.
   const _PreferenceEditorSheet();
 
   @override
   State<_PreferenceEditorSheet> createState() => _PreferenceEditorSheetState();
 }
 
+/// State for the preference editor sheet.
 class _PreferenceEditorSheetState extends State<_PreferenceEditorSheet> {
+  /// Controller for allergy input.
   final _allergyController = TextEditingController();
+
+  /// Controller for dislike input.
   final _dislikeController = TextEditingController();
 
   @override
@@ -968,7 +1115,10 @@ class _PreferenceEditorSheetState extends State<_PreferenceEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<MealPlanViewModel>();
+
+    // Get bottom inset for keyboard.
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Padding(
@@ -984,6 +1134,7 @@ class _PreferenceEditorSheetState extends State<_PreferenceEditorSheet> {
         ),
         child: ListView(
           children: [
+            // Drag handle.
             Center(
               child: Container(
                 width: 42,
@@ -995,6 +1146,8 @@ class _PreferenceEditorSheetState extends State<_PreferenceEditorSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            // Header.
             Text(
               'Set your preferences',
               style: context.text.titleMedium?.copyWith(
@@ -1007,6 +1160,8 @@ class _PreferenceEditorSheetState extends State<_PreferenceEditorSheet> {
               style: context.text.bodyMedium?.copyWith(height: 1.35),
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            // Meal preference section.
             _PreferenceOptionSection(
               title: 'Meal preference',
               options: viewModel.dietOptions,
@@ -1014,6 +1169,8 @@ class _PreferenceEditorSheetState extends State<_PreferenceEditorSheet> {
               onSelected: viewModel.selectOverrideDiet,
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            // Allergies section.
             _PreferenceSearchOptionSection(
               title: 'Allergies',
               options: viewModel.allergyOptions,
@@ -1026,6 +1183,8 @@ class _PreferenceEditorSheetState extends State<_PreferenceEditorSheet> {
               searchResults: viewModel.preferenceSearchResults,
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            // Dislikes section.
             _PreferenceSearchOptionSection(
               title: 'Dislikes',
               options: viewModel.dislikeOptions,
@@ -1038,6 +1197,8 @@ class _PreferenceEditorSheetState extends State<_PreferenceEditorSheet> {
               searchResults: viewModel.preferenceSearchResults,
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            // Done button.
             SizedBox(
               height: 48,
               child: ElevatedButton(
@@ -1063,12 +1224,21 @@ class _PreferenceEditorSheetState extends State<_PreferenceEditorSheet> {
   }
 }
 
+/// Preference option section widget.
 class _PreferenceOptionSection extends StatelessWidget {
+  /// Section title.
   final String title;
+
+  /// List of options.
   final List<MealPlanPreferenceOption> options;
+
+  /// Set of selected values.
   final Set<String> selectedValues;
+
+  /// Callback when an option is selected.
   final ValueChanged<String> onSelected;
 
+  /// Creates a new preference option section instance.
   const _PreferenceOptionSection({
     required this.title,
     required this.options,
@@ -1083,6 +1253,8 @@ class _PreferenceOptionSection extends StatelessWidget {
       children: [
         Text(title, style: context.text.titleMedium),
         const SizedBox(height: AppSpacing.sm),
+
+        // Show options or empty message.
         if (options.isEmpty)
           Text('No options available yet.', style: context.text.bodyMedium)
         else
@@ -1103,17 +1275,36 @@ class _PreferenceOptionSection extends StatelessWidget {
   }
 }
 
+/// Preference search option section widget.
 class _PreferenceSearchOptionSection extends StatelessWidget {
+  /// Section title.
   final String title;
+
+  /// List of options.
   final List<MealPlanPreferenceOption> options;
+
+  /// Set of selected values.
   final Set<String> selectedValues;
+
+  /// Callback when an option is selected.
   final ValueChanged<String> onSelected;
+
+  /// Text controller for search input.
   final TextEditingController controller;
+
+  /// Callback when search text changes.
   final ValueChanged<String> onSearch;
+
+  /// Callback when adding a custom value.
   final ValueChanged<String> onAddCustom;
+
+  /// Whether search is in progress.
   final bool isSearching;
+
+  /// Search results.
   final List<MealPlanInspirationIngredient> searchResults;
 
+  /// Creates a new preference search option section instance.
   const _PreferenceSearchOptionSection({
     required this.title,
     required this.options,
@@ -1128,11 +1319,13 @@ class _PreferenceSearchOptionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the search query.
     final query = controller.text.trim();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Options section.
         _PreferenceOptionSection(
           title: title,
           options: options,
@@ -1140,6 +1333,8 @@ class _PreferenceSearchOptionSection extends StatelessWidget {
           onSelected: onSelected,
         ),
         const SizedBox(height: AppSpacing.md),
+
+        // Search input.
         TextField(
           controller: controller,
           textInputAction: TextInputAction.search,
@@ -1161,6 +1356,8 @@ class _PreferenceSearchOptionSection extends StatelessWidget {
           onChanged: onSearch,
           onSubmitted: onAddCustom,
         ),
+
+        // Search results.
         if (query.length >= 2) ...[
           const SizedBox(height: AppSpacing.sm),
           if (isSearching)
@@ -1186,13 +1383,17 @@ class _PreferenceSearchOptionSection extends StatelessWidget {
   }
 }
 
+/// Quick inspiration grid widget.
 class _QuickInspirationGrid extends StatelessWidget {
+  /// List of quick inspiration items.
   final List<MealPlanQuickInspiration> items;
 
+  /// Creates a new quick inspiration grid instance.
   const _QuickInspirationGrid({required this.items});
 
   @override
   Widget build(BuildContext context) {
+    // Show empty state if no items.
     if (items.isEmpty) {
       return Center(
         child: Image.asset('assets/images/empty_page.png', height: 140),
@@ -1201,6 +1402,7 @@ class _QuickInspirationGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Calculate responsive item width.
         const columns = 3;
         const spacing = AppSpacing.sm;
         final itemWidth =
@@ -1223,9 +1425,12 @@ class _QuickInspirationGrid extends StatelessWidget {
   }
 }
 
+/// Quick inspiration card widget.
 class _QuickInspirationCard extends StatelessWidget {
+  /// The inspiration item.
   final MealPlanQuickInspiration item;
 
+  /// Creates a new quick inspiration card instance.
   const _QuickInspirationCard({required this.item});
 
   @override
@@ -1249,6 +1454,7 @@ class _QuickInspirationCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Image.
             ClipRRect(
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(8),
@@ -1281,6 +1487,8 @@ class _QuickInspirationCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // Content.
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(8),

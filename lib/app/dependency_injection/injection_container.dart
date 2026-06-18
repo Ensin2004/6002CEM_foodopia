@@ -38,7 +38,7 @@ import '../../core/services/recipe_search_service.dart';
 import '../../core/services/open_meteo_weather_service.dart';
 
 // Auth Feature - Data Layer
-import '../../features/admin_home/data/datasources/admin_home_mock_datasource.dart';
+import '../../features/admin_home/data/datasources/admin_home_remote_datasource.dart';
 import '../../features/admin_home/data/repositories/admin_home_repository_impl.dart';
 import '../../features/admin_manage/data/datasources/admin_manage_remote_datasource.dart';
 import '../../features/admin_manage/data/repositories/admin_manage_repository_impl.dart';
@@ -150,7 +150,7 @@ import '../../features/statistics/domain/usecases/get_post_difficulty_statistics
 import '../../features/statistics/domain/usecases/get_posted_meal_time_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_recipe_performance_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_statistics_dashboard_usecase.dart';
-import '../../features/user_home/data/datasources/user_home_mock_datasource.dart';
+import '../../features/user_home/data/datasources/user_home_remote_datasource.dart';
 import '../../features/user_home/data/datasources/user_home_weather_datasource.dart';
 import '../../features/user_home/data/repositories/user_home_repository_impl.dart';
 import '../../features/user_home/domain/repositories/user_home_repository.dart';
@@ -268,6 +268,7 @@ import '../../features/onboarding/presentation/viewmodel/onboarding_viewmodel.da
 import '../../features/main/presentation/viewmodel/main_viewmodel.dart';
 import '../../features/settings/domain/usecases/support/rating/upload_rating_image_usecase.dart';
 
+/// GetIt instance for dependency injection.
 final sl = GetIt.instance;
 
 // ============================================================================
@@ -308,16 +309,26 @@ Future<void> initDependencies() async {
   // _initMealPlanFeature();
 }
 
+// ============================================================================
+// RECIPE FEATURE
+// ============================================================================
+
+/// Initializes the Recipe feature dependencies.
 void _initRecipeFeature() {
   sl.registerLazySingleton(() => RecipeSearchService(client: sl()));
+  // Register OpenAI services.
   sl.registerLazySingleton(() => OpenAiIngredientDataService(client: sl()));
   sl.registerLazySingleton(() => OpenAiVideoRecipeService(client: sl()));
+
+  // Register video data source.
   sl.registerLazySingleton(
     () => AddRecipeVideoDataSource(
       firestore: sl(),
       openAiVideoRecipeService: sl(),
     ),
   );
+
+  // Register remote data source.
   sl.registerLazySingleton(
     () => AddRecipeRemoteDataSource(
       firestore: sl(),
@@ -328,9 +339,13 @@ void _initRecipeFeature() {
       recipeAiSearchService: sl(),
     ),
   );
+
+  // Register repository.
   sl.registerLazySingleton<AddRecipeRepository>(
     () => AddRecipeRepositoryImpl(remoteDataSource: sl()),
   );
+
+  // Register use cases.
   sl.registerLazySingleton(() => GetAddRecipeSetupUseCase(sl()));
   sl.registerLazySingleton(() => GetAddRecipeIngredientUnitsUseCase(sl()));
   sl.registerLazySingleton(() => SearchAddRecipeFoodsUseCase(sl()));
@@ -346,17 +361,25 @@ void _initRecipeFeature() {
   sl.registerLazySingleton(() => CompleteAddRecipeUseCase(sl()));
 }
 
+// ============================================================================
+// STATISTICS FEATURE
+// ============================================================================
+
+/// Initializes the Statistics feature dependencies.
 void _initStatisticsFeature() {
+  // Register data sources.
   sl.registerLazySingleton(() => StatisticsLocalDataSource());
   sl.registerLazySingleton(
     () => StatisticsRemoteDataSource(firestore: sl(), auth: sl()),
   );
 
+  // Register repository.
   sl.registerLazySingleton<StatisticsRepository>(
     () =>
         StatisticsRepositoryImpl(localDataSource: sl(), remoteDataSource: sl()),
   );
 
+  // Register use cases.
   sl.registerLazySingleton(() => GetStatisticsDashboardUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlannedTimeStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetCookingTimeStatisticsUseCase(sl()));
@@ -385,15 +408,23 @@ void _initStatisticsFeature() {
   sl.registerLazySingleton(() => GetAdminHubRatingStatisticsUseCase(sl()));
 }
 
+// ============================================================================
+// EXPLORE FEATURE
+// ============================================================================
+
+/// Initializes the Explore feature dependencies.
 void _initExploreFeature() {
+  // Register remote data source.
   sl.registerLazySingleton(
     () => ExploreRemoteDataSource(firestore: sl(), auth: sl()),
   );
 
+  // Register repository.
   sl.registerLazySingleton<ExploreRepository>(
     () => ExploreRepositoryImpl(remoteDataSource: sl()),
   );
 
+  // Register use cases.
   sl.registerLazySingleton(() => GetExploreRecipesUseCase(sl()));
   sl.registerLazySingleton(() => GetExploreRecipeDetailUseCase(sl()));
   sl.registerLazySingleton(() => GetExploreCreatorDetailUseCase(sl()));
@@ -410,15 +441,23 @@ void _initExploreFeature() {
   sl.registerLazySingleton(() => UpdateRecipeVisibilityUseCase(sl()));
 }
 
+// ============================================================================
+// LIBRARY FEATURE
+// ============================================================================
+
+/// Initializes the Library feature dependencies.
 void _initLibraryFeature() {
+  // Register remote data source.
   sl.registerLazySingleton(
     () => LibraryRemoteDataSource(firestore: sl(), auth: sl()),
   );
 
+  // Register repository.
   sl.registerLazySingleton<LibraryRepository>(
     () => LibraryRepositoryImpl(remoteDataSource: sl()),
   );
 
+  // Register use cases.
   sl.registerLazySingleton(() => GetLibraryRecipesUseCase(sl()));
   sl.registerLazySingleton(() => GetLibraryProfileUseCase(sl()));
   sl.registerLazySingleton(() => GetLibraryFollowersUseCase(sl()));
@@ -428,12 +467,19 @@ void _initLibraryFeature() {
   sl.registerLazySingleton(() => UpdateLibraryProfileUseCase(sl()));
 }
 
+// ============================================================================
+// NOTIFICATIONS FEATURE
+// ============================================================================
+
+/// Initializes the Notifications feature dependencies.
 void _initNotificationsFeature() {
+  // Register data sources.
   sl.registerLazySingleton(() => NotificationLocalDataSource());
   sl.registerLazySingleton(
     () => NotificationRemoteDataSource(firestore: sl(), auth: sl()),
   );
 
+  // Register repository.
   sl.registerLazySingleton<NotificationRepository>(
     () => NotificationRepositoryImpl(
       localDataSource: sl(),
@@ -441,6 +487,7 @@ void _initNotificationsFeature() {
     ),
   );
 
+  // Register use cases.
   sl.registerLazySingleton(() => GetNotificationsUseCase(sl()));
   sl.registerLazySingleton(() => GetNotificationPreferencesUseCase(sl()));
   sl.registerLazySingleton(() => MarkNotificationAsReadUseCase(sl()));
@@ -449,7 +496,13 @@ void _initNotificationsFeature() {
   sl.registerLazySingleton(() => SchedulePlanReminderUseCase(sl()));
 }
 
+// ============================================================================
+// MEAL PLAN FEATURE
+// ============================================================================
+
+/// Initializes the Meal Plan feature dependencies.
 void _initMealPlanFeature() {
+  // Register data sources.
   sl.registerLazySingleton(
     () => MealPlanPreferencesDataSource(firestore: sl()),
   );
@@ -465,6 +518,7 @@ void _initMealPlanFeature() {
   );
   sl.registerLazySingleton(() => MealPlanRemoteDataSource(firestore: sl()));
 
+  // Register repository.
   sl.registerLazySingleton<MealPlanRepository>(
     () => MealPlanRepositoryImpl(
       remoteDataSource: sl(),
@@ -474,6 +528,7 @@ void _initMealPlanFeature() {
     ),
   );
 
+  // Register use cases.
   sl.registerLazySingleton(() => GetMealPlanDashboardUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlanWeatherUseCase(sl()));
   sl.registerLazySingleton(() => GetMealPlanPreferencesUseCase(sl()));
@@ -496,15 +551,23 @@ void _initMealPlanFeature() {
   sl.registerLazySingleton(() => UpdateWeeklyGroceryWeekStartDayUseCase(sl()));
 }
 
+// ============================================================================
+// USER SETUP FEATURE
+// ============================================================================
+
+/// Initializes the User Setup feature dependencies.
 void _initUserSetupFeature() {
+  // Register remote data source.
   sl.registerLazySingleton(
     () => UserSetupRemoteDataSource(firestore: sl(), foodSearchService: sl()),
   );
 
+  // Register repository.
   sl.registerLazySingleton<UserSetupRepository>(
     () => UserSetupRepositoryImpl(remoteDataSource: sl()),
   );
 
+  // Register use cases.
   sl.registerLazySingleton(() => GetUserSetupOptionsUseCase(sl()));
   sl.registerLazySingleton(() => SearchUserSetupFoodsUseCase(sl()));
   sl.registerLazySingleton(() => GetUserSetupPreferencesUseCase(sl()));
@@ -512,42 +575,72 @@ void _initUserSetupFeature() {
   sl.registerLazySingleton(() => GetUserSetupStatusUseCase(sl()));
 }
 
+// ============================================================================
+// USER HOME FEATURE
+// ============================================================================
+
+/// Initializes the User Home feature dependencies.
 void _initUserHomeFeature() {
-  sl.registerLazySingleton(() => UserHomeMockDataSource());
+  // Register data sources.
+  sl.registerLazySingleton(
+    () => UserHomeRemoteDataSource(auth: sl(), firestore: sl()),
+  );
   sl.registerLazySingleton(
     () => UserHomeWeatherDataSource(weatherService: sl()),
   );
 
+  // Register repository.
   sl.registerLazySingleton<UserHomeRepository>(
-    () => UserHomeRepositoryImpl(mockDataSource: sl(), weatherDataSource: sl()),
+    () =>
+        UserHomeRepositoryImpl(remoteDataSource: sl(), weatherDataSource: sl()),
   );
 
+  // Register use cases.
   sl.registerLazySingleton(() => GetUserHomeDashboardUseCase(sl()));
   sl.registerLazySingleton(() => GetUserHomeWeatherUseCase(sl()));
 }
 
-void _initAdminHomeFeature() {
-  sl.registerLazySingleton(() => AdminHomeMockDataSource());
+// ============================================================================
+// ADMIN HOME FEATURE
+// ============================================================================
 
-  sl.registerLazySingleton<AdminHomeRepository>(
-    () => AdminHomeRepositoryImpl(mockDataSource: sl()),
+/// Initializes the Admin Home feature dependencies.
+void _initAdminHomeFeature() {
+  // Register remote data source.
+  sl.registerLazySingleton(
+    () => AdminHomeRemoteDataSource(auth: sl(), firestore: sl()),
   );
 
+  // Register repository.
+  sl.registerLazySingleton<AdminHomeRepository>(
+    () => AdminHomeRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  // Register use case.
   sl.registerLazySingleton(() => GetAdminHomeDashboardUseCase(sl()));
 }
 
+// ============================================================================
+// ADMIN MANAGE FEATURE
+// ============================================================================
+
+/// Initializes the Admin Manage feature dependencies.
 void _initAdminManageFeature() {
+  // Register remote data source.
   sl.registerLazySingleton(() => AdminManageRemoteDataSource(firestore: sl()));
 
+  // Register repository.
   sl.registerLazySingleton<AdminManageRepository>(
     () => AdminManageRepositoryImpl(remoteDataSource: sl()),
   );
 
+  // Register use cases.
   sl.registerLazySingleton(() => GetAdminManageItemsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAdminManageItemUseCase(sl()));
   sl.registerLazySingleton(() => DeleteAdminManageItemUseCase(sl()));
   sl.registerLazySingleton(() => ReorderAdminManageItemsUseCase(sl()));
 
+  // Register ViewModel.
   sl.registerFactory(
     () => AdminManageViewModel(
       getItemsUseCase: sl(),
@@ -561,40 +654,54 @@ void _initAdminManageFeature() {
 // ============================================================================
 // EXTERNAL DEPENDENCIES
 // ============================================================================
-/// Registers external services and SDKs
-/// These are typically provided by third-party packages
+
+/// Registers external services and SDKs.
+/// These are typically provided by third-party packages.
 Future<void> _initExternal() async {
   // --------------------------------------------------------------------------
   // FIREBASE SERVICES
   // --------------------------------------------------------------------------
-  // Used for: Authentication, Database, Push Notifications
-  sl.registerLazySingleton(() => FirebaseAuth.instance); // User auth
-  sl.registerLazySingleton(() => FirebaseFirestore.instance); // Cloud database
-  sl.registerLazySingleton(
-    () => FirebaseMessaging.instance,
-  ); // Push notifications
+  // Used for: Authentication, Database, Push Notifications.
+
+  // User authentication.
+  sl.registerLazySingleton(() => FirebaseAuth.instance);
+
+  // Cloud database.
+  sl.registerLazySingleton(() => FirebaseFirestore.instance);
+
+  // Push notifications.
+  sl.registerLazySingleton(() => FirebaseMessaging.instance);
+
+  // HTTP client.
   sl.registerLazySingleton(() => http.Client());
+
+  // Food search service.
   sl.registerLazySingleton(() => FoodSearchService(client: sl()));
+
+  // OpenAI meal idea service.
   sl.registerLazySingleton(() => OpenAiMealIdeaService(client: sl()));
+
+  // OpenMeteo weather service.
   sl.registerLazySingleton(() => OpenMeteoWeatherService(client: sl()));
 
   // --------------------------------------------------------------------------
   // CONNECTIVITY
   // --------------------------------------------------------------------------
-  // Used for: Checking internet connection status
+  // Used for: Checking internet connection status.
   sl.registerLazySingleton(() => Connectivity());
 }
 
 // ============================================================================
 // CORE DEPENDENCIES
 // ============================================================================
-/// Registers core utilities used across multiple features
+
+/// Registers core utilities used across multiple features.
 void _initCore() {
   // --------------------------------------------------------------------------
   // NETWORK INFO
   // --------------------------------------------------------------------------
-  // Used for: Checking if device has internet connection
-  // Dependencies: Connectivity
+  // Used for: Checking if device has internet connection.
+  // Dependencies: Connectivity.
   sl.registerLazySingleton<NetworkInfo>(
     () => NetworkInfoImpl(connectivity: sl()),
   );
@@ -603,7 +710,8 @@ void _initCore() {
 // ============================================================================
 // AUTHENTICATION FEATURE
 // ============================================================================
-/// Registers all dependencies for the Authentication feature
+
+/// Registers all dependencies for the Authentication feature.
 ///
 /// LAYER STRUCTURE:
 /// Presentation → Domain → Data → External
@@ -614,8 +722,8 @@ void _initAuthFeature() {
   // --------------------------------------------------------------------------
   // 1. DATA SOURCES (External Communication Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Making actual API calls to Firebase
-  // Depends on: Firebase services
+  // Responsible for: Making actual API calls to Firebase.
+  // Depends on: Firebase services.
   sl.registerLazySingleton(
     () => AuthRemoteDataSource(auth: sl(), firestore: sl(), fcm: sl()),
   );
@@ -623,9 +731,9 @@ void _initAuthFeature() {
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Converting data between domain and data sources
-  // Implements: AuthRepository interface
-  // Depends on: AuthRemoteDataSource
+  // Responsible for: Converting data between domain and data sources.
+  // Implements: AuthRepository interface.
+  // Depends on: AuthRemoteDataSource.
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(remoteDataSource: sl()),
   );
@@ -633,39 +741,39 @@ void _initAuthFeature() {
   // --------------------------------------------------------------------------
   // 3. USE CASES (Business Logic Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Implementing specific business rules
-  // Each use case does ONE thing (Single Responsibility Principle)
-  // Depends on: AuthRepository
+  // Responsible for: Implementing specific business rules.
+  // Each use case does ONE thing (Single Responsibility Principle).
+  // Depends on: AuthRepository.
 
-  // Login - Handles user login logic
+  // Login - Handles user login logic.
   sl.registerLazySingleton(() => LoginUseCase(sl()));
 
-  // Signup - Handles user registration logic
+  // Signup - Handles user registration logic.
   sl.registerLazySingleton(() => SignupUseCase(sl()));
 
-  // Get Age Groups - Fetches configurable age groups from Firestore
+  // Get Age Groups - Fetches configurable age groups from Firestore.
   sl.registerLazySingleton(() => GetAgeGroupsUseCase(sl()));
 
-  // Verify Email - Checks if user's email is verified
+  // Verify Email - Checks if user's email is verified.
   sl.registerLazySingleton(() => VerifyEmailUseCase(sl()));
 
-  // Request Password Reset - Validates account email and sends reset email
+  // Request Password Reset - Validates account email and sends reset email.
   sl.registerLazySingleton(() => RequestPasswordResetUseCase(sl()));
 
   // --------------------------------------------------------------------------
   // 4. VIEWMODELS (UI State Management Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Managing UI state and coordinating use cases
-  // Uses registerFactory (new instance per screen) NOT registerLazySingleton
-  // Reason: Each screen needs its own fresh ViewModel instance
-  // Depends on: Use Cases and Repositories
+  // Responsible for: Managing UI state and coordinating use cases.
+  // Uses registerFactory (new instance per screen) NOT registerLazySingleton.
+  // Reason: Each screen needs its own fresh ViewModel instance.
+  // Depends on: Use Cases and Repositories.
 
-  // Login ViewModel - Manages login screen state
+  // Login ViewModel - Manages login screen state.
   sl.registerFactory(
     () => LoginViewModel(loginUseCase: sl(), authRepository: sl()),
   );
 
-  // Signup ViewModel - Manages signup screen state
+  // Signup ViewModel - Manages signup screen state.
   sl.registerFactory(
     () => SignupViewModel(
       signupUseCase: sl(),
@@ -674,7 +782,7 @@ void _initAuthFeature() {
     ),
   );
 
-  // Forgot Password ViewModel - Manages reset email flow
+  // Forgot Password ViewModel - Manages reset email flow.
   sl.registerFactory(
     () => ForgotPasswordViewModel(requestPasswordResetUseCase: sl()),
   );
@@ -683,42 +791,44 @@ void _initAuthFeature() {
 // ============================================================================
 // ONBOARDING FEATURE
 // ============================================================================
-/// Registers all dependencies for the Onboarding feature
+
+/// Registers all dependencies for the Onboarding feature.
 ///
-/// Note: Onboarding is a simpler feature (Presentation-only)
+/// Note: Onboarding is a simpler feature (Presentation-only).
 /// It doesn't have Domain/Data layers because:
-/// 1. No API calls needed
-/// 2. Only uses local storage (SharedPreferences)
-/// 3. Simple business logic
+/// 1. No API calls needed.
+/// 2. Only uses local storage (SharedPreferences).
+/// 3. Simple business logic.
 ///
-/// For complex features, add all three layers (Domain, Data, Presentation)
+/// For complex features, add all three layers (Domain, Data, Presentation).
 void _initOnboardingFeature() {
   // --------------------------------------------------------------------------
   // VIEWMODELS (UI State Management Layer)
   // --------------------------------------------------------------------------
-  // Onboarding ViewModel - Manages onboarding screen state
-  // Uses registerFactory (new instance per screen)
+  // Onboarding ViewModel - Manages onboarding screen state.
+  // Uses registerFactory (new instance per screen).
   sl.registerFactory(() => OnboardingViewModel());
 }
 
 // ============================================================================
 // MAIN FEATURE
 // ============================================================================
-/// Registers all dependencies for the Main feature
+
+/// Registers all dependencies for the Main feature.
 ///
-/// This feature handles the main app shell (app bar, bottom nav, user profile)
+/// This feature handles the main app shell (app bar, bottom nav, user profile).
 void _initMainFeature() {
   // --------------------------------------------------------------------------
   // 1. DATA SOURCES (External Communication Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Making Firestore calls for user profile data
+  // Responsible for: Making Firestore calls for user profile data.
   sl.registerLazySingleton(() => MainRemoteDataSource(firestore: sl()));
 
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Converting data between domain and data sources
-  // Implements: MainRepository interface
+  // Responsible for: Converting data between domain and data sources.
+  // Implements: MainRepository interface.
   sl.registerLazySingleton<MainRepository>(
     () => MainRepositoryImpl(remoteDataSource: sl()),
   );
@@ -726,12 +836,12 @@ void _initMainFeature() {
   // --------------------------------------------------------------------------
   // 3. VIEWMODELS (UI State Management Layer)
   // --------------------------------------------------------------------------
-  // Main ViewModel - Manages main page state (tab index, profile image, etc.)
-  // Uses registerFactory because each main page needs its own instance
-  // Note: user parameter will be passed from the screen, not from DI
+  // Main ViewModel - Manages main page state (tab index, profile image, etc.).
+  // Uses registerFactory because each main page needs its own instance.
+  // Note: user parameter will be passed from the screen, not from DI.
   sl.registerFactory(
     () => MainViewModel(
-      user: sl(), // This will be overridden when creating
+      user: sl(), // This will be overridden when creating.
       repository: sl(),
     ),
   );
@@ -740,39 +850,41 @@ void _initMainFeature() {
 // ============================================================================
 // SETTINGS FEATURE
 // ============================================================================
-/// Registers all dependencies for the Settings feature
+
+/// Registers all dependencies for the Settings feature.
 ///
-/// This feature handles user/admin settings, preferences, and notifications
+/// This feature handles user/admin settings, preferences, and notifications.
 void _initSettingsFeature() {
   // --------------------------------------------------------------------------
   // 1. REPOSITORIES (Data Abstraction Layer)
   // --------------------------------------------------------------------------
-  // Implements: SettingsRepository interface
+  // Implements: SettingsRepository interface.
   sl.registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl());
 
   // --------------------------------------------------------------------------
   // NOTE: SettingsViewModel is NOT registered here because:
-  // - It requires a UserEntity parameter that changes per user
-  // - It is created directly in the SettingsPage with the user parameter
-  // - This follows the rule: Don't register dependencies that have runtime parameters
+  // - It requires a UserEntity parameter that changes per user.
+  // - It is created directly in the SettingsPage with the user parameter.
+  // - This follows the rule: Don't register dependencies that have runtime parameters.
   // --------------------------------------------------------------------------
 }
 
 // ============================================================================
 // PROFILE FEATURE (Edit Profile)
 // ============================================================================
-/// Registers all dependencies for the Profile/Edit Profile feature
+
+/// Registers all dependencies for the Profile/Edit Profile feature.
 ///
 /// This feature handles:
-/// - Fetching user profile data
-/// - Updating user name, gender, and profile picture
-/// - Cloudinary image upload for profile pictures
+/// - Fetching user profile data.
+/// - Updating user name, gender, and profile picture.
+/// - Cloudinary image upload for profile pictures.
 void _initProfileFeature() {
   // --------------------------------------------------------------------------
   // 1. DATA SOURCES (External Communication Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Making Firestore and Firebase Auth calls for profile data
-  // Also handles Cloudinary image upload
+  // Responsible for: Making Firestore and Firebase Auth calls for profile data.
+  // Also handles Cloudinary image upload.
   sl.registerLazySingleton(
     () => ProfileRemoteDataSource(firestore: sl(), auth: sl()),
   );
@@ -780,8 +892,8 @@ void _initProfileFeature() {
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Converting data between domain and data sources
-  // Implements: ProfileRepository interface
+  // Responsible for: Converting data between domain and data sources.
+  // Implements: ProfileRepository interface.
   sl.registerLazySingleton<ProfileRepository>(
     () => ProfileRepositoryImpl(remoteDataSource: sl()),
   );
@@ -789,55 +901,56 @@ void _initProfileFeature() {
   // --------------------------------------------------------------------------
   // 3. USE CASES (Business Logic Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Implementing specific business rules
-  // Each use case does ONE thing (Single Responsibility Principle)
-  // Depends on: ProfileRepository
+  // Responsible for: Implementing specific business rules.
+  // Each use case does ONE thing (Single Responsibility Principle).
+  // Depends on: ProfileRepository.
 
-  // Get User Profile - Fetches user profile data
+  // Get User Profile - Fetches user profile data.
   sl.registerLazySingleton(() => GetUserProfileUseCase(sl()));
 
-  // Update User Name - Updates user's display name
+  // Update User Name - Updates user's display name.
   sl.registerLazySingleton(() => UpdateUserNameUseCase(sl()));
 
-  // Update User Gender - Updates user's gender
+  // Update User Gender - Updates user's gender.
   sl.registerLazySingleton(() => UpdateUserGenderUseCase(sl()));
 
-  // Update User Age Group - Updates user's selected age group
+  // Update User Age Group - Updates user's selected age group.
   sl.registerLazySingleton(() => UpdateUserAgeGroupUseCase(sl()));
 
-  // Update Profile Image - Uploads and updates profile picture
+  // Update Profile Image - Uploads and updates profile picture.
   sl.registerLazySingleton(() => UpdateProfileImageUseCase(sl()));
 
   // --------------------------------------------------------------------------
   // NOTE: EditProfileViewModel is NOT registered here because:
-  // - It requires a uid parameter that changes per user
-  // - It is created directly in the EditProfilePage with the uid parameter
-  // - This follows the rule: Don't register dependencies that have runtime parameters
+  // - It requires a uid parameter that changes per user.
+  // - It is created directly in the EditProfilePage with the uid parameter.
+  // - This follows the rule: Don't register dependencies that have runtime parameters.
   // --------------------------------------------------------------------------
 }
 
 // ============================================================================
 // PASSWORD FEATURE (Change Password)
 // ============================================================================
-/// Registers all dependencies for the Change Password feature
+
+/// Registers all dependencies for the Change Password feature.
 ///
 /// This feature handles:
-/// - Re-authenticating user with current password
-/// - Updating password in Firebase Auth
-/// - Password strength validation
+/// - Re-authenticating user with current password.
+/// - Updating password in Firebase Auth.
+/// - Password strength validation.
 void _initPasswordFeature() {
   // --------------------------------------------------------------------------
   // 1. DATA SOURCES (External Communication Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Making Firebase Auth calls for password changes
-  // Handles re-authentication and password update
+  // Responsible for: Making Firebase Auth calls for password changes.
+  // Handles re-authentication and password update.
   sl.registerLazySingleton(() => PasswordRemoteDataSource(auth: sl()));
 
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Converting data between domain and data sources
-  // Implements: PasswordRepository interface
+  // Responsible for: Converting data between domain and data sources.
+  // Implements: PasswordRepository interface.
   sl.registerLazySingleton<PasswordRepository>(
     () => PasswordRepositoryImpl(remoteDataSource: sl()),
   );
@@ -845,42 +958,43 @@ void _initPasswordFeature() {
   // --------------------------------------------------------------------------
   // 3. USE CASES (Business Logic Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Implementing specific business rules
-  // Each use case does ONE thing (Single Responsibility Principle)
-  // Depends on: PasswordRepository
+  // Responsible for: Implementing specific business rules.
+  // Each use case does ONE thing (Single Responsibility Principle).
+  // Depends on: PasswordRepository.
 
-  // Change Password - Handles password change logic with validation
+  // Change Password - Handles password change logic with validation.
   sl.registerLazySingleton(() => ChangePasswordUseCase(sl()));
 
   // --------------------------------------------------------------------------
   // NOTE: ChangePasswordViewModel is NOT registered here because:
-  // - It uses ChangePasswordUseCase which is registered above
-  // - It is created directly in the ChangePasswordPage
-  // - This follows the rule: ViewModels are created per screen, not as singletons
+  // - It uses ChangePasswordUseCase which is registered above.
+  // - It is created directly in the ChangePasswordPage.
+  // - This follows the rule: ViewModels are created per screen, not as singletons.
   // --------------------------------------------------------------------------
 }
 
 // ============================================================================
 // ABOUT FEATURE (About Us, Terms, Privacy)
 // ============================================================================
-/// Registers all dependencies for the About feature
+
+/// Registers all dependencies for the About feature.
 ///
 /// This feature handles:
-/// - Fetching about content (About Us, Terms & Conditions, Privacy Policy)
-/// - Saving/Updating about content (Admin only) - creates document if not exists
-/// - Reading about content (User view)
+/// - Fetching about content (About Us, Terms & Conditions, Privacy Policy).
+/// - Saving/Updating about content (Admin only) - creates document if not exists.
+/// - Reading about content (User view).
 void _initAboutFeature() {
   // --------------------------------------------------------------------------
   // 1. DATA SOURCES (External Communication Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Making Firestore calls for about content
+  // Responsible for: Making Firestore calls for about content.
   sl.registerLazySingleton(() => AboutRemoteDataSource(firestore: sl()));
 
   // --------------------------------------------------------------------------
   // 2. REPOSITORIES (Data Abstraction Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Converting data between domain and data sources
-  // Implements: AboutRepository interface
+  // Responsible for: Converting data between domain and data sources.
+  // Implements: AboutRepository interface.
   sl.registerLazySingleton<AboutRepository>(
     () => AboutRepositoryImpl(remoteDataSource: sl()),
   );
@@ -888,36 +1002,39 @@ void _initAboutFeature() {
   // --------------------------------------------------------------------------
   // 3. USE CASES (Business Logic Layer)
   // --------------------------------------------------------------------------
-  // Responsible for: Implementing specific business rules
-  // Each use case does ONE thing (Single Responsibility Principle)
-  // Depends on: AboutRepository
+  // Responsible for: Implementing specific business rules.
+  // Each use case does ONE thing (Single Responsibility Principle).
+  // Depends on: AboutRepository.
 
-  // Get About Content - Fetches about content from Firestore
+  // Get About Content - Fetches about content from Firestore.
   sl.registerLazySingleton(() => GetAboutContentUseCase(sl()));
 
-  // Save About Content - Saves/Updates about content in Firestore (creates if not exists)
+  // Save About Content - Saves/Updates about content in Firestore (creates if not exists).
   sl.registerLazySingleton(
     () => SaveAboutContentUseCase(sl()),
-  ); // Changed from Update to Save
+  ); // Changed from Update to Save.
+
+  // Delete About Content - Deletes about content from Firestore.
   sl.registerLazySingleton(() => DeleteAboutContentUseCase(sl()));
 
   // --------------------------------------------------------------------------
   // NOTE: AboutViewerViewModel and AboutEditorViewModel are NOT registered here because:
-  // - Requires documentId and title parameters that change per page
-  // - Created directly in the AboutViewerPage and AboutEditorPage
-  // - This follows the rule: Don't register dependencies that have runtime parameters
+  // - Requires documentId and title parameters that change per page.
+  // - Created directly in the AboutViewerPage and AboutEditorPage.
+  // - This follows the rule: Don't register dependencies that have runtime parameters.
   // --------------------------------------------------------------------------
 }
 
 // ============================================================================
 // HELP CENTER FEATURE
 // ============================================================================
-/// Registers all dependencies for the Help Center feature
+
+/// Registers all dependencies for the Help Center feature.
 ///
 /// This feature handles:
-/// - Users submitting support issues
-/// - Admins viewing and replying to issues
-/// - Image uploads for issues
+/// - Users submitting support issues.
+/// - Admins viewing and replying to issues.
+/// - Image uploads for issues.
 void _initHelpCenterFeature() {
   // --------------------------------------------------------------------------
   // 1. DATA SOURCES (External Communication Layer)
@@ -943,17 +1060,21 @@ void _initHelpCenterFeature() {
   sl.registerLazySingleton(() => GetUserEmailUseCase(sl()));
 }
 
+// ============================================================================
+// RATING FEATURE
+// ============================================================================
+
 /// Handles the init rating feature operation.
 void _initRatingFeature() {
-  // Data Source
+  // Data Source.
   sl.registerLazySingleton(() => RatingRemoteDataSource(firestore: sl()));
 
-  // Repository
+  // Repository.
   sl.registerLazySingleton<RatingRepository>(
     () => RatingRepositoryImpl(remoteDataSource: sl()),
   );
 
-  // Use Cases
+  // Use Cases.
   sl.registerLazySingleton(() => GetUserRatingUseCase(sl()));
   sl.registerLazySingleton(() => GetAllRatingsUseCase(sl()));
   sl.registerLazySingleton(() => SaveRatingUseCase(sl()));
@@ -961,17 +1082,21 @@ void _initRatingFeature() {
   sl.registerLazySingleton(() => UploadRatingImageUseCase(sl()));
 }
 
+// ============================================================================
+// FAQ FEATURE
+// ============================================================================
+
 /// Handles the init faq feature operation.
 void _initFaqFeature() {
-  // Data Source
+  // Data Source.
   sl.registerLazySingleton(() => FaqRemoteDataSource(firestore: sl()));
 
-  // Repository
+  // Repository.
   sl.registerLazySingleton<FaqRepository>(
     () => FaqRepositoryImpl(remoteDataSource: sl()),
   );
 
-  // Use Cases
+  // Use Cases.
   sl.registerLazySingleton(() => GetUserFaqItemsUseCase(sl()));
   sl.registerLazySingleton(() => GetAdminFaqItemsUseCase(sl()));
   sl.registerLazySingleton(() => AddFaqItemUseCase(sl()));
@@ -983,6 +1108,7 @@ void _initFaqFeature() {
 // ============================================================================
 // FUTURE FEATURES - TEMPLATES
 // ============================================================================
+
 /// When adding new features, follow these templates:
 
 /*
@@ -1039,25 +1165,25 @@ void _initSimpleFeature() {
 ///
 /// 1. For ViewModels (always use registerFactory):
 ///    sl.registerFactory(() => MyViewModel(...));
-///    Reason: Each screen needs a fresh instance
+///    Reason: Each screen needs a fresh instance.
 ///
 /// 2. For Use Cases (always use registerLazySingleton):
 ///    sl.registerLazySingleton(() => MyUseCase(sl()));
-///    Reason: Use cases have no state, can be shared
+///    Reason: Use cases have no state, can be shared.
 ///
 /// 3. For Repositories (always use registerLazySingleton):
 ///    sl.registerLazySingleton<MyRepository>(() => MyRepositoryImpl(...));
-///    Reason: Repositories are stateless, can be shared
+///    Reason: Repositories are stateless, can be shared.
 ///
 /// 4. For Data Sources (always use registerLazySingleton):
 ///    sl.registerLazySingleton(() => MyDataSource(...));
-///    Reason: Data sources are stateless, can be shared
+///    Reason: Data sources are stateless, can be shared.
 ///
 /// HOW TO ADD A NEW DEPENDENCY:
-/// 1. Import the class at the top of this file
-/// 2. Find the appropriate feature section or create a new one
-/// 3. Register using the correct type (factory vs lazySingleton)
-/// 4. Pass any dependencies using sl<DependencyClass>()
+/// 1. Import the class at the top of this file.
+/// 2. Find the appropriate feature section or create a new one.
+/// 3. Register using the correct type (factory vs lazySingleton).
+/// 4. Pass any dependencies using sl<DependencyClass>().
 ///
 /// EXAMPLE:
 /// // Adding a new use case for recipe search

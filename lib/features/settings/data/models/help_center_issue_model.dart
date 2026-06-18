@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/help_center_issue.dart';
 
 /// Defines behavior for help center issue model.
+/// Maps Firestore documents to HelpCenterIssue domain entities.
 class HelpCenterIssueModel extends HelpCenterIssue {
   /// Creates a help center issue model instance.
   const HelpCenterIssueModel({
@@ -19,13 +20,18 @@ class HelpCenterIssueModel extends HelpCenterIssue {
     super.repliedAt,
   });
 
-  /// Creates a help center issue model instance.
+  /// Creates a help center issue model instance from a Firestore document.
   factory HelpCenterIssueModel.fromFirestore(DocumentSnapshot doc) {
+    // Extract data from the document.
     final data = doc.data() as Map<String, dynamic>;
+
+    // Determine if the issue has been replied to.
     final status = data['status'] as String?;
     final replied = status != null
         ? status == 'replied' || status == 'closed'
         : data['replied'] as bool? ?? false;
+
+    // Get timestamp fields.
     final createdAt = data['createdAt'] ?? data['timestamp'];
     final repliedAt = data['repliedAt'];
 

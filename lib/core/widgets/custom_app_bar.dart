@@ -9,20 +9,49 @@ import '../theme/app_colors.dart';
 // Design: White background, black text/icons, centered title, with shadow
 // ============================================================================
 
+/// Reusable custom app bar widget.
+/// Provides consistent styling and behavior across the app.
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
+  /// Title text displayed in the app bar.
   final String title;
+
+  /// Whether the title should be centered.
   final bool centerTitle;
+
+  /// Leading widget (back button by default).
   final Widget? leading;
+
+  /// Custom title widget (overrides title text).
   final Widget? titleWidget;
+
+  /// List of action widgets on the right side.
   final List<Widget>? actions;
+
+  /// Whether to show a confirmation dialog when navigating back.
   final bool showConfirmationOnBack;
+
+  /// Whether there are unsaved changes.
   final bool hasUnsavedChanges;
+
+  /// Callback when saving changes.
   final VoidCallback? onSaveChanges;
+
+  /// Background color of the app bar.
   final Color? backgroundColor;
+
+  /// Foreground color of the app bar.
   final Color? foregroundColor;
+
+  /// Elevation of the app bar.
   final double elevation;
+
+  /// Height of the app bar.
   final double toolbarHeight;
+
+  /// Width of the leading widget.
   final double? leadingWidth;
+
+  /// Spacing for the title.
   final double? titleSpacing;
 
   /// Creates a custom app bar instance.
@@ -51,7 +80,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
-    // Default to white background, black text
+    // Default to white background, black text.
     final bgColor = backgroundColor ?? Colors.white;
     final fgColor = foregroundColor ?? Colors.black;
 
@@ -71,7 +100,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       leadingWidth: leadingWidth,
       titleSpacing: titleSpacing,
       title:
-          titleWidget ??
+      titleWidget ??
           Text(
             title,
             style: TextStyle(
@@ -124,14 +153,19 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
     ).then((shouldSave) {
+      // Check if context is still mounted.
       if (!context.mounted) return;
 
+      // Handle save action.
       if (shouldSave == true && onSaveChanges != null) {
         onSaveChanges!();
+
+        // Pop after a short delay to allow save to complete.
         Future.delayed(const Duration(milliseconds: 100), () {
           if (context.mounted) Navigator.pop(context);
         });
       } else if (shouldSave == false) {
+        // Handle discard action.
         Navigator.pop(context);
       }
     });
