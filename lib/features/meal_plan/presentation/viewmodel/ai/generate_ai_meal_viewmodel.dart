@@ -1,19 +1,21 @@
 import 'package:flutter/foundation.dart';
 
-import '../../../../core/extensions/either_extensions.dart';
-import '../../../../core/services/weather_category_service.dart';
-import '../../../recipe/domain/entities/add_recipe_basic_info.dart';
-import '../../../recipe/domain/entities/add_recipe_ingredient.dart';
-import '../../../recipe/domain/entities/add_recipe_instruction.dart';
-import '../../domain/entities/add_meal_ai_plan.dart';
-import '../../domain/entities/meal_plan_inspiration_input.dart';
-import '../../domain/usecases/generate_ai_meal_ideas_usecase.dart';
-import '../../domain/usecases/get_add_meal_ai_plan_usecase.dart';
-import '../../domain/usecases/get_meal_plan_default_ingredients_usecase.dart';
-import '../../domain/usecases/get_meal_plan_inspiration_options_usecase.dart';
-import '../../domain/usecases/get_meal_categories_usecase.dart';
-import '../../domain/usecases/save_ai_meal_plan_usecase.dart';
-import '../../domain/usecases/search_meal_plan_ingredients_usecase.dart';
+import '../../../../../core/extensions/either_extensions.dart';
+import '../../../../../core/services/weather_category_service.dart';
+import '../../../../recipe/domain/entities/add_recipe_basic_info.dart';
+import '../../../../recipe/domain/entities/add_recipe_ingredient.dart';
+import '../../../../recipe/domain/entities/add_recipe_instruction.dart';
+import '../../../domain/entities/add_meal_ai_plan.dart';
+import '../../../domain/entities/meal_calorie_guidance.dart';
+import '../../../domain/services/meal_calorie_guidance_service.dart';
+import '../../../domain/entities/meal_plan_inspiration_input.dart';
+import '../../../domain/usecases/generate_ai_meal_ideas_usecase.dart';
+import '../../../domain/usecases/get_add_meal_ai_plan_usecase.dart';
+import '../../../domain/usecases/get_meal_plan_default_ingredients_usecase.dart';
+import '../../../domain/usecases/get_meal_plan_inspiration_options_usecase.dart';
+import '../../../domain/usecases/get_meal_categories_usecase.dart';
+import '../../../domain/usecases/save_ai_meal_plan_usecase.dart';
+import '../../../domain/usecases/search_meal_plan_ingredients_usecase.dart';
 
 /// ViewModel for the Generate AI Meal feature.
 /// Manages state for the multi-step AI meal generation wizard.
@@ -60,6 +62,9 @@ class GenerateAiMealViewModel extends ChangeNotifier {
 
   /// Whether to auto-generate on load.
   final bool autoGenerate;
+
+  /// Calorie budget for the selected day.
+  final MealCalorieBudget calorieBudget;
 
   // =========================================================================
   // STATE
@@ -170,6 +175,7 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     DateTime? selectedDate,
     this.initialRequest,
     this.autoGenerate = false,
+    this.calorieBudget = const MealCalorieBudget.empty(),
     required GetAddMealAiPlanUseCase getPlanUseCase,
     required GenerateAiMealIdeasUseCase generateIdeasUseCase,
     required GetMealCategoriesUseCase getMealCategoriesUseCase,
@@ -178,13 +184,13 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     required GetMealPlanInspirationOptionsUseCase getInspirationOptionsUseCase,
     required SearchMealPlanIngredientsUseCase searchIngredientsUseCase,
   }) : initialSelectedDate = selectedDate,
-        _getPlanUseCase = getPlanUseCase,
-        _generateIdeasUseCase = generateIdeasUseCase,
-        _getMealCategoriesUseCase = getMealCategoriesUseCase,
-        _saveAiMealPlanUseCase = saveAiMealPlanUseCase,
-        _getDefaultIngredientsUseCase = getDefaultIngredientsUseCase,
-        _getInspirationOptionsUseCase = getInspirationOptionsUseCase,
-        _searchIngredientsUseCase = searchIngredientsUseCase {
+       _getPlanUseCase = getPlanUseCase,
+       _generateIdeasUseCase = generateIdeasUseCase,
+       _getMealCategoriesUseCase = getMealCategoriesUseCase,
+       _saveAiMealPlanUseCase = saveAiMealPlanUseCase,
+       _getDefaultIngredientsUseCase = getDefaultIngredientsUseCase,
+       _getInspirationOptionsUseCase = getInspirationOptionsUseCase,
+       _searchIngredientsUseCase = searchIngredientsUseCase {
     // Load the plan asynchronously after construction.
     Future.microtask(loadPlan);
   }
@@ -357,6 +363,14 @@ class GenerateAiMealViewModel extends ChangeNotifier {
         .toList();
   }
 
+  /// Calorie guidance for the first selected recipe.
+  MealCalorieGuidance? get selectedRecipeCalorieGuidance {
+    // Single-select recipe flow keeps the first selected recipe authoritative.
+    final recipe = selectedRecipes.isEmpty ? null : selectedRecipes.first;
+    if (recipe == null) return null;
+    return calorieGuidanceFor(recipe);
+  }
+
   /// Recipe draft basic info.
   AddRecipeBasicInfo? get recipeDraftBasicInfo => _recipeDraftBasicInfo;
 
@@ -374,8 +388,8 @@ class GenerateAiMealViewModel extends ChangeNotifier {
   /// Whether the recipe draft is complete.
   bool get hasRecipeDraft =>
       _recipeDraftBasicInfo != null &&
-          _recipeDraftIngredients.isNotEmpty &&
-          _recipeDraftInstructions.isNotEmpty;
+      _recipeDraftIngredients.isNotEmpty &&
+      _recipeDraftInstructions.isNotEmpty;
 
   // =========================================================================
   // LOADING
@@ -405,16 +419,16 @@ class GenerateAiMealViewModel extends ChangeNotifier {
       _plan = request == null
           ? plan
           : AddMealAiPlan(
-        planningDate: request.planningDate,
-        mealType: request.mealType,
-        weather: request.weather,
-        preferences: request.preferences,
-        ingredientsToInclude: request.ingredientsToInclude,
-        ingredientsToAvoid: request.ingredientsToAvoid,
-        dishPreferences: plan.dishPreferences,
-        topMatches: const [],
-        aiIdeas: const [],
-      );
+              planningDate: request.planningDate,
+              mealType: request.mealType,
+              weather: request.weather,
+              preferences: request.preferences,
+              ingredientsToInclude: request.ingredientsToInclude,
+              ingredientsToAvoid: request.ingredientsToAvoid,
+              dishPreferences: plan.dishPreferences,
+              topMatches: const [],
+              aiIdeas: const [],
+            );
 
       // Set selected date.
       _selectedDate =
@@ -502,8 +516,8 @@ class GenerateAiMealViewModel extends ChangeNotifier {
 
       // Select the matching category.
       _selectedMealCategory = categories.firstWhere(
-            (item) =>
-        item.id == mealCategoryId ||
+        (item) =>
+            item.id == mealCategoryId ||
             item.name.toLowerCase() == mealType.toLowerCase(),
         orElse: () => categories.isEmpty
             ? const AddMealCategoryOption(id: 'breakfast', name: 'Breakfast')
@@ -673,11 +687,11 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     // Get preferences from plan or use defaults.
     final preferences =
         _plan?.preferences ??
-            const AddMealPreferenceSnapshot(
-              diet: 'No Preference',
-              allergies: [],
-              dislikes: [],
-            );
+        const AddMealPreferenceSnapshot(
+          diet: 'No Preference',
+          allergies: [],
+          dislikes: [],
+        );
 
     return AddMealAiGenerationRequest(
       planningDate: selectedDate,
@@ -689,8 +703,8 @@ class GenerateAiMealViewModel extends ChangeNotifier {
             .where(
               (item) => selectedIngredientsToAvoid.any(
                 (selected) => selected.toLowerCase() == item.toLowerCase(),
-          ),
-        )
+              ),
+            )
             .toList(),
         dislikes: selectedIngredientsToAvoid,
       ),
@@ -703,6 +717,19 @@ class GenerateAiMealViewModel extends ChangeNotifier {
       difficulty: selectedDifficulty,
       servingCount: _selectedServingSize,
       servingSize: selectedServingSize,
+      calorieBudget: calorieBudget,
+    );
+  }
+
+  /// Builds calorie guidance for a candidate AI recipe.
+  MealCalorieGuidance calorieGuidanceFor(AddMealAiRecipe recipe) {
+    /*
+     * AI recipe cards and review cards share one target calculation.
+     * Recipe calories are stored in kcal before display-unit conversion.
+     */
+    return MealCalorieGuidanceService().evaluate(
+      budget: calorieBudget,
+      mealCalories: recipe.calories,
     );
   }
 
@@ -935,7 +962,7 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     if (trimmed.isEmpty || trimmed == 'No Preference') return;
 
     final index = values.indexWhere(
-          (item) => item.toLowerCase() == trimmed.toLowerCase(),
+      (item) => item.toLowerCase() == trimmed.toLowerCase(),
     );
 
     if (index >= 0) {
@@ -951,7 +978,7 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     if (trimmed.isEmpty) return;
 
     final exists = values.any(
-          (item) => item.toLowerCase() == trimmed.toLowerCase(),
+      (item) => item.toLowerCase() == trimmed.toLowerCase(),
     );
 
     if (!exists) values.add(trimmed);

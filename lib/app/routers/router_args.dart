@@ -2,6 +2,7 @@ import 'dart:io';
 
 import '../../features/auth/domain/entities/user_entity.dart';
 import '../../features/meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../features/meal_plan/domain/entities/meal_calorie_guidance.dart';
 import '../../features/recipe/domain/entities/add_recipe_basic_info.dart';
 import '../../features/recipe/domain/entities/add_recipe_ingredient.dart';
 import '../../features/recipe/domain/entities/add_recipe_instruction.dart';
@@ -12,12 +13,12 @@ import '../../features/settings/domain/entities/user_profile.dart';
 
 /// Callback type for saving FAQ items.
 typedef FaqSaveCallback =
-Future<bool> Function({
-required String question,
-required String answer,
-File? questionImageFile,
-File? answerImageFile,
-});
+    Future<bool> Function({
+      required String question,
+      required String answer,
+      File? questionImageFile,
+      File? answerImageFile,
+    });
 
 // ============================================================================
 // AUTHENTICATION ROUTE ARGUMENTS
@@ -187,6 +188,9 @@ class MealPlanSelectionArgs {
   /// Existing recipe IDs to exclude.
   final List<String> existingRecipeIds;
 
+  /// Calorie budget for the selected day.
+  final MealCalorieBudget calorieBudget;
+
   /// Creates a new meal plan selection args instance.
   const MealPlanSelectionArgs({
     required this.userId,
@@ -195,6 +199,7 @@ class MealPlanSelectionArgs {
     required this.mealCategoryName,
     required this.source,
     this.existingRecipeIds = const [],
+    this.calorieBudget = const MealCalorieBudget.empty(),
   });
 }
 
@@ -215,6 +220,9 @@ class AddMealPlanArgs {
   /// Existing recipe IDs to exclude.
   final List<String> existingRecipeIds;
 
+  /// Calorie budget for the selected day.
+  final MealCalorieBudget calorieBudget;
+
   /// Creates a new add meal plan args instance.
   const AddMealPlanArgs({
     this.userId,
@@ -222,6 +230,7 @@ class AddMealPlanArgs {
     this.mealCategoryId,
     this.selectedDate,
     this.existingRecipeIds = const [],
+    this.calorieBudget = const MealCalorieBudget.empty(),
   });
 }
 
@@ -245,6 +254,9 @@ class GenerateAiMealArgs {
   /// Whether to auto-generate.
   final bool autoGenerate;
 
+  /// Calorie budget for the selected day.
+  final MealCalorieBudget calorieBudget;
+
   /// Creates a new generate AI meal args instance.
   const GenerateAiMealArgs({
     this.userId,
@@ -253,6 +265,7 @@ class GenerateAiMealArgs {
     this.selectedDate,
     this.initialRequest,
     this.autoGenerate = false,
+    this.calorieBudget = const MealCalorieBudget.empty(),
   });
 }
 

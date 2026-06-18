@@ -1,7 +1,5 @@
 // Builds the admin help center screen.
 
-import 'dart:math' as math;
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -11,8 +9,6 @@ import 'package:provider/provider.dart';
 import '../../../../../../app/dependency_injection/injection_container.dart';
 import '../../../../../../app/routers/app_router.dart';
 import '../../../../../../app/routers/router_args.dart';
-import '../../../../../../core/theme/app_colors.dart';
-import '../../../../../../core/theme/app_theme.dart';
 import '../../../../../../core/widgets/custom_app_bar.dart';
 import '../../../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../domain/entities/help_center_issue.dart';
@@ -21,6 +17,7 @@ import '../../../../domain/usecases/support/help_center/get_admin_issues_usecase
 import '../../../../domain/usecases/support/help_center/reply_to_issue_usecase.dart';
 import '../../../../domain/usecases/support/help_center/update_issue_status_usecase.dart';
 import '../../../viewmodel/support/admin_help_center_viewmodel.dart';
+import '../../../widgets/support/help_center_common_widgets.dart';
 
 /// Defines behavior for admin help center page.
 class AdminHelpCenterPage extends StatelessWidget {
@@ -90,108 +87,24 @@ class _AdminHelpCenterPageViewState extends State<_AdminHelpCenterPageView> {
   }
 
   Widget _buildHeroCard() {
-    final theme = Theme.of(context);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(18, 22, 18, 14),
-      padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFEAF8F0), Color(0xFFE2F4E9), Color(0xFFF4FBF6)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: 0.08),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            right: -4,
-            top: 6,
-            child: IgnorePointer(
-              child: Image.asset(
-                'assets/images/help_center.png',
-                width: 132,
-                height: 142,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 142),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Support tickets',
-                  style: AppTheme.lightTheme.textTheme.headlineSmall?.copyWith(
-                    fontSize: 26,
-                    height: 1.15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Review user tickets, reply quickly, and keep every issue moving.',
-                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.45),
-                ),
-                const SizedBox(height: 22),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 164),
-            child: _buildSearchField(),
-          ),
-        ],
-      ),
+    return HelpCenterHeroCard(
+      title: 'Support tickets',
+      message:
+          'Review user tickets, reply quickly, and keep every issue moving.',
+      searchField: _buildSearchField(),
     );
   }
 
   Widget _buildSearchField() {
-    final theme = Theme.of(context);
-
-    return TextField(
+    return HelpCenterSearchField(
       controller: _searchController,
+      searchQuery: _searchQuery,
+      hintText: 'Search tickets or users...',
       onChanged: (value) => setState(() => _searchQuery = value.trim()),
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Search tickets or users...',
-        hintStyle: theme.inputDecorationTheme.hintStyle?.copyWith(fontSize: 14),
-        prefixIcon: Icon(
-          Icons.search_rounded,
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-          size: 22,
-        ),
-        suffixIcon: _searchQuery.isEmpty
-            ? null
-            : IconButton(
-                tooltip: 'Clear search',
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () {
-                  _searchController.clear();
-                  setState(() => _searchQuery = '');
-                },
-              ),
-        filled: true,
-        fillColor: theme.colorScheme.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide.none,
-        ),
-      ),
+      onClear: () {
+        _searchController.clear();
+        setState(() => _searchQuery = '');
+      },
     );
   }
 
@@ -199,47 +112,15 @@ class _AdminHelpCenterPageViewState extends State<_AdminHelpCenterPageView> {
     BuildContext context,
     AdminHelpCenterViewModel viewModel,
   ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-      child: Row(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _FilterChipButton(
-                    label: 'All',
-                    isSelected: viewModel.statusFilter == 'All',
-                    onTap: () => viewModel.setStatusFilter('All'),
-                  ),
-                  const SizedBox(width: 12),
-                  _FilterChipButton(
-                    label: 'Open',
-                    isSelected: viewModel.statusFilter == 'Open',
-                    onTap: () => viewModel.setStatusFilter('Open'),
-                  ),
-                  const SizedBox(width: 12),
-                  _FilterChipButton(
-                    label: 'Closed',
-                    isSelected: viewModel.statusFilter == 'Closed',
-                    onTap: () => viewModel.setStatusFilter('Closed'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          _SortMenuButton(
-            sortLatestFirst: viewModel.sortDescending,
-            onSelected: (latestFirst) {
-              if (viewModel.sortDescending != latestFirst) {
-                viewModel.toggleSortOrder();
-              }
-            },
-          ),
-        ],
-      ),
+    return HelpCenterFilterSortRow(
+      selectedStatus: viewModel.statusFilter,
+      sortLatestFirst: viewModel.sortDescending,
+      onStatusSelected: viewModel.setStatusFilter,
+      onSortSelected: (latestFirst) {
+        if (viewModel.sortDescending != latestFirst) {
+          viewModel.toggleSortOrder();
+        }
+      },
     );
   }
 
@@ -253,7 +134,7 @@ class _AdminHelpCenterPageViewState extends State<_AdminHelpCenterPageView> {
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 28),
       children: [
         if (issues.isEmpty)
-          _buildEmptyTicketsCard(
+          HelpCenterEmptyTicketsCard(
             title: _searchQuery.isEmpty
                 ? 'No more tickets'
                 : 'No tickets found',
@@ -360,7 +241,7 @@ class _AdminHelpCenterPageViewState extends State<_AdminHelpCenterPageView> {
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        _buildStatusBadge(issue),
+                        HelpCenterStatusBadge(issue: issue),
                         const Spacer(),
                         const Icon(
                           Icons.visibility_outlined,
@@ -414,100 +295,6 @@ class _AdminHelpCenterPageViewState extends State<_AdminHelpCenterPageView> {
     );
   }
 
-  Widget _buildStatusBadge(HelpCenterIssue issue) {
-    final status = issue.normalizedStatus;
-    final label = status == 'closed' ? 'Closed' : 'Open';
-    final color = status == 'closed'
-        ? const Color(0xFFE53935)
-        : AppColors.primary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyTicketsCard({
-    required String title,
-    required String message,
-  }) {
-    final theme = Theme.of(context);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 24, 12, 6),
-      child: CustomPaint(
-        painter: _DashedBorderPainter(
-          color: const Color(0xFFDDE3EA),
-          radius: 18,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 28, 18, 30),
-          child: Column(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF8F0),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                      blurRadius: 14,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.inventory_2_outlined,
-                  color: Color(0xFF81C991),
-                  size: 34,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(height: 1.35),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _navigateToIssueDetail(
     BuildContext context,
     AdminHelpCenterViewModel viewModel,
@@ -523,165 +310,5 @@ class _AdminHelpCenterPageViewState extends State<_AdminHelpCenterPageView> {
         onStatusChanged: () => viewModel.loadIssues(),
       ),
     );
-  }
-}
-
-class _FilterChipButton extends StatelessWidget {
-  const _FilterChipButton({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final foreground = isSelected
-        ? theme.colorScheme.onPrimary
-        : theme.colorScheme.onSurface;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(28),
-        onTap: onTap,
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : const Color(0xFFE3E6EB),
-            ),
-            boxShadow: [
-              if (isSelected)
-                BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.22),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-            ],
-          ),
-          child: Text(
-            label,
-            style: theme.textTheme.labelLarge?.copyWith(color: foreground),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SortMenuButton extends StatelessWidget {
-  const _SortMenuButton({
-    required this.sortLatestFirst,
-    required this.onSelected,
-  });
-
-  final bool sortLatestFirst;
-  final ValueChanged<bool> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return PopupMenuButton<bool>(
-      tooltip: 'Sort tickets',
-      onSelected: onSelected,
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: true,
-          child: Row(
-            children: [
-              Icon(
-                Icons.check_rounded,
-                size: 18,
-                color: sortLatestFirst
-                    ? theme.colorScheme.primary
-                    : Colors.transparent,
-              ),
-              const SizedBox(width: 8),
-              const Text('Newest'),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: false,
-          child: Row(
-            children: [
-              Icon(
-                Icons.check_rounded,
-                size: 18,
-                color: !sortLatestFirst
-                    ? theme.colorScheme.primary
-                    : Colors.transparent,
-              ),
-              const SizedBox(width: 8),
-              const Text('Oldest'),
-            ],
-          ),
-        ),
-      ],
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: const Color(0xFFE3E6EB)),
-        ),
-        child: Icon(
-          Icons.tune_rounded,
-          color: theme.colorScheme.onSurface,
-          size: 24,
-        ),
-      ),
-    );
-  }
-}
-
-class _DashedBorderPainter extends CustomPainter {
-  const _DashedBorderPainter({required this.color, required this.radius});
-
-  final Color color;
-  final double radius;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    final rect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(radius),
-    );
-    final path = Path()..addRRect(rect);
-
-    for (final metric in path.computeMetrics()) {
-      var distance = 0.0;
-      const dashWidth = 7.0;
-      const dashSpace = 6.0;
-
-      while (distance < metric.length) {
-        final next = math.min(distance + dashWidth, metric.length);
-        canvas.drawPath(metric.extractPath(distance, next), paint);
-        distance = next + dashSpace;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.radius != radius;
   }
 }

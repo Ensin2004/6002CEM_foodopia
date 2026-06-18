@@ -6,6 +6,7 @@ class _RecipeTab extends StatelessWidget {
   final VoidCallback onComingSoonTap;
   final VoidCallback onPlanMeal;
   final bool showPlanMeal;
+  final MealCalorieGuidance? calorieGuidance;
 
   const _RecipeTab({
     required this.viewModel,
@@ -13,6 +14,7 @@ class _RecipeTab extends StatelessWidget {
     required this.onComingSoonTap,
     required this.onPlanMeal,
     required this.showPlanMeal,
+    required this.calorieGuidance,
   });
 
   @override
@@ -61,6 +63,7 @@ class _RecipeTab extends StatelessWidget {
             recipe: recipe,
             onPlanMeal: onPlanMeal,
             showPlanMeal: showPlanMeal,
+            calorieGuidance: calorieGuidance,
           )
         else
           _InstructionsList(recipe: recipe),
@@ -73,11 +76,13 @@ class _IngredientsList extends StatelessWidget {
   final ExploreRecipe recipe;
   final VoidCallback onPlanMeal;
   final bool showPlanMeal;
+  final MealCalorieGuidance? calorieGuidance;
 
   const _IngredientsList({
     required this.recipe,
     required this.onPlanMeal,
     required this.showPlanMeal,
+    required this.calorieGuidance,
   });
 
   @override
@@ -109,14 +114,19 @@ class _IngredientsList extends StatelessWidget {
             ),
           ],
         ),
-        if (showPlanMeal) ...[
+        if (showPlanMeal || calorieGuidance != null) ...[
           const SizedBox(height: 18),
-          PrimaryButton(
-            onPressed: onPlanMeal,
-            text:
-                'Plan a meal (Total Calorie: ${recipe.nutrition.calories} kcal)',
-            verticalPadding: 14,
-          ),
+          if (calorieGuidance != null) ...[
+            _ExploreCalorieGuidanceBox(guidance: calorieGuidance!),
+            const SizedBox(height: 10),
+          ],
+          if (showPlanMeal)
+            PrimaryButton(
+              onPressed: onPlanMeal,
+              text:
+                  'Plan a meal (Total Calorie: ${recipe.nutrition.calories} kcal)',
+              verticalPadding: 14,
+            ),
         ],
       ],
     );
@@ -217,6 +227,52 @@ class _InstructionsList extends StatelessWidget {
   }
 }
 
+/// Calorie guidance box for existing recipe planning.
+class _ExploreCalorieGuidanceBox extends StatelessWidget {
+  /// Guidance details for the selected recipe.
+  final MealCalorieGuidance guidance;
+
+  /// Creates a new explore calorie guidance box instance.
+  const _ExploreCalorieGuidanceBox({required this.guidance});
+
+  @override
+  Widget build(BuildContext context) {
+    // Guidance color matches the candidate status.
+    final color = switch (guidance.status) {
+      MealCalorieGuidanceStatus.exceeds => const Color(0xFFE2762D),
+      MealCalorieGuidanceStatus.nearTarget => AppColors.secondary,
+      MealCalorieGuidanceStatus.fits => AppColors.primary,
+      MealCalorieGuidanceStatus.unknown => AppColors.textSecondary,
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.local_fire_department_outlined, color: color, size: 19),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '${guidance.mealCalories} ${guidance.calorieUnit} - '
+              '${guidance.badgeLabel}',
+              style: context.text.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _InstructionTimelineMarker extends StatelessWidget {
   final bool showLine;
 
@@ -309,7 +365,6 @@ class _RecipeDetailThumbnail extends StatelessWidget {
 enum _NutritionSummaryMode { total, serving }
 
 enum _IngredientMacroCategory { carbohydrates, protein, fats }
-
 
 class _IngredientListItem extends StatelessWidget {
   final ExploreIngredient ingredient;
@@ -416,4 +471,3 @@ class _IngredientCategoryGroup {
 
   const _IngredientCategoryGroup(this.name, this.ingredients);
 }
-

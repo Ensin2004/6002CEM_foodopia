@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 
-import '../../../../core/extensions/either_extensions.dart';
-import '../../domain/entities/add_grocery_list_plan.dart';
-import '../../domain/usecases/create_grocery_list_usecase.dart';
-import '../../domain/usecases/get_add_grocery_list_plan_usecase.dart';
+import '../../../../../core/extensions/either_extensions.dart';
+import '../../../domain/entities/add_grocery_list_plan.dart';
+import '../../../domain/usecases/create_grocery_list_usecase.dart';
+import '../../../domain/usecases/get_add_grocery_list_plan_usecase.dart';
 
 /// ViewModel for the Add Grocery List feature.
 /// Manages state for the two-step grocery list creation wizard.
@@ -77,7 +77,7 @@ class AddGroceryListViewModel extends ChangeNotifier {
     required GetAddGroceryListPlanUseCase getPlanUseCase,
     required CreateGroceryListUseCase createGroceryListUseCase,
   }) : _getPlanUseCase = getPlanUseCase,
-        _createGroceryListUseCase = createGroceryListUseCase {
+       _createGroceryListUseCase = createGroceryListUseCase {
     // Load the plan asynchronously after construction.
     Future.microtask(loadPlan);
   }
@@ -127,7 +127,7 @@ class AddGroceryListViewModel extends ChangeNotifier {
     // Generate list of days.
     return List.generate(
       totalDays < 1 ? 1 : totalDays,
-          (index) => _dateOnly(_startDate.add(Duration(days: index))),
+      (index) => _dateOnly(_startDate.add(Duration(days: index))),
     );
   }
 
@@ -170,13 +170,13 @@ class AddGroceryListViewModel extends ChangeNotifier {
     return dateRangeDays
         .where((date) => !_excludedDays.contains(_dateOnly(date)))
         .map((date) {
-      // Find sections for this date.
-      final sections = source
-          .where((day) => _isSameDay(day.date, date))
-          .expand((day) => day.sections)
-          .toList();
-      return GroceryMealDayPlan(date: date, sections: sections);
-    })
+          // Find sections for this date.
+          final sections = source
+              .where((day) => _isSameDay(day.date, date))
+              .expand((day) => day.sections)
+              .toList();
+          return GroceryMealDayPlan(date: date, sections: sections);
+        })
         .toList();
   }
 

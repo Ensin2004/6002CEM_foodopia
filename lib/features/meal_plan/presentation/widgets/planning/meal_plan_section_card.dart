@@ -9,6 +9,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../../core/widgets/media/app_recipe_media.dart';
+import '../../../domain/entities/meal_calorie_guidance.dart';
 import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
 
@@ -96,25 +97,28 @@ class MealPlanSectionCard extends StatelessWidget {
               onPressed: remainingCount <= 0
                   ? null
                   : () {
-                // Get required data from view model.
-                final userId = context.read<MealPlanViewModel>().userId;
-                final selectedDate = context
-                    .read<MealPlanViewModel>()
-                    .dashboard
-                    ?.selectedDate;
+                      // Get required data from view model.
+                      final userId = context.read<MealPlanViewModel>().userId;
+                      final selectedDate = context
+                          .read<MealPlanViewModel>()
+                          .dashboard
+                          ?.selectedDate;
+                      final viewModel = context.read<MealPlanViewModel>();
+                      final calorieBudget = _calorieBudgetFor(viewModel);
 
-                // Navigate to add meal plan.
-                context.push(
-                  AppRouter.addMealPlan,
-                  extra: AddMealPlanArgs(
-                    userId: userId,
-                    mealType: section.mealType,
-                    mealCategoryId: section.mealCategoryId,
-                    selectedDate: selectedDate,
-                    existingRecipeIds: existingRecipeIds,
-                  ),
-                );
-              },
+                      // Navigate to add meal plan.
+                      context.push(
+                        AppRouter.addMealPlan,
+                        extra: AddMealPlanArgs(
+                          userId: userId,
+                          mealType: section.mealType,
+                          mealCategoryId: section.mealCategoryId,
+                          selectedDate: selectedDate,
+                          existingRecipeIds: existingRecipeIds,
+                          calorieBudget: calorieBudget,
+                        ),
+                      );
+                    },
               style: OutlinedButton.styleFrom(
                 backgroundColor: remainingCount <= 0
                     ? AppColors.background
@@ -147,6 +151,31 @@ class MealPlanSectionCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Builds the calorie budget for the selected planning date.
+  MealCalorieBudget _calorieBudgetFor(MealPlanViewModel viewModel) {
+    /*
+     * The dashboard already contains only meals for the selected date.
+     * Summing all section calories gives the current daily calorie usage.
+     */
+    final plannedCalories =
+        viewModel.dashboard?.sections.fold<int>(0, (sectionTotal, section) {
+          return sectionTotal +
+              section.meals.fold<int>(
+                0,
+                (mealTotal, meal) => mealTotal + meal.calories,
+              );
+        }) ??
+        0;
+    final preferences = viewModel.preferences;
+
+    return MealCalorieBudget(
+      plannedCalories: plannedCalories,
+      targetCalories: preferences?.targetCalories,
+      calorieUnit: preferences?.calorieUnit ?? 'kcal',
+      targetEnabled: preferences?.calorieTargetEnabled ?? false,
     );
   }
 }
@@ -285,9 +314,9 @@ class _MealRow extends StatelessWidget {
 
   /// Shows a confirmation dialog before removing a meal.
   Future<void> _confirmRemoveMeal(
-      BuildContext context,
-      MealPlanMeal meal,
-      ) async {
+    BuildContext context,
+    MealPlanMeal meal,
+  ) async {
     // Show confirmation dialog.
     final confirmed = await showDialog<bool>(
       context: context,
