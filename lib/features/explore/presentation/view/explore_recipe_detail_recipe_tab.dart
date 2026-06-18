@@ -306,11 +306,6 @@ class _RecipeDetailThumbnail extends StatelessWidget {
   }
 }
 
-enum _NutritionSummaryMode { total, serving }
-
-enum _IngredientMacroCategory { carbohydrates, protein, fats }
-
-
 class _IngredientListItem extends StatelessWidget {
   final ExploreIngredient ingredient;
 

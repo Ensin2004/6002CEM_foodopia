@@ -25,6 +25,33 @@ import '../models/add_recipe_review_model.dart';
 import '../models/add_recipe_setup_model.dart';
 
 class AddRecipeRemoteDataSource {
+  static const List<String> _nutrientKeys = [
+    'calories',
+    'protein',
+    'carbohydrates',
+    'fat',
+    'fiber',
+    'water',
+    'vitaminA',
+    'vitaminC',
+    'vitaminD',
+    'vitaminE',
+    'vitaminK',
+    'vitaminB1',
+    'vitaminB2',
+    'vitaminB3',
+    'vitaminB6',
+    'vitaminB9',
+    'vitaminB12',
+    'calcium',
+    'iron',
+    'magnesium',
+    'phosphorus',
+    'potassium',
+    'sodium',
+    'zinc',
+  ];
+
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
   final FoodSearchService foodSearchService;
@@ -276,7 +303,10 @@ class AddRecipeRemoteDataSource {
           ? analysis!.ingredientCategoryId
           : othersCategoryId;
       final nutrients = _normalizedNutrients(ingredient.usdaNutrients);
-      final ingredientNutrients = nutrients ?? analysis?.nutrients;
+      final ingredientNutrients = _mergedNutrients(
+        nutrients,
+        analysis?.nutrients,
+      );
       _addNutrients(recipeNutrients, ingredientNutrients);
 
       final model = AddRecipeIngredientModel(
@@ -302,7 +332,8 @@ class AddRecipeRemoteDataSource {
   }
 
   /// Loads active ingredients categories
-  Future<List<AddRecipeIngredientCategory>> _getActiveIngredientCategories() async {
+  Future<List<AddRecipeIngredientCategory>>
+  _getActiveIngredientCategories() async {
     final snapshot = await firestore
         .collection('app_config')
         .doc('ingredient_categories')
@@ -382,28 +413,104 @@ class AddRecipeRemoteDataSource {
     if (nutrients == null || nutrients.isEmpty) return null;
 
     final normalized = {
-      'calories': _nutrientValue(nutrients, const ['calories', 'calorie', 'energy']),
-      'carbohydrates': _nutrientValue(nutrients, const ['carbohydrates', 'carbohydrate', 'carbs']),
+      'calories': _nutrientValue(
+        nutrients,
+        const ['calories', 'calorie', 'energy'],
+      ),
+      'carbohydrates': _nutrientValue(
+        nutrients,
+        const ['carbohydrates', 'carbohydrate', 'carbs'],
+      ),
       'fat': _nutrientValue(nutrients, const ['fat', 'fats', 'totalFat']),
       'protein': _nutrientValue(nutrients, const ['protein', 'proteins']),
+      'fiber': _nutrientValue(nutrients, const ['fiber', 'dietaryFiber']),
+      'water': _nutrientValue(nutrients, const ['water', 'moisture']),
+      'sodium': _nutrientValue(nutrients, const ['sodium']),
+      'potassium': _nutrientValue(nutrients, const ['potassium']),
+      'calcium': _nutrientValue(nutrients, const ['calcium']),
+      'iron': _nutrientValue(nutrients, const ['iron']),
+      'magnesium': _nutrientValue(nutrients, const ['magnesium']),
+      'phosphorus': _nutrientValue(
+        nutrients,
+        const ['phosphorus', 'phosphorous'],
+      ),
+      'zinc': _nutrientValue(nutrients, const ['zinc']),
+      'vitaminA': _nutrientValue(
+        nutrients,
+        const ['vitaminA', 'vitaminARAE', 'retinol'],
+      ),
+      'vitaminC': _nutrientValue(nutrients, const ['vitaminC', 'ascorbic']),
+      'vitaminD': _nutrientValue(nutrients, const ['vitaminD']),
+      'vitaminE': _nutrientValue(
+        nutrients,
+        const ['vitaminE', 'alphatocopherol', 'tocopherol'],
+      ),
+      'vitaminK': _nutrientValue(nutrients, const ['vitaminK']),
+      'vitaminB1': _nutrientValue(
+        nutrients,
+        const ['vitaminB1', 'thiamin', 'thiamine'],
+      ),
+      'vitaminB2': _nutrientValue(
+        nutrients,
+        const ['vitaminB2', 'riboflavin'],
+      ),
+      'vitaminB3': _nutrientValue(
+        nutrients,
+        const ['vitaminB3', 'niacin'],
+      ),
+      'vitaminB6': _nutrientValue(nutrients, const ['vitaminB6']),
+      'vitaminB9': _nutrientValue(
+        nutrients,
+        const ['vitaminB9', 'folate', 'folicAcid'],
+      ),
+      'vitaminB12': _nutrientValue(nutrients, const ['vitaminB12', 'cobalamin']),
     };
 
     if (normalized.values.every((value) => value == 0)) return null;
     return normalized;
   }
 
+  Map<String, dynamic>? _mergedNutrients(
+    Map<String, dynamic>? preferred,
+    Map<String, dynamic>? fallback,
+  ) {
+    if (preferred == null && fallback == null) return null;
+
+    final merged = <String, dynamic>{};
+    for (final key in _nutrientKeys) {
+      final preferredValue = _numericValue(preferred?[key]);
+      final fallbackValue = _numericValue(fallback?[key]);
+      merged[key] = preferredValue > 0 ? preferredValue : fallbackValue;
+    }
+
+    if (merged.values.every((value) => _numericValue(value) == 0)) return null;
+    return merged;
+  }
+
   /// Fetch nutrients data
   double _nutrientValue(Map<String, dynamic> nutrients, List<String> keys) {
     for (final entry in nutrients.entries) {
-      final normalizedKey = entry.key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+      final normalizedKey = entry.key.toLowerCase().replaceAll(
+        RegExp(r'[^a-z0-9]'),
+        '',
+      );
       for (final key in keys) {
-        final targetKey = key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
-        if (normalizedKey == targetKey || normalizedKey.contains(targetKey)) {
+        final targetKey = key.toLowerCase().replaceAll(
+          RegExp(r'[^a-z0-9]'),
+          '',
+        );
+        if (_nutrientKeyMatches(normalizedKey, targetKey)) {
           return _numericValue(entry.value);
         }
       }
     }
     return 0;
+  }
+
+  bool _nutrientKeyMatches(String normalizedKey, String targetKey) {
+    if (normalizedKey == targetKey) return true;
+    if (targetKey.startsWith('vitaminb')) return false;
+    return normalizedKey.contains(targetKey);
   }
 
   double _numericValue(dynamic value) {
@@ -415,7 +522,7 @@ class AddRecipeRemoteDataSource {
   }
 
   Map<String, dynamic> _emptyNutrients() {
-    return {'calories': 0.0, 'carbohydrates': 0.0, 'fat': 0.0, 'protein': 0.0};
+    return {for (final key in _nutrientKeys) key: 0.0};
   }
 
   /// Add nutrients together to get total nutrients
@@ -424,8 +531,9 @@ class AddRecipeRemoteDataSource {
     Map<String, dynamic>? nutrients,
   ) {
     if (nutrients == null) return;
-    for (final key in const ['calories', 'carbohydrates', 'fat', 'protein']) {
-      total[key] = _numericValue(total[key]) + _numericValue(nutrients[key]);
+    for (final key in _nutrientKeys) {
+      total[key] =
+          _numericValue(total[key]) + _numericValue(nutrients[key]);
     }
   }
 
