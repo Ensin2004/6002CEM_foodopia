@@ -7,6 +7,7 @@ import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_review.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
+import '../../domain/usecases/get_add_recipe_ingredient_image_usecase.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
@@ -15,6 +16,7 @@ class AddRecipeIngredientsViewModel extends ChangeNotifier {
   final GetAddRecipeIngredientUnitsUseCase getIngredientUnitsUseCase;
   final SearchAddRecipeFoodsUseCase searchFoodsUseCase;
   final GetAddRecipeFoodNutrientsUseCase getFoodNutrientsUseCase;
+  final GetAddRecipeIngredientImageUseCase getIngredientImageUseCase;
   final SaveAddRecipeIngredientsUseCase saveIngredientsUseCase;
   final GetAddRecipeReviewUseCase getReviewUseCase;
 
@@ -28,6 +30,7 @@ class AddRecipeIngredientsViewModel extends ChangeNotifier {
     required this.getIngredientUnitsUseCase,
     required this.searchFoodsUseCase,
     required this.getFoodNutrientsUseCase,
+    required this.getIngredientImageUseCase,
     required this.saveIngredientsUseCase,
     required this.getReviewUseCase,
   }) {
@@ -102,6 +105,12 @@ class AddRecipeIngredientsViewModel extends ChangeNotifier {
 
   Future<Map<String, dynamic>?> getFoodNutrients(int fdcId) async {
     final result = await getFoodNutrientsUseCase.execute(fdcId);
+    if (result.isLeft()) return null;
+    return result.right;
+  }
+
+  Future<String?> getIngredientImageUrl(String ingredientName) async {
+    final result = await getIngredientImageUseCase.execute(ingredientName);
     if (result.isLeft()) return null;
     return result.right;
   }

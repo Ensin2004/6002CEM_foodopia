@@ -405,6 +405,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                     icon: Icons.science_rounded,
                     title: "Nutrients (AI Estimated)",
                     children: [
+                      const _NutritionSubheader(title: "Macronutrients"),
                       ReviewInfoRow(
                         label: "Calories",
                         value: review.nutrients.calories,
@@ -753,18 +754,19 @@ class _NutritionSubheader extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
-        AppSpacing.lg,
+        AppSpacing.sm,
         AppSpacing.md,
         AppSpacing.sm,
       ),
       decoration: const BoxDecoration(
+        color: Color(0xFFFFF4B8),
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: Text(
         title,
-        style: context.text.bodySmall?.copyWith(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w700,
+        style: context.text.labelLarge?.copyWith(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

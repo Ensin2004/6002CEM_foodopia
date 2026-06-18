@@ -47,18 +47,26 @@ class _RecipeTab extends StatelessWidget {
         const SizedBox(height: 6),
         Text(recipe.allergenInfo, style: textTheme.bodyMedium),
         const SizedBox(height: 14),
-        AppPillSegmentedControl(
-          labels: const ['Ingredients', 'Instructions'],
-          selectedIndex: ExploreRecipeMethodTab.values.indexOf(
-            viewModel.selectedMethodTab,
-          ),
-          onChanged: (index) =>
-              viewModel.selectMethodTab(ExploreRecipeMethodTab.values[index]),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppPillSegmentedControl(
+              labels: const ['Ingredients', 'Instructions'],
+              selectedIndex: ExploreRecipeMethodTab.values.indexOf(
+                viewModel.selectedMethodTab,
+              ),
+              onChanged: (index) => viewModel.selectMethodTab(
+                ExploreRecipeMethodTab.values[index],
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         if (viewModel.selectedMethodTab == ExploreRecipeMethodTab.ingredients)
           _IngredientsList(
             recipe: recipe,
+            unitSystem: viewModel.selectedUnitSystem,
+            onUnitSystemChanged: viewModel.selectUnitSystem,
             onPlanMeal: onPlanMeal,
             showPlanMeal: showPlanMeal,
           )
@@ -71,11 +79,15 @@ class _RecipeTab extends StatelessWidget {
 
 class _IngredientsList extends StatelessWidget {
   final ExploreRecipe recipe;
+  final ExploreRecipeUnitSystem unitSystem;
+  final ValueChanged<ExploreRecipeUnitSystem> onUnitSystemChanged;
   final VoidCallback onPlanMeal;
   final bool showPlanMeal;
 
   const _IngredientsList({
     required this.recipe,
+    required this.unitSystem,
+    required this.onUnitSystemChanged,
     required this.onPlanMeal,
     required this.showPlanMeal,
   });
@@ -89,7 +101,18 @@ class _IngredientsList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Ingredients List', style: textTheme.titleMedium),
+        Row(
+          children: [
+            Expanded(
+              child: Text('Ingredients List', style: textTheme.titleMedium),
+            ),
+            const SizedBox(width: 12),
+            _UnitSystemDropdown(
+              selectedUnitSystem: unitSystem,
+              onChanged: onUnitSystemChanged,
+            ),
+          ],
+        ),
         Text('${recipe.ingredients.length} items', style: textTheme.bodyMedium),
         const SizedBox(height: 10),
         ...ingredientGroups.expand(
@@ -105,7 +128,10 @@ class _IngredientsList extends StatelessWidget {
               ),
             ),
             ...group.ingredients.map(
-              (ingredient) => _IngredientListItem(ingredient: ingredient),
+              (ingredient) => _IngredientListItem(
+                ingredient: ingredient,
+                unitSystem: unitSystem,
+              ),
             ),
           ],
         ),
@@ -306,10 +332,74 @@ class _RecipeDetailThumbnail extends StatelessWidget {
   }
 }
 
+class _UnitSystemDropdown extends StatelessWidget {
+  final ExploreRecipeUnitSystem selectedUnitSystem;
+  final ValueChanged<ExploreRecipeUnitSystem> onChanged;
+
+  const _UnitSystemDropdown({
+    required this.selectedUnitSystem,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+
+    return SizedBox(
+      width: 116,
+      child: DropdownButtonFormField<ExploreRecipeUnitSystem>(
+        value: selectedUnitSystem,
+        dropdownColor: Colors.white,
+        focusColor: Colors.transparent,
+        isDense: true,
+        decoration: InputDecoration(
+          hintText: 'Units',
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 4,
+          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+        ),
+        style: textTheme.bodySmall,
+        items: ExploreRecipeUnitSystem.values.map((system) {
+          return DropdownMenuItem(
+            value: system,
+            child: Text(_unitSystemLabel(system)),
+          );
+        }).toList(),
+        onChanged: (system) {
+          if (system != null) onChanged(system);
+        },
+      ),
+    );
+  }
+
+  String _unitSystemLabel(ExploreRecipeUnitSystem system) {
+    return switch (system) {
+      ExploreRecipeUnitSystem.original => 'Original',
+      ExploreRecipeUnitSystem.metric => 'Metric',
+      ExploreRecipeUnitSystem.imperial => 'Imperial',
+    };
+  }
+}
+
 class _IngredientListItem extends StatelessWidget {
   final ExploreIngredient ingredient;
+  final ExploreRecipeUnitSystem unitSystem;
 
-  const _IngredientListItem({required this.ingredient});
+  const _IngredientListItem({
+    required this.ingredient,
+    required this.unitSystem,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -363,16 +453,18 @@ class _IngredientListItem extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
               decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.secondary),
               ),
               child: Text(
-                ingredient.amount,
+                _formatIngredientAmount(ingredient.amount, unitSystem),
                 maxLines: 3,
                 overflow: TextOverflow.visible,
                 textAlign: TextAlign.center,
-                style: textTheme.bodySmall,
+                style: textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFFF3A518),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -380,6 +472,156 @@ class _IngredientListItem extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatIngredientAmount(
+  String amount,
+  ExploreRecipeUnitSystem unitSystem,
+) {
+  if (unitSystem == ExploreRecipeUnitSystem.original) return amount;
+
+  final trimmed = amount.trim();
+  final match = RegExp(
+    r'^([0-9]+(?:\.[0-9]+)?)(?:\s*(.+))?$',
+    caseSensitive: false,
+  ).firstMatch(trimmed);
+  if (match == null) return amount;
+
+  final value = double.tryParse(match.group(1) ?? '');
+  final unit = match.group(2)?.trim() ?? '';
+  if (value == null || unit.isEmpty) return amount;
+
+  final converted = unitSystem == ExploreRecipeUnitSystem.metric
+      ? _toMetric(value, unit)
+      : _toImperial(value, unit);
+
+  return converted ?? amount;
+}
+
+String? _toMetric(double value, String unit) {
+  final normalized = _normalizeUnit(unit);
+  switch (normalized) {
+    case 'oz':
+    case 'ounce':
+    case 'ounces':
+      return '${_formatUnitAmount(value * 28.3495)} g';
+    case 'lb':
+    case 'lbs':
+    case 'pound':
+    case 'pounds':
+      return '${_formatUnitAmount(value * 453.592)} g';
+    case 'fl oz':
+    case 'fluid ounce':
+    case 'fluid ounces':
+      return '${_formatUnitAmount(value * 29.5735)} mL';
+    case 'cup':
+    case 'cups':
+      return '${_formatUnitAmount(value * 236.588)} mL';
+    case 'pint':
+    case 'pints':
+      return '${_formatUnitAmount(value * 473.176)} mL';
+    case 'quart':
+    case 'quarts':
+      return '${_formatUnitAmount(value * 946.353)} mL';
+    case 'gallon':
+    case 'gallons':
+      return '${_formatUnitAmount(value * 3.78541)} L';
+    default:
+      return null;
+  }
+}
+
+String? _toImperial(double value, String unit) {
+  final normalized = _normalizeUnit(unit);
+  switch (normalized) {
+    case 'g':
+    case 'gram':
+    case 'grams':
+      if (value >= 453.592) {
+        return '${_formatUnitAmount(value / 453.592)} lb';
+      }
+      return '${_formatUnitAmount(value / 28.3495)} oz';
+    case 'kg':
+    case 'kilogram':
+    case 'kilograms':
+      return '${_formatUnitAmount(value * 2.20462)} lb';
+    case 'ml':
+    case 'milliliter':
+    case 'milliliters':
+    case 'millilitre':
+    case 'millilitres':
+      return _formatCupLabel(value / 236.588);
+    case 'l':
+    case 'liter':
+    case 'liters':
+    case 'litre':
+    case 'litres':
+      return _formatCupLabel(value * 4.22675);
+    default:
+      return null;
+  }
+}
+
+String _normalizeUnit(String unit) {
+  return unit.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+}
+
+String _formatUnitAmount(double value) {
+  final rounded = value.roundToDouble();
+  if ((value - rounded).abs() < 0.05) return rounded.toInt().toString();
+  if (value >= 10) return value.toStringAsFixed(1);
+  return value.toStringAsFixed(2);
+}
+
+String _formatCupAmount(double value) {
+  final whole = value.floor();
+  final remainder = value - whole;
+  const fractions = <_CookingFraction>[
+    _CookingFraction(0, ''),
+    _CookingFraction(1 / 4, '¼'),
+    _CookingFraction(1 / 3, '⅓'),
+    _CookingFraction(1 / 2, '½'),
+    _CookingFraction(2 / 3, '⅔'),
+    _CookingFraction(3 / 4, '¾'),
+    _CookingFraction(1, ''),
+  ];
+
+  var closest = fractions.first;
+  var smallestDistance = (remainder - closest.value).abs();
+  for (final fraction in fractions.skip(1)) {
+    final distance = (remainder - fraction.value).abs();
+    if (distance < smallestDistance) {
+      smallestDistance = distance;
+      closest = fraction;
+    }
+  }
+
+  var roundedWhole = whole;
+  if (closest.value == 1) {
+    roundedWhole += 1;
+    closest = fractions.first;
+  }
+
+  if (roundedWhole == 0 && closest.value == 0 && value > 0) {
+    closest = fractions[1];
+  }
+
+  if (roundedWhole == 0) return closest.label;
+  if (closest.value == 0) return roundedWhole.toString();
+  return '$roundedWhole ${closest.label}';
+}
+
+String _formatCupLabel(double value) {
+  final amount = _formatCupAmount(value);
+  final isSingular = amount == '1' || !amount.contains(RegExp(r'[0-9]'));
+  return '$amount ${isSingular ? 'cup' : 'cups'}';
+}
+
+class _CookingFraction {
+  final double value;
+  final String label;
+
+  const _CookingFraction(this.value, this.label);
 }
 
 List<_IngredientCategoryGroup> _groupIngredientsByCategory(

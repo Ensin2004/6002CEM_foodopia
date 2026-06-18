@@ -18,6 +18,15 @@ import '../viewmodel/explore_viewmodel.dart';
 import '../widgets/explore_empty_state.dart';
 import '../widgets/explore_recipe_grid.dart';
 
+enum _ExploreFilterTarget {
+  recipeCategory,
+  meal,
+  ingredients,
+  preparationTime,
+  comments,
+  views,
+}
+
 class ExplorePage extends StatelessWidget {
   final bool showAppBar;
   final MealPlanSelectionArgs? mealPlanSelection;
@@ -34,6 +43,9 @@ class ExplorePage extends StatelessWidget {
       create: (_) => ExploreViewModel(
         getRecipesUseCase: sl(),
         watchRecipesUseCase: sl(),
+        getRecipeSetupUseCase: sl(),
+        getIngredientCategoriesUseCase: sl(),
+        getMealCategoriesUseCase: sl(),
         toggleCreatorFollowUseCase: sl(),
         toggleFavouriteUseCase: sl(),
       ),
@@ -141,9 +153,8 @@ class _ExplorePageViewState extends State<_ExplorePageView>
               tabController: _tabController,
               viewModel: viewModel,
               onSearchChanged: viewModel.updateQuery,
-              onSortTap: () => _showSortSheet(context, viewModel),
-              onFilterTap: () => _showFilterSheet(context, viewModel),
-              onCategoryChanged: viewModel.updateCategoryFilter,
+              onFilterTap: (target) =>
+                  _showFilterDialog(context, viewModel, target: target),
             ),
             Expanded(
               child: TabBarView(
@@ -165,38 +176,60 @@ class _ExplorePageViewState extends State<_ExplorePageView>
     );
   }
 
-  Future<void> _showSortSheet(
+  Future<void> _showFilterDialog(
     BuildContext context,
-    ExploreViewModel viewModel,
-  ) async {
-    final selected = await showModalBottomSheet<Set<ExploreSortOption>>(
+    ExploreViewModel viewModel, {
+    _ExploreFilterTarget? target,
+  }) async {
+    final selected = await showGeneralDialog<_RecipeFilterSelection>(
       context: context,
-      showDragHandle: true,
-      builder: (sheetContext) =>
-          _RecipeSortSheet(selected: viewModel.sortOptions),
-    );
-    if (selected != null) viewModel.updateSortOptions(selected);
-  }
-
-  Future<void> _showFilterSheet(
-    BuildContext context,
-    ExploreViewModel viewModel,
-  ) async {
-    final selected = await showModalBottomSheet<_RecipeFilterSelection>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) => _RecipeFilterSheet(
-        initial: _RecipeFilterSelection(
-          rating: viewModel.ratingFilter,
-          comments: viewModel.commentsFilter,
-          views: viewModel.viewsFilter,
-        ),
-      ),
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return _RecipeFilterDialog(
+          recipeCategories: viewModel.categoryOptions,
+          ingredientCategories: viewModel.ingredientCategoryOptions,
+          mealCategories: viewModel.mealCategoryOptions,
+          initialTarget: target,
+          initial: _RecipeFilterSelection(
+            sortOptions: viewModel.sortOptions,
+            recipeCategories: viewModel.recipeCategoryFilters,
+            ingredientCategories: viewModel.ingredientCategoryFilters,
+            mealCategories: viewModel.mealCategoryFilters,
+            preparationTimes: viewModel.preparationTimeFilters,
+            ratings: viewModel.ratingFilters,
+            comments: viewModel.commentsFilters,
+            views: viewModel.viewsFilters,
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.04),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
     );
     if (selected != null) {
+      viewModel.updateSortOptions(selected.sortOptions);
       viewModel.updateFilters(
-        rating: selected.rating,
+        recipeCategories: selected.recipeCategories,
+        ingredientCategories: selected.ingredientCategories,
+        mealCategories: selected.mealCategories,
+        preparationTimes: selected.preparationTimes,
+        ratings: selected.ratings,
         comments: selected.comments,
         views: selected.views,
       );
@@ -340,15 +373,16 @@ class _ExploreContent extends StatelessWidget {
       );
     }
 
-    if (viewModel.shouldShowFollowingEmptyFor(tab)) {
-      return ExploreEmptyState(onExploreNow: onExploreNow);
-    }
-
     if (tab == ExploreRecipeTab.following) {
       return _FollowingCreatorsList(
         creators: viewModel.followedCreators,
+        suggestedCreators: viewModel.suggestedCreators,
         onToggleFollow: viewModel.toggleCreatorFollow,
       );
+    }
+
+    if (viewModel.shouldShowFollowingEmptyFor(tab)) {
+      return ExploreEmptyState(onExploreNow: onExploreNow);
     }
 
     final recipes = viewModel.visibleRecipesFor(tab);
@@ -389,120 +423,385 @@ class _ExploreContent extends StatelessWidget {
   }
 }
 
-class _FollowingCreatorsList extends StatelessWidget {
+class _FollowingCreatorsList extends StatefulWidget {
   final List<ExploreCreatorSummary> creators;
+  final List<ExploreCreatorSummary> suggestedCreators;
   final ValueChanged<String> onToggleFollow;
 
   const _FollowingCreatorsList({
     required this.creators,
+    required this.suggestedCreators,
+    required this.onToggleFollow,
+  });
+
+  @override
+  State<_FollowingCreatorsList> createState() => _FollowingCreatorsListState();
+}
+
+class _FollowingCreatorsListState extends State<_FollowingCreatorsList> {
+  static const _suggestionBatchSize = 20;
+  int _visibleSuggestionCount = _suggestionBatchSize;
+
+  @override
+  void didUpdateWidget(covariant _FollowingCreatorsList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.suggestedCreators.length < _visibleSuggestionCount) {
+      _visibleSuggestionCount =
+          widget.suggestedCreators.length < _suggestionBatchSize
+          ? _suggestionBatchSize
+          : widget.suggestedCreators.length;
+    }
+  }
+
+  void _showMoreSuggestions() {
+    setState(() {
+      final nextCount = _visibleSuggestionCount + _suggestionBatchSize;
+      _visibleSuggestionCount = nextCount > widget.suggestedCreators.length
+          ? widget.suggestedCreators.length
+          : nextCount;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleSuggestions = widget.suggestedCreators
+        .take(_visibleSuggestionCount)
+        .toList(growable: false);
+    final hasMoreSuggestions =
+        widget.suggestedCreators.length > visibleSuggestions.length;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      children: [
+        _CreatorSectionHeader(
+          title: 'Total following: ${widget.creators.length}',
+        ),
+        const SizedBox(height: 8),
+        if (widget.creators.isEmpty)
+          const _CreatorEmptyMessage(message: 'No followed creators yet.')
+        else
+          ..._separatedCreatorTiles(
+            creators: widget.creators,
+          ),
+        const SizedBox(height: 22),
+        const _CreatorSectionHeader(title: 'Suggested for you'),
+        const SizedBox(height: 10),
+        if (visibleSuggestions.isEmpty)
+          const _CreatorEmptyMessage(message: 'No suggested creators yet.')
+        else
+          SizedBox(
+            height: 194,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              itemCount:
+                  visibleSuggestions.length + (hasMoreSuggestions ? 1 : 0),
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                if (index == visibleSuggestions.length) {
+                  return _SuggestedViewMoreCard(onPressed: _showMoreSuggestions);
+                }
+                final creator = visibleSuggestions[index];
+                return _SuggestedCreatorCard(
+                  creator: creator,
+                  onToggleFollow: widget.onToggleFollow,
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  List<Widget> _separatedCreatorTiles({
+    required List<ExploreCreatorSummary> creators,
+  }) {
+    final widgets = <Widget>[];
+    for (var index = 0; index < creators.length; index++) {
+      widgets.add(
+        _FollowingCreatorTile(
+          creator: creators[index],
+          onToggleFollow: widget.onToggleFollow,
+        ),
+      );
+      if (index != creators.length - 1) {
+        widgets.add(
+          const Divider(height: 1, thickness: 0.7, color: AppColors.border),
+        );
+      }
+    }
+    return widgets;
+  }
+}
+
+class _CreatorSectionHeader extends StatelessWidget {
+  final String title;
+  final Widget? trailing;
+
+  const _CreatorSectionHeader({required this.title, this.trailing});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        if (trailing != null) trailing!,
+      ],
+    );
+  }
+}
+
+class _CreatorEmptyMessage extends StatelessWidget {
+  final String message;
+
+  const _CreatorEmptyMessage({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Text(
+        message,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: AppColors.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+class _FollowingCreatorTile extends StatelessWidget {
+  final ExploreCreatorSummary creator;
+  final ValueChanged<String> onToggleFollow;
+
+  const _FollowingCreatorTile({
+    required this.creator,
     required this.onToggleFollow,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      itemCount: creators.length + 1,
-      separatorBuilder: (_, index) => index == 0
-          ? const SizedBox(height: 8)
-          : const Divider(height: 1, thickness: 0.7, color: AppColors.border),
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              'Total following: ${creators.length}',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
+    return InkWell(
+      onTap: () {
+        context.push(
+          AppRouter.exploreCreatorDetail,
+          extra: ExploreCreatorDetailArgs(creatorUid: creator.uid),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Row(
+          children: [
+            _ExploreCreatorAvatar(
+              imagePath: creator.avatarPath,
+              radius: 28,
+              imageSize: 56,
+              iconSize: 32,
+              hasBorder: true,
+            ),
+            const SizedBox(width: 18),
+            Expanded(child: _CreatorTextBlock(creator: creator)),
+            const SizedBox(width: 12),
+            FilledButton(
+              onPressed: () => onToggleFollow(creator.uid),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: const Size(0, 38),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check, size: 15),
+                  SizedBox(width: 4),
+                  Text(
+                    'Following',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                  ),
+                ],
               ),
             ),
-          );
-        }
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-        final creator = creators[index - 1];
-        return InkWell(
-          onTap: () {
-            context.push(
-              AppRouter.exploreCreatorDetail,
-              extra: ExploreCreatorDetailArgs(creatorUid: creator.uid),
-            );
-          },
+class _SuggestedCreatorCard extends StatelessWidget {
+  final ExploreCreatorSummary creator;
+  final ValueChanged<String> onToggleFollow;
+
+  const _SuggestedCreatorCard({
+    required this.creator,
+    required this.onToggleFollow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        context.push(
+          AppRouter.exploreCreatorDetail,
+          extra: ExploreCreatorDetailArgs(creatorUid: creator.uid),
+        );
+      },
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(
+        width: 164,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border, width: 1),
+          ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+            child: Column(
               children: [
-                _ExploreCreatorAvatar(
-                  imagePath: creator.avatarPath,
-                  radius: 28,
-                  imageSize: 56,
-                  iconSize: 32,
-                  hasBorder: true,
-                ),
-                const SizedBox(width: 18),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        creator.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${_compactCount(creator.followerCount)} Followers',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 4),
+                _SuggestedCreatorAvatar(creator: creator),
+                const SizedBox(height: 6),
+                Text(
+                  creator.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(width: 12),
-                FilledButton(
-                  onPressed: () => onToggleFollow(creator.uid),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    minimumSize: const Size(0, 38),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 34,
+                  child: OutlinedButton(
+                    onPressed: () => onToggleFollow(creator.uid),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(17),
+                      ),
                     ),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check, size: 15),
-                      SizedBox(width: 4),
-                      Text(
-                        'Following',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    child: const Text(
+                      'Follow',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
+    );
+  }
+}
+
+class _SuggestedCreatorAvatar extends StatelessWidget {
+  final ExploreCreatorSummary creator;
+
+  const _SuggestedCreatorAvatar({required this.creator});
+
+  @override
+  Widget build(BuildContext context) {
+    return _ExploreCreatorAvatar(
+      imagePath: creator.avatarPath,
+      radius: 38,
+      imageSize: 76,
+      iconSize: 36,
+      hasBorder: false,
+    );
+  }
+}
+
+class _SuggestedViewMoreCard extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _SuggestedViewMoreCard({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 140,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border, width: 1),
+        ),
+        child: Center(
+          child: OutlinedButton(
+            onPressed: onPressed,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.primary),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(17),
+              ),
+            ),
+            child: const Text('View more'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CreatorTextBlock extends StatelessWidget {
+  final ExploreCreatorSummary creator;
+
+  const _CreatorTextBlock({required this.creator});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          creator.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          '${_compactCount(creator.followerCount)} Followers',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -519,17 +818,13 @@ class _ExploreFilters extends StatefulWidget {
   final TabController tabController;
   final ExploreViewModel viewModel;
   final ValueChanged<String> onSearchChanged;
-  final VoidCallback onSortTap;
-  final VoidCallback onFilterTap;
-  final ValueChanged<ExploreRecipeCategoryOption?> onCategoryChanged;
+  final ValueChanged<_ExploreFilterTarget?> onFilterTap;
 
   const _ExploreFilters({
     required this.tabController,
     required this.viewModel,
     required this.onSearchChanged,
-    required this.onSortTap,
     required this.onFilterTap,
-    required this.onCategoryChanged,
   });
 
   @override
@@ -665,68 +960,41 @@ class _ExploreFiltersState extends State<_ExploreFilters> {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
           child: Column(
             children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: widget.onSortTap,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 25,
-                      height: 30,
-                    ),
-                    icon: const Icon(
-                      Icons.sort,
-                      size: 25,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    onPressed: widget.onFilterTap,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 25,
-                      height: 30,
-                    ),
-                    icon: const Icon(
-                      Icons.filter_alt,
-                      size: 25,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _CategoryDropdown(
-                      selected: widget.viewModel.categoryFilter,
-                      options: widget.viewModel.categoryOptions,
-                      onChanged: widget.onCategoryChanged,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
               SizedBox(
-                height: 38,
+                height: 48,
                 child: TextField(
                   controller: _searchController,
                   readOnly: true,
                   onTap: _openSearchMenu,
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search, size: 20),
+                    prefixIcon: const Icon(Icons.search, size: 24),
                     hintText: 'Search food, brand, category, ...',
-                    suffixIcon: _searchController.text.trim().isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              widget.onSearchChanged('');
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.close, size: 18),
+                    suffixIcon: SizedBox(
+                      width: _searchController.text.trim().isEmpty ? 56 : 102,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_searchController.text.trim().isNotEmpty)
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                _searchController.clear();
+                                widget.onSearchChanged('');
+                                setState(() {});
+                              },
+                              icon: const Icon(Icons.close, size: 18),
+                            ),
+                          IconButton(
+                            tooltip: 'Sort and filter',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => widget.onFilterTap(null),
+                            icon: const Icon(Icons.filter_alt, size: 24),
                           ),
+                        ],
+                      ),
+                    ),
                     filled: true,
                     fillColor: AppColors.background,
                     contentPadding: EdgeInsets.zero,
@@ -739,6 +1007,56 @@ class _ExploreFiltersState extends State<_ExploreFilters> {
                       borderSide: const BorderSide(color: Colors.transparent),
                     ),
                   ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 42,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const ClampingScrollPhysics(),
+                  padding: const EdgeInsets.only(right: 4),
+                  children: [
+                    _FilterPill(
+                      icon: Icons.restaurant_menu,
+                      label: 'Recipe Category',
+                      onTap: () => widget.onFilterTap(
+                        _ExploreFilterTarget.recipeCategory,
+                      ),
+                    ),
+                    _FilterPill(
+                      icon: Icons.breakfast_dining,
+                      label: 'Meal',
+                      onTap: () =>
+                          widget.onFilterTap(_ExploreFilterTarget.meal),
+                    ),
+                    _FilterPill(
+                      icon: Icons.eco,
+                      label: 'Ingredients',
+                      onTap: () => widget.onFilterTap(
+                        _ExploreFilterTarget.ingredients,
+                      ),
+                    ),
+                    _FilterPill(
+                      icon: Icons.timer_outlined,
+                      label: 'Preparation Time',
+                      onTap: () => widget.onFilterTap(
+                        _ExploreFilterTarget.preparationTime,
+                      ),
+                    ),
+                    _FilterPill(
+                      icon: Icons.chat_bubble_outline,
+                      label: 'Comments',
+                      onTap: () =>
+                          widget.onFilterTap(_ExploreFilterTarget.comments),
+                    ),
+                    _FilterPill(
+                      icon: Icons.visibility_outlined,
+                      label: 'Views',
+                      onTap: () =>
+                          widget.onFilterTap(_ExploreFilterTarget.views),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 2),
@@ -765,6 +1083,55 @@ class _ExploreFiltersState extends State<_ExploreFilters> {
       case ExploreRecipeTab.following:
         return 'Following';
     }
+  }
+}
+
+class _FilterPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _FilterPill({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(17),
+        child: Container(
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(21),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 19, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -991,202 +1358,6 @@ class _ExploreSearchSheetState extends State<_ExploreSearchSheet> {
   }
 }
 
-class _CategoryDropdown extends StatelessWidget {
-  final ExploreRecipeCategoryOption? selected;
-  final List<ExploreRecipeCategoryOption> options;
-  final ValueChanged<ExploreRecipeCategoryOption?> onChanged;
-
-  const _CategoryDropdown({
-    required this.selected,
-    required this.options,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      position: PopupMenuPosition.under,
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
-      onSelected: (value) {
-        if (value == 'all') {
-          onChanged(null);
-          return;
-        }
-        for (final option in options) {
-          final key = '${option.isCustom ? 'custom' : 'standard'}:${option.id}';
-          if (key == value) {
-            onChanged(option);
-            return;
-          }
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(value: 'all', child: Text('All')),
-        ...options.map((option) {
-          return PopupMenuItem(
-            value: '${option.isCustom ? 'custom' : 'standard'}:${option.id}',
-            child: Text(option.name),
-          );
-        }),
-      ],
-      child: Container(
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                selected?.name ?? 'All',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            const Icon(
-              Icons.keyboard_arrow_down,
-              color: AppColors.textSecondary,
-              size: 18,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RecipeSortSheet extends StatefulWidget {
-  final Set<ExploreSortOption> selected;
-
-  const _RecipeSortSheet({required this.selected});
-
-  @override
-  State<_RecipeSortSheet> createState() => _RecipeSortSheetState();
-}
-
-class _RecipeSortSheetState extends State<_RecipeSortSheet> {
-  late Set<ExploreSortOption> _selected;
-
-  @override
-  void initState() {
-    super.initState();
-    _selected = {...widget.selected};
-  }
-
-  void _toggleSortOption(
-    ExploreSortOption option,
-    List<ExploreSortOption> group,
-  ) {
-    setState(() {
-      if (_selected.contains(option)) {
-        _selected.remove(option);
-      } else {
-        _selected.removeAll(group);
-        _selected.add(option);
-      }
-      if (_selected.isEmpty) {
-        _selected.add(ExploreSortOption.alphabetAZ);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Sort Recipes',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            _SortButtonSection(
-              title: 'By Alphabet:',
-              selected: _selected,
-              values: const [
-                ExploreSortOption.alphabetAZ,
-                ExploreSortOption.alphabetZA,
-              ],
-              labelBuilder: _sortLabel,
-              onSelected: _toggleSortOption,
-            ),
-            const SizedBox(height: 14),
-            _SortButtonSection(
-              title: 'By Date:',
-              selected: _selected,
-              values: const [
-                ExploreSortOption.newest,
-                ExploreSortOption.oldest,
-              ],
-              labelBuilder: _sortLabel,
-              onSelected: _toggleSortOption,
-            ),
-            const SizedBox(height: 14),
-            _SortButtonSection(
-              title: 'By Rating:',
-              selected: _selected,
-              values: const [
-                ExploreSortOption.ratingHighLow,
-                ExploreSortOption.ratingLowHigh,
-              ],
-              labelBuilder: _sortLabel,
-              onSelected: _toggleSortOption,
-            ),
-            const SizedBox(height: 14),
-            _SortButtonSection(
-              title: 'By Views:',
-              selected: _selected,
-              values: const [
-                ExploreSortOption.viewsHighLow,
-                ExploreSortOption.viewsLowHigh,
-              ],
-              labelBuilder: _sortLabel,
-              onSelected: _toggleSortOption,
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => Navigator.of(context).pop(_selected),
-                child: const Text('Apply Sort'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static String _sortLabel(ExploreSortOption option) {
-    switch (option) {
-      case ExploreSortOption.alphabetAZ:
-        return 'Alphabet: A-Z';
-      case ExploreSortOption.alphabetZA:
-        return 'Alphabet: Z-A';
-      case ExploreSortOption.newest:
-        return 'Date: Newest';
-      case ExploreSortOption.oldest:
-        return 'Date: Oldest';
-      case ExploreSortOption.ratingHighLow:
-        return 'Rating: High-Low';
-      case ExploreSortOption.ratingLowHigh:
-        return 'Rating: Low-High';
-      case ExploreSortOption.viewsHighLow:
-        return 'Views: High-Low';
-      case ExploreSortOption.viewsLowHigh:
-        return 'Views: Low-High';
-    }
-  }
-}
-
 class _SortButtonSection extends StatelessWidget {
   final String title;
   final Set<ExploreSortOption> selected;
@@ -1237,101 +1408,339 @@ class _SortButtonSection extends StatelessWidget {
 }
 
 class _RecipeFilterSelection {
-  final ExploreRatingFilter rating;
-  final ExploreCommentsFilter comments;
-  final ExploreViewsFilter views;
+  final Set<ExploreSortOption> sortOptions;
+  final Set<ExploreRecipeCategoryOption> recipeCategories;
+  final Set<ExploreRecipeCategoryOption> ingredientCategories;
+  final Set<String> mealCategories;
+  final Set<ExplorePreparationTimeFilter> preparationTimes;
+  final Set<ExploreRatingFilter> ratings;
+  final Set<ExploreCommentsFilter> comments;
+  final Set<ExploreViewsFilter> views;
 
   const _RecipeFilterSelection({
-    required this.rating,
+    required this.sortOptions,
+    required this.recipeCategories,
+    required this.ingredientCategories,
+    required this.mealCategories,
+    required this.preparationTimes,
+    required this.ratings,
     required this.comments,
     required this.views,
   });
 }
 
-class _RecipeFilterSheet extends StatefulWidget {
+class _RecipeFilterDialog extends StatefulWidget {
+  final List<ExploreRecipeCategoryOption> recipeCategories;
+  final List<ExploreRecipeCategoryOption> ingredientCategories;
+  final List<String> mealCategories;
+  final _ExploreFilterTarget? initialTarget;
   final _RecipeFilterSelection initial;
 
-  const _RecipeFilterSheet({required this.initial});
+  const _RecipeFilterDialog({
+    required this.recipeCategories,
+    required this.ingredientCategories,
+    required this.mealCategories,
+    this.initialTarget,
+    required this.initial,
+  });
 
   @override
-  State<_RecipeFilterSheet> createState() => _RecipeFilterSheetState();
+  State<_RecipeFilterDialog> createState() => _RecipeFilterDialogState();
 }
 
-class _RecipeFilterSheetState extends State<_RecipeFilterSheet> {
-  late ExploreRatingFilter _rating;
-  late ExploreCommentsFilter _comments;
-  late ExploreViewsFilter _views;
+class _RecipeFilterDialogState extends State<_RecipeFilterDialog> {
+  late Set<ExploreSortOption> _sortOptions;
+  late Set<ExploreRecipeCategoryOption> _recipeCategories;
+  late Set<ExploreRecipeCategoryOption> _ingredientCategories;
+  late Set<String> _mealCategories;
+  late Set<ExplorePreparationTimeFilter> _preparationTimes;
+  late Set<ExploreRatingFilter> _ratings;
+  late Set<ExploreCommentsFilter> _comments;
+  late Set<ExploreViewsFilter> _views;
+  final _mealKey = GlobalKey();
+  final _recipeCategoryKey = GlobalKey();
+  final _ingredientsKey = GlobalKey();
+  final _preparationTimeKey = GlobalKey();
+  final _commentsKey = GlobalKey();
+  final _viewsKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    _rating = widget.initial.rating;
-    _comments = widget.initial.comments;
-    _views = widget.initial.views;
+    _sortOptions = {...widget.initial.sortOptions};
+    _recipeCategories = {...widget.initial.recipeCategories};
+    _ingredientCategories = {...widget.initial.ingredientCategories};
+    _mealCategories = {...widget.initial.mealCategories};
+    _preparationTimes = {...widget.initial.preparationTimes};
+    _ratings = {...widget.initial.ratings};
+    _comments = {...widget.initial.comments};
+    _views = {...widget.initial.views};
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToInitialTarget();
+    });
+  }
+
+  void _scrollToInitialTarget() {
+    final target = widget.initialTarget;
+    if (target == null) return;
+    final key = switch (target) {
+      _ExploreFilterTarget.recipeCategory => _recipeCategoryKey,
+      _ExploreFilterTarget.meal => _mealKey,
+      _ExploreFilterTarget.ingredients => _ingredientsKey,
+      _ExploreFilterTarget.preparationTime => _preparationTimeKey,
+      _ExploreFilterTarget.comments => _commentsKey,
+      _ExploreFilterTarget.views => _viewsKey,
+    };
+    final context = key.currentContext;
+    if (context == null) return;
+    Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      alignment: 0.05,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          16 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Filter Recipes',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              _FilterButtonSection<ExploreRatingFilter>(
-                title: 'Ratings',
-                selected: _rating,
-                values: ExploreRatingFilter.values,
-                labelBuilder: _ratingFilterLabel,
-                onSelected: (value) => setState(() => _rating = value),
-              ),
-              const SizedBox(height: 14),
-              _FilterButtonSection<ExploreCommentsFilter>(
-                title: 'Comments',
-                selected: _comments,
-                values: ExploreCommentsFilter.values,
-                labelBuilder: _commentsFilterLabel,
-                onSelected: (value) => setState(() => _comments = value),
-              ),
-              const SizedBox(height: 14),
-              _FilterButtonSection<ExploreViewsFilter>(
-                title: 'Views',
-                selected: _views,
-                values: ExploreViewsFilter.values,
-                labelBuilder: _viewsFilterLabel,
-                onSelected: (value) => setState(() => _views = value),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.of(context).pop(
-                    _RecipeFilterSelection(
-                      rating: _rating,
-                      comments: _comments,
-                      views: _views,
+    return Material(
+      color: Colors.white,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                  Expanded(
+                    child: Text(
+                      'Sort and Filter',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
-                  child: const Text('Apply Filters'),
+                  TextButton(onPressed: _reset, child: const Text('Reset')),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.border),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SortButtonSection(
+                      title: 'Sort',
+                      selected: _sortOptions,
+                      values: ExploreSortOption.values,
+                      labelBuilder: _sortLabel,
+                      onSelected: _toggleSortOption,
+                    ),
+                    const SizedBox(height: 18),
+                    KeyedSubtree(
+                      key: _mealKey,
+                      child: _OptionChipSection<String>(
+                        title: 'Meal Category',
+                        values: widget.mealCategories,
+                        selected: _mealCategories,
+                        labelBuilder: (value) => value,
+                        onSelected: _toggleMealCategory,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    KeyedSubtree(
+                      key: _recipeCategoryKey,
+                      child: _OptionChipSection<ExploreRecipeCategoryOption>(
+                        title: 'Recipe Category',
+                        values: widget.recipeCategories,
+                        selected: _recipeCategories,
+                        labelBuilder: (value) => value.name,
+                        onSelected: _toggleRecipeCategory,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    KeyedSubtree(
+                      key: _ingredientsKey,
+                      child: _OptionChipSection<ExploreRecipeCategoryOption>(
+                        title: 'Ingredient Category',
+                        values: widget.ingredientCategories,
+                        selected: _ingredientCategories,
+                        labelBuilder: (value) => value.name,
+                        onSelected: _toggleIngredientCategory,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    KeyedSubtree(
+                      key: _preparationTimeKey,
+                      child:
+                          _MultiFilterButtonSection<ExplorePreparationTimeFilter>(
+                            title: 'Preparation Time',
+                            selected: _preparationTimes,
+                            values: ExplorePreparationTimeFilter.values,
+                            allValue: ExplorePreparationTimeFilter.all,
+                            labelBuilder: _preparationTimeFilterLabel,
+                            onSelected: (values) {
+                              setState(() => _preparationTimes = values);
+                            },
+                          ),
+                    ),
+                    const SizedBox(height: 18),
+                    _MultiFilterButtonSection<ExploreRatingFilter>(
+                      title: 'Ratings',
+                      selected: _ratings,
+                      values: ExploreRatingFilter.values,
+                      allValue: ExploreRatingFilter.all,
+                      labelBuilder: _ratingFilterLabel,
+                      onSelected: (values) => setState(() => _ratings = values),
+                    ),
+                    const SizedBox(height: 18),
+                    KeyedSubtree(
+                      key: _commentsKey,
+                      child: _MultiFilterButtonSection<ExploreCommentsFilter>(
+                        title: 'Comments',
+                        selected: _comments,
+                        values: ExploreCommentsFilter.values,
+                        allValue: ExploreCommentsFilter.all,
+                        labelBuilder: _commentsFilterLabel,
+                        onSelected: (values) =>
+                            setState(() => _comments = values),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    KeyedSubtree(
+                      key: _viewsKey,
+                      child: _MultiFilterButtonSection<ExploreViewsFilter>(
+                        title: 'Views',
+                        selected: _views,
+                        values: ExploreViewsFilter.values,
+                        allValue: ExploreViewsFilter.all,
+                        labelBuilder: _viewsFilterLabel,
+                        onSelected: (values) => setState(() => _views = values),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _apply,
+                  child: const Text('Apply'),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  void _reset() {
+    setState(() {
+      _sortOptions = {ExploreSortOption.alphabetAZ};
+      _recipeCategories = {};
+      _ingredientCategories = {};
+      _mealCategories = {};
+      _preparationTimes = {ExplorePreparationTimeFilter.all};
+      _ratings = {ExploreRatingFilter.all};
+      _comments = {ExploreCommentsFilter.all};
+      _views = {ExploreViewsFilter.all};
+    });
+  }
+
+  void _apply() {
+    Navigator.of(context).pop(
+      _RecipeFilterSelection(
+        sortOptions: _sortOptions,
+        recipeCategories: _recipeCategories,
+        ingredientCategories: _ingredientCategories,
+        mealCategories: _mealCategories,
+        preparationTimes: _preparationTimes,
+        ratings: _ratings,
+        comments: _comments,
+        views: _views,
+      ),
+    );
+  }
+
+  void _toggleSortOption(
+    ExploreSortOption option,
+    List<ExploreSortOption> group,
+  ) {
+    setState(() {
+      if (_sortOptions.contains(option)) {
+        _sortOptions.remove(option);
+      } else {
+        _sortOptions.removeAll(group);
+        _sortOptions.add(option);
+      }
+      if (_sortOptions.isEmpty) _sortOptions.add(ExploreSortOption.alphabetAZ);
+    });
+  }
+
+  void _toggleRecipeCategory(ExploreRecipeCategoryOption option) {
+    setState(() => _toggleOption(_recipeCategories, option));
+  }
+
+  void _toggleIngredientCategory(ExploreRecipeCategoryOption option) {
+    setState(() => _toggleOption(_ingredientCategories, option));
+  }
+
+  void _toggleMealCategory(String option) {
+    setState(() => _toggleOption(_mealCategories, option));
+  }
+
+  void _toggleOption<T>(Set<T> values, T value) {
+    if (values.contains(value)) {
+      values.remove(value);
+    } else {
+      values.add(value);
+    }
+  }
+
+  static String _sortLabel(ExploreSortOption option) {
+    switch (option) {
+      case ExploreSortOption.alphabetAZ:
+        return 'A-Z';
+      case ExploreSortOption.alphabetZA:
+        return 'Z-A';
+      case ExploreSortOption.newest:
+        return 'Newest';
+      case ExploreSortOption.oldest:
+        return 'Oldest';
+      case ExploreSortOption.ratingHighLow:
+        return 'Rating High-Low';
+      case ExploreSortOption.ratingLowHigh:
+        return 'Rating Low-High';
+      case ExploreSortOption.viewsHighLow:
+        return 'Views High-Low';
+      case ExploreSortOption.viewsLowHigh:
+        return 'Views Low-High';
+    }
+  }
+
+  static String _preparationTimeFilterLabel(ExplorePreparationTimeFilter value) {
+    switch (value) {
+      case ExplorePreparationTimeFilter.all:
+        return 'All';
+      case ExplorePreparationTimeFilter.under15:
+        return '<= 15 min';
+      case ExplorePreparationTimeFilter.under30:
+        return '<= 30 min';
+      case ExplorePreparationTimeFilter.under60:
+        return '<= 60 min';
+      case ExplorePreparationTimeFilter.over60:
+        return '> 60 min';
+    }
   }
 
   static String _ratingFilterLabel(ExploreRatingFilter value) {
@@ -1376,17 +1785,76 @@ class _RecipeFilterSheetState extends State<_RecipeFilterSheet> {
   }
 }
 
-class _FilterButtonSection<T> extends StatelessWidget {
+class _OptionChipSection<T> extends StatelessWidget {
   final String title;
-  final T selected;
   final List<T> values;
+  final Set<T> selected;
   final String Function(T value) labelBuilder;
   final ValueChanged<T> onSelected;
 
-  const _FilterButtonSection({
+  const _OptionChipSection({
+    required this.title,
+    required this.values,
+    required this.selected,
+    required this.labelBuilder,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: textTheme.titleSmall),
+        const SizedBox(height: 8),
+        if (values.isEmpty)
+          Text(
+            'No options available',
+            style: textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: values.map((value) {
+              final isSelected = selected.contains(value);
+              return FilterChip(
+                label: Text(labelBuilder(value)),
+                selected: isSelected,
+                onSelected: (_) => onSelected(value),
+                selectedColor: AppColors.primary.withValues(alpha: 0.14),
+                checkmarkColor: AppColors.primary,
+                labelStyle: textTheme.bodySmall?.copyWith(
+                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+                side: BorderSide(
+                  color: isSelected ? AppColors.primary : AppColors.border,
+                ),
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
+}
+
+class _MultiFilterButtonSection<T> extends StatelessWidget {
+  final String title;
+  final Set<T> selected;
+  final List<T> values;
+  final T allValue;
+  final String Function(T value) labelBuilder;
+  final ValueChanged<Set<T>> onSelected;
+
+  const _MultiFilterButtonSection({
     required this.title,
     required this.selected,
     required this.values,
+    required this.allValue,
     required this.labelBuilder,
     required this.onSelected,
   });
@@ -1403,12 +1871,13 @@ class _FilterButtonSection<T> extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: values.map((value) {
-            final isSelected = value == selected;
-            return ChoiceChip(
+            final isSelected = selected.contains(value);
+            return FilterChip(
               label: Text(labelBuilder(value)),
               selected: isSelected,
-              onSelected: (_) => onSelected(value),
+              onSelected: (_) => onSelected(_nextSelection(value)),
               selectedColor: AppColors.primary.withValues(alpha: 0.14),
+              checkmarkColor: AppColors.primary,
               labelStyle: textTheme.bodySmall?.copyWith(
                 color: isSelected ? AppColors.primary : AppColors.textPrimary,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -1421,6 +1890,17 @@ class _FilterButtonSection<T> extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Set<T> _nextSelection(T value) {
+    if (value == allValue) return {allValue};
+    final next = selected.where((item) => item != allValue).toSet();
+    if (next.contains(value)) {
+      next.remove(value);
+    } else {
+      next.add(value);
+    }
+    return next.isEmpty ? {allValue} : next;
   }
 }
 

@@ -270,15 +270,13 @@ class ExploreRemoteDataSource {
     );
     final media = _stringList(data['media']);
     final nutrition = _nutritionFromData(data['totalNutrients']);
-    final ingredients = includeCommunity
-        ? await _getIngredients(
-            doc.reference,
-            totalCalories: nutrition.calories,
-          )
-        : const <ExploreIngredient>[];
-    final ingredientNames = includeCommunity
-        ? ingredients.map((ingredient) => ingredient.name).toList()
-        : await _getIngredientSearchNames(doc.reference);
+    final ingredients = await _getIngredients(
+      doc.reference,
+      totalCalories: nutrition.calories,
+    );
+    final ingredientNames = ingredients
+        .map((ingredient) => ingredient.name)
+        .toList();
     final instructions = includeCommunity
         ? await _getInstructionSections(doc.reference)
         : const <ExploreInstructionSection>[];
@@ -345,16 +343,6 @@ class ExploreRemoteDataSource {
       community: community,
       relatedRecipes: relatedRecipes,
     );
-  }
-
-  Future<List<String>> _getIngredientSearchNames(
-    DocumentReference<Map<String, dynamic>> recipe,
-  ) async {
-    final snapshot = await recipe.collection('ingredients').get();
-    return snapshot.docs
-        .map((doc) => _stringValue(doc.data()['name']))
-        .where((name) => name.isNotEmpty)
-        .toList(growable: false);
   }
 
   ExploreNutrition _nutritionFromData(dynamic value) {
@@ -574,7 +562,7 @@ class ExploreRemoteDataSource {
   }
 
   String _caloriesLabel(double calories) {
-    if (calories <= 0) return '';
+    if (calories <= 0) return '0 kcal';
     return '${_formatNumber(calories)} kcal';
   }
 

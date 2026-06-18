@@ -24,6 +24,8 @@ enum ExploreRecipeDetailTab { recipe, nutrition, community }
 
 enum ExploreRecipeMethodTab { ingredients, instructions }
 
+enum ExploreRecipeUnitSystem { original, metric, imperial }
+
 enum ExploreCommunityTab { ratings, comments }
 
 enum ExploreRatingStarFilter { all, one, two, three, four, five }
@@ -53,6 +55,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   ExploreRecipeDetailTab _selectedTab = ExploreRecipeDetailTab.recipe;
   ExploreRecipeMethodTab _selectedMethodTab =
       ExploreRecipeMethodTab.ingredients;
+  ExploreRecipeUnitSystem _selectedUnitSystem =
+      ExploreRecipeUnitSystem.original;
   ExploreCommunityTab _selectedCommunityTab = ExploreCommunityTab.ratings;
   ExploreRatingStarFilter _ratingStarFilter = ExploreRatingStarFilter.all;
   ExploreCommunityDateFilter _ratingDateFilter = ExploreCommunityDateFilter.all;
@@ -109,6 +113,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   ExploreRecipe? get recipe => _recipe;
   ExploreRecipeDetailTab get selectedTab => _selectedTab;
   ExploreRecipeMethodTab get selectedMethodTab => _selectedMethodTab;
+  ExploreRecipeUnitSystem get selectedUnitSystem => _selectedUnitSystem;
   ExploreCommunityTab get selectedCommunityTab => _selectedCommunityTab;
   ExploreRatingStarFilter get ratingStarFilter => _ratingStarFilter;
   ExploreCommunityDateFilter get ratingDateFilter => _ratingDateFilter;
@@ -217,6 +222,12 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   void selectMethodTab(ExploreRecipeMethodTab tab) {
     if (_selectedMethodTab == tab) return;
     _selectedMethodTab = tab;
+    _notifyIfActive();
+  }
+
+  void selectUnitSystem(ExploreRecipeUnitSystem system) {
+    if (_selectedUnitSystem == system) return;
+    _selectedUnitSystem = system;
     _notifyIfActive();
   }
 
