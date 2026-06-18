@@ -1021,6 +1021,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
       category: recipe.category,
       categoryIds: recipe.categoryIds,
       customCategoryIds: recipe.customCategoryIds,
+      tags: recipe.tags,
+      ingredientNames: recipe.ingredientNames,
       allergenInfo: recipe.allergenInfo,
       totalTime: recipe.totalTime,
       difficulty: recipe.difficulty,

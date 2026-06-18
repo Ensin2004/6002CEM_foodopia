@@ -15,6 +15,8 @@ class ExploreRecipe {
   final String category;
   final List<String> categoryIds;
   final List<String> customCategoryIds;
+  final List<String> tags;
+  final List<String> ingredientNames;
   final String allergenInfo;
   final String totalTime;
   final String difficulty;
@@ -49,6 +51,8 @@ class ExploreRecipe {
     required this.category,
     this.categoryIds = const [],
     this.customCategoryIds = const [],
+    this.tags = const [],
+    this.ingredientNames = const [],
     required this.allergenInfo,
     required this.totalTime,
     required this.difficulty,

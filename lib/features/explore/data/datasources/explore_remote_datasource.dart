@@ -276,6 +276,9 @@ class ExploreRemoteDataSource {
             totalCalories: nutrition.calories,
           )
         : const <ExploreIngredient>[];
+    final ingredientNames = includeCommunity
+        ? ingredients.map((ingredient) => ingredient.name).toList()
+        : await _getIngredientSearchNames(doc.reference);
     final instructions = includeCommunity
         ? await _getInstructionSections(doc.reference)
         : const <ExploreInstructionSection>[];
@@ -319,6 +322,8 @@ class ExploreRemoteDataSource {
           : categoryNames.join(', '),
       categoryIds: categoryIds,
       customCategoryIds: customCategoryIds,
+      tags: _stringList(data['tags']),
+      ingredientNames: ingredientNames,
       allergenInfo: allergenNames.isEmpty
           ? 'No allergens listed'
           : allergenNames.join(', '),
@@ -340,6 +345,16 @@ class ExploreRemoteDataSource {
       community: community,
       relatedRecipes: relatedRecipes,
     );
+  }
+
+  Future<List<String>> _getIngredientSearchNames(
+    DocumentReference<Map<String, dynamic>> recipe,
+  ) async {
+    final snapshot = await recipe.collection('ingredients').get();
+    return snapshot.docs
+        .map((doc) => _stringValue(doc.data()['name']))
+        .where((name) => name.isNotEmpty)
+        .toList(growable: false);
   }
 
   ExploreNutrition _nutritionFromData(dynamic value) {
