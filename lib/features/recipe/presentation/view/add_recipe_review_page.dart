@@ -128,8 +128,8 @@ class AddRecipeReviewPage extends StatelessWidget {
       visibility: basicInfo.visibility,
       nutrients: AddRecipeReviewNutrients(
         calories: aiRecipe.calories > 0 ? '${aiRecipe.calories} kcal' : '-',
-        carbohydrates: _formatMacro(aiRecipe.carbohydrates),
         proteins: _formatMacro(aiRecipe.protein),
+        carbohydrates: _formatMacro(aiRecipe.carbohydrates),
         fats: _formatMacro(aiRecipe.fat),
       ),
       ingredients: aiDraftIngredients
@@ -410,17 +410,31 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                         value: review.nutrients.calories,
                       ),
                       ReviewInfoRow(
+                        label: "Protein",
+                        value: review.nutrients.proteins,
+                      ),
+                      ReviewInfoRow(
                         label: "Carbohydrates",
                         value: review.nutrients.carbohydrates,
                       ),
                       ReviewInfoRow(
-                        label: "Proteins",
-                        value: review.nutrients.proteins,
-                      ),
-                      ReviewInfoRow(
-                        label: "Fats",
+                        label: "Fat",
                         value: review.nutrients.fats,
                       ),
+                      ReviewInfoRow(
+                        label: "Fiber",
+                        value: review.nutrients.fiber,
+                      ),
+                      ReviewInfoRow(
+                        label: "Water",
+                        value: review.nutrients.water,
+                      ),
+                      if (review.nutrients.vitamins.isNotEmpty)
+                        const _NutritionSubheader(title: "Vitamins"),
+                      ..._nutrientRows(review.nutrients.vitamins),
+                      if (review.nutrients.minerals.isNotEmpty)
+                        const _NutritionSubheader(title: "Minerals"),
+                      ..._nutrientRows(review.nutrients.minerals),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.lg),
@@ -714,6 +728,46 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
   String _joinOrDash(List<String> values) {
     final visibleValues = values.where((value) => value.trim().isNotEmpty);
     return visibleValues.isEmpty ? "-" : visibleValues.join(", ");
+  }
+
+  List<Widget> _nutrientRows(List<AddRecipeReviewMicronutrient> nutrients) {
+    return nutrients
+        .map(
+          (nutrient) => ReviewInfoRow(
+            label: nutrient.label,
+            value: '${nutrient.amount} (${nutrient.dailyValue})',
+          ),
+        )
+        .toList(growable: false);
+  }
+}
+
+class _NutritionSubheader extends StatelessWidget {
+  final String title;
+
+  const _NutritionSubheader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.sm,
+      ),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Text(
+        title,
+        style: context.text.bodySmall?.copyWith(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
   }
 }
 

@@ -39,37 +39,37 @@ class OpenAiIngredientDataService {
     try {
       response = await client
           .post(
-        Uri.parse('https://api.openai.com/v1/responses'),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'model': EnvConfig.openAiIngredientModel,
-          'max_output_tokens': 2500,
-          'input': [
-            // System instruction.
-            {
-              'role': 'system',
-              'content':
-              'You are Foodopia ingredient AI. Return only valid JSON that matches the requested schema.',
+            Uri.parse('https://api.openai.com/v1/responses'),
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
             },
-            // User prompt with ingredient data.
-            {
-              'role': 'user',
-              'content': _buildPrompt(ingredients, categories),
-            },
-          ],
-          'text': {
-            'format': {
-              'type': 'json_schema',
-              'name': 'foodopia_ingredient_analysis',
-              'schema': _ingredientAnalysisSchema,
-              'strict': true,
-            },
-          },
-        }),
-      )
+            body: jsonEncode({
+              'model': EnvConfig.openAiIngredientModel,
+              'max_output_tokens': 8000,
+              'input': [
+                // System instruction.
+                {
+                  'role': 'system',
+                  'content':
+                      'You are Foodopia ingredient AI. Return only valid JSON that matches the requested schema.',
+                },
+                // User prompt with ingredient data.
+                {
+                  'role': 'user',
+                  'content': _buildPrompt(ingredients, categories),
+                },
+              ],
+              'text': {
+                'format': {
+                  'type': 'json_schema',
+                  'name': 'foodopia_ingredient_analysis',
+                  'schema': _ingredientAnalysisSchema,
+                  'strict': true,
+                },
+              },
+            }),
+          )
           .timeout(const Duration(seconds: 90));
     } on TimeoutException {
       throw TimeoutException(
@@ -80,7 +80,9 @@ class OpenAiIngredientDataService {
 
     // Handle error response.
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('OpenAI ingredient analyze request failed: ${response.body}');
+      throw StateError(
+        'OpenAI ingredient analyze request failed: ${response.body}',
+      );
     }
 
     // Parse the response.
@@ -106,9 +108,9 @@ class OpenAiIngredientDataService {
 
   /// Builds the prompt with required info and rules.
   String _buildPrompt(
-      List<AddRecipeIngredientDataInput> ingredients,
-      List<AddRecipeIngredientCategory> categories,
-      ) {
+    List<AddRecipeIngredientDataInput> ingredients,
+    List<AddRecipeIngredientCategory> categories,
+  ) {
     // Build category payload.
     final categoryPayload = categories
         .map((item) => {'id': item.id, 'name': item.name})
@@ -117,12 +119,12 @@ class OpenAiIngredientDataService {
     // Build ingredient payload.
     final ingredientPayload = ingredients
         .map((item) => {
-      'index': item.index,
-      'name': item.name,
-      'amount': item.amount,
-      'unit': item.unit,
-      'usdaNutrients': item.usdaNutrients,
-    })
+              'index': item.index,
+              'name': item.name,
+              'amount': item.amount,
+              'unit': item.unit,
+              'usdaNutrients': item.usdaNutrients,
+            })
         .toList(growable: false);
 
     return '''
@@ -139,11 +141,10 @@ Rules:
 - Do not create new categories.
 - If an ingredient does not clearly match any category, use the provided category named "Others".
 - Return ingredientCategoryId as the selected category id.
-- Return nutrients for each ingredient as calories, carbohydrates, fat and protein.
+- Return nutrients for each ingredient as calories, protein, carbohydrates, fat, fiber, water, vitaminA, vitaminC, vitaminD, vitaminE, vitaminK, vitaminB1, vitaminB2, vitaminB3, vitaminB6, vitaminB9, vitaminB12, calcium, iron, magnesium, phosphorus, potassium, sodium and zinc.
 - Nutrients are for the provided amount and unit.
-- If usdaNutrients is provided, keep only calories, carbohydrates, fat and protein from USDA and use those values.
-- If usdaNutrients is missing or incomplete, estimate calories, carbohydrates, fat and protein from the ingredient, amount and unit.
-- Use kcal for calories and grams for carbohydrates, fat and protein.
+- If usdaNutrients is provided, keep any provided nutrient values and estimate missing or zero values.
+- Use kcal for calories; grams for protein, carbohydrates, fat, fiber and water; milligrams for vitaminC, vitaminE, vitaminB1, vitaminB2, vitaminB3, vitaminB6, calcium, iron, magnesium, phosphorus, potassium, sodium and zinc; micrograms for vitaminA, vitaminD, vitaminK, vitaminB9 and vitaminB12.
 ''';
   }
 
@@ -184,9 +185,29 @@ Rules:
       json['ingredientCategoryId']?.toString().trim() ?? '',
       nutrients: {
         'calories': _numberValue(nutrients['calories']),
+        'protein': _numberValue(nutrients['protein']),
         'carbohydrates': _numberValue(nutrients['carbohydrates']),
         'fat': _numberValue(nutrients['fat']),
-        'protein': _numberValue(nutrients['protein']),
+        'fiber': _numberValue(nutrients['fiber']),
+        'water': _numberValue(nutrients['water']),
+        'vitaminA': _numberValue(nutrients['vitaminA']),
+        'vitaminC': _numberValue(nutrients['vitaminC']),
+        'vitaminD': _numberValue(nutrients['vitaminD']),
+        'vitaminE': _numberValue(nutrients['vitaminE']),
+        'vitaminK': _numberValue(nutrients['vitaminK']),
+        'vitaminB1': _numberValue(nutrients['vitaminB1']),
+        'vitaminB2': _numberValue(nutrients['vitaminB2']),
+        'vitaminB3': _numberValue(nutrients['vitaminB3']),
+        'vitaminB6': _numberValue(nutrients['vitaminB6']),
+        'vitaminB9': _numberValue(nutrients['vitaminB9']),
+        'vitaminB12': _numberValue(nutrients['vitaminB12']),
+        'calcium': _numberValue(nutrients['calcium']),
+        'iron': _numberValue(nutrients['iron']),
+        'magnesium': _numberValue(nutrients['magnesium']),
+        'phosphorus': _numberValue(nutrients['phosphorus']),
+        'potassium': _numberValue(nutrients['potassium']),
+        'sodium': _numberValue(nutrients['sodium']),
+        'zinc': _numberValue(nutrients['zinc']),
       },
     );
   }
@@ -225,12 +246,57 @@ const Map<String, dynamic> _ingredientAnalysisSchema = {
           'nutrients': {
             'type': 'object',
             'additionalProperties': false,
-            'required': ['calories', 'carbohydrates', 'fat', 'protein'],
+            'required': [
+              'calories',
+              'protein',
+              'carbohydrates',
+              'fat',
+              'fiber',
+              'water',
+              'vitaminA',
+              'vitaminC',
+              'vitaminD',
+              'vitaminE',
+              'vitaminK',
+              'vitaminB1',
+              'vitaminB2',
+              'vitaminB3',
+              'vitaminB6',
+              'vitaminB9',
+              'vitaminB12',
+              'calcium',
+              'iron',
+              'magnesium',
+              'phosphorus',
+              'potassium',
+              'sodium',
+              'zinc',
+            ],
             'properties': {
               'calories': {'type': 'number'},
+              'protein': {'type': 'number'},
               'carbohydrates': {'type': 'number'},
               'fat': {'type': 'number'},
-              'protein': {'type': 'number'},
+              'fiber': {'type': 'number'},
+              'water': {'type': 'number'},
+              'vitaminA': {'type': 'number'},
+              'vitaminC': {'type': 'number'},
+              'vitaminD': {'type': 'number'},
+              'vitaminE': {'type': 'number'},
+              'vitaminK': {'type': 'number'},
+              'vitaminB1': {'type': 'number'},
+              'vitaminB2': {'type': 'number'},
+              'vitaminB3': {'type': 'number'},
+              'vitaminB6': {'type': 'number'},
+              'vitaminB9': {'type': 'number'},
+              'vitaminB12': {'type': 'number'},
+              'calcium': {'type': 'number'},
+              'iron': {'type': 'number'},
+              'magnesium': {'type': 'number'},
+              'phosphorus': {'type': 'number'},
+              'potassium': {'type': 'number'},
+              'sodium': {'type': 'number'},
+              'zinc': {'type': 'number'},
             },
           },
         },

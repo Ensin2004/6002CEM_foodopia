@@ -90,7 +90,7 @@ class _CommunityTab extends StatelessWidget {
         const SizedBox(height: 24),
         Row(
           children: [
-            Text('Related Recipes', style: textTheme.titleMedium),
+            Text('More Recipes', style: textTheme.titleMedium),
             const Spacer(),
             TextButton(
               onPressed: () {
