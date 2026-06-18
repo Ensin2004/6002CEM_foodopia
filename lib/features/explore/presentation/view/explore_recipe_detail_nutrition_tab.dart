@@ -407,9 +407,7 @@ class _IngredientMacroPagerState extends State<_IngredientMacroPager> {
                 height: 7,
                 margin: const EdgeInsets.symmetric(horizontal: 3),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? context.colors.primary
-                      : AppColors.border,
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(8),
                 ),
               );

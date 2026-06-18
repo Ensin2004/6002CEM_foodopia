@@ -119,6 +119,7 @@ import '../../features/recipe/domain/usecases/complete_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/generate_add_recipe_from_video_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
+import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_categories_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_image_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_setup_usecase.dart';
@@ -350,6 +351,7 @@ void _initRecipeFeature() {
 
   // Register use cases.
   sl.registerLazySingleton(() => GetAddRecipeSetupUseCase(sl()));
+  sl.registerLazySingleton(() => GetAddRecipeIngredientCategoriesUseCase(sl()));
   sl.registerLazySingleton(() => GetAddRecipeIngredientUnitsUseCase(sl()));
   sl.registerLazySingleton(() => SearchAddRecipeFoodsUseCase(sl()));
   sl.registerLazySingleton(() => GetAddRecipeFoodNutrientsUseCase(sl()));

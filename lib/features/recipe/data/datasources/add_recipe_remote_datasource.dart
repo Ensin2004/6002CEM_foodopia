@@ -269,7 +269,7 @@ class AddRecipeRemoteDataSource {
     final recipeRef = firestore.collection('recipes').doc(recipeId);
     final ingredientCollection = recipeRef.collection('ingredients');
     final existingIngredients = await ingredientCollection.get();
-    final categories = await _getActiveIngredientCategories();
+    final categories = await getActiveIngredientCategories();
     if (categories.isEmpty) {
       throw StateError('No active ingredient categories configured.');
     }
@@ -342,7 +342,7 @@ class AddRecipeRemoteDataSource {
 
   /// Loads active ingredients categories
   Future<List<AddRecipeIngredientCategory>>
-  _getActiveIngredientCategories() async {
+  getActiveIngredientCategories() async {
     final snapshot = await firestore
         .collection('app_config')
         .doc('ingredient_categories')

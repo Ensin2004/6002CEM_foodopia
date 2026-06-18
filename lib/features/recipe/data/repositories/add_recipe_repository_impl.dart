@@ -4,6 +4,7 @@ import '../../../../core/error/failures.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_food_search_result.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_ingredient_data.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_review.dart';
@@ -35,6 +36,19 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
       return Right(units);
     } catch (_) {
       return Left(ServerFailure(message: 'Unable to load ingredient units.'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<AddRecipeIngredientCategory>>>
+  getIngredientCategories() async {
+    try {
+      final categories = await remoteDataSource.getActiveIngredientCategories();
+      return Right(categories);
+    } catch (_) {
+      return Left(
+        ServerFailure(message: 'Unable to load ingredient categories.'),
+      );
     }
   }
 

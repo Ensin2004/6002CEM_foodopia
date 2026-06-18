@@ -411,19 +411,20 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     if (selected == null) return;
     if (!mounted) return;
 
-    // Fetch nutrients from USDA after users select ingredient
+    // Fetch nutrients from USDA and search image from Unsplash after selection.
     Map<String, dynamic>? nutrients;
     String? ingredientImageUrl;
-    if (!selected.isCustom && selected.usdaId != null) {
+    if (selected.name.trim().isNotEmpty) {
       final rootNavigator = Navigator.of(context, rootNavigator: true);
       showDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (_) => const LoadingDialog(),
       );
-      final nutrientsFuture = viewModel.getFoodNutrients(selected.usdaId!);
       final imageUrlFuture = viewModel.getIngredientImageUrl(selected.name);
-      nutrients = await nutrientsFuture;
+      if (!selected.isCustom && selected.usdaId != null) {
+        nutrients = await viewModel.getFoodNutrients(selected.usdaId!);
+      }
       ingredientImageUrl = await imageUrlFuture;
       if (mounted) rootNavigator.pop();
     }
@@ -433,7 +434,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       row.nameController.text = selected.name;
       row.usdaId = selected.usdaId;
       row.usdaNutrients = selected.isCustom ? null : nutrients;
-      if (!selected.isCustom && ingredientImageUrl != null) {
+      if (ingredientImageUrl != null) {
         row.existingImageUrl = ingredientImageUrl;
       }
       row.ingredientCategoryId = null;

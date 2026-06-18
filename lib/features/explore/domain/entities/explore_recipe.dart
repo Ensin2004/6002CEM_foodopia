@@ -264,6 +264,16 @@ class ExploreRecipeCategoryOption {
     required this.name,
     required this.isCustom,
   });
+
+  @override
+  bool operator ==(Object other) {
+    return other is ExploreRecipeCategoryOption &&
+        other.id == id &&
+        other.isCustom == isCustom;
+  }
+
+  @override
+  int get hashCode => Object.hash(id, isCustom);
 }
 
 class ExploreRecipeSummary {
