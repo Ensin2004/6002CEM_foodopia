@@ -14,14 +14,21 @@ import 'meal_plan_calendar.dart';
 import 'meal_plan_section_card.dart';
 import 'meal_plan_summary_strip.dart';
 
+/// Main view for the Planning tab in the meal plan page.
+/// Displays calendar, weather, and meal plan sections.
 class PlanningTabMainView extends StatelessWidget {
+  /// The meal plan dashboard data.
   final MealPlanDashboard dashboard;
 
+  /// Creates a new planning tab main view instance.
   const PlanningTabMainView({super.key, required this.dashboard});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<MealPlanViewModel>();
+
+    // Get the selected date.
     final selectedDate = dashboard.selectedDate;
 
     return RefreshIndicator(
@@ -34,13 +41,18 @@ class PlanningTabMainView extends StatelessWidget {
           AppSpacing.xl,
         ),
         children: [
+          // Summary strip.
           MealPlanSummaryStrip(summary: dashboard.summary),
           const SizedBox(height: AppSpacing.md),
+
+          // Date header.
           Text(
             'Today, ${DateFormat('d MMMM yyyy').format(selectedDate)}',
             style: context.text.titleMedium,
           ),
           const SizedBox(height: AppSpacing.sm),
+
+          // Weather box or loading.
           if (viewModel.isWeatherLoading && dashboard.weather == null)
             const SizedBox(
               height: 84,
@@ -52,21 +64,29 @@ class PlanningTabMainView extends StatelessWidget {
               errorMessage: viewModel.weatherErrorMessage,
             ),
           const SizedBox(height: AppSpacing.md),
+
+          // Calendar.
           MealPlanCalendar(
             selectedDate: selectedDate,
             days: dashboard.monthDays,
             onDateSelected: viewModel.selectDate,
           ),
           const SizedBox(height: AppSpacing.lg),
+
+          // Meal plan sections header.
           Text("Today's Meal Plan", style: context.text.titleMedium),
           const SizedBox(height: AppSpacing.sm),
+
+          // Meal filters.
           const _MealFilters(),
           const SizedBox(height: AppSpacing.md),
+
+          // Meal sections or empty state.
           if (viewModel.filteredSections.isEmpty)
             const _EmptyMeals()
           else
             ...viewModel.filteredSections.map(
-              (section) => Padding(
+                  (section) => Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: MealPlanSectionCard(section: section),
               ),
@@ -77,16 +97,23 @@ class PlanningTabMainView extends StatelessWidget {
   }
 }
 
+/// Weather box widget.
 class _WeatherBox extends StatelessWidget {
+  /// Weather data.
   final MealPlanWeather? weather;
+
+  /// Error message if weather is unavailable.
   final String? errorMessage;
 
+  /// Creates a new weather box instance.
   const _WeatherBox({required this.weather, this.errorMessage});
 
   @override
   Widget build(BuildContext context) {
+    // Get the current weather.
     final currentWeather = weather;
 
+    // Show error state if weather is null.
     if (currentWeather == null) {
       return AppInfoBox(
         icon: Icons.cloud_off_outlined,
@@ -98,6 +125,7 @@ class _WeatherBox extends StatelessWidget {
       );
     }
 
+    // Show weather information.
     return AppInfoBox(
       icon: Icons.wb_sunny_outlined,
       title: '${currentWeather.condition} • ${currentWeather.currentTemp}°C',
@@ -109,22 +137,33 @@ class _WeatherBox extends StatelessWidget {
   }
 }
 
+/// Returns a meal hint based on weather conditions.
 String _mealHintFor(MealPlanWeather weather) {
+  // Hot weather: suggest light meals.
   if (weather.currentTemp >= 30) {
     return 'Light meals and hydrating ingredients are a good fit today.';
   }
+
+  // Rainy weather: suggest warm comfort food.
   if (weather.condition.toLowerCase().contains('rain')) {
     return 'Warm bowls and comforting dishes fit the weather well.';
   }
+
+  // Default: balanced meals.
   return 'Balanced meals should work nicely with today\'s weather.';
 }
 
+/// Meal filters widget.
 class _MealFilters extends StatelessWidget {
+  /// Creates a new meal filters instance.
   const _MealFilters();
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<MealPlanViewModel>();
+
+    // Get filter options.
     final filters = viewModel.filterOptions;
 
     return SingleChildScrollView(
@@ -146,7 +185,9 @@ class _MealFilters extends StatelessWidget {
   }
 }
 
+/// Empty meals state widget.
 class _EmptyMeals extends StatelessWidget {
+  /// Creates a new empty meals instance.
   const _EmptyMeals();
 
   @override

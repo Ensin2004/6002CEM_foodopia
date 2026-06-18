@@ -15,13 +15,18 @@ import '../../domain/usecases/create_grocery_list_usecase.dart';
 import '../../domain/usecases/get_add_grocery_list_plan_usecase.dart';
 import '../viewmodel/add_grocery_list_viewmodel.dart';
 
+/// Page for creating a new grocery list.
+/// Provides a two-step wizard for configuring list details and selecting meals.
 class AddGroceryListPage extends StatelessWidget {
+  /// User ID of the current user.
   final String userId;
 
+  /// Creates a new add grocery list page instance.
   const AddGroceryListPage({super.key, required this.userId});
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model to the widget tree.
     return ChangeNotifierProvider(
       create: (_) => AddGroceryListViewModel(
         userId: userId,
@@ -33,14 +38,18 @@ class AddGroceryListPage extends StatelessWidget {
   }
 }
 
+/// Internal view for the add grocery list page.
 class _AddGroceryListView extends StatefulWidget {
+  /// Creates a new add grocery list view instance.
   const _AddGroceryListView();
 
   @override
   State<_AddGroceryListView> createState() => _AddGroceryListViewState();
 }
 
+/// State for the add grocery list view.
 class _AddGroceryListViewState extends State<_AddGroceryListView> {
+  /// Text controller for the list name input.
   final TextEditingController _nameController = TextEditingController();
 
   @override
@@ -51,15 +60,20 @@ class _AddGroceryListViewState extends State<_AddGroceryListView> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AddGroceryListViewModel>();
 
+    // Show loading dialog while plan is loading.
     if (viewModel.isLoading && viewModel.plan == null) {
       return const Scaffold(
         body: LoadingDialog(inline: true, message: 'Loading grocery setup...'),
       );
     }
 
+    // Get the plan.
     final plan = viewModel.plan;
+
+    // Show error state if plan is null.
     if (plan == null) {
       return Scaffold(
         appBar: _AddGroceryAppBar(onBack: () => context.pop()),
@@ -75,8 +89,10 @@ class _AddGroceryListViewState extends State<_AddGroceryListView> {
       appBar: _AddGroceryAppBar(
         onBack: () {
           if (viewModel.currentStep == 2) {
+            // Go back to previous step.
             context.read<AddGroceryListViewModel>().goToPreviousStep();
           } else {
+            // Pop the page.
             context.pop();
           }
         },
@@ -84,6 +100,7 @@ class _AddGroceryListViewState extends State<_AddGroceryListView> {
       body: SafeArea(
         child: Column(
           children: [
+            // Progress bar.
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.sm,
@@ -97,6 +114,7 @@ class _AddGroceryListViewState extends State<_AddGroceryListView> {
                 labels: const ['Basic Information', 'Select Meals'],
               ),
             ),
+            // Dynamic step content.
             Expanded(
               child: viewModel.currentStep == 1
                   ? _BasicInfoStep(plan: plan, nameController: _nameController)
@@ -109,9 +127,12 @@ class _AddGroceryListViewState extends State<_AddGroceryListView> {
   }
 }
 
+/// App bar for the add grocery list page.
 class _AddGroceryAppBar extends StatelessWidget implements PreferredSizeWidget {
+  /// Callback when back button is pressed.
   final VoidCallback onBack;
 
+  /// Creates a new add grocery app bar instance.
   const _AddGroceryAppBar({required this.onBack});
 
   @override
@@ -129,14 +150,20 @@ class _AddGroceryAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
+/// Step 1: Basic information step.
 class _BasicInfoStep extends StatelessWidget {
+  /// The grocery list plan.
   final AddGroceryListPlan plan;
+
+  /// Text controller for list name.
   final TextEditingController nameController;
 
+  /// Creates a new basic info step instance.
   const _BasicInfoStep({required this.plan, required this.nameController});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AddGroceryListViewModel>();
 
     return ListView(
@@ -147,6 +174,7 @@ class _BasicInfoStep extends StatelessWidget {
         AppSpacing.lg,
       ),
       children: [
+        // Icon selection.
         Text('List Icon', style: context.text.titleMedium),
         const SizedBox(height: 3),
         Text(
@@ -156,6 +184,8 @@ class _BasicInfoStep extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         _IconPicker(options: plan.iconOptions),
         const SizedBox(height: AppSpacing.lg),
+
+        // List name input.
         Text('List Name', style: context.text.titleMedium),
         const SizedBox(height: AppSpacing.sm),
         TextField(
@@ -176,6 +206,8 @@ class _BasicInfoStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
+
+        // Date range selection.
         Text('Date Range', style: context.text.titleMedium),
         const SizedBox(height: AppSpacing.sm),
         _DateRangeSelector(
@@ -183,11 +215,15 @@ class _BasicInfoStep extends StatelessWidget {
           endDate: viewModel.endDate,
         ),
         const SizedBox(height: AppSpacing.sm),
+
+        // Selection summary.
         _SelectionSummaryBox(
           title: '${viewModel.selectedDayCount} days selected',
           subtitle: _formatDateRange(viewModel.startDate, viewModel.endDate),
         ),
         const SizedBox(height: AppSpacing.lg),
+
+        // Exclude days selection.
         Text('Exclude Days (Optional)', style: context.text.titleMedium),
         const SizedBox(height: 3),
         Text(
@@ -197,16 +233,20 @@ class _BasicInfoStep extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         _ExcludeDayChips(days: viewModel.dateRangeDays),
         const SizedBox(height: AppSpacing.sm),
+
+        // Excluded days summary.
         _SelectionSummaryBox(
           title:
-              '${viewModel.excludedDays.length} day${viewModel.excludedDays.length == 1 ? '' : 's'} selected',
+          '${viewModel.excludedDays.length} day${viewModel.excludedDays.length == 1 ? '' : 's'} selected',
           subtitle: viewModel.excludedDays.isEmpty
               ? 'No excluded days'
               : viewModel.excludedDays
-                    .map((date) => DateFormat('EEE, d MMM').format(date))
-                    .join(', '),
+              .map((date) => DateFormat('EEE, d MMM').format(date))
+              .join(', '),
         ),
         const SizedBox(height: AppSpacing.xl),
+
+        // Next button.
         SizedBox(
           height: 48,
           child: ElevatedButton(
@@ -233,13 +273,17 @@ class _BasicInfoStep extends StatelessWidget {
   }
 }
 
+/// Icon picker widget.
 class _IconPicker extends StatelessWidget {
+  /// List of icon options.
   final List<GroceryIconOption> options;
 
+  /// Creates a new icon picker instance.
   const _IconPicker({required this.options});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AddGroceryListViewModel>();
 
     return SingleChildScrollView(
@@ -278,10 +322,15 @@ class _IconPicker extends StatelessWidget {
   }
 }
 
+/// Date range selector widget.
 class _DateRangeSelector extends StatelessWidget {
+  /// Start date.
   final DateTime startDate;
+
+  /// End date.
   final DateTime endDate;
 
+  /// Creates a new date range selector instance.
   const _DateRangeSelector({required this.startDate, required this.endDate});
 
   @override
@@ -310,8 +359,12 @@ class _DateRangeSelector extends StatelessWidget {
     );
   }
 
+  /// Opens the date range picker dialog.
   Future<void> _pickDateRange(BuildContext context) async {
+    // Get the view model.
     final viewModel = context.read<AddGroceryListViewModel>();
+
+    // Show date range picker.
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime.now().subtract(const Duration(days: 30)),
@@ -332,6 +385,7 @@ class _DateRangeSelector extends StatelessWidget {
       },
     );
 
+    // Update the date range if picked.
     if (picked != null && context.mounted) {
       context.read<AddGroceryListViewModel>().updateDateRange(
         picked.start,
@@ -341,11 +395,18 @@ class _DateRangeSelector extends StatelessWidget {
   }
 }
 
+/// Date box widget.
 class _DateBox extends StatelessWidget {
+  /// Label text.
   final String label;
+
+  /// Date to display.
   final DateTime date;
+
+  /// Callback when tapped.
   final VoidCallback onTap;
 
+  /// Creates a new date box instance.
   const _DateBox({
     required this.label,
     required this.date,
@@ -402,10 +463,15 @@ class _DateBox extends StatelessWidget {
   }
 }
 
+/// Selection summary box widget.
 class _SelectionSummaryBox extends StatelessWidget {
+  /// Title text.
   final String title;
+
+  /// Subtitle text.
   final String subtitle;
 
+  /// Creates a new selection summary box instance.
   const _SelectionSummaryBox({required this.title, required this.subtitle});
 
   @override
@@ -472,13 +538,17 @@ class _SelectionSummaryBox extends StatelessWidget {
   }
 }
 
+/// Exclude day chips widget.
 class _ExcludeDayChips extends StatelessWidget {
+  /// List of days in the date range.
   final List<DateTime> days;
 
+  /// Creates a new exclude day chips instance.
   const _ExcludeDayChips({required this.days});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AddGroceryListViewModel>();
 
     return SingleChildScrollView(
@@ -530,17 +600,23 @@ class _ExcludeDayChips extends StatelessWidget {
   }
 }
 
+/// Step 2: Select meals step.
 class _SelectMealsStep extends StatelessWidget {
+  /// Creates a new select meals step instance.
   const _SelectMealsStep();
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AddGroceryListViewModel>();
+
+    // Get the selected day and meal days.
     final selectedDay = viewModel.selectedMealDay;
     final mealDays = viewModel.visibleMealDays;
 
     return Column(
       children: [
+        // Day selector horizontal list.
         SizedBox(
           height: 76,
           child: ListView.separated(
@@ -555,6 +631,8 @@ class _SelectMealsStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
+
+        // Selected day content.
         if (selectedDay == null)
           const Expanded(child: _EmptyMealsForSelection())
         else
@@ -567,37 +645,44 @@ class _SelectMealsStep extends StatelessWidget {
                 AppSpacing.lg,
               ),
               children: [
+                // Error message if any.
                 if (viewModel.saveErrorMessage != null) ...[
                   _InlineError(message: viewModel.saveErrorMessage!),
                   const SizedBox(height: AppSpacing.md),
                 ],
+
+                // Selected date header.
                 _SelectedMealDateHeader(
                   date: selectedDay.date,
                   mealCount: selectedDay.sections.fold<int>(
                     0,
-                    (count, section) => count + section.meals.length,
+                        (count, section) => count + section.meals.length,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
+
+                // Meal sections.
                 ...selectedDay.sections.map(
-                  (section) => Padding(
+                      (section) => Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
                     child: _SelectableMealSection(section: section),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
+
+                // Create button.
                 SizedBox(
                   height: 48,
                   child: ElevatedButton(
                     onPressed: viewModel.canCreate
                         ? () async {
-                            final listId = await context
-                                .read<AddGroceryListViewModel>()
-                                .createGroceryList();
-                            if (listId != null && context.mounted) {
-                              context.pop(listId);
-                            }
-                          }
+                      final listId = await context
+                          .read<AddGroceryListViewModel>()
+                          .createGroceryList();
+                      if (listId != null && context.mounted) {
+                        context.pop(listId);
+                      }
+                    }
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
@@ -626,9 +711,12 @@ class _SelectMealsStep extends StatelessWidget {
   }
 }
 
+/// Inline error message widget.
 class _InlineError extends StatelessWidget {
+  /// Error message.
   final String message;
 
+  /// Creates a new inline error instance.
   const _InlineError({required this.message});
 
   @override
@@ -651,18 +739,24 @@ class _InlineError extends StatelessWidget {
   }
 }
 
+/// Meal day card widget.
 class _MealDayCard extends StatelessWidget {
+  /// Date of the day.
   final DateTime date;
 
+  /// Creates a new meal day card instance.
   const _MealDayCard({required this.date});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AddGroceryListViewModel>();
+
+    // Check if this day is selected.
     final selected =
         viewModel.selectedMealDate.year == date.year &&
-        viewModel.selectedMealDate.month == date.month &&
-        viewModel.selectedMealDate.day == date.day;
+            viewModel.selectedMealDate.month == date.month &&
+            viewModel.selectedMealDate.day == date.day;
 
     return InkWell(
       onTap: () => context.read<AddGroceryListViewModel>().selectMealDate(date),
@@ -700,10 +794,15 @@ class _MealDayCard extends StatelessWidget {
   }
 }
 
+/// Selected meal date header widget.
 class _SelectedMealDateHeader extends StatelessWidget {
+  /// Selected date.
   final DateTime date;
+
+  /// Number of meals on this date.
   final int mealCount;
 
+  /// Creates a new selected meal date header instance.
   const _SelectedMealDateHeader({required this.date, required this.mealCount});
 
   @override
@@ -746,13 +845,17 @@ class _SelectedMealDateHeader extends StatelessWidget {
   }
 }
 
+/// Selectable meal section widget.
 class _SelectableMealSection extends StatelessWidget {
+  /// The meal section.
   final GroceryMealSectionPlan section;
 
+  /// Creates a new selectable meal section instance.
   const _SelectableMealSection({required this.section});
 
   @override
   Widget build(BuildContext context) {
+    // Determine meal label.
     final mealLabel = section.meals.length == 1
         ? '1 meal'
         : '${section.meals.length} meals';
@@ -798,14 +901,20 @@ class _SelectableMealSection extends StatelessWidget {
   }
 }
 
+/// Selectable meal row widget.
 class _SelectableMealRow extends StatelessWidget {
+  /// The meal item.
   final GroceryMealPlanItem meal;
 
+  /// Creates a new selectable meal row instance.
   const _SelectableMealRow({required this.meal});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AddGroceryListViewModel>();
+
+    // Check if meal is selected.
     final selected = viewModel.isMealSelected(meal.id);
 
     return Padding(
@@ -846,11 +955,18 @@ class _SelectableMealRow extends StatelessWidget {
   }
 }
 
+/// Meal image widget.
 class _MealImage extends StatelessWidget {
+  /// Image path (asset or URL).
   final String path;
+
+  /// Image width.
   final double width;
+
+  /// Image height.
   final double height;
 
+  /// Creates a new meal image instance.
   const _MealImage({
     required this.path,
     required this.width,
@@ -859,7 +975,9 @@ class _MealImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if the path is a remote URL.
     final isRemote = path.startsWith('http://') || path.startsWith('https://');
+
     if (isRemote) {
       return Image.network(
         path,
@@ -870,6 +988,8 @@ class _MealImage extends StatelessWidget {
             _ImageFallback(width: width, height: height),
       );
     }
+
+    // Load from assets.
     return Image.asset(
       path,
       width: width,
@@ -881,10 +1001,15 @@ class _MealImage extends StatelessWidget {
   }
 }
 
+/// Image fallback widget.
 class _ImageFallback extends StatelessWidget {
+  /// Image width.
   final double width;
+
+  /// Image height.
   final double height;
 
+  /// Creates a new image fallback instance.
   const _ImageFallback({required this.width, required this.height});
 
   @override
@@ -898,7 +1023,9 @@ class _ImageFallback extends StatelessWidget {
   }
 }
 
+/// Empty meals for selection widget.
 class _EmptyMealsForSelection extends StatelessWidget {
+  /// Creates a new empty meals for selection instance.
   const _EmptyMealsForSelection();
 
   @override
@@ -909,10 +1036,15 @@ class _EmptyMealsForSelection extends StatelessWidget {
   }
 }
 
+/// Error state widget.
 class _ErrorState extends StatelessWidget {
+  /// Error message.
   final String message;
+
+  /// Callback when retry is pressed.
   final Future<void> Function() onRetry;
 
+  /// Creates a new error state instance.
   const _ErrorState({required this.message, required this.onRetry});
 
   @override
@@ -939,6 +1071,7 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
+/// Formats a date range for display.
 String _formatDateRange(DateTime start, DateTime end) {
   return '${DateFormat('d MMM').format(start)} - ${DateFormat('d MMM yyyy').format(end)}';
 }

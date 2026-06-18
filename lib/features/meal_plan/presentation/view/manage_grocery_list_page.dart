@@ -21,13 +21,18 @@ import '../../domain/usecases/update_grocery_item_bought_usecase.dart';
 import '../../domain/usecases/update_grocery_list_usecase.dart';
 import '../viewmodel/manage_grocery_list_viewmodel.dart';
 
+/// Page for managing an existing grocery list.
+/// Provides list view and timeline view modes with item management.
 class ManageGroceryListPage extends StatelessWidget {
+  /// ID of the grocery list to manage.
   final String listId;
 
+  /// Creates a new manage grocery list page instance.
   const ManageGroceryListPage({super.key, required this.listId});
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model to the widget tree.
     return ChangeNotifierProvider(
       create: (_) => ManageGroceryListViewModel(
         listId: listId,
@@ -42,20 +47,26 @@ class ManageGroceryListPage extends StatelessWidget {
   }
 }
 
+/// Internal view for the manage grocery list page.
 class _ManageGroceryListView extends StatelessWidget {
+  /// Creates a new manage grocery list view instance.
   const _ManageGroceryListView();
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
 
+    // Show loading dialog while detail is loading.
     if (viewModel.isLoading && viewModel.detail == null) {
       return const Scaffold(
         body: LoadingDialog(inline: true, message: 'Loading grocery list...'),
       );
     }
 
+    // Get the detail.
     final detail = viewModel.detail;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomAppBar(
@@ -67,25 +78,30 @@ class _ManageGroceryListView extends StatelessWidget {
       ),
       body: detail == null
           ? _ErrorState(
-              message: viewModel.errorMessage ?? 'Unable to load grocery list',
-              onRetry: viewModel.loadDetail,
-            )
+        message: viewModel.errorMessage ?? 'Unable to load grocery list',
+        onRetry: viewModel.loadDetail,
+      )
           : _ManageContent(detail: detail),
     );
   }
 }
 
+/// Main content widget for the manage grocery list page.
 class _ManageContent extends StatelessWidget {
+  /// The grocery list detail.
   final ManageGroceryListDetail detail;
 
+  /// Creates a new manage content instance.
   const _ManageContent({required this.detail});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
 
     return Stack(
       children: [
+        // Main scrollable content.
         ListView(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
@@ -94,20 +110,29 @@ class _ManageContent extends StatelessWidget {
             88,
           ),
           children: [
+            // Header card with summary metrics.
             _HeaderCard(detail: detail),
             const SizedBox(height: AppSpacing.lg),
+
+            // View mode tabs.
             const _ViewModeTabs(),
             const SizedBox(height: AppSpacing.xl),
+
+            // Dynamic content based on view mode.
             if (viewModel.viewMode == ManageGroceryViewMode.list)
               _ListMode(detail: detail)
             else
               _TimelineMode(detail: detail),
+
+            // Error message if any.
             if (viewModel.actionErrorMessage != null) ...[
               const SizedBox(height: AppSpacing.md),
               _InlineActionError(message: viewModel.actionErrorMessage!),
             ],
           ],
         ),
+
+        // Bottom bar based on view mode.
         if (viewModel.viewMode == ManageGroceryViewMode.list)
           const Positioned(
             left: AppSpacing.lg,
@@ -127,9 +152,12 @@ class _ManageContent extends StatelessWidget {
   }
 }
 
+/// Header card with grocery list summary.
 class _HeaderCard extends StatelessWidget {
+  /// The grocery list detail.
   final ManageGroceryListDetail detail;
 
+  /// Creates a new header card instance.
   const _HeaderCard({required this.detail});
 
   @override
@@ -144,6 +172,7 @@ class _HeaderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header row with title and edit button.
           Row(
             children: [
               Container(
@@ -200,6 +229,8 @@ class _HeaderCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Metrics row.
           Row(
             children: [
               _HeaderMetric(
@@ -223,7 +254,11 @@ class _HeaderCard extends StatelessWidget {
   }
 }
 
+/// Divider between header metrics.
 class _HeaderDivider extends StatelessWidget {
+  /// Creates a new header divider instance.
+  const _HeaderDivider();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -235,10 +270,11 @@ class _HeaderDivider extends StatelessWidget {
   }
 }
 
+/// Shows the edit grocery list dialog.
 Future<void> _showEditListDialog(
-  BuildContext context,
-  ManageGroceryListDetail detail,
-) async {
+    BuildContext context,
+    ManageGroceryListDetail detail,
+    ) async {
   await showDialog<void>(
     context: context,
     builder: (_) => ChangeNotifierProvider.value(
@@ -248,18 +284,27 @@ Future<void> _showEditListDialog(
   );
 }
 
+/// Edit grocery list dialog.
 class _EditGroceryListDialog extends StatefulWidget {
+  /// The grocery list detail.
   final ManageGroceryListDetail detail;
 
+  /// Creates a new edit grocery list dialog instance.
   const _EditGroceryListDialog({required this.detail});
 
   @override
   State<_EditGroceryListDialog> createState() => _EditGroceryListDialogState();
 }
 
+/// State for the edit grocery list dialog.
 class _EditGroceryListDialogState extends State<_EditGroceryListDialog> {
+  /// Controller for the list name input.
   late final TextEditingController _nameController;
+
+  /// Start date.
   late DateTime _startDate;
+
+  /// End date.
   late DateTime _endDate;
 
   @override
@@ -278,6 +323,7 @@ class _EditGroceryListDialogState extends State<_EditGroceryListDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
 
     return AlertDialog(
@@ -287,6 +333,7 @@ class _EditGroceryListDialogState extends State<_EditGroceryListDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // List name input.
             Text('List Name', style: context.text.bodyMedium),
             const SizedBox(height: AppSpacing.sm),
             TextField(
@@ -299,6 +346,8 @@ class _EditGroceryListDialogState extends State<_EditGroceryListDialog> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
+
+            // Date range picker.
             Text('Date Range', style: context.text.bodyMedium),
             const SizedBox(height: AppSpacing.sm),
             InkWell(
@@ -328,6 +377,8 @@ class _EditGroceryListDialogState extends State<_EditGroceryListDialog> {
                 ),
               ),
             ),
+
+            // Error message if any.
             if (viewModel.actionErrorMessage != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(
@@ -357,6 +408,7 @@ class _EditGroceryListDialogState extends State<_EditGroceryListDialog> {
     );
   }
 
+  /// Opens the date range picker.
   Future<void> _pickDateRange() async {
     final picked = await showDateRangePicker(
       context: context,
@@ -364,6 +416,8 @@ class _EditGroceryListDialogState extends State<_EditGroceryListDialog> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
     );
+
+    // Update state if picked.
     if (picked == null || !mounted) return;
     setState(() {
       _startDate = DateTime(
@@ -375,6 +429,7 @@ class _EditGroceryListDialogState extends State<_EditGroceryListDialog> {
     });
   }
 
+  /// Saves the changes.
   Future<void> _saveChanges() async {
     final saved = await context.read<ManageGroceryListViewModel>().updateList(
       name: _nameController.text,
@@ -387,19 +442,30 @@ class _EditGroceryListDialogState extends State<_EditGroceryListDialog> {
   }
 }
 
+/// Add grocery item dialog.
 class _AddGroceryItemDialog extends StatefulWidget {
+  /// Related meal plan IDs.
   final List<String> relatedMealPlanIds;
 
+  /// Creates a new add grocery item dialog instance.
   const _AddGroceryItemDialog({this.relatedMealPlanIds = const []});
 
   @override
   State<_AddGroceryItemDialog> createState() => _AddGroceryItemDialogState();
 }
 
+/// State for the add grocery item dialog.
 class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
+  /// Controller for ingredient name.
   late final TextEditingController _nameController;
+
+  /// Controller for quantity.
   late final TextEditingController _amountController;
+
+  /// Controller for unit.
   late final TextEditingController _unitController;
+
+  /// Controller for category.
   late final TextEditingController _categoryController;
 
   @override
@@ -422,6 +488,7 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
 
     return AlertDialog(
@@ -430,6 +497,7 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Ingredient name.
             TextField(
               controller: _nameController,
               textInputAction: TextInputAction.next,
@@ -439,6 +507,8 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
+
+            // Quantity and unit row.
             Row(
               children: [
                 Expanded(
@@ -468,6 +538,8 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
               ],
             ),
             const SizedBox(height: AppSpacing.md),
+
+            // Category.
             TextField(
               controller: _categoryController,
               textInputAction: TextInputAction.done,
@@ -476,6 +548,8 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
                 border: OutlineInputBorder(),
               ),
             ),
+
+            // Error message if any.
             if (viewModel.actionErrorMessage != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(
@@ -505,6 +579,7 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
     );
   }
 
+  /// Saves the new item.
   Future<void> _saveItem() async {
     final saved = await context.read<ManageGroceryListViewModel>().addItem(
       name: _nameController.text,
@@ -519,10 +594,11 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
   }
 }
 
+/// Shows the add ingredient dialog.
 Future<void> _showAddIngredientDialog(
-  BuildContext context, {
-  List<String> relatedMealPlanIds = const [],
-}) async {
+    BuildContext context, {
+      List<String> relatedMealPlanIds = const [],
+    }) async {
   await showDialog<void>(
     context: context,
     builder: (_) => ChangeNotifierProvider.value(
@@ -532,9 +608,12 @@ Future<void> _showAddIngredientDialog(
   );
 }
 
+/// Inline action error widget.
 class _InlineActionError extends StatelessWidget {
+  /// Error message.
   final String message;
 
+  /// Creates a new inline action error instance.
   const _InlineActionError({required this.message});
 
   @override
@@ -557,12 +636,21 @@ class _InlineActionError extends StatelessWidget {
   }
 }
 
+/// Header metric widget.
 class _HeaderMetric extends StatelessWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Value text.
   final String value;
+
+  /// Label text.
   final String label;
+
+  /// Sublabel text.
   final String sublabel;
 
+  /// Creates a new header metric instance.
   const _HeaderMetric({
     required this.icon,
     required this.value,
@@ -628,11 +716,14 @@ class _HeaderMetric extends StatelessWidget {
   }
 }
 
+/// View mode tabs widget.
 class _ViewModeTabs extends StatelessWidget {
+  /// Creates a new view mode tabs instance.
   const _ViewModeTabs();
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
 
     return AppPillSegmentedControl(
@@ -648,9 +739,12 @@ class _ViewModeTabs extends StatelessWidget {
   }
 }
 
+/// List view mode widget.
 class _ListMode extends StatelessWidget {
+  /// The grocery list detail.
   final ManageGroceryListDetail detail;
 
+  /// Creates a new list mode instance.
   const _ListMode({required this.detail});
 
   @override
@@ -658,6 +752,7 @@ class _ListMode extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Upcoming meals header.
         Row(
           children: [
             Expanded(
@@ -690,23 +785,31 @@ class _ListMode extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.md),
+
+        // Upcoming meals carousel.
         _UpcomingMealsCarousel(meals: detail.upcomingMeals),
         const SizedBox(height: AppSpacing.xl),
+
+        // Grocery categories.
         ...detail.categories.map(
-          (category) => _GroceryCategoryCard(category: category),
+              (category) => _GroceryCategoryCard(category: category),
         ),
       ],
     );
   }
 }
 
+/// Upcoming meals carousel widget.
 class _UpcomingMealsCarousel extends StatelessWidget {
+  /// List of upcoming meals.
   final List<ManageUpcomingMeal> meals;
 
+  /// Creates a new upcoming meals carousel instance.
   const _UpcomingMealsCarousel({required this.meals});
 
   @override
   Widget build(BuildContext context) {
+    // Show empty state if no meals.
     if (meals.isEmpty) {
       return Container(
         width: double.infinity,
@@ -745,6 +848,7 @@ class _UpcomingMealsCarousel extends StatelessWidget {
       );
     }
 
+    // Build carousel with responsive card width.
     return LayoutBuilder(
       builder: (context, constraints) {
         // Compact cards reduce image letterboxing while staying readable.
@@ -764,10 +868,15 @@ class _UpcomingMealsCarousel extends StatelessWidget {
   }
 }
 
+/// Upcoming meal card widget.
 class _UpcomingMealCard extends StatelessWidget {
+  /// The meal data.
   final ManageUpcomingMeal meal;
+
+  /// Card width.
   final double width;
 
+  /// Creates a new upcoming meal card instance.
   const _UpcomingMealCard({required this.meal, required this.width});
 
   @override
@@ -793,6 +902,7 @@ class _UpcomingMealCard extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: Row(
             children: [
+              // Meal image.
               Container(
                 width: 88,
                 height: double.infinity,
@@ -805,6 +915,7 @@ class _UpcomingMealCard extends StatelessWidget {
                   fit: BoxFit.contain,
                 ),
               ),
+              // Meal details.
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -845,6 +956,7 @@ class _UpcomingMealCard extends StatelessWidget {
     );
   }
 
+  /// Returns the icon for a meal type.
   IconData _mealTypeIcon(String mealType) {
     final value = mealType.toLowerCase();
     if (value.contains('breakfast')) return Icons.wb_sunny_outlined;
@@ -854,10 +966,15 @@ class _UpcomingMealCard extends StatelessWidget {
   }
 }
 
+/// Meal pill widget.
 class _MealPill extends StatelessWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Label text.
   final String label;
 
+  /// Creates a new meal pill instance.
   const _MealPill({required this.icon, required this.label});
 
   @override
@@ -892,6 +1009,7 @@ class _MealPill extends StatelessWidget {
   }
 }
 
+/// Returns an icon for an ingredient category.
 IconData _ingredientCategoryIcon(String category) {
   final value = category.toLowerCase();
   if (value.contains('dairy') || value.contains('drink')) {
@@ -915,14 +1033,20 @@ IconData _ingredientCategoryIcon(String category) {
   return Icons.eco_outlined;
 }
 
+/// Grocery category card widget.
 class _GroceryCategoryCard extends StatelessWidget {
+  /// The category data.
   final ManageGroceryCategory category;
 
+  /// Creates a new grocery category card instance.
   const _GroceryCategoryCard({required this.category});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
+
+    // Filter visible items.
     final visibleItems = category.items
         .where((item) => viewModel.shouldShowItem(item.id))
         .toList();
@@ -976,7 +1100,7 @@ class _GroceryCategoryCard extends StatelessWidget {
         ),
         trailing: _CountBadge(
           label:
-              '${visibleItems.length} item${visibleItems.length == 1 ? '' : 's'}',
+          '${visibleItems.length} item${visibleItems.length == 1 ? '' : 's'}',
         ),
         children: visibleItems.asMap().entries.map((entry) {
           return _GroceryItemRow(
@@ -989,15 +1113,23 @@ class _GroceryCategoryCard extends StatelessWidget {
   }
 }
 
+/// Grocery item row widget.
 class _GroceryItemRow extends StatelessWidget {
+  /// The item data.
   final ManageGroceryItem item;
+
+  /// Whether to show a divider.
   final bool showDivider;
 
+  /// Creates a new grocery item row instance.
   const _GroceryItemRow({required this.item, required this.showDivider});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
+
+    // Check if item is bought.
     final bought = viewModel.isBought(item.id);
 
     return Container(
@@ -1005,10 +1137,10 @@ class _GroceryItemRow extends StatelessWidget {
         color: Colors.white,
         border: showDivider
             ? Border(
-                bottom: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.65),
-                ),
-              )
+          bottom: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.65),
+          ),
+        )
             : null,
       ),
       padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 7, 4, 7),
@@ -1068,8 +1200,8 @@ class _GroceryItemRow extends StatelessWidget {
             onPressed: viewModel.isSaving
                 ? null
                 : () => context.read<ManageGroceryListViewModel>().deleteItem(
-                    item.id,
-                  ),
+              item.id,
+            ),
             icon: const Icon(Icons.delete_outline, size: 18),
           ),
         ],
@@ -1078,9 +1210,12 @@ class _GroceryItemRow extends StatelessWidget {
   }
 }
 
+/// Timeline view mode widget.
 class _TimelineMode extends StatelessWidget {
+  /// The grocery list detail.
   final ManageGroceryListDetail detail;
 
+  /// Creates a new timeline mode instance.
   const _TimelineMode({required this.detail});
 
   @override
@@ -1093,18 +1228,26 @@ class _TimelineMode extends StatelessWidget {
   }
 }
 
+/// Timeline day widget.
 class _TimelineDay extends StatelessWidget {
+  /// The day data.
   final ManageGroceryTimelineDay day;
 
+  /// Creates a new timeline day instance.
   const _TimelineDay({required this.day});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
+
+    // Check if day is expanded.
     final isExpanded = viewModel.isTimelineDayExpanded(day.date);
+
+    // Count total ingredients.
     final itemCount = day.meals.fold<int>(
       0,
-      (count, meal) => count + meal.ingredients.length,
+          (count, meal) => count + meal.ingredients.length,
     );
 
     return Padding(
@@ -1113,6 +1256,7 @@ class _TimelineDay extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Timeline vertical line.
             Column(
               children: [
                 Container(
@@ -1132,6 +1276,8 @@ class _TimelineDay extends StatelessWidget {
               ],
             ),
             const SizedBox(width: AppSpacing.md),
+
+            // Day content.
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1166,7 +1312,7 @@ class _TimelineDay extends StatelessWidget {
                   if (isExpanded) ...[
                     const SizedBox(height: AppSpacing.md),
                     ...day.meals.asMap().entries.map(
-                      (entry) => _TimelineMeal(
+                          (entry) => _TimelineMeal(
                         date: day.date,
                         meal: entry.value,
                         isLast: entry.key == day.meals.length - 1,
@@ -1183,11 +1329,18 @@ class _TimelineDay extends StatelessWidget {
   }
 }
 
+/// Timeline meal widget.
 class _TimelineMeal extends StatelessWidget {
+  /// Date of the meal.
   final DateTime date;
+
+  /// The meal data.
   final ManageGroceryTimelineMeal meal;
+
+  /// Whether this is the last meal.
   final bool isLast;
 
+  /// Creates a new timeline meal instance.
   const _TimelineMeal({
     required this.date,
     required this.meal,
@@ -1196,7 +1349,10 @@ class _TimelineMeal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
+
+    // Check if meal is expanded.
     final isExpanded = viewModel.isTimelineMealExpanded(
       date,
       meal.mealType,
@@ -1209,6 +1365,7 @@ class _TimelineMeal extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Meal timeline dot.
             SizedBox(
               width: 32,
               child: Column(
@@ -1233,6 +1390,8 @@ class _TimelineMeal extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
+
+            // Meal content.
             Expanded(
               child: Column(
                 children: [
@@ -1279,6 +1438,8 @@ class _TimelineMeal extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
+
+                  // Meal card.
                   Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: AppColors.border),
@@ -1290,10 +1451,10 @@ class _TimelineMeal extends StatelessWidget {
                           onTap: () => context
                               .read<ManageGroceryListViewModel>()
                               .toggleTimelineMeal(
-                                date,
-                                meal.mealType,
-                                meal.title,
-                              ),
+                            date,
+                            meal.mealType,
+                            meal.title,
+                          ),
                           child: Padding(
                             padding: AppSpacing.cardPadding,
                             child: Row(
@@ -1373,26 +1534,34 @@ class _TimelineMeal extends StatelessWidget {
   }
 }
 
+/// Grouped timeline ingredients widget.
 class _GroupedTimelineIngredients extends StatelessWidget {
+  /// List of ingredients.
   final List<ManageGroceryItem> ingredients;
 
+  /// Creates a new grouped timeline ingredients instance.
   const _GroupedTimelineIngredients({required this.ingredients});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
+
+    // Group ingredients by category.
     final grouped = <String, _TimelineIngredientGroup>{};
     for (final item in ingredients) {
       if (!viewModel.shouldShowItem(item.id)) continue;
       final key = item.categoryId.isEmpty ? item.categoryName : item.categoryId;
       grouped
           .putIfAbsent(
-            key,
+        key,
             () => _TimelineIngredientGroup(title: item.categoryName),
-          )
+      )
           .items
           .add(item);
     }
+
+    // Sort categories.
     final categories = grouped.values.toList()
       ..sort((first, second) => first.title.compareTo(second.title));
 
@@ -1400,26 +1569,36 @@ class _GroupedTimelineIngredients extends StatelessWidget {
       children: categories
           .map(
             (group) => _TimelineIngredientCategory(
-              title: group.title,
-              ingredients: group.items,
-            ),
-          )
+          title: group.title,
+          ingredients: group.items,
+        ),
+      )
           .toList(),
     );
   }
 }
 
+/// Timeline ingredient group data class.
 class _TimelineIngredientGroup {
+  /// Category title.
   final String title;
+
+  /// List of ingredients.
   final List<ManageGroceryItem> items = [];
 
+  /// Creates a new timeline ingredient group instance.
   _TimelineIngredientGroup({required this.title});
 }
 
+/// Timeline ingredient category widget.
 class _TimelineIngredientCategory extends StatelessWidget {
+  /// Category title.
   final String title;
+
+  /// List of ingredients.
   final List<ManageGroceryItem> ingredients;
 
+  /// Creates a new timeline ingredient category instance.
   const _TimelineIngredientCategory({
     required this.title,
     required this.ingredients,
@@ -1467,12 +1646,21 @@ class _TimelineIngredientCategory extends StatelessWidget {
   }
 }
 
+/// Meal image widget.
 class _MealImage extends StatelessWidget {
+  /// Image path.
   final String path;
+
+  /// Image width.
   final double width;
+
+  /// Image height.
   final double height;
+
+  /// Image fit.
   final BoxFit fit;
 
+  /// Creates a new meal image instance.
   const _MealImage({
     required this.path,
     required this.width,
@@ -1496,14 +1684,20 @@ class _MealImage extends StatelessWidget {
   }
 }
 
+/// Timeline ingredient widget.
 class _TimelineIngredient extends StatelessWidget {
+  /// The ingredient item.
   final ManageGroceryItem item;
 
+  /// Creates a new timeline ingredient instance.
   const _TimelineIngredient({required this.item});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
+
+    // Skip if item should be hidden.
     if (!viewModel.shouldShowItem(item.id)) return const SizedBox.shrink();
 
     return Row(
@@ -1522,8 +1716,8 @@ class _TimelineIngredient extends StatelessWidget {
           onPressed: viewModel.isSaving
               ? null
               : () => context.read<ManageGroceryListViewModel>().deleteItem(
-                  item.id,
-                ),
+            item.id,
+          ),
           icon: const Icon(Icons.delete_outline, size: 16),
         ),
       ],
@@ -1531,9 +1725,12 @@ class _TimelineIngredient extends StatelessWidget {
   }
 }
 
+/// Count badge widget.
 class _CountBadge extends StatelessWidget {
+  /// Label text.
   final String label;
 
+  /// Creates a new count badge instance.
   const _CountBadge({required this.label});
 
   @override
@@ -1556,7 +1753,9 @@ class _CountBadge extends StatelessWidget {
   }
 }
 
+/// Add ingredient bar widget.
 class _AddIngredientBar extends StatelessWidget {
+  /// Creates a new add ingredient bar instance.
   const _AddIngredientBar();
 
   @override
@@ -1601,12 +1800,16 @@ class _AddIngredientBar extends StatelessWidget {
   }
 }
 
+/// Hide bought items bar widget.
 class _HideBoughtBar extends StatelessWidget {
+  /// Creates a new hide bought bar instance.
   const _HideBoughtBar();
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ManageGroceryListViewModel>();
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -1648,10 +1851,15 @@ class _HideBoughtBar extends StatelessWidget {
   }
 }
 
+/// Error state widget.
 class _ErrorState extends StatelessWidget {
+  /// Error message.
   final String message;
+
+  /// Callback when retry is pressed.
   final Future<void> Function() onRetry;
 
+  /// Creates a new error state instance.
   const _ErrorState({required this.message, required this.onRetry});
 
   @override
@@ -1678,6 +1886,7 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
+/// Formats a short date range.
 String _shortDateRange(DateTime start, DateTime end) {
   return '${DateFormat('d MMM').format(start)} - ${DateFormat('d MMM').format(end)}';
 }

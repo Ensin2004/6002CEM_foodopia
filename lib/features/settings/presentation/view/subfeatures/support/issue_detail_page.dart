@@ -12,13 +12,25 @@ import '../../../../domain/entities/help_center_issue.dart';
 import '../../../../domain/usecases/support/help_center/reply_to_issue_usecase.dart';
 import '../../../../domain/usecases/support/help_center/update_issue_status_usecase.dart';
 
+/// Page for viewing and managing a help center issue detail.
+/// Supports both user and admin views with reply functionality.
 class IssueDetailPage extends StatefulWidget {
+  /// The help center issue to display.
   final HelpCenterIssue issue;
+
+  /// Email of the user who submitted the issue.
   final String? userEmail;
+
+  /// Name of the user who submitted the issue.
   final String? userName;
+
+  /// Whether the current user is an admin.
   final bool isAdmin;
+
+  /// Callback when issue status changes.
   final VoidCallback? onStatusChanged;
 
+  /// Creates a new issue detail page instance.
   const IssueDetailPage({
     super.key,
     required this.issue,
@@ -32,10 +44,18 @@ class IssueDetailPage extends StatefulWidget {
   State<IssueDetailPage> createState() => _IssueDetailPageState();
 }
 
+/// State for the issue detail page.
 class _IssueDetailPageState extends State<IssueDetailPage> {
+  /// Controller for the reply text field.
   final _replyController = TextEditingController();
+
+  /// Whether saving is in progress.
   bool _isSaving = false;
+
+  /// Error message to display.
   String? _errorMessage;
+
+  /// Mutable copy of the issue for local updates.
   late HelpCenterIssue _issue;
 
   @override
@@ -53,6 +73,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Get the theme.
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -64,9 +85,14 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // User header (admin only).
               if (widget.isAdmin) _buildUserHeader(context),
+
+              // Summary card.
               _buildSummaryCard(context),
               const SizedBox(height: 16),
+
+              // Message section.
               _buildSectionCard(
                 context: context,
                 title: 'Message',
@@ -76,6 +102,8 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
                   style: theme.textTheme.bodyLarge?.copyWith(height: 1.45),
                 ),
               ),
+
+              // Attachment section.
               if (_issue.imageUrl?.isNotEmpty == true) ...[
                 const SizedBox(height: 16),
                 _buildSectionCard(
@@ -86,10 +114,14 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
                 ),
               ],
               const SizedBox(height: 16),
+
+              // Reply section (admin or user view).
               if (widget.isAdmin)
                 _buildAdminReplyBox(context)
               else
                 _buildUserReply(context),
+
+              // Error message.
               if (_errorMessage != null) ...[
                 const SizedBox(height: 12),
                 Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
@@ -101,6 +133,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
+  /// Builds the user header for admin view.
   Widget _buildUserHeader(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -142,6 +175,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
+  /// Builds the summary card with ticket details.
   Widget _buildSummaryCard(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -174,6 +208,8 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
             ],
           ),
           const SizedBox(height: 14),
+
+          // Ticket ID.
           Text(
             'Ticket ID',
             style: theme.textTheme.bodySmall?.copyWith(
@@ -188,11 +224,15 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
             ),
           ),
           const SizedBox(height: 14),
+
+          // Timestamp.
           _buildMetaLine(
             context,
             icon: Icons.calendar_today_outlined,
             text: _formatDateTime(_issue.timestamp),
           ),
+
+          // Replied timestamp if available.
           if (_issue.repliedAt != null) ...[
             const SizedBox(height: 8),
             _buildMetaLine(
@@ -206,6 +246,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
+  /// Builds the status badge for the issue.
   Widget _buildDetailStatusBadge(BuildContext context) {
     final theme = Theme.of(context);
     final isClosed = _issue.normalizedStatus == 'closed';
@@ -236,11 +277,12 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
+  /// Builds a meta line with icon and text.
   Widget _buildMetaLine(
-    BuildContext context, {
-    required IconData icon,
-    required String text,
-  }) {
+      BuildContext context, {
+        required IconData icon,
+        required String text,
+      }) {
     final theme = Theme.of(context);
 
     return Row(
@@ -263,6 +305,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
+  /// Builds a section card with title and content.
   Widget _buildSectionCard({
     required BuildContext context,
     required String title,
@@ -311,6 +354,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
+  /// Builds the attachment widget.
   Widget _buildAttachment(BuildContext context, String imageUrl) {
     return GestureDetector(
       onTap: () => _showFullScreenImage(context, imageUrl),
@@ -356,6 +400,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
+  /// Builds the admin reply box.
   Widget _buildAdminReplyBox(BuildContext context) {
     return _buildSectionCard(
       context: context,
@@ -378,12 +423,16 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
             ),
           ),
           const SizedBox(height: 14),
+
+          // Reply button.
           PrimaryButton(
             text: _issue.isReplied ? 'Update Reply' : 'Reply User',
             isLoading: _isSaving,
             onPressed: _isSaving ? null : _replyToUser,
           ),
           const SizedBox(height: 10),
+
+          // Mark as closed button.
           if (!_issue.isReplied)
             SizedBox(
               width: double.infinity,
@@ -397,7 +446,9 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
+  /// Builds the user reply view.
   Widget _buildUserReply(BuildContext context) {
+    // Show empty state if no reply.
     if (_issue.adminReply.trim().isEmpty) {
       return _buildSectionCard(
         context: context,
@@ -410,6 +461,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
       );
     }
 
+    // Show reply with timestamp.
     return _buildSectionCard(
       context: context,
       title: 'Admin Reply',
@@ -436,49 +488,75 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
+  /// Replies to the user.
   Future<void> _replyToUser() async {
+    // Set saving state.
     setState(() {
       _isSaving = true;
       _errorMessage = null;
     });
+
+    // Execute the use case.
     final result = await sl<ReplyToIssueUseCase>().execute(
       issueId: _issue.id,
       userUid: _issue.uid,
       reply: _replyController.text,
     );
-    result.fold((failure) => _errorMessage = failure.message, (_) {
-      _issue = _issue.copyWith(
-        replied: true,
-        status: 'closed',
-        adminReply: _replyController.text.trim(),
-        repliedAt: DateTime.now(),
-      );
-      widget.onStatusChanged?.call();
-    });
+
+    // Handle result.
+    result.fold(
+          (failure) => _errorMessage = failure.message,
+          (_) {
+        // Update local issue state.
+        _issue = _issue.copyWith(
+          replied: true,
+          status: 'closed',
+          adminReply: _replyController.text.trim(),
+          repliedAt: DateTime.now(),
+        );
+        widget.onStatusChanged?.call();
+      },
+    );
+
+    // Reset saving state.
     if (mounted) setState(() => _isSaving = false);
   }
 
+  /// Marks the issue as closed.
   Future<void> _markAsComplete() async {
+    // Set saving state.
     setState(() {
       _isSaving = true;
       _errorMessage = null;
     });
+
+    // Execute the use case.
     final result = await sl<UpdateIssueStatusUseCase>().execute(_issue.id);
-    result.fold((failure) => _errorMessage = failure.message, (_) {
-      _issue = _issue.copyWith(
-        replied: true,
-        status: 'closed',
-        repliedAt: DateTime.now(),
-      );
-      widget.onStatusChanged?.call();
-    });
+
+    // Handle result.
+    result.fold(
+          (failure) => _errorMessage = failure.message,
+          (_) {
+        // Update local issue state.
+        _issue = _issue.copyWith(
+          replied: true,
+          status: 'closed',
+          repliedAt: DateTime.now(),
+        );
+        widget.onStatusChanged?.call();
+      },
+    );
+
+    // Reset saving state.
     if (mounted) setState(() => _isSaving = false);
   }
 
+  /// Formats a date time for display.
   String _formatDateTime(DateTime dateTime) {
     return DateFormat('MMM dd, yyyy - hh:mm a').format(dateTime);
   }
 
+  /// Shows the full screen image preview.
   void _showFullScreenImage(BuildContext context, String imageUrl) {
     context.push(
       AppRouter.imagePreview,

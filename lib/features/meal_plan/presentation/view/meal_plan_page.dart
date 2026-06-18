@@ -19,14 +19,21 @@ import '../widgets/grocery_list/grocery_list_tab_main_view.dart';
 import '../widgets/inspiration/inspiration_tab_main_view.dart';
 import '../widgets/planning/planning_tab_main_view.dart';
 
+/// Main page for the meal plan feature.
+/// Contains three tabs: Planning, Inspiration, and Grocery List.
 class MealPlanPage extends StatelessWidget {
+  /// Initial tab index to display (0: Planning, 1: Inspiration, 2: Grocery List).
   final int initialTabIndex;
+
+  /// User ID of the current user.
   final String userId;
 
+  /// Creates a new meal plan page instance.
   const MealPlanPage({super.key, this.initialTabIndex = 0, this.userId = ''});
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model to the widget tree.
     return ChangeNotifierProvider(
       create: (_) => MealPlanViewModel(
         userId: userId,
@@ -35,32 +42,39 @@ class MealPlanPage extends StatelessWidget {
         getPreferencesUseCase: sl<GetMealPlanPreferencesUseCase>(),
         searchIngredientsUseCase: sl<SearchMealPlanIngredientsUseCase>(),
         getInspirationOptionsUseCase:
-            sl<GetMealPlanInspirationOptionsUseCase>(),
+        sl<GetMealPlanInspirationOptionsUseCase>(),
         deleteMealPlanUseCase: sl<DeleteMealPlanUseCase>(),
         updateWeeklyGroceryWeekStartDayUseCase:
-            sl<UpdateWeeklyGroceryWeekStartDayUseCase>(),
+        sl<UpdateWeeklyGroceryWeekStartDayUseCase>(),
       ),
       child: _MealPlanView(initialTabIndex: initialTabIndex),
     );
   }
 }
 
+/// Internal view for the meal plan page.
 class _MealPlanView extends StatefulWidget {
+  /// Initial tab index.
   final int initialTabIndex;
 
+  /// Creates a new meal plan view instance.
   const _MealPlanView({required this.initialTabIndex});
 
   @override
   State<_MealPlanView> createState() => _MealPlanViewState();
 }
 
+/// State for the meal plan view.
 class _MealPlanViewState extends State<_MealPlanView>
     with SingleTickerProviderStateMixin {
+  /// Tab controller for managing tab switching.
   late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize the tab controller with 3 tabs.
     _tabController = TabController(
       length: 3,
       vsync: this,
@@ -72,6 +86,7 @@ class _MealPlanViewState extends State<_MealPlanView>
   void didUpdateWidget(covariant _MealPlanView oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    // Update tab index if initialTabIndex changed.
     final nextIndex = widget.initialTabIndex.clamp(0, 2);
     if (oldWidget.initialTabIndex != widget.initialTabIndex &&
         _tabController.index != nextIndex) {
@@ -87,13 +102,18 @@ class _MealPlanViewState extends State<_MealPlanView>
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<MealPlanViewModel>();
 
+    // Show loading dialog while dashboard is loading.
     if (viewModel.isLoading && viewModel.dashboard == null) {
       return const LoadingDialog(inline: true, message: 'Loading meal plan...');
     }
 
+    // Get the dashboard.
     final dashboard = viewModel.dashboard;
+
+    // Show error state if dashboard is null.
     if (dashboard == null) {
       return _MealPlanError(
         message: viewModel.errorMessage ?? 'Unable to load meal plan',
@@ -103,10 +123,12 @@ class _MealPlanViewState extends State<_MealPlanView>
 
     return Column(
       children: [
+        // Tab bar with three tabs.
         AppSegmentedTabs(
           controller: _tabController,
           tabs: const ['Planning', 'Inspiration', 'Grocery List'],
         ),
+        // Tab content.
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -122,10 +144,15 @@ class _MealPlanViewState extends State<_MealPlanView>
   }
 }
 
+/// Error state widget for the meal plan page.
 class _MealPlanError extends StatelessWidget {
+  /// Error message to display.
   final String message;
+
+  /// Callback when retry is pressed.
   final Future<void> Function() onRetry;
 
+  /// Creates a new meal plan error instance.
   const _MealPlanError({required this.message, required this.onRetry});
 
   @override
@@ -136,14 +163,19 @@ class _MealPlanError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Empty state image.
             Image.asset('assets/images/empty_page.png', height: 140),
             const SizedBox(height: AppSpacing.lg),
+
+            // Error message.
             Text(
               message,
               textAlign: TextAlign.center,
               style: context.text.bodyMedium,
             ),
             const SizedBox(height: AppSpacing.md),
+
+            // Retry button.
             TextButton(
               onPressed: onRetry,
               child: Text(

@@ -22,6 +22,7 @@ import '../../../viewmodel/support/user_help_center_viewmodel.dart';
 import '../../../widgets/support/issue_submission_form.dart';
 
 /// Defines behavior for user help center page.
+/// Displays user's help tickets with filtering and sorting.
 class UserHelpCenterPage extends StatelessWidget {
   /// Creates a user help center page instance.
   const UserHelpCenterPage({super.key});
@@ -29,8 +30,10 @@ class UserHelpCenterPage extends StatelessWidget {
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    // Get the current user ID.
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
+    // Provide the view model to the widget tree.
     return ChangeNotifierProvider(
       create: (_) => UserHelpCenterViewModel(
         uid: uid,
@@ -52,12 +55,17 @@ class _UserHelpCenterPageView extends StatefulWidget {
       _UserHelpCenterPageViewState();
 }
 
+/// State for the user help center page view.
 class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
+  /// Controller for the search text field.
   final TextEditingController _searchController = TextEditingController();
+
+  /// Current search query.
   String _searchQuery = '';
 
   @override
   void dispose() {
+    // Dispose the search controller.
     _searchController.dispose();
     super.dispose();
   }
@@ -65,7 +73,10 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<UserHelpCenterViewModel>();
+
+    // Get the theme for styling.
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -80,12 +91,12 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
       body: viewModel.isLoading
           ? const LoadingDialog()
           : Column(
-              children: [
-                _buildHeroCard(),
-                _buildFilterSortRow(context, viewModel),
-                Expanded(child: _buildIssuesList(context, viewModel)),
-              ],
-            ),
+        children: [
+          _buildHeroCard(),
+          _buildFilterSortRow(context, viewModel),
+          Expanded(child: _buildIssuesList(context, viewModel)),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'add_help_ticket',
         backgroundColor: theme.colorScheme.primary,
@@ -98,7 +109,13 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
     );
   }
 
+  // =========================================================================
+  // HERO CARD
+  // =========================================================================
+
+  /// Builds the hero card with header and search field.
   Widget _buildHeroCard() {
+    // Get the theme for styling.
     final theme = Theme.of(context);
 
     return Container(
@@ -122,6 +139,7 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          // Decorative image.
           Positioned(
             right: -4,
             top: 6,
@@ -134,6 +152,7 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
               ),
             ),
           ),
+          // Text content.
           Padding(
             padding: const EdgeInsets.only(right: 142),
             child: Column(
@@ -156,6 +175,7 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
               ],
             ),
           ),
+          // Search field.
           Padding(
             padding: const EdgeInsets.only(top: 164),
             child: _buildSearchField(),
@@ -165,7 +185,9 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
     );
   }
 
+  /// Builds the search field.
   Widget _buildSearchField() {
+    // Get the theme for styling.
     final theme = Theme.of(context);
 
     return TextField(
@@ -183,13 +205,13 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
         suffixIcon: _searchQuery.isEmpty
             ? null
             : IconButton(
-                tooltip: 'Clear search',
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () {
-                  _searchController.clear();
-                  setState(() => _searchQuery = '');
-                },
-              ),
+          tooltip: 'Clear search',
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () {
+            _searchController.clear();
+            setState(() => _searchQuery = '');
+          },
+        ),
         filled: true,
         fillColor: theme.colorScheme.surface,
         contentPadding: const EdgeInsets.symmetric(
@@ -204,15 +226,20 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
     );
   }
 
+  // =========================================================================
+  // FILTER AND SORT
+  // =========================================================================
+
   /// Handles the build filter sort row operation.
   Widget _buildFilterSortRow(
-    BuildContext context,
-    UserHelpCenterViewModel viewModel,
-  ) {
+      BuildContext context,
+      UserHelpCenterViewModel viewModel,
+      ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
       child: Row(
         children: [
+          // Filter chips.
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -240,6 +267,8 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
             ),
           ),
           const SizedBox(width: 12),
+
+          // Sort menu button.
           _SortMenuButton(
             sortLatestFirst: viewModel.sortLatestFirst,
             onSelected: (latestFirst) {
@@ -253,16 +282,22 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
     );
   }
 
+  // =========================================================================
+  // ISSUES LIST
+  // =========================================================================
+
   /// Handles the build issues list operation.
   Widget _buildIssuesList(
-    BuildContext context,
-    UserHelpCenterViewModel viewModel,
-  ) {
+      BuildContext context,
+      UserHelpCenterViewModel viewModel,
+      ) {
+    // Get visible issues based on search query.
     final issues = _visibleIssues(viewModel.issues);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 100),
       children: [
+        // Show empty state if no issues.
         if (issues.isEmpty)
           _buildEmptyTicketsCard(
             title: _searchQuery.isEmpty
@@ -273,20 +308,28 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
                 : 'Try another ticket ID, date, or message.',
           )
         else ...[
+          // Build each issue item.
           for (final issue in issues) _buildIssueItem(context, issue),
         ],
       ],
     );
   }
 
+  /// Filters issues based on the search query.
   List<HelpCenterIssue> _visibleIssues(List<HelpCenterIssue> issues) {
+    // Get the search query.
     final query = _searchQuery.toLowerCase();
+
+    // Return all issues if query is empty.
     if (query.isEmpty) return issues;
 
+    // Filter issues by search query.
     return issues.where((issue) {
       final formattedDate = DateFormat(
         'MMM dd, yyyy hh:mm a',
       ).format(issue.timestamp).toLowerCase();
+
+      // Search in ID, message, admin reply, and date.
       return issue.id.toLowerCase().contains(query) ||
           issue.message.toLowerCase().contains(query) ||
           issue.adminReply.toLowerCase().contains(query) ||
@@ -296,7 +339,10 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
 
   /// Handles the build issue item operation.
   Widget _buildIssueItem(BuildContext context, HelpCenterIssue issue) {
+    // Get the theme for styling.
     final theme = Theme.of(context);
+
+    // Format the timestamp.
     final formattedDate = DateFormat(
       'MMM dd, yyyy - hh:mm a',
     ).format(issue.timestamp);
@@ -327,6 +373,7 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Ticket ID.
                     Text(
                       'Ticket ID: ${issue.id}',
                       maxLines: 1,
@@ -336,6 +383,8 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
                       ),
                     ),
                     const SizedBox(height: 10),
+
+                    // Status badge and view icon.
                     Row(
                       children: [
                         _buildStatusBadge(issue),
@@ -348,6 +397,8 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
                       ],
                     ),
                     const SizedBox(height: 10),
+
+                    // Timestamp.
                     Row(
                       children: [
                         const Icon(
@@ -380,7 +431,10 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
 
   /// Handles the build status badge operation.
   Widget _buildStatusBadge(HelpCenterIssue issue) {
+    // Get the normalized status.
     final status = issue.normalizedStatus;
+
+    // Determine label and color based on status.
     final label = switch (status) {
       'closed' => 'Closed',
       _ => 'Open',
@@ -418,10 +472,16 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
     );
   }
 
+  // =========================================================================
+  // EMPTY STATE
+  // =========================================================================
+
+  /// Builds the empty tickets card.
   Widget _buildEmptyTicketsCard({
     required String title,
     required String message,
   }) {
+    // Get the theme for styling.
     final theme = Theme.of(context);
 
     return Container(
@@ -435,6 +495,7 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
           padding: const EdgeInsets.fromLTRB(18, 28, 18, 30),
           child: Column(
             children: [
+              // Icon container.
               Container(
                 width: 70,
                 height: 70,
@@ -456,6 +517,8 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Title.
               Text(
                 title,
                 textAlign: TextAlign.center,
@@ -465,6 +528,8 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
                 ),
               ),
               const SizedBox(height: 8),
+
+              // Message.
               Text(
                 message,
                 textAlign: TextAlign.center,
@@ -477,6 +542,10 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
     );
   }
 
+  // =========================================================================
+  // NAVIGATION
+  // =========================================================================
+
   /// Handles the navigate to issue detail operation.
   void _navigateToIssueDetail(BuildContext context, HelpCenterIssue issue) {
     context.push(AppRouter.issueDetail, extra: IssueDetailArgs(issue: issue));
@@ -484,8 +553,10 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
 
   /// Handles the show submission form operation.
   void _showSubmissionForm(BuildContext context) {
+    // Get the view model.
     final viewModel = context.read<UserHelpCenterViewModel>();
 
+    // Show the bottom sheet with the submission form.
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -497,20 +568,34 @@ class _UserHelpCenterPageViewState extends State<_UserHelpCenterPageView> {
   }
 }
 
+// =============================================================================
+// HELPER WIDGETS
+// =============================================================================
+
+/// Filter chip button widget.
 class _FilterChipButton extends StatelessWidget {
+  /// Label text.
+  final String label;
+
+  /// Whether the chip is selected.
+  final bool isSelected;
+
+  /// Callback when tapped.
+  final VoidCallback onTap;
+
+  /// Creates a new filter chip button instance.
   const _FilterChipButton({
     required this.label,
     required this.isSelected,
     required this.onTap,
   });
 
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
   @override
   Widget build(BuildContext context) {
+    // Get the theme for styling.
     final theme = Theme.of(context);
+
+    // Determine foreground color.
     final foreground = isSelected
         ? theme.colorScheme.onPrimary
         : theme.colorScheme.onSurface;
@@ -556,17 +641,23 @@ class _FilterChipButton extends StatelessWidget {
   }
 }
 
+/// Sort menu button widget.
 class _SortMenuButton extends StatelessWidget {
+  /// Whether to sort latest first.
+  final bool sortLatestFirst;
+
+  /// Callback when sort order is selected.
+  final ValueChanged<bool> onSelected;
+
+  /// Creates a new sort menu button instance.
   const _SortMenuButton({
     required this.sortLatestFirst,
     required this.onSelected,
   });
 
-  final bool sortLatestFirst;
-  final ValueChanged<bool> onSelected;
-
   @override
   Widget build(BuildContext context) {
+    // Get the theme for styling.
     final theme = Theme.of(context);
 
     return PopupMenuButton<bool>(
@@ -624,25 +715,33 @@ class _SortMenuButton extends StatelessWidget {
   }
 }
 
+/// Dashed border painter for empty state cards.
 class _DashedBorderPainter extends CustomPainter {
-  const _DashedBorderPainter({required this.color, required this.radius});
-
+  /// Color of the dashed border.
   final Color color;
+
+  /// Corner radius of the border.
   final double radius;
+
+  /// Creates a new dashed border painter instance.
+  const _DashedBorderPainter({required this.color, required this.radius});
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Create the paint for the dashed border.
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
 
+    // Create the rounded rectangle path.
     final rect = RRect.fromRectAndRadius(
       Offset.zero & size,
       Radius.circular(radius),
     );
     final path = Path()..addRRect(rect);
 
+    // Draw dashed border along the path.
     for (final metric in path.computeMetrics()) {
       var distance = 0.0;
       const dashWidth = 7.0;

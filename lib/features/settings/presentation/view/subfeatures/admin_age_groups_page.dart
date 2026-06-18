@@ -7,11 +7,14 @@ import '../../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../viewmodel/admin_age_groups_viewmodel.dart';
 
 /// Admin page for managing signup/profile age-group options.
+/// Provides CRUD operations for age groups with reorderable list.
 class AdminAgeGroupsPage extends StatelessWidget {
+  /// Creates a new admin age groups page instance.
   const AdminAgeGroupsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model to the widget tree.
     return ChangeNotifierProvider(
       create: (_) => AdminAgeGroupsViewModel(),
       child: const _AdminAgeGroupsPageView(),
@@ -19,11 +22,14 @@ class AdminAgeGroupsPage extends StatelessWidget {
   }
 }
 
+/// Internal view for the admin age groups page.
 class _AdminAgeGroupsPageView extends StatelessWidget {
+  /// Creates a new admin age groups page view instance.
   const _AdminAgeGroupsPageView();
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AdminAgeGroupsViewModel>();
 
     return Scaffold(
@@ -38,63 +44,80 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
           ? const LoadingDialog()
           : viewModel.ageGroups.isEmpty
           ? RefreshIndicator(
-              onRefresh: viewModel.loadAgeGroups,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (viewModel.errorMessage != null)
-                    _buildErrorMessage(viewModel.errorMessage!),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 80),
-                    child: Center(child: Text('No age groups yet')),
-                  ),
-                  const SizedBox(height: 80),
-                ],
-              ),
-            )
-          : ReorderableListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount:
-                  viewModel.ageGroups.length +
-                  (viewModel.errorMessage != null ? 2 : 1),
-              onReorder: (oldIndex, newIndex) {
-                final offset = viewModel.errorMessage != null ? 1 : 0;
-                if (oldIndex < offset) return;
-                viewModel.reorderAgeGroups(
-                  oldIndex: oldIndex - offset,
-                  newIndex: newIndex - offset,
-                );
-              },
-              itemBuilder: (context, index) {
-                if (viewModel.errorMessage != null && index == 0) {
-                  return Container(
-                    key: const ValueKey('age_group_error'),
-                    child: _buildErrorMessage(viewModel.errorMessage!),
-                  );
-                }
+        onRefresh: viewModel.loadAgeGroups,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Error message if any.
+            if (viewModel.errorMessage != null)
+              _buildErrorMessage(viewModel.errorMessage!),
 
-                final offset = viewModel.errorMessage != null ? 1 : 0;
-                final itemIndex = index - offset;
-                if (itemIndex == viewModel.ageGroups.length) {
-                  return const SizedBox(
-                    key: ValueKey('age_group_bottom_space'),
-                    height: 80,
-                  );
-                }
-
-                final item = viewModel.ageGroups[itemIndex];
-                return _buildAgeGroupItem(context, viewModel, item);
-              },
+            // Empty state.
+            const Padding(
+              padding: EdgeInsets.only(top: 80),
+              child: Center(child: Text('No age groups yet')),
             ),
+            const SizedBox(height: 80),
+          ],
+        ),
+      )
+          : ReorderableListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount:
+        viewModel.ageGroups.length +
+            (viewModel.errorMessage != null ? 2 : 1),
+        onReorder: (oldIndex, newIndex) {
+          // Adjust index offset for error message.
+          final offset = viewModel.errorMessage != null ? 1 : 0;
+          if (oldIndex < offset) return;
+          viewModel.reorderAgeGroups(
+            oldIndex: oldIndex - offset,
+            newIndex: newIndex - offset,
+          );
+        },
+        itemBuilder: (context, index) {
+          // Build error message at the top if present.
+          if (viewModel.errorMessage != null && index == 0) {
+            return Container(
+              key: const ValueKey('age_group_error'),
+              child: _buildErrorMessage(viewModel.errorMessage!),
+            );
+          }
+
+          // Calculate the actual item index.
+          final offset = viewModel.errorMessage != null ? 1 : 0;
+          final itemIndex = index - offset;
+
+          // Add bottom spacing.
+          if (itemIndex == viewModel.ageGroups.length) {
+            return const SizedBox(
+              key: ValueKey('age_group_bottom_space'),
+              height: 80,
+            );
+          }
+
+          // Build the age group item.
+          final item = viewModel.ageGroups[itemIndex];
+          return _buildAgeGroupItem(context, viewModel, item);
+        },
+      ),
     );
   }
 
+  // =========================================================================
+  // WIDGET BUILDERS
+  // =========================================================================
+
+  /// Builds an age group list item.
   Widget _buildAgeGroupItem(
-    BuildContext context,
-    AdminAgeGroupsViewModel viewModel,
-    Map<String, dynamic> item,
-  ) {
+      BuildContext context,
+      AdminAgeGroupsViewModel viewModel,
+      Map<String, dynamic> item,
+      ) {
+    // Get active status.
     final isActive = item['isActive'] as bool? ?? true;
+
+    // Get description.
     final description = item['description'] as String? ?? '';
 
     return Card(
@@ -123,7 +146,10 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Drag handle for reordering.
             const Icon(Icons.drag_handle, color: Colors.grey),
+
+            // Edit/delete popup menu.
             PopupMenuButton<String>(
               onSelected: (value) {
                 if (value == 'edit') {
@@ -143,6 +169,7 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
     );
   }
 
+  /// Builds an error message widget.
   Widget _buildErrorMessage(String message) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -156,17 +183,25 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
     );
   }
 
+  // =========================================================================
+  // DIALOGS
+  // =========================================================================
+
+  /// Shows the add/edit age group dialog.
   void _showAgeGroupDialog(
-    BuildContext context,
-    AdminAgeGroupsViewModel viewModel, {
-    Map<String, dynamic>? item,
-  }) {
+      BuildContext context,
+      AdminAgeGroupsViewModel viewModel, {
+        Map<String, dynamic>? item,
+      }) {
+    // Initialize controllers with existing data if editing.
     final nameController = TextEditingController(
       text: item?['name'] as String? ?? '',
     );
     final descriptionController = TextEditingController(
       text: item?['description'] as String? ?? '',
     );
+
+    // Get active status.
     var isActive = item?['isActive'] as bool? ?? true;
 
     showDialog(
@@ -179,6 +214,7 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Name field.
                 TextField(
                   controller: nameController,
                   decoration: const InputDecoration(
@@ -188,6 +224,8 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
                   maxLength: 60,
                 ),
                 const SizedBox(height: 12),
+
+                // Description field.
                 TextField(
                   controller: descriptionController,
                   decoration: const InputDecoration(
@@ -196,6 +234,8 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
                   ),
                   maxLength: 100,
                 ),
+
+                // Active toggle.
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Active'),
@@ -214,15 +254,18 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
               width: 110,
               child: PrimaryButton(
                 onPressed: () async {
+                  // Save the age group.
                   final success = await viewModel.saveAgeGroup(
                     id: item?['id'] as String?,
                     name: nameController.text,
                     description: descriptionController.text,
                     sortOrder:
-                        item?['sortOrder'] as int? ??
+                    item?['sortOrder'] as int? ??
                         viewModel.ageGroups.length + 1,
                     isActive: isActive,
                   );
+
+                  // Close dialog and show feedback if successful.
                   if (success && dialogContext.mounted) {
                     Navigator.pop(dialogContext);
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -241,11 +284,12 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
     );
   }
 
+  /// Shows the delete confirmation dialog.
   void _confirmDelete(
-    BuildContext context,
-    AdminAgeGroupsViewModel viewModel,
-    Map<String, dynamic> item,
-  ) {
+      BuildContext context,
+      AdminAgeGroupsViewModel viewModel,
+      Map<String, dynamic> item,
+      ) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -260,10 +304,15 @@ class _AdminAgeGroupsPageView extends StatelessWidget {
           ),
           TextButton(
             onPressed: () async {
+              // Delete the age group.
               final success = await viewModel.deleteAgeGroup(
                 item['id'] as String,
               );
+
+              // Close dialog.
               if (dialogContext.mounted) Navigator.pop(dialogContext);
+
+              // Show feedback if successful.
               if (success && context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Age group deleted')),

@@ -38,14 +38,28 @@ import '../../../domain/usecases/save_ai_meal_plan_usecase.dart';
 import '../../../domain/usecases/search_meal_plan_ingredients_usecase.dart';
 import '../../viewmodel/generate_ai_meal_viewmodel.dart';
 
+/// Page for generating AI-powered meal plans.
+/// Provides a multi-step wizard for configuring and generating AI meal ideas.
 class GenerateAiMealPage extends StatelessWidget {
+  /// User ID for the current user.
   final String userId;
+
+  /// Type of meal to generate (e.g., breakfast, lunch, dinner).
   final String mealType;
+
+  /// Optional meal category ID.
   final String? mealCategoryId;
+
+  /// Optional selected date for the meal plan.
   final DateTime? selectedDate;
+
+  /// Optional initial generation request.
   final AddMealAiGenerationRequest? initialRequest;
+
+  /// Whether to auto-generate on page load.
   final bool autoGenerate;
 
+  /// Creates a new generate AI meal page instance.
   const GenerateAiMealPage({
     super.key,
     required this.userId,
@@ -58,6 +72,7 @@ class GenerateAiMealPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model to the widget tree.
     return ChangeNotifierProvider(
       create: (_) => GenerateAiMealViewModel(
         userId: userId,
@@ -71,9 +86,9 @@ class GenerateAiMealPage extends StatelessWidget {
         getMealCategoriesUseCase: sl<GetMealCategoriesUseCase>(),
         saveAiMealPlanUseCase: sl<SaveAiMealPlanUseCase>(),
         getDefaultIngredientsUseCase:
-            sl<GetMealPlanDefaultIngredientsUseCase>(),
+        sl<GetMealPlanDefaultIngredientsUseCase>(),
         getInspirationOptionsUseCase:
-            sl<GetMealPlanInspirationOptionsUseCase>(),
+        sl<GetMealPlanInspirationOptionsUseCase>(),
         searchIngredientsUseCase: sl<SearchMealPlanIngredientsUseCase>(),
       ),
       child: const _GenerateAiMealView(),
@@ -81,20 +96,27 @@ class GenerateAiMealPage extends StatelessWidget {
   }
 }
 
+/// Internal view widget for the AI meal generation page.
 class _GenerateAiMealView extends StatelessWidget {
+  /// Creates a new generate AI meal view instance.
   const _GenerateAiMealView();
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
 
+    // Show loading dialog while plan is loading.
     if (viewModel.isLoading && viewModel.plan == null) {
       return const Scaffold(
         body: LoadingDialog(inline: true, message: 'Loading AI meal setup...'),
       );
     }
 
+    // Get the current plan.
     final plan = viewModel.plan;
+
+    // Show error state if plan is null.
     if (plan == null) {
       return Scaffold(
         appBar: CustomAppBar(
@@ -111,10 +133,15 @@ class _GenerateAiMealView extends StatelessWidget {
       );
     }
 
+    // Determine if this is an inspiration flow.
     final isInspirationFlow = viewModel.sourceRequest != null;
+
+    // Define progress labels based on flow type.
     final progressLabels = isInspirationFlow
         ? const ['AI Result', 'Instructions', 'Review']
         : const ['Factor', 'AI Result', 'Instructions', 'Review'];
+
+    // Calculate current progress step.
     final progressStep = isInspirationFlow
         ? (viewModel.currentStep - 1).clamp(1, 3)
         : viewModel.currentStep;
@@ -128,8 +155,10 @@ class _GenerateAiMealView extends StatelessWidget {
         leading: IconButton(
           onPressed: () {
             if (viewModel.currentStep > 1) {
+              // Go back to previous step.
               context.read<GenerateAiMealViewModel>().goToPreviousStep();
             } else {
+              // Pop the page.
               context.pop();
             }
           },
@@ -141,6 +170,7 @@ class _GenerateAiMealView extends StatelessWidget {
           SafeArea(
             child: Column(
               children: [
+                // Progress bar at the top.
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.sm,
@@ -154,10 +184,12 @@ class _GenerateAiMealView extends StatelessWidget {
                     labels: progressLabels,
                   ),
                 ),
+                // Dynamic step body.
                 Expanded(child: _StepBody(plan: plan)),
               ],
             ),
           ),
+          // Loading overlay when generating.
           if (viewModel.isGenerating) ...[
             const Positioned.fill(child: ColoredBox(color: Colors.white)),
             const Positioned.fill(
@@ -172,21 +204,31 @@ class _GenerateAiMealView extends StatelessWidget {
   }
 }
 
+/// Widget that displays the current step's content.
 class _StepBody extends StatelessWidget {
+  /// The meal plan data.
   final AddMealAiPlan plan;
 
+  /// Creates a new step body instance.
   const _StepBody({required this.plan});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Get the current step.
     final step = viewModel.currentStep;
+
+    // Show loading if in inspiration flow and on step 1.
     if (viewModel.sourceRequest != null && step == 1) {
       return const LoadingDialog(
         inline: true,
         message: 'Generating AI recipes and images...',
       );
     }
+
+    // Render the appropriate step content.
     switch (step) {
       case 2:
         return _AiResultsStep(plan: plan);
@@ -200,9 +242,13 @@ class _StepBody extends StatelessWidget {
   }
 }
 
+/// Step 1: Factor selection step.
+/// Allows users to configure AI generation parameters.
 class _FactorStep extends StatelessWidget {
+  /// The meal plan data.
   final AddMealAiPlan plan;
 
+  /// Creates a new factor step instance.
   const _FactorStep({required this.plan});
 
   @override
@@ -215,15 +261,18 @@ class _FactorStep extends StatelessWidget {
         AppSpacing.lg,
       ),
       children: [
+        // Informational tip box.
         const AppTipBox(
           title: 'Foodopia AI will suggest meal ideas',
           message:
-              'Based on time of day, weather, ingredients you have, your preferences and dietary needs.',
+          'Based on time of day, weather, ingredients you have, your preferences and dietary needs.',
           backgroundColor: Color(0xFFFFF8E1),
           iconColor: AppColors.secondary,
           icon: Icons.smart_toy_outlined,
         ),
         const SizedBox(height: AppSpacing.md),
+
+        // Mini info tiles for meal type and date.
         Row(
           children: [
             Expanded(
@@ -244,13 +293,19 @@ class _FactorStep extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.md),
+
+        // Section header.
         Text('Consider These Factors', style: context.text.titleMedium),
         const SizedBox(height: 2),
+
+        // Section subtitle.
         Text(
           'AI will use these information to generate the best suggestions for you.',
           style: context.text.bodySmall,
         ),
         const SizedBox(height: AppSpacing.sm),
+
+        // Factor cards.
         const _WeatherFactorCard(),
         const _IngredientFactorCard(
           type: _IngredientFactorType.include,
@@ -268,6 +323,8 @@ class _FactorStep extends StatelessWidget {
         _DishPreferenceFactorCard(plan: plan),
         const _CookingPreferenceFactorCard(),
         const SizedBox(height: AppSpacing.lg),
+
+        // Generate button.
         _PrimaryActionButton(
           label: 'Generate Recipe',
           onPressed: context.read<GenerateAiMealViewModel>().goToResults,
@@ -277,12 +334,17 @@ class _FactorStep extends StatelessWidget {
   }
 }
 
+/// Weather factor card for AI generation.
 class _WeatherFactorCard extends StatelessWidget {
+  /// Creates a new weather factor card instance.
   const _WeatherFactorCard();
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Get the selected weather snapshot.
     final weather = viewModel.selectedWeatherSnapshot;
 
     return _ExpandableFactorCard(
@@ -291,6 +353,7 @@ class _WeatherFactorCard extends StatelessWidget {
       subtitle: '${weather.condition} - ${weather.temperature}C',
       selectedLabels: [weather.summary],
       children: [
+        // Weather category dropdown.
         DropdownButtonFormField<String>(
           initialValue: viewModel.selectedWeatherCategoryId,
           isExpanded: true,
@@ -325,14 +388,24 @@ class _WeatherFactorCard extends StatelessWidget {
   }
 }
 
+/// Type of ingredient factor (include or avoid).
 enum _IngredientFactorType { include, avoid }
 
+/// Ingredient factor card for AI generation.
 class _IngredientFactorCard extends StatelessWidget {
+  /// Type of ingredient factor.
   final _IngredientFactorType type;
+
+  /// Icon to display.
   final IconData icon;
+
+  /// Title of the card.
   final String title;
+
+  /// Subtitle of the card.
   final String subtitle;
 
+  /// Creates a new ingredient factor card instance.
   const _IngredientFactorCard({
     required this.type,
     required this.icon,
@@ -342,7 +415,10 @@ class _IngredientFactorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Get selected ingredients based on type.
     final selected = type == _IngredientFactorType.include
         ? viewModel.selectedIngredientsToInclude
         : viewModel.selectedIngredientsToAvoid;
@@ -353,6 +429,7 @@ class _IngredientFactorCard extends StatelessWidget {
       subtitle: subtitle,
       selectedLabels: selected,
       children: [
+        // Ingredient preview panel.
         _IngredientPreviewPanel(
           type: type,
           selected: selected,
@@ -361,11 +438,13 @@ class _IngredientFactorCard extends StatelessWidget {
               : viewModel.defaultIngredientsToAvoid,
           onRemove: type == _IngredientFactorType.include
               ? context
-                    .read<GenerateAiMealViewModel>()
-                    .toggleIngredientToInclude
+              .read<GenerateAiMealViewModel>()
+              .toggleIngredientToInclude
               : context.read<GenerateAiMealViewModel>().toggleIngredientToAvoid,
         ),
         const SizedBox(height: AppSpacing.sm),
+
+        // Edit ingredients button.
         Align(
           alignment: Alignment.centerLeft,
           child: _AddFactorAction(
@@ -377,8 +456,12 @@ class _IngredientFactorCard extends StatelessWidget {
     );
   }
 
+  /// Shows the ingredient picker sheet.
   void _showIngredientSheet(BuildContext context, _IngredientFactorType type) {
+    // Get the view model.
     final viewModel = context.read<GenerateAiMealViewModel>();
+
+    // Show bottom sheet.
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -394,10 +477,15 @@ class _IngredientFactorCard extends StatelessWidget {
   }
 }
 
+/// Add factor action button.
 class _AddFactorAction extends StatelessWidget {
+  /// Button label.
   final String label;
+
+  /// Callback when tapped.
   final VoidCallback onTap;
 
+  /// Creates a new add factor action instance.
   const _AddFactorAction({required this.label, required this.onTap});
 
   @override
@@ -434,12 +522,21 @@ class _AddFactorAction extends StatelessWidget {
   }
 }
 
+/// Preview panel for selected ingredients.
 class _IngredientPreviewPanel extends StatelessWidget {
+  /// Type of ingredient factor.
   final _IngredientFactorType type;
+
+  /// List of selected ingredients.
   final List<String> selected;
+
+  /// List of default values.
   final List<String> defaultValues;
+
+  /// Callback when an ingredient is removed.
   final ValueChanged<String> onRemove;
 
+  /// Creates a new ingredient preview panel instance.
   const _IngredientPreviewPanel({
     required this.type,
     required this.selected,
@@ -449,8 +546,13 @@ class _IngredientPreviewPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine if this is the avoid type.
     final isAvoid = type == _IngredientFactorType.avoid;
+
+    // Create a set of selected values for quick lookup.
     final selectedSet = selected.map((item) => item.toLowerCase()).toSet();
+
+    // Find defaults that are not selected.
     final inactiveDefaults = defaultValues
         .where((item) => !selectedSet.contains(item.toLowerCase()))
         .toList();
@@ -466,6 +568,7 @@ class _IngredientPreviewPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header row with count badge.
           Row(
             children: [
               Icon(
@@ -491,6 +594,8 @@ class _IngredientPreviewPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
+
+          // Selected ingredients chips or empty message.
           if (selected.isEmpty)
             Text(
               isAvoid
@@ -504,6 +609,8 @@ class _IngredientPreviewPanel extends StatelessWidget {
               danger: isAvoid,
               onRemove: onRemove,
             ),
+
+          // Inactive defaults preview.
           if (inactiveDefaults.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
@@ -521,9 +628,12 @@ class _IngredientPreviewPanel extends StatelessWidget {
   }
 }
 
+/// Count badge widget.
 class _CountBadge extends StatelessWidget {
+  /// The count to display.
   final int count;
 
+  /// Creates a new count badge instance.
   const _CountBadge({required this.count});
 
   @override
@@ -545,11 +655,18 @@ class _CountBadge extends StatelessWidget {
   }
 }
 
+/// Removable chip wrap widget.
 class _RemovableChipWrap extends StatelessWidget {
+  /// List of values to display as chips.
   final List<String> values;
+
+  /// Whether to use danger styling.
   final bool danger;
+
+  /// Callback when a chip is removed.
   final ValueChanged<String> onRemove;
 
+  /// Creates a new removable chip wrap instance.
   const _RemovableChipWrap({
     required this.values,
     required this.danger,
@@ -586,16 +703,21 @@ class _RemovableChipWrap extends StatelessWidget {
   }
 }
 
+/// Ingredient picker bottom sheet.
 class _IngredientPickerSheet extends StatefulWidget {
+  /// Type of ingredient factor.
   final _IngredientFactorType type;
 
+  /// Creates a new ingredient picker sheet instance.
   const _IngredientPickerSheet({required this.type});
 
   @override
   State<_IngredientPickerSheet> createState() => _IngredientPickerSheetState();
 }
 
+/// State for the ingredient picker sheet.
 class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
+  /// Text controller for search input.
   final _controller = TextEditingController();
 
   @override
@@ -606,18 +728,31 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Get bottom inset for keyboard.
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    // Determine if this is the avoid type.
     final isAvoid = widget.type == _IngredientFactorType.avoid;
+
+    // Get selected ingredients based on type.
     final selected = isAvoid
         ? viewModel.selectedIngredientsToAvoid
         : viewModel.selectedIngredientsToInclude;
+
+    // Get toggle function based on type.
     final toggle = isAvoid
         ? viewModel.toggleIngredientToAvoid
         : viewModel.toggleIngredientToInclude;
+
+    // Get add custom function based on type.
     final addCustom = isAvoid
         ? viewModel.addIngredientToAvoid
         : viewModel.addIngredientToInclude;
+
+    // Get the search query.
     final query = _controller.text.trim();
 
     return Padding(
@@ -634,6 +769,7 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Drag handle.
             Center(
               child: Container(
                 width: 42,
@@ -645,6 +781,8 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            // Header.
             Text(
               isAvoid ? 'Ingredients to avoid' : 'Ingredients to include',
               style: context.text.titleMedium?.copyWith(
@@ -652,6 +790,8 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
               ),
             ),
             const SizedBox(height: 4),
+
+            // Subtitle.
             Text(
               isAvoid
                   ? 'Saved allergies and dislikes are selected for this request only.'
@@ -659,6 +799,8 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
               style: context.text.bodyMedium?.copyWith(height: 1.35),
             ),
             const SizedBox(height: AppSpacing.md),
+
+            // Search input.
             TextField(
               controller: _controller,
               textInputAction: TextInputAction.search,
@@ -680,42 +822,49 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
               onSubmitted: addCustom,
             ),
             const SizedBox(height: AppSpacing.md),
+
+            // Scrollable content.
             Expanded(
               child: ListView(
                 children: [
+                  // Selected ingredients section.
                   _IngredientSheetSection(
                     title: 'Selected',
                     icon: Icons.check_circle_outline,
                     child: selected.isEmpty
                         ? Text(
-                            'No ingredients selected yet.',
-                            style: context.text.bodyMedium,
-                          )
+                      'No ingredients selected yet.',
+                      style: context.text.bodyMedium,
+                    )
                         : _ChipWrap(
-                            values: selected,
-                            selectedValues: selected,
-                            danger: isAvoid,
-                            onSelected: toggle,
-                          ),
+                      values: selected,
+                      selectedValues: selected,
+                      danger: isAvoid,
+                      onSelected: toggle,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
+
+                  // From settings section (avoid only).
                   if (isAvoid) ...[
                     _IngredientSheetSection(
                       title: 'From Settings',
                       icon: Icons.person_outline,
                       child: viewModel.savedIngredientsToAvoid.isEmpty
                           ? Text(
-                              'No allergies or dislikes saved in settings.',
-                              style: context.text.bodyMedium,
-                            )
+                        'No allergies or dislikes saved in settings.',
+                        style: context.text.bodyMedium,
+                      )
                           : _ChipWrap(
-                              values: viewModel.savedIngredientsToAvoid,
-                              selectedValues: selected,
-                              danger: true,
-                              onSelected: toggle,
-                            ),
+                        values: viewModel.savedIngredientsToAvoid,
+                        selectedValues: selected,
+                        danger: true,
+                        onSelected: toggle,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.md),
+
+                    // Allergen defaults section.
                     _IngredientSheetSection(
                       title: 'Allergen defaults',
                       icon: Icons.warning_amber_outlined,
@@ -729,6 +878,8 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
+
+                    // Dislike defaults section.
                     _IngredientSheetSection(
                       title: 'Dislike defaults',
                       icon: Icons.block,
@@ -743,35 +894,39 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
                     ),
                   ],
                   const SizedBox(height: AppSpacing.md),
+
+                  // USDA search results section.
                   _IngredientSheetSection(
                     title: 'USDA search results',
                     icon: Icons.search,
                     child: viewModel.isFoodSearching
                         ? const LoadingDialog(
-                            inline: true,
-                            message: 'Searching foods...',
-                          )
+                      inline: true,
+                      message: 'Searching foods...',
+                    )
                         : query.length < 2
                         ? Text(
-                            'Type at least 2 characters to search.',
-                            style: context.text.bodyMedium,
-                          )
+                      'Type at least 2 characters to search.',
+                      style: context.text.bodyMedium,
+                    )
                         : viewModel.foodSearchResults.isEmpty
                         ? Text(
-                            'No results found.',
-                            style: context.text.bodyMedium,
-                          )
+                      'No results found.',
+                      style: context.text.bodyMedium,
+                    )
                         : _IngredientSearchResultChips(
-                            ingredients: viewModel.foodSearchResults,
-                            selectedValues: selected,
-                            danger: isAvoid,
-                            onSelected: (item) => toggle(item.name),
-                          ),
+                      ingredients: viewModel.foodSearchResults,
+                      selectedValues: selected,
+                      danger: isAvoid,
+                      onSelected: (item) => toggle(item.name),
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: AppSpacing.md),
+
+            // Done button.
             SizedBox(
               height: 48,
               width: double.infinity,
@@ -795,12 +950,21 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
   }
 }
 
+/// Search result chips for ingredients.
 class _IngredientSearchResultChips extends StatelessWidget {
+  /// List of ingredients.
   final List<MealPlanInspirationIngredient> ingredients;
+
+  /// List of selected values.
   final List<String> selectedValues;
+
+  /// Whether to use danger styling.
   final bool danger;
+
+  /// Callback when an ingredient is selected.
   final ValueChanged<MealPlanInspirationIngredient> onSelected;
 
+  /// Creates a new search result chips instance.
   const _IngredientSearchResultChips({
     required this.ingredients,
     required this.selectedValues,
@@ -810,6 +974,7 @@ class _IngredientSearchResultChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Create a set of selected values for quick lookup.
     final selectedSet = selectedValues
         .map((item) => item.toLowerCase())
         .toSet();
@@ -833,11 +998,18 @@ class _IngredientSearchResultChips extends StatelessWidget {
   }
 }
 
+/// Section widget for the ingredient picker sheet.
 class _IngredientSheetSection extends StatelessWidget {
+  /// Section title.
   final String title;
+
+  /// Section icon.
   final IconData icon;
+
+  /// Section child content.
   final Widget child;
 
+  /// Creates a new ingredient sheet section instance.
   const _IngredientSheetSection({
     required this.title,
     required this.icon,
@@ -864,6 +1036,7 @@ class _IngredientSheetSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header with icon and title.
           Row(
             children: [
               Container(
@@ -895,14 +1068,27 @@ class _IngredientSheetSection extends StatelessWidget {
   }
 }
 
+/// Configuration option chips widget.
 class _ConfigOptionChips extends StatelessWidget {
+  /// Whether loading.
   final bool isLoading;
+
+  /// Empty state message.
   final String emptyMessage;
+
+  /// List of options.
   final List<MealPlanPreferenceOption> options;
+
+  /// List of selected values.
   final List<String> selectedValues;
+
+  /// Whether to use danger styling.
   final bool danger;
+
+  /// Callback when an option is selected.
   final ValueChanged<String> onSelected;
 
+  /// Creates a new config option chips instance.
   const _ConfigOptionChips({
     required this.isLoading,
     required this.emptyMessage,
@@ -914,13 +1100,17 @@ class _ConfigOptionChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading indicator.
     if (isLoading) {
       return const LoadingDialog(inline: true, message: 'Loading defaults...');
     }
+
+    // Show empty message.
     if (options.isEmpty) {
       return Text(emptyMessage, style: context.text.bodyMedium);
     }
 
+    // Show chips.
     return _ChipWrap(
       values: options.map((item) => item.name).toList(),
       selectedValues: selectedValues,
@@ -930,14 +1120,20 @@ class _ConfigOptionChips extends StatelessWidget {
   }
 }
 
+/// Meal preference factor card.
 class _MealPreferenceFactorCard extends StatelessWidget {
+  /// The meal plan data.
   final AddMealAiPlan plan;
 
+  /// Creates a new meal preference factor card instance.
   const _MealPreferenceFactorCard({required this.plan});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Build options list from preferences and selected values.
     final options = {
       ...viewModel.mealPreferenceOptions.map((item) => item.name),
       ...viewModel.selectedMealPreferences,
@@ -951,6 +1147,7 @@ class _MealPreferenceFactorCard extends StatelessWidget {
           ? const ['No Preference']
           : viewModel.selectedMealPreferences,
       children: [
+        // Show loading or options.
         if (viewModel.isFactorOptionsLoading)
           const LoadingDialog(inline: true, message: 'Loading preferences...')
         else if (options.isEmpty)
@@ -968,13 +1165,17 @@ class _MealPreferenceFactorCard extends StatelessWidget {
   }
 }
 
+/// Dish preference factor card.
 class _DishPreferenceFactorCard extends StatelessWidget {
+  /// The meal plan data.
   final AddMealAiPlan plan;
 
+  /// Creates a new dish preference factor card instance.
   const _DishPreferenceFactorCard({required this.plan});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
 
     return _ExpandableFactorCard(
@@ -1016,12 +1217,17 @@ class _DishPreferenceFactorCard extends StatelessWidget {
   }
 }
 
+/// Cooking preference factor card.
 class _CookingPreferenceFactorCard extends StatelessWidget {
+  /// Creates a new cooking preference factor card instance.
   const _CookingPreferenceFactorCard();
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Build selected labels.
     final selectedLabels = [
       'Cooking: ${viewModel.selectedCookingTime} mins',
       'Difficulty: ${viewModel.selectedDifficulty}',
@@ -1053,27 +1259,40 @@ class _CookingPreferenceFactorCard extends StatelessWidget {
   }
 }
 
+/// Step 2: AI results step.
 class _AiResultsStep extends StatefulWidget {
+  /// The meal plan data.
   final AddMealAiPlan plan;
 
+  /// Creates a new AI results step instance.
   const _AiResultsStep({required this.plan});
 
   @override
   State<_AiResultsStep> createState() => _AiResultsStepState();
 }
 
+/// State for the AI results step.
 class _AiResultsStepState extends State<_AiResultsStep>
     with SingleTickerProviderStateMixin {
+  /// Tab controller for switching between database and AI results.
   TabController? _tabController;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    // Get the view model.
     final showDatabase = context
         .read<GenerateAiMealViewModel>()
         .showDatabaseResults;
+
+    // Determine expected tab length.
     final expectedLength = showDatabase ? 2 : 1;
+
+    // Skip if controller already has correct length.
     if (_tabController?.length == expectedLength) return;
+
+    // Dispose old controller and create new one.
     _tabController?.dispose();
     _tabController = TabController(length: expectedLength, vsync: this);
   }
@@ -1086,13 +1305,21 @@ class _AiResultsStepState extends State<_AiResultsStep>
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Get the plan.
     final plan = widget.plan;
+
+    // Determine if database results should be shown.
     final showDatabase = viewModel.showDatabaseResults;
+
+    // Get the tab controller.
     final tabController = _tabController;
 
     return Column(
       children: [
+        // Header section.
         Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
@@ -1102,15 +1329,18 @@ class _AiResultsStepState extends State<_AiResultsStep>
           ),
           child: Column(
             children: [
+              // Tip box.
               const AppTipBox(
                 title: 'Foodopia AI will suggest meal ideas',
                 message:
-                    'Review AI-created ideas before customising or adding them to your meal plan.',
+                'Review AI-created ideas before customising or adding them to your meal plan.',
                 backgroundColor: Color(0xFFFFF8E1),
                 iconColor: AppColors.secondary,
                 icon: Icons.tips_and_updates_outlined,
               ),
               const SizedBox(height: AppSpacing.md),
+
+              // Filter pills.
               if (showDatabase)
                 Row(
                   children: [
@@ -1127,6 +1357,8 @@ class _AiResultsStepState extends State<_AiResultsStep>
                     ),
                   ],
                 ),
+
+              // Tab bar for switching views.
               if (showDatabase && tabController != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 Container(
@@ -1159,15 +1391,17 @@ class _AiResultsStepState extends State<_AiResultsStep>
             ],
           ),
         ),
+
+        // Tab content.
         Expanded(
           child: showDatabase && tabController != null
               ? TabBarView(
-                  controller: tabController,
-                  children: [
-                    _DatabaseRecipeResults(recipes: plan.topMatches),
-                    _AiCreatedRecipeResults(recipes: plan.aiIdeas),
-                  ],
-                )
+            controller: tabController,
+            children: [
+              _DatabaseRecipeResults(recipes: plan.topMatches),
+              _AiCreatedRecipeResults(recipes: plan.aiIdeas),
+            ],
+          )
               : _AiCreatedRecipeResults(recipes: plan.aiIdeas),
         ),
       ],
@@ -1175,14 +1409,20 @@ class _AiResultsStepState extends State<_AiResultsStep>
   }
 }
 
+/// Database recipe results view.
 class _DatabaseRecipeResults extends StatelessWidget {
+  /// List of recipes.
   final List<AddMealAiRecipe> recipes;
 
+  /// Creates a new database recipe results instance.
   const _DatabaseRecipeResults({required this.recipes});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Show empty state if no recipes.
     if (recipes.isEmpty) {
       return _NoDatabaseRecipes(onNext: viewModel.goToNextStep);
     }
@@ -1217,9 +1457,12 @@ class _DatabaseRecipeResults extends StatelessWidget {
   }
 }
 
+/// Empty state for database recipes.
 class _NoDatabaseRecipes extends StatelessWidget {
+  /// Callback for next button.
   final VoidCallback onNext;
 
+  /// Creates a new no database recipes instance.
   const _NoDatabaseRecipes({required this.onNext});
 
   @override
@@ -1252,18 +1495,24 @@ class _NoDatabaseRecipes extends StatelessWidget {
   }
 }
 
+/// AI created recipe results view.
 class _AiCreatedRecipeResults extends StatelessWidget {
+  /// List of recipes.
   final List<AddMealAiRecipe> recipes;
 
+  /// Creates a new AI created recipe results instance.
   const _AiCreatedRecipeResults({required this.recipes});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Show error state if no recipes.
     if (recipes.isEmpty) {
       return _ErrorState(
         message:
-            viewModel.errorMessage ??
+        viewModel.errorMessage ??
             'No AI ideas generated yet. Try generating again.',
         onRetry: viewModel.generateIdeas,
       );
@@ -1283,8 +1532,12 @@ class _AiCreatedRecipeResults extends StatelessWidget {
           style: context.text.bodySmall,
         ),
         const SizedBox(height: AppSpacing.sm),
+
+        // Recipe cards.
         ...recipes.map((recipe) => _RecipeResultCard(recipe: recipe)),
         const SizedBox(height: AppSpacing.md),
+
+        // Generate more button.
         Container(
           padding: AppSpacing.cardPadding,
           decoration: BoxDecoration(
@@ -1315,6 +1568,8 @@ class _AiCreatedRecipeResults extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
+
+        // Next button.
         _PrimaryActionButton(
           label: 'Next',
           onPressed: viewModel.selectedRecipes.isEmpty
@@ -1326,22 +1581,32 @@ class _AiCreatedRecipeResults extends StatelessWidget {
   }
 }
 
+/// Step 3: Instructions step.
 class _InstructionsStep extends StatefulWidget {
+  /// Creates a new instructions step instance.
   const _InstructionsStep();
 
   @override
   State<_InstructionsStep> createState() => _InstructionsStepState();
 }
 
+/// State for the instructions step.
 class _InstructionsStepState extends State<_InstructionsStep> {
+  /// Current page in the instructions flow.
   int _page = 1;
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Get the first selected recipe.
     final recipe = viewModel.selectedRecipes.firstOrNull;
+
+    // Get the recipe draft basic info.
     final basicInfo = viewModel.recipeDraftBasicInfo;
 
+    // Show empty state if no recipe selected.
     if (recipe == null) {
       return Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -1365,6 +1630,7 @@ class _InstructionsStepState extends State<_InstructionsStep> {
 
     return Column(
       children: [
+        // Header with page indicator and back button.
         Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
@@ -1388,17 +1654,23 @@ class _InstructionsStepState extends State<_InstructionsStep> {
             ],
           ),
         ),
+
+        // Dynamic page content.
         Expanded(child: _buildRecipeDraftPage(context, recipe, basicInfo)),
       ],
     );
   }
 
+  /// Builds the appropriate recipe draft page based on the current page.
   Widget _buildRecipeDraftPage(
-    BuildContext context,
-    AddMealAiRecipe recipe,
-    AddRecipeBasicInfo? basicInfo,
-  ) {
+      BuildContext context,
+      AddMealAiRecipe recipe,
+      AddRecipeBasicInfo? basicInfo,
+      ) {
+    // Get the view model.
     final viewModel = context.read<GenerateAiMealViewModel>();
+
+    // Render the appropriate page.
     switch (_page) {
       case 2:
         return AddRecipeIngredientsPage(
@@ -1438,6 +1710,7 @@ class _InstructionsStepState extends State<_InstructionsStep> {
         );
       case 4:
         if (basicInfo == null) {
+          // Reset to page 1 if basic info is missing.
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) setState(() => _page = 1);
           });
@@ -1475,27 +1748,41 @@ class _InstructionsStepState extends State<_InstructionsStep> {
   }
 }
 
+/// Extension to get first element or null.
 extension _FirstOrNull<T> on List<T> {
+  /// Returns the first element or null if the list is empty.
   T? get firstOrNull => isEmpty ? null : first;
 }
 
+/// Step 4: Review step.
 class _ReviewStep extends StatefulWidget {
+  /// The meal plan data.
   final AddMealAiPlan plan;
 
+  /// Creates a new review step instance.
   const _ReviewStep({required this.plan});
 
   @override
   State<_ReviewStep> createState() => _ReviewStepState();
 }
 
+/// State for the review step.
 class _ReviewStepState extends State<_ReviewStep> {
+  /// Whether saving recipe is in progress.
   bool _isSavingRecipe = false;
+
+  /// Whether saving both is in progress.
   bool _isSavingBoth = false;
 
   @override
   Widget build(BuildContext context) {
+    // Get the plan.
     final plan = widget.plan;
+
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Get selected recipes.
     final selectedRecipes = viewModel.selectedRecipes;
 
     return ListView(
@@ -1506,11 +1793,14 @@ class _ReviewStepState extends State<_ReviewStep> {
         AppSpacing.lg,
       ),
       children: [
+        // Date picker.
         _DateScroller(
           selectedDate: viewModel.selectedDate,
           onSelected: viewModel.selectDate,
         ),
         const SizedBox(height: AppSpacing.md),
+
+        // Weather factor.
         _FactorCard(
           icon: Icons.wb_sunny_outlined,
           title: '${plan.weather.condition} - ${plan.weather.temperature}C',
@@ -1518,6 +1808,8 @@ class _ReviewStepState extends State<_ReviewStep> {
           highlighted: true,
         ),
         const SizedBox(height: AppSpacing.md),
+
+        // Planned meals section.
         Text(
           'Meals planned on ${DateFormat('EEE, d MMM').format(viewModel.selectedDate)}',
           style: context.text.titleMedium,
@@ -1527,6 +1819,8 @@ class _ReviewStepState extends State<_ReviewStep> {
           mealType: viewModel.selectedMealCategory?.name ?? plan.mealType,
         ),
         const SizedBox(height: AppSpacing.md),
+
+        // Meal type selection.
         Text('Choose Meal', style: context.text.titleMedium),
         const SizedBox(height: AppSpacing.sm),
         _MealTypeChips(
@@ -1535,6 +1829,8 @@ class _ReviewStepState extends State<_ReviewStep> {
           onSelected: viewModel.selectMealCategory,
         ),
         const SizedBox(height: AppSpacing.md),
+
+        // Recipe details.
         Text('Recipe Details', style: context.text.titleMedium),
         const SizedBox(height: AppSpacing.sm),
         if (selectedRecipes.isEmpty)
@@ -1542,6 +1838,8 @@ class _ReviewStepState extends State<_ReviewStep> {
         else
           ...selectedRecipes.map((recipe) => _ReviewRecipeCard(recipe: recipe)),
         const SizedBox(height: AppSpacing.lg),
+
+        // Action buttons.
         _PrimaryActionButton(
           label: viewModel.isSaving ? 'Adding...' : 'Add to Meal Plan',
           onPressed: viewModel.isSaving
@@ -1549,6 +1847,7 @@ class _ReviewStepState extends State<_ReviewStep> {
               : () => _saveMealPlan(context, viewModel),
         ),
         const SizedBox(height: AppSpacing.sm),
+
         _PrimaryActionButton(
           label: _isSavingRecipe ? 'Saving...' : 'Save Recipe',
           onPressed: _isSavingRecipe || !viewModel.hasRecipeDraft
@@ -1556,9 +1855,10 @@ class _ReviewStepState extends State<_ReviewStep> {
               : () => _saveRecipe(context, viewModel),
         ),
         const SizedBox(height: AppSpacing.sm),
+
         OutlinedButton(
           onPressed:
-              viewModel.isSaving || _isSavingBoth || !viewModel.hasRecipeDraft
+          viewModel.isSaving || _isSavingBoth || !viewModel.hasRecipeDraft
               ? null
               : () => _saveBoth(context, viewModel),
           child: Text(
@@ -1569,56 +1869,94 @@ class _ReviewStepState extends State<_ReviewStep> {
     );
   }
 
+  /// Saves the meal plan.
   Future<void> _saveMealPlan(
-    BuildContext context,
-    GenerateAiMealViewModel viewModel,
-  ) async {
+      BuildContext context,
+      GenerateAiMealViewModel viewModel,
+      ) async {
     final success = await viewModel.saveSelectedRecipesToPlan();
+
+    // Check if context is still mounted.
     if (!context.mounted) return;
+
+    // Show error if failed.
     if (!success) {
       _showSnack(context, viewModel.errorMessage ?? 'Unable to add meal plan.');
       return;
     }
+
+    // Navigate to meal plan page.
     _goToMealPlan(context, viewModel);
   }
 
+  /// Saves the recipe.
   Future<void> _saveRecipe(
-    BuildContext context,
-    GenerateAiMealViewModel viewModel,
-  ) async {
+      BuildContext context,
+      GenerateAiMealViewModel viewModel,
+      ) async {
+    // Set saving state.
     setState(() => _isSavingRecipe = true);
+
+    // Save the recipe draft.
     final success = await _saveRecipeDraft(viewModel);
+
+    // Check if context is still mounted.
     if (!context.mounted) return;
+
+    // Reset saving state.
     setState(() => _isSavingRecipe = false);
+
+    // Show success message.
     if (!success) return;
     _showSnack(context, 'Recipe saved.');
   }
 
+  /// Saves both meal plan and recipe.
   Future<void> _saveBoth(
-    BuildContext context,
-    GenerateAiMealViewModel viewModel,
-  ) async {
+      BuildContext context,
+      GenerateAiMealViewModel viewModel,
+      ) async {
+    // Set saving state.
     setState(() => _isSavingBoth = true);
+
+    // Save the recipe draft.
     final recipeSaved = await _saveRecipeDraft(viewModel);
+
+    // Check if context is still mounted.
     if (!context.mounted) return;
+
+    // Show error if recipe save failed.
     if (!recipeSaved) {
       setState(() => _isSavingBoth = false);
       return;
     }
+
+    // Save the meal plan.
     final mealSaved = await viewModel.saveSelectedRecipesToPlan();
+
+    // Check if context is still mounted.
     if (!context.mounted) return;
+
+    // Reset saving state.
     setState(() => _isSavingBoth = false);
+
+    // Show error if meal plan save failed.
     if (!mealSaved) {
       _showSnack(context, viewModel.errorMessage ?? 'Unable to add meal plan.');
       return;
     }
+
+    // Navigate to meal plan page.
     _goToMealPlan(context, viewModel);
   }
 
+  /// Saves the recipe draft using use cases.
   Future<bool> _saveRecipeDraft(GenerateAiMealViewModel viewModel) async {
+    // Get the basic info.
     final basicInfo = viewModel.recipeDraftBasicInfo;
     if (basicInfo == null) return false;
 
+    // Save basic info.
     final basicResult = await sl<SaveAddRecipeBasicInfoUseCase>().execute(
       basicInfo,
     );
@@ -1627,28 +1965,33 @@ class _ReviewStepState extends State<_ReviewStep> {
       return false;
     }
 
+    // Get the saved recipe ID.
     final savedRecipeId = basicResult.right!;
+
+    // Save ingredients.
     final ingredientResult = await sl<SaveAddRecipeIngredientsUseCase>()
         .execute(
-          recipeId: savedRecipeId,
-          ingredients: viewModel.recipeDraftIngredients,
-        );
+      recipeId: savedRecipeId,
+      ingredients: viewModel.recipeDraftIngredients,
+    );
     if (ingredientResult.isLeft()) {
       if (mounted) _showSnack(context, ingredientResult.left?.message);
       return false;
     }
 
+    // Save instructions.
     final instructionResult = await sl<SaveAddRecipeInstructionsUseCase>()
         .execute(
-          recipeId: savedRecipeId,
-          useSections: viewModel.recipeDraftUseSections,
-          instructions: viewModel.recipeDraftInstructions,
-        );
+      recipeId: savedRecipeId,
+      useSections: viewModel.recipeDraftUseSections,
+      instructions: viewModel.recipeDraftInstructions,
+    );
     if (instructionResult.isLeft()) {
       if (mounted) _showSnack(context, instructionResult.left?.message);
       return false;
     }
 
+    // Complete the recipe.
     final completeResult = await sl<CompleteAddRecipeUseCase>().execute(
       recipeId: savedRecipeId,
       mode: 'ai_generated',
@@ -1657,19 +2000,25 @@ class _ReviewStepState extends State<_ReviewStep> {
       if (mounted) _showSnack(context, completeResult.left?.message);
       return false;
     }
+
     return true;
   }
 
+  /// Navigates to the meal plan page.
   void _goToMealPlan(BuildContext context, GenerateAiMealViewModel viewModel) {
+    // Show success message.
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Meal plan added.')));
+
+    // Navigate to meal plan page.
     context.go(
       AppRouter.mealPlan,
       extra: MealPlanArgs(initialTabIndex: 0, userId: viewModel.userId),
     );
   }
 
+  /// Shows a snackbar with a message.
   void _showSnack(BuildContext context, String? message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message ?? 'Unable to save recipe.')),
@@ -1677,11 +2026,18 @@ class _ReviewStepState extends State<_ReviewStep> {
   }
 }
 
+/// Mini info tile widget.
 class _MiniInfoTile extends StatelessWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Label text.
   final String label;
+
+  /// Value text.
   final String value;
 
+  /// Creates a new mini info tile instance.
   const _MiniInfoTile({
     required this.icon,
     required this.label,
@@ -1723,13 +2079,24 @@ class _MiniInfoTile extends StatelessWidget {
   }
 }
 
+/// Expandable factor card widget.
 class _ExpandableFactorCard extends StatefulWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Title text.
   final String title;
+
+  /// Subtitle text.
   final String subtitle;
+
+  /// Selected labels to display.
   final List<String> selectedLabels;
+
+  /// Children widgets.
   final List<Widget> children;
 
+  /// Creates a new expandable factor card instance.
   const _ExpandableFactorCard({
     required this.icon,
     required this.title,
@@ -1742,11 +2109,14 @@ class _ExpandableFactorCard extends StatefulWidget {
   State<_ExpandableFactorCard> createState() => _ExpandableFactorCardState();
 }
 
+/// State for the expandable factor card.
 class _ExpandableFactorCardState extends State<_ExpandableFactorCard> {
+  /// Whether the card is expanded.
   bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
+    // Filter out empty labels.
     final labels = widget.selectedLabels
         .where((label) => label.trim().isNotEmpty)
         .toSet()
@@ -1761,6 +2131,7 @@ class _ExpandableFactorCardState extends State<_ExpandableFactorCard> {
       ),
       child: Column(
         children: [
+          // Header with expand/collapse toggle.
           InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: () => setState(() => _expanded = !_expanded),
@@ -1794,6 +2165,7 @@ class _ExpandableFactorCardState extends State<_ExpandableFactorCard> {
               ),
             ),
           ),
+          // Expandable content.
           AnimatedCrossFade(
             firstChild: const SizedBox(width: double.infinity),
             secondChild: Padding(
@@ -1820,10 +2192,15 @@ class _ExpandableFactorCardState extends State<_ExpandableFactorCard> {
   }
 }
 
+/// Word limited text input widget.
 class _WordLimitedTextInput extends StatefulWidget {
+  /// Hint text.
   final String hintText;
+
+  /// Callback when text changes.
   final ValueChanged<String> onChanged;
 
+  /// Creates a new word limited text input instance.
   const _WordLimitedTextInput({
     required this.hintText,
     required this.onChanged,
@@ -1833,8 +2210,12 @@ class _WordLimitedTextInput extends StatefulWidget {
   State<_WordLimitedTextInput> createState() => _WordLimitedTextInputState();
 }
 
+/// State for the word limited text input.
 class _WordLimitedTextInputState extends State<_WordLimitedTextInput> {
+  /// Maximum number of words allowed.
   static const _maxWords = 30;
+
+  /// Text controller.
   final _controller = TextEditingController();
 
   @override
@@ -1845,19 +2226,27 @@ class _WordLimitedTextInputState extends State<_WordLimitedTextInput> {
 
   @override
   Widget build(BuildContext context) {
+    // Count words in the current text.
     final count = _wordCount(_controller.text);
 
     return TextField(
       controller: _controller,
       onChanged: (value) {
+        // Limit the number of words.
         final limited = _limitWords(value);
+
+        // Update controller if limited.
         if (limited != value) {
           _controller.value = TextEditingValue(
             text: limited,
             selection: TextSelection.collapsed(offset: limited.length),
           );
         }
+
+        // Call the onChanged callback.
         widget.onChanged(limited);
+
+        // Update the state.
         setState(() {});
       },
       minLines: 1,
@@ -1887,10 +2276,12 @@ class _WordLimitedTextInputState extends State<_WordLimitedTextInput> {
     );
   }
 
+  /// Counts the number of words in a string.
   int _wordCount(String value) {
     return value.trim().isEmpty ? 0 : value.trim().split(RegExp(r'\s+')).length;
   }
 
+  /// Limits a string to the maximum number of words.
   String _limitWords(String value) {
     final words = value.trim().split(RegExp(r'\s+'));
     if (value.trim().isEmpty || words.length <= _maxWords) return value;
@@ -1898,10 +2289,15 @@ class _WordLimitedTextInputState extends State<_WordLimitedTextInput> {
   }
 }
 
+/// Difficulty level picker widget.
 class _DifficultyLevelPicker extends StatelessWidget {
+  /// Selected difficulty level.
   final int selectedLevel;
+
+  /// Callback when a level is selected.
   final ValueChanged<int> onSelected;
 
+  /// Creates a new difficulty level picker instance.
   const _DifficultyLevelPicker({
     required this.selectedLevel,
     required this.onSelected,
@@ -1909,6 +2305,7 @@ class _DifficultyLevelPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Define difficulty levels.
     const levels = ['Novice', 'Beginner', 'Intermediate', 'Advanced', 'Master'];
 
     return Column(
@@ -1950,8 +2347,8 @@ class _DifficultyLevelPicker extends StatelessWidget {
                             color: selected
                                 ? AppColors.textPrimary
                                 : AppColors.textSecondary.withValues(
-                                    alpha: 0.5,
-                                  ),
+                              alpha: 0.5,
+                            ),
                           ),
                         ),
                       ),
@@ -1967,10 +2364,15 @@ class _DifficultyLevelPicker extends StatelessWidget {
   }
 }
 
+/// Cooking minutes input widget.
 class _CookingMinutesInput extends StatelessWidget {
+  /// Current minutes value.
   final int minutes;
+
+  /// Callback when minutes change.
   final ValueChanged<String> onChanged;
 
+  /// Creates a new cooking minutes input instance.
   const _CookingMinutesInput({required this.minutes, required this.onChanged});
 
   @override
@@ -2010,10 +2412,15 @@ class _CookingMinutesInput extends StatelessWidget {
   }
 }
 
+/// Serving size input widget.
 class _ServingSizeInput extends StatelessWidget {
+  /// Current servings value.
   final int servings;
+
+  /// Callback when servings change.
   final ValueChanged<String> onChanged;
 
+  /// Creates a new serving size input instance.
   const _ServingSizeInput({required this.servings, required this.onChanged});
 
   @override
@@ -2053,12 +2460,21 @@ class _ServingSizeInput extends StatelessWidget {
   }
 }
 
+/// Chip wrap widget.
 class _ChipWrap extends StatelessWidget {
+  /// List of values to display as chips.
   final List<String> values;
+
+  /// List of selected values.
   final List<String> selectedValues;
+
+  /// Callback when a chip is selected.
   final ValueChanged<String>? onSelected;
+
+  /// Whether to use danger styling.
   final bool danger;
 
+  /// Creates a new chip wrap instance.
   const _ChipWrap({
     required this.values,
     required this.selectedValues,
@@ -2068,6 +2484,7 @@ class _ChipWrap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Create a set of selected values for quick lookup.
     final selectedSet = selectedValues.toSet();
 
     return Wrap(
@@ -2085,9 +2502,12 @@ class _ChipWrap extends StatelessWidget {
   }
 }
 
+/// Section label widget.
 class _SectionLabel extends StatelessWidget {
+  /// Label text.
   final String label;
 
+  /// Creates a new section label instance.
   const _SectionLabel(this.label);
 
   @override
@@ -2102,9 +2522,12 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
+/// Selected summary text widget.
 class _SelectedSummaryText extends StatelessWidget {
+  /// Text to display.
   final String text;
 
+  /// Creates a new selected summary text instance.
   const _SelectedSummaryText(this.text);
 
   @override
@@ -2119,12 +2542,21 @@ class _SelectedSummaryText extends StatelessWidget {
   }
 }
 
+/// Factor card widget.
 class _FactorCard extends StatelessWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Title text.
   final String title;
+
+  /// Subtitle text.
   final String subtitle;
+
+  /// Whether to highlight the card.
   final bool highlighted;
 
+  /// Creates a new factor card instance.
   const _FactorCard({
     required this.icon,
     required this.title,
@@ -2175,15 +2607,23 @@ class _FactorCard extends StatelessWidget {
   }
 }
 
+/// Recipe result card widget.
 class _RecipeResultCard extends StatelessWidget {
+  /// Recipe data.
   final AddMealAiRecipe recipe;
 
+  /// Creates a new recipe result card instance.
   const _RecipeResultCard({required this.recipe});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    // Check if recipe is selected.
     final selected = viewModel.isRecipeSelected(recipe.id);
+
+    // Determine border color.
     final borderColor = selected ? AppColors.primary : AppColors.border;
 
     return Container(
@@ -2195,16 +2635,17 @@ class _RecipeResultCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         boxShadow: selected
             ? [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  blurRadius: 14,
-                  offset: const Offset(0, 7),
-                ),
-              ]
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.12),
+            blurRadius: 14,
+            offset: const Offset(0, 7),
+          ),
+        ]
             : null,
       ),
       child: Column(
         children: [
+          // Recipe header.
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2244,6 +2685,8 @@ class _RecipeResultCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
+
+          // Recommendation reasons.
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.sm),
@@ -2262,7 +2705,7 @@ class _RecipeResultCard extends StatelessWidget {
                   ),
                 ),
                 ...recipe.reasons.map(
-                  (reason) => Text(
+                      (reason) => Text(
                     '- $reason',
                     style: context.text.bodySmall?.copyWith(
                       color: AppColors.primary,
@@ -2273,6 +2716,8 @@ class _RecipeResultCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
+
+          // Select button.
           Row(
             children: [
               Expanded(
@@ -2294,13 +2739,17 @@ class _RecipeResultCard extends StatelessWidget {
   }
 }
 
+/// Review recipe card widget.
 class _ReviewRecipeCard extends StatelessWidget {
+  /// Recipe data.
   final AddMealAiRecipe recipe;
 
+  /// Creates a new review recipe card instance.
   const _ReviewRecipeCard({required this.recipe});
 
   @override
   Widget build(BuildContext context) {
+    // Define macro stats.
     final macros = [
       _MacroStat(
         label: 'Carbs',
@@ -2310,6 +2759,8 @@ class _ReviewRecipeCard extends StatelessWidget {
       _MacroStat(label: 'Protein', value: recipe.protein, color: Colors.blue),
       _MacroStat(label: 'Fat', value: recipe.fat, color: AppColors.secondary),
     ];
+
+    // Calculate total macros.
     final totalMacros = macros.fold<double>(0, (sum, item) => sum + item.value);
 
     return Container(
@@ -2329,6 +2780,7 @@ class _ReviewRecipeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Recipe image.
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             child: Stack(
@@ -2350,6 +2802,8 @@ class _ReviewRecipeCard extends StatelessWidget {
               ],
             ),
           ),
+
+          // Recipe details.
           Padding(
             padding: AppSpacing.cardPadding,
             child: Column(
@@ -2369,6 +2823,8 @@ class _ReviewRecipeCard extends StatelessWidget {
                   style: context.text.bodySmall?.copyWith(height: 1.35),
                 ),
                 const SizedBox(height: AppSpacing.md),
+
+                // Badges.
                 Wrap(
                   spacing: AppSpacing.xs,
                   runSpacing: AppSpacing.xs,
@@ -2388,6 +2844,8 @@ class _ReviewRecipeCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
+
+                // Macro summary.
                 Row(
                   children: [
                     for (final macro in macros) ...[
@@ -2404,6 +2862,8 @@ class _ReviewRecipeCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
+
+                // Macro progress bar.
                 ClipRRect(
                   borderRadius: BorderRadius.circular(999),
                   child: Row(
@@ -2413,14 +2873,16 @@ class _ReviewRecipeCard extends StatelessWidget {
                           flex: totalMacros <= 0
                               ? 1
                               : (macro.value / totalMacros * 100).round().clamp(
-                                  1,
-                                  100,
-                                ),
+                            1,
+                            100,
+                          ),
                           child: Container(height: 8, color: macro.color),
                         ),
                     ],
                   ),
                 ),
+
+                // Reasons.
                 if (recipe.reasons.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.md),
                   Text(
@@ -2449,11 +2911,18 @@ class _ReviewRecipeCard extends StatelessWidget {
   }
 }
 
+/// Macro stat data class.
 class _MacroStat {
+  /// Label text.
   final String label;
+
+  /// Value.
   final double value;
+
+  /// Color.
   final Color color;
 
+  /// Creates a new macro stat instance.
   const _MacroStat({
     required this.label,
     required this.value,
@@ -2461,11 +2930,18 @@ class _MacroStat {
   });
 }
 
+/// Review badge widget.
 class _ReviewBadge extends StatelessWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Label text.
   final String label;
+
+  /// Whether to emphasize the badge.
   final bool emphasized;
 
+  /// Creates a new review badge instance.
   const _ReviewBadge({
     required this.icon,
     required this.label,
@@ -2474,7 +2950,9 @@ class _ReviewBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine foreground color.
     final foreground = emphasized ? Colors.white : AppColors.textPrimary;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
@@ -2500,11 +2978,18 @@ class _ReviewBadge extends StatelessWidget {
   }
 }
 
+/// Macro summary item widget.
 class _MacroSummaryItem extends StatelessWidget {
+  /// Label text.
   final String label;
+
+  /// Value.
   final double value;
+
+  /// Color.
   final Color color;
 
+  /// Creates a new macro summary item instance.
   const _MacroSummaryItem({
     required this.label,
     required this.value,
@@ -2548,9 +3033,12 @@ class _MacroSummaryItem extends StatelessWidget {
   }
 }
 
+/// Reason chip widget.
 class _ReasonChip extends StatelessWidget {
+  /// Reason text.
   final String reason;
 
+  /// Creates a new reason chip instance.
   const _ReasonChip({required this.reason});
 
   @override
@@ -2573,6 +3061,7 @@ class _ReasonChip extends StatelessWidget {
   }
 }
 
+/// Builds a nutrition summary string.
 String _nutritionSummary(AddMealAiRecipe recipe) {
   final macros = [
     '${recipe.calories} kcal',
@@ -2583,18 +3072,25 @@ String _nutritionSummary(AddMealAiRecipe recipe) {
   return macros.join(' | ');
 }
 
+/// Formats a macro value with appropriate decimal places.
 String _macroValue(double value) {
   return value.toStringAsFixed(value % 1 == 0 ? 0 : 1);
 }
 
+/// Date scroller widget.
 class _DateScroller extends StatelessWidget {
+  /// Selected date.
   final DateTime selectedDate;
+
+  /// Callback when a date is selected.
   final ValueChanged<DateTime> onSelected;
 
+  /// Creates a new date scroller instance.
   const _DateScroller({required this.selectedDate, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
+    // Generate 7 days starting from 2 days before selected.
     final start = selectedDate.subtract(const Duration(days: 2));
     final days = List.generate(7, (index) => start.add(Duration(days: index)));
 
@@ -2603,6 +3099,7 @@ class _DateScroller extends StatelessWidget {
       decoration: BoxDecoration(border: Border.all(color: AppColors.border)),
       child: Column(
         children: [
+          // Header.
           Row(
             children: [
               const Icon(Icons.calendar_month_outlined, size: 18),
@@ -2631,6 +3128,8 @@ class _DateScroller extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Day grid.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: days.map((date) {
@@ -2670,15 +3169,23 @@ class _DateScroller extends StatelessWidget {
   }
 }
 
+/// Recipe thumbnail widget.
 class _RecipeThumb extends StatelessWidget {
+  /// Recipe data.
   final AddMealAiRecipe recipe;
+
+  /// Size of the thumbnail.
   final double size;
 
+  /// Creates a new recipe thumb instance.
   const _RecipeThumb({required this.recipe, required this.size});
 
   @override
   Widget build(BuildContext context) {
+    // Get the image base64 data.
     final imageBase64 = recipe.imageBase64;
+
+    // Show base64 image if available.
     if (imageBase64 != null && imageBase64.isNotEmpty) {
       return Image.memory(
         base64Decode(imageBase64),
@@ -2688,9 +3195,12 @@ class _RecipeThumb extends StatelessWidget {
         errorBuilder: (_, _, _) => _assetImage(),
       );
     }
+
+    // Fallback to asset image.
     return _assetImage();
   }
 
+  /// Returns the asset image widget.
   Widget _assetImage() {
     return Image.asset(
       recipe.imagePath,
@@ -2701,14 +3211,19 @@ class _RecipeThumb extends StatelessWidget {
   }
 }
 
+/// Planned meal rows widget.
 class _PlannedMealRows extends StatelessWidget {
+  /// Selected meal type.
   final String mealType;
 
+  /// Creates a new planned meal rows instance.
   const _PlannedMealRows({required this.mealType});
 
   @override
   Widget build(BuildContext context) {
+    // Define meal options.
     const meals = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+
     return Container(
       decoration: BoxDecoration(border: Border.all(color: AppColors.border)),
       child: Column(
@@ -2734,11 +3249,18 @@ class _PlannedMealRows extends StatelessWidget {
   }
 }
 
+/// Meal type chips widget.
 class _MealTypeChips extends StatelessWidget {
+  /// Selected meal type.
   final String selected;
+
+  /// List of categories.
   final List<AddMealCategoryOption> categories;
+
+  /// Callback when a category is selected.
   final ValueChanged<AddMealCategoryOption> onSelected;
 
+  /// Creates a new meal type chips instance.
   const _MealTypeChips({
     required this.selected,
     required this.categories,
@@ -2747,14 +3269,16 @@ class _MealTypeChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Use default categories if none provided.
     final meals = categories.isEmpty
         ? const [
-            AddMealCategoryOption(id: 'breakfast', name: 'Breakfast'),
-            AddMealCategoryOption(id: 'lunch', name: 'Lunch'),
-            AddMealCategoryOption(id: 'dinner', name: 'Dinner'),
-            AddMealCategoryOption(id: 'snack', name: 'Snack'),
-          ]
+      AddMealCategoryOption(id: 'breakfast', name: 'Breakfast'),
+      AddMealCategoryOption(id: 'lunch', name: 'Lunch'),
+      AddMealCategoryOption(id: 'dinner', name: 'Dinner'),
+      AddMealCategoryOption(id: 'snack', name: 'Snack'),
+    ]
         : categories;
+
     return Row(
       children: meals.map((meal) {
         final active = meal.name.toLowerCase() == selected.toLowerCase();
@@ -2789,11 +3313,18 @@ class _MealTypeChips extends StatelessWidget {
   }
 }
 
+/// Small chip widget.
 class _SmallChip extends StatelessWidget {
+  /// Label text.
   final String label;
+
+  /// Whether selected.
   final bool selected;
+
+  /// Whether to use danger styling.
   final bool danger;
 
+  /// Creates a new small chip instance.
   const _SmallChip({
     required this.label,
     this.selected = true,
@@ -2802,7 +3333,10 @@ class _SmallChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine active color.
     final activeColor = danger ? AppColors.error : AppColors.primary;
+
+    // Determine fill color.
     final selectedFill = danger
         ? AppColors.error.withValues(alpha: 0.08)
         : const Color(0xFFEAF7EC);
@@ -2835,10 +3369,15 @@ class _SmallChip extends StatelessWidget {
   }
 }
 
+/// Pill widget.
 class _Pill extends StatelessWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Label text.
   final String label;
 
+  /// Creates a new pill instance.
   const _Pill({required this.icon, required this.label});
 
   @override
@@ -2864,10 +3403,15 @@ class _Pill extends StatelessWidget {
   }
 }
 
+/// Primary action button widget.
 class _PrimaryActionButton extends StatelessWidget {
+  /// Button label.
   final String label;
+
+  /// Callback when pressed.
   final VoidCallback? onPressed;
 
+  /// Creates a new primary action button instance.
   const _PrimaryActionButton({required this.label, required this.onPressed});
 
   @override
@@ -2892,7 +3436,9 @@ class _PrimaryActionButton extends StatelessWidget {
   }
 }
 
+/// Empty selected recipe widget.
 class _EmptySelectedRecipe extends StatelessWidget {
+  /// Creates a new empty selected recipe instance.
   const _EmptySelectedRecipe();
 
   @override
@@ -2911,10 +3457,15 @@ class _EmptySelectedRecipe extends StatelessWidget {
   }
 }
 
+/// Error state widget.
 class _ErrorState extends StatelessWidget {
+  /// Error message.
   final String message;
+
+  /// Callback when retry is pressed.
   final Future<void> Function() onRetry;
 
+  /// Creates a new error state instance.
   const _ErrorState({required this.message, required this.onRetry});
 
   @override

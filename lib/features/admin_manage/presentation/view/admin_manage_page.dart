@@ -14,11 +14,23 @@ import '../../domain/entities/admin_manage_item.dart';
 import '../viewmodel/admin_manage_viewmodel.dart';
 import '../widgets/admin_manage_form_widgets.dart';
 
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/// Green color for primary accents.
 const _green = Color(0xFF10A84E);
+
+/// Soft green background color.
 const _softGreen = Color(0xFFEAF8EF);
+
+/// Amber color for secondary accents.
 const _amber = Color(0xFFFFB800);
+
+/// Soft amber background color.
 const _softAmber = Color(0xFFFFF8E4);
 
+/// Map of icon keys to IconData for admin manage items.
 const _iconOptions = {
   'sunny': Icons.wb_sunny_outlined,
   'soup': Icons.ramen_dining,
@@ -46,6 +58,7 @@ const _iconOptions = {
   'more': Icons.apps,
 };
 
+/// Map of ingredient category names to icon keys.
 const _ingredientCategoryIconKeys = {
   'others': 'more',
   'sauces & condiments': 'sauce',
@@ -66,25 +79,39 @@ const _ingredientCategoryIconKeys = {
   'grains': 'grains',
 };
 
+// ============================================================================
+// ICON RESOLUTION
+// ============================================================================
+
+/// Returns the appropriate icon for a manage item.
 IconData _iconForManageItem(
-  AdminManageCategory category,
-  AdminManageItem item,
-) {
+    AdminManageCategory category,
+    AdminManageItem item,
+    ) {
+  // Check if the item has a saved icon.
   final savedIcon = _iconOptions[item.iconKey];
   if (savedIcon != null) return savedIcon;
 
+  // For ingredient categories, use default icons based on name.
   if (category.id == 'ingredient_categories') {
     final defaultIconKey =
-        _ingredientCategoryIconKeys[item.name.trim().toLowerCase()];
+    _ingredientCategoryIconKeys[item.name.trim().toLowerCase()];
     final defaultIcon = _iconOptions[defaultIconKey];
     if (defaultIcon != null) return defaultIcon;
   }
 
+  // Fallback to category icon.
   return category.icon;
 }
 
+// ============================================================================
+// MAIN PAGE
+// ============================================================================
+
 /// Admin manage screen following the high-fidelity prototype.
+/// Manages categories and preferences for the admin.
 class AdminManagePage extends StatelessWidget {
+  /// Creates a new admin manage page instance.
   const AdminManagePage({super.key});
 
   @override
@@ -96,15 +123,19 @@ class AdminManagePage extends StatelessWidget {
   }
 }
 
+/// Internal dashboard for admin manage.
 class _AdminManageDashboard extends StatefulWidget {
+  /// Creates a new admin manage dashboard instance.
   const _AdminManageDashboard();
 
   @override
   State<_AdminManageDashboard> createState() => _AdminManageDashboardState();
 }
 
+/// State for the admin manage dashboard.
 class _AdminManageDashboardState extends State<_AdminManageDashboard>
     with SingleTickerProviderStateMixin {
+  /// Tab controller for switching between categories and preferences.
   late final TabController _tabController;
 
   @override
@@ -121,18 +152,22 @@ class _AdminManageDashboardState extends State<_AdminManageDashboard>
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AdminManageViewModel>();
 
+    // Show loading dialog while loading.
     if (viewModel.isLoading) {
       return const LoadingDialog();
     }
 
     return Column(
       children: [
+        // Tab bar.
         AppSegmentedTabs(
           controller: _tabController,
           tabs: const ['Categories', 'Preferences'],
         ),
+        // Tab content.
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -155,11 +190,22 @@ class _AdminManageDashboardState extends State<_AdminManageDashboard>
   }
 }
 
+// ============================================================================
+// DASHBOARD TAB
+// ============================================================================
+
+/// Dashboard tab widget displaying category cards.
 class _DashboardTab extends StatelessWidget {
+  /// List of categories to display.
   final List<AdminManageCategory> categories;
+
+  /// The view model.
   final AdminManageViewModel viewModel;
+
+  /// Whether to show the tip box.
   final bool showTip;
 
+  /// Creates a new dashboard tab instance.
   const _DashboardTab({
     required this.categories,
     required this.viewModel,
@@ -178,6 +224,7 @@ class _DashboardTab extends StatelessWidget {
           AppSpacing.xl,
         ),
         children: [
+          // Tip box.
           if (showTip)
             const Padding(
               padding: EdgeInsets.only(bottom: AppSpacing.md),
@@ -185,9 +232,10 @@ class _DashboardTab extends StatelessWidget {
                 backgroundColor: _softAmber,
                 iconColor: _amber,
                 message:
-                    'These items are used as default options in the app. Users can still search and add more custom items.',
+                'These items are used as default options in the app. Users can still search and add more custom items.',
               ),
             ),
+          // Category cards.
           for (final category in categories)
             _CategoryCard(category: category, viewModel: viewModel),
         ],
@@ -196,14 +244,24 @@ class _DashboardTab extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// CATEGORY CARD
+// ============================================================================
+
+/// Category card widget.
 class _CategoryCard extends StatelessWidget {
+  /// The category to display.
   final AdminManageCategory category;
+
+  /// The view model.
   final AdminManageViewModel viewModel;
 
+  /// Creates a new category card instance.
   const _CategoryCard({required this.category, required this.viewModel});
 
   @override
   Widget build(BuildContext context) {
+    // Get the count of items for this category.
     final count = viewModel.itemsFor(category.id).length;
 
     return Card(
@@ -231,6 +289,7 @@ class _CategoryCard extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Count badge.
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
@@ -251,6 +310,7 @@ class _CategoryCard extends StatelessWidget {
           ],
         ),
         onTap: () {
+          // Navigate to the list page for this category.
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -266,14 +326,24 @@ class _CategoryCard extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// LIST PAGE
+// ============================================================================
+
+/// List page for managing items in a category.
 class _AdminManageListPage extends StatelessWidget {
+  /// The category to manage.
   final AdminManageCategory category;
 
+  /// Creates a new admin manage list page instance.
   const _AdminManageListPage({required this.category});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AdminManageViewModel>();
+
+    // Get items for this category.
     final items = viewModel.itemsFor(category.id);
 
     return Scaffold(
@@ -287,52 +357,57 @@ class _AdminManageListPage extends StatelessWidget {
       ),
       body: items.isEmpty
           ? RefreshIndicator(
-              onRefresh: viewModel.loadAll,
-              child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                children: [
-                  _ListTip(category: category),
-                  _EmptyList(category: category),
-                  const SizedBox(height: 90),
-                ],
-              ),
-            )
+        onRefresh: viewModel.loadAll,
+        child: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            _ListTip(category: category),
+            _EmptyList(category: category),
+            const SizedBox(height: 90),
+          ],
+        ),
+      )
           : ReorderableListView.builder(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: items.length + 2,
-              onReorder: (oldIndex, newIndex) {
-                if (oldIndex == 0 || oldIndex > items.length) return;
-                viewModel.reorderItems(
-                  categoryId: category.id,
-                  oldIndex: oldIndex - 1,
-                  newIndex: newIndex - 1,
-                );
-              },
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return _ListTip(
-                    key: const ValueKey('admin_manage_tip'),
-                    category: category,
-                  );
-                }
-                if (index == items.length + 1) {
-                  return const SizedBox(
-                    key: ValueKey('admin_manage_bottom_space'),
-                    height: 90,
-                  );
-                }
+        padding: const EdgeInsets.all(AppSpacing.md),
+        itemCount: items.length + 2,
+        onReorder: (oldIndex, newIndex) {
+          // Prevent reordering of the tip.
+          if (oldIndex == 0 || oldIndex > items.length) return;
+          viewModel.reorderItems(
+            categoryId: category.id,
+            oldIndex: oldIndex - 1,
+            newIndex: newIndex - 1,
+          );
+        },
+        itemBuilder: (context, index) {
+          // Tip at index 0.
+          if (index == 0) {
+            return _ListTip(
+              key: const ValueKey('admin_manage_tip'),
+              category: category,
+            );
+          }
+          // Bottom spacer at the end.
+          if (index == items.length + 1) {
+            return const SizedBox(
+              key: ValueKey('admin_manage_bottom_space'),
+              height: 90,
+            );
+          }
 
-                final item = items[index - 1];
-                return _ManageItemTile(
-                  key: ValueKey(item.id),
-                  category: category,
-                  item: item,
-                );
-              },
-            ),
+          // Item tile.
+          final item = items[index - 1];
+          return _ManageItemTile(
+            key: ValueKey(item.id),
+            category: category,
+            item: item,
+          );
+        },
+      ),
     );
   }
 
+  /// Opens the form page for adding or editing an item.
   void _openForm(BuildContext context, AdminManageCategory category) {
     Navigator.push(
       context,
@@ -346,9 +421,16 @@ class _AdminManageListPage extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// LIST TIP
+// ============================================================================
+
+/// Tip widget for the list page.
 class _ListTip extends StatelessWidget {
+  /// The category.
   final AdminManageCategory category;
 
+  /// Creates a new list tip instance.
   const _ListTip({super.key, required this.category});
 
   @override
@@ -364,10 +446,19 @@ class _ListTip extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// MANAGE ITEM TILE
+// ============================================================================
+
+/// Tile widget for a manage item.
 class _ManageItemTile extends StatelessWidget {
+  /// The category.
   final AdminManageCategory category;
+
+  /// The item.
   final AdminManageItem item;
 
+  /// Creates a new manage item tile instance.
   const _ManageItemTile({
     super.key,
     required this.category,
@@ -376,7 +467,10 @@ class _ManageItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the view model.
     final viewModel = context.read<AdminManageViewModel>();
+
+    // Get the icon for the item.
     final icon = _iconForManageItem(category, item);
 
     return Card(
@@ -406,8 +500,11 @@ class _ManageItemTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Drag handle.
             const Icon(Icons.drag_handle, color: Colors.grey),
             const SizedBox(width: 8),
+
+            // Active toggle.
             Switch(
               value: item.isActive,
               activeThumbColor: _green,
@@ -421,9 +518,12 @@ class _ManageItemTile extends StatelessWidget {
                 isActive: value,
               ),
             ),
+
+            // Edit/Delete menu.
             PopupMenuButton<String>(
               onSelected: (value) {
                 if (value == 'edit') {
+                  // Navigate to edit form.
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -452,9 +552,16 @@ class _ManageItemTile extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// EMPTY LIST
+// ============================================================================
+
+/// Empty list state widget.
 class _EmptyList extends StatelessWidget {
+  /// The category.
   final AdminManageCategory category;
 
+  /// Creates a new empty list instance.
   const _EmptyList({required this.category});
 
   @override
@@ -475,32 +582,57 @@ class _EmptyList extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// FORM PAGE
+// ============================================================================
+
+/// Form page for adding or editing an item.
 class _AdminManageFormPage extends StatefulWidget {
+  /// The category.
   final AdminManageCategory category;
+
+  /// The item to edit (null for new item).
   final AdminManageItem? item;
 
+  /// Creates a new admin manage form page instance.
   const _AdminManageFormPage({required this.category, this.item});
 
   @override
   State<_AdminManageFormPage> createState() => _AdminManageFormPageState();
 }
 
+/// State for the admin manage form page.
 class _AdminManageFormPageState extends State<_AdminManageFormPage> {
+  /// Controller for the name field.
   late final TextEditingController _nameController;
+
+  /// Controller for the description field.
   late final TextEditingController _descriptionController;
+
+  /// Selected icon key.
   String? _iconKey;
+
+  /// Whether the item is active.
   bool _isActive = true;
 
   @override
   void initState() {
     super.initState();
+
+    // Get the item.
     final item = widget.item;
+
+    // Initialize controllers.
     _nameController = TextEditingController(text: item?.name ?? '');
     _descriptionController = TextEditingController(
       text: item?.description ?? '',
     );
+
+    // Initialize icon key.
     final savedIconKey = item?.iconKey ?? '';
     _iconKey = savedIconKey.isEmpty ? null : savedIconKey;
+
+    // Initialize active status.
     _isActive = item?.isActive ?? true;
   }
 
@@ -513,7 +645,10 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<AdminManageViewModel>();
+
+    // Check if editing.
     final isEditing = widget.item != null;
 
     return Scaffold(
@@ -524,6 +659,7 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
+          // Name field.
           AdminManageFormLabel('${widget.category.itemLabel} Name'),
           TextField(
             controller: _nameController,
@@ -537,6 +673,8 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
             maxLength: 30,
           ),
           const SizedBox(height: 18),
+
+          // Description field.
           const AdminManageFormLabel('Category Description (Optional)'),
           TextField(
             controller: _descriptionController,
@@ -551,6 +689,8 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
             maxLines: 5,
           ),
           const SizedBox(height: 24),
+
+          // Icon picker.
           const AdminManageFormLabel('Category Icon (Optional)'),
           const SizedBox(height: 8),
           AdminManageIconGrid(
@@ -561,6 +701,8 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
             selectedIconColor: _amber,
           ),
           const SizedBox(height: 24),
+
+          // Status toggle.
           const AdminManageFormLabel('Status'),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -591,6 +733,8 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
             ),
           ),
           const SizedBox(height: 28),
+
+          // Save button.
           PrimaryButton(
             onPressed: viewModel.isSaving ? null : () => _save(context),
             text: 'Save',
@@ -603,11 +747,17 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
     );
   }
 
+  /// Saves the item.
   Future<void> _save(BuildContext context) async {
+    // Get the view model.
     final viewModel = context.read<AdminManageViewModel>();
+
+    // Calculate sort order.
     final sortOrder =
         widget.item?.sortOrder ??
-        viewModel.itemsFor(widget.category.id).length + 1;
+            viewModel.itemsFor(widget.category.id).length + 1;
+
+    // Save the item.
     final success = await viewModel.saveItem(
       categoryId: widget.category.id,
       id: widget.item?.id,
@@ -618,9 +768,11 @@ class _AdminManageFormPageState extends State<_AdminManageFormPage> {
       isActive: _isActive,
     );
 
+    // Handle success.
     if (success && context.mounted) {
       Navigator.pop(context);
     } else if (context.mounted && viewModel.errorMessage != null) {
+      // Show error message.
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(viewModel.errorMessage!)));

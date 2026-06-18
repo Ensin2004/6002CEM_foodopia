@@ -8,16 +8,34 @@ import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/progress_bar/app_progress_bar.dart';
 import '../viewmodel/user_setup_viewmodel.dart';
 
+/// Scaffold for user setup pages.
+/// Provides consistent layout with progress bar, title, and action button.
 class UserSetupScaffold extends StatelessWidget {
+  /// Current step number.
   final int step;
+
+  /// Page title.
   final String title;
+
+  /// Button text.
   final String buttonText;
+
+  /// Whether saving is in progress.
   final bool isSaving;
+
+  /// Whether to show the progress bar.
   final bool showProgress;
+
+  /// Callback when continue button is pressed.
   final VoidCallback onContinue;
+
+  /// Optional back button callback.
   final VoidCallback? onBack;
+
+  /// Child widget content.
   final Widget child;
 
+  /// Creates a new user setup scaffold instance.
   const UserSetupScaffold({
     super.key,
     required this.step,
@@ -47,17 +65,20 @@ class UserSetupScaffold extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Back button.
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     alignment: Alignment.centerLeft,
                     onPressed:
-                        onBack ??
-                        () {
+                    onBack ??
+                            () {
                           if (context.canPop()) context.pop();
                         },
                     icon: const Icon(Icons.arrow_back, size: 20),
                   ),
+
+                  // Progress bar.
                   if (showProgress) ...[
                     AppProgressBar(
                       totalSteps: UserSetupViewModel.totalSteps,
@@ -65,9 +86,15 @@ class UserSetupScaffold extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.md),
                   ],
+
+                  // Title.
                   Text(title, style: context.text.titleLarge),
                   const SizedBox(height: AppSpacing.md),
+
+                  // Content.
                   Expanded(child: child),
+
+                  // Continue button.
                   PrimaryButton(
                     onPressed: isSaving ? null : onContinue,
                     text: buttonText,
@@ -79,6 +106,7 @@ class UserSetupScaffold extends StatelessWidget {
             ),
           ),
         ),
+        // Loading overlay.
         if (isSaving) const LoadingDialog(),
       ],
     );

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/theme_extension.dart';
 
 /// Defines behavior for manage page.
+/// A placeholder admin management page.
 class ManagePage extends StatelessWidget {
   /// Creates a manage page instance.
   const ManagePage({super.key});
@@ -21,6 +22,8 @@ class ManagePage extends StatelessWidget {
 
         /// Creates a sized box instance.
         const SizedBox(height: 16),
+
+        // Management cards.
         _buildCard(context, 'Recipe Management', Icons.restaurant_menu, () {}),
         _buildCard(context, 'System Settings', Icons.settings, () {}),
       ],
@@ -29,11 +32,11 @@ class ManagePage extends StatelessWidget {
 
   /// Handles the build card operation.
   Widget _buildCard(
-    BuildContext context,
-    String title,
-    IconData icon,
-    VoidCallback onTap,
-  ) {
+      BuildContext context,
+      String title,
+      IconData icon,
+      VoidCallback onTap,
+      ) {
     /// Handles the card operation.
     return Card(
       margin: const EdgeInsets.only(bottom: 12),

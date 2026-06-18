@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/rating.dart';
 
 /// Defines behavior for rating model.
+/// Maps Firestore documents to RatingEntity domain entities.
 class RatingModel extends RatingEntity {
   /// Creates a rating model instance.
   const RatingModel({
@@ -14,8 +15,9 @@ class RatingModel extends RatingEntity {
     required super.updatedAt,
   });
 
-  /// Creates a rating model instance.
+  /// Creates a rating model instance from a Firestore document.
   factory RatingModel.fromFirestore(DocumentSnapshot doc) {
+    // Extract data from the document.
     final data = doc.data() as Map<String, dynamic>;
 
     /// Handles the rating model operation.

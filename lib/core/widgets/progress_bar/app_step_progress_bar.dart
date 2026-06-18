@@ -3,11 +3,19 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/theme_extension.dart';
 
+/// Step progress bar with numbered steps and labels.
+/// Used for multi-step wizards with visual step indicators.
 class AppStepProgressBar extends StatelessWidget {
+  /// Total number of steps.
   final int totalSteps;
+
+  /// Current step (1-based).
   final int currentStep;
+
+  /// Labels for each step.
   final List<String> labels;
 
+  /// Creates a new app step progress bar instance.
   const AppStepProgressBar({
     super.key,
     required this.totalSteps,
@@ -17,11 +25,15 @@ class AppStepProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Ensure at least one step.
     final safeTotal = totalSteps < 1 ? 1 : totalSteps;
+
+    // Clamp current step to valid range.
     final safeCurrent = currentStep.clamp(1, safeTotal);
 
     return Column(
       children: [
+        // Step indicators and connecting lines.
         Row(
           children: List.generate(safeTotal, (index) {
             final step = index + 1;
@@ -32,16 +44,18 @@ class AppStepProgressBar extends StatelessWidget {
             return Expanded(
               child: Row(
                 children: [
+                  // Left connecting line.
                   Expanded(
                     child: index == 0
                         ? const SizedBox.shrink()
                         : Container(
-                            height: 4,
-                            color: step <= safeCurrent
-                                ? AppColors.primary
-                                : AppColors.border,
-                          ),
+                      height: 4,
+                      color: step <= safeCurrent
+                          ? AppColors.primary
+                          : AppColors.border,
+                    ),
                   ),
+                  // Step circle.
                   Container(
                     width: 30,
                     height: 30,
@@ -58,23 +72,24 @@ class AppStepProgressBar extends StatelessWidget {
                     child: isCompleted
                         ? const Icon(Icons.check, size: 18, color: Colors.white)
                         : Text(
-                            '$step',
-                            style: context.text.labelLarge?.copyWith(
-                              color: isActive
-                                  ? Colors.white
-                                  : AppColors.textSecondary,
-                            ),
-                          ),
+                      '$step',
+                      style: context.text.labelLarge?.copyWith(
+                        color: isActive
+                            ? Colors.white
+                            : AppColors.textSecondary,
+                      ),
+                    ),
                   ),
+                  // Right connecting line.
                   Expanded(
                     child: index == safeTotal - 1
                         ? const SizedBox.shrink()
                         : Container(
-                            height: 4,
-                            color: step < safeCurrent
-                                ? AppColors.primary
-                                : AppColors.border,
-                          ),
+                      height: 4,
+                      color: step < safeCurrent
+                          ? AppColors.primary
+                          : AppColors.border,
+                    ),
                   ),
                 ],
               ),
@@ -82,6 +97,8 @@ class AppStepProgressBar extends StatelessWidget {
           }),
         ),
         const SizedBox(height: 8),
+
+        // Step labels.
         Row(
           children: List.generate(safeTotal, (index) {
             final step = index + 1;

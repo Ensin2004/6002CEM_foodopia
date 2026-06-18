@@ -2,16 +2,36 @@ import 'package:flutter/material.dart';
 import 'curved_background_painter.dart';
 
 /// Defines behavior for curved header.
+/// A header with a curved bottom edge and centered logo.
 class CurvedHeader extends StatelessWidget {
+  /// Custom leading button widget.
   final Widget? leadingButton;
+
+  /// Custom trailing button widget.
   final Widget? trailingButton;
+
+  /// Callback when leading button is pressed.
   final VoidCallback? onLeadingPressed;
+
+  /// Callback when trailing button is pressed.
   final VoidCallback? onTrailingPressed;
+
+  /// Text for the leading button.
   final String? leadingText;
+
+  /// Text for the trailing button.
   final String? trailingText;
+
+  /// Path to the logo image asset.
   final String logoPath;
+
+  /// Size of the logo.
   final double logoSize;
+
+  /// Color of the curved section.
   final Color? curveColor;
+
+  /// Background color of the header.
   final Color? backgroundColor;
 
   /// Creates a curved header instance.
@@ -32,14 +52,17 @@ class CurvedHeader extends StatelessWidget {
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    // Get the theme.
     final theme = Theme.of(context);
+
+    // Determine colors.
     final curveColor = this.curveColor ?? theme.colorScheme.primary;
     final backgroundColor = this.backgroundColor ?? theme.colorScheme.surface;
 
     /// Handles the stack operation.
     return Stack(
       children: [
-        // Curved background
+        // Curved background.
         CustomPaint(
           painter: CurvedBackgroundPainter(
             backgroundColor: backgroundColor,
@@ -50,7 +73,7 @@ class CurvedHeader extends StatelessWidget {
           ),
         ),
 
-        // Centered circular logo
+        // Centered circular logo.
         Positioned(
           bottom: 0,
           left: 0,
@@ -72,6 +95,7 @@ class CurvedHeader extends StatelessWidget {
                 width: logoSize,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
+                  // Fallback icon if image fails to load.
                   /// Handles the container operation.
                   return Container(
                     height: logoSize,
@@ -92,7 +116,7 @@ class CurvedHeader extends StatelessWidget {
           ),
         ),
 
-        // Leading and trailing buttons
+        // Leading and trailing buttons.
         Positioned(
           top: 0,
           left: 0,
@@ -102,11 +126,11 @@ class CurvedHeader extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Leading widget
+                // Leading widget.
                 if (leadingButton != null)
                   leadingButton!
                 else if (onLeadingPressed != null && leadingText != null)
-                  /// Creates a text button instance.
+                /// Creates a text button instance.
                   TextButton(
                     onPressed: onLeadingPressed,
                     child: Text(
@@ -118,14 +142,14 @@ class CurvedHeader extends StatelessWidget {
                     ),
                   )
                 else
-                  /// Creates a sized box instance.
+                /// Creates a sized box instance.
                   const SizedBox(width: 48),
 
-                // Trailing widget
+                // Trailing widget.
                 if (trailingButton != null)
                   trailingButton!
                 else if (onTrailingPressed != null && trailingText != null)
-                  /// Creates a text button instance.
+                /// Creates a text button instance.
                   TextButton(
                     onPressed: onTrailingPressed,
                     child: Text(
@@ -137,7 +161,7 @@ class CurvedHeader extends StatelessWidget {
                     ),
                   )
                 else
-                  /// Creates a sized box instance.
+                /// Creates a sized box instance.
                   const SizedBox(width: 48),
               ],
             ),

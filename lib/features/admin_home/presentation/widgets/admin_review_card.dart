@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../domain/entities/admin_home_dashboard.dart';
 
+/// Review card widget for the admin home page.
+/// Displays a pending review with user info, title, and badge.
 class AdminReviewCard extends StatelessWidget {
+  /// The pending review to display.
   final AdminPendingReview review;
 
+  /// Creates a new admin review card instance.
   const AdminReviewCard({super.key, required this.review});
 
   @override
@@ -19,14 +23,18 @@ class AdminReviewCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // User avatar with initials.
           _InitialAvatar(initials: review.initials),
           const SizedBox(width: 10),
+
+          // Review content.
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
+                    // User name.
                     Expanded(
                       child: Text(
                         review.userName,
@@ -38,10 +46,13 @@ class AdminReviewCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // Status badge.
                     _Badge(text: review.badge),
                   ],
                 ),
                 const SizedBox(height: 6),
+
+                // Title.
                 Text(
                   review.title,
                   maxLines: 2,
@@ -51,6 +62,8 @@ class AdminReviewCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
+
+                // Time ago.
                 Text(review.timeAgo, style: context.text.bodySmall),
               ],
             ),
@@ -61,9 +74,12 @@ class AdminReviewCard extends StatelessWidget {
   }
 }
 
+/// User avatar with initials.
 class _InitialAvatar extends StatelessWidget {
+  /// User initials.
   final String initials;
 
+  /// Creates a new initial avatar instance.
   const _InitialAvatar({required this.initials});
 
   @override
@@ -82,9 +98,12 @@ class _InitialAvatar extends StatelessWidget {
   }
 }
 
+/// Status badge widget.
 class _Badge extends StatelessWidget {
+  /// Badge text.
   final String text;
 
+  /// Creates a new badge instance.
   const _Badge({required this.text});
 
   @override

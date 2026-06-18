@@ -8,13 +8,25 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/custom_app_bar.dart';
 
+/// Page for adding a meal plan with multiple entry options.
+/// Displays three options: community recipes, user library, and AI generation.
 class AddMealPlanPage extends StatelessWidget {
+  /// Type of meal to plan (e.g., breakfast, lunch, dinner).
   final String mealType;
+
+  /// Category ID of the meal.
   final String mealCategoryId;
+
+  /// Date selected for the meal plan.
   final DateTime selectedDate;
+
+  /// List of recipe IDs already planned for this category/date.
   final List<String> existingRecipeIds;
+
+  /// ID of the user creating the meal plan.
   final String userId;
 
+  /// Creates a new add meal plan page instance.
   const AddMealPlanPage({
     super.key,
     required this.mealType,
@@ -39,6 +51,7 @@ class AddMealPlanPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.lg),
           children: [
+            // Page header text.
             Text(
               'How would you like to add your meal plan?',
               style: context.text.bodyMedium?.copyWith(
@@ -46,11 +59,13 @@ class AddMealPlanPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            // Option 1: Community recipes.
             _AddMealOptionCard(
               title: 'Explore Community Recipes',
               imagePath: 'assets/images/meal1.png',
               description:
-                  'Browse and add popular dishes shared by other Foodopia cooks to your meal plan.',
+              'Browse and add popular dishes shared by other Foodopia cooks to your meal plan.',
               enabled: true,
               onTap: () => context.push(
                 AppRouter.explore,
@@ -65,11 +80,13 @@ class AddMealPlanPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            // Option 2: User library.
             _AddMealOptionCard(
               title: 'Add from Your Library',
               imagePath: 'assets/images/meal2.png',
               description:
-                  'Quickly schedule meals using your personal collection of saved or self-created recipes.',
+              'Quickly schedule meals using your personal collection of saved or self-created recipes.',
               enabled: true,
               onTap: () => context.push(
                 AppRouter.library,
@@ -86,12 +103,14 @@ class AddMealPlanPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            // Option 3: AI generation.
             _AddMealOptionCard(
               title: 'Generate with AI',
               subtitle: 'by Foodopia AI',
               imagePath: 'assets/images/meal3.png',
               description:
-                  'Tell our AI what ingredients and your preferences, and it will suggest creative recipes with weather factor.',
+              'Tell our AI what ingredients and your preferences, and it will suggest creative recipes with weather factor.',
               enabled: true,
               onTap: () => context.push(
                 AppRouter.generateAiMeal,
@@ -110,14 +129,28 @@ class AddMealPlanPage extends StatelessWidget {
   }
 }
 
+/// Card widget for displaying a meal addition option.
+/// Contains title, image, description, and tap handling.
 class _AddMealOptionCard extends StatelessWidget {
+  /// Main title of the option.
   final String title;
+
+  /// Optional subtitle displayed below the title.
   final String? subtitle;
+
+  /// Path to the option's image asset.
   final String imagePath;
+
+  /// Description text explaining the option.
   final String description;
+
+  /// Whether the option is enabled and tappable.
   final bool enabled;
+
+  /// Callback function when the card is tapped.
   final VoidCallback onTap;
 
+  /// Creates a new add meal option card instance.
   const _AddMealOptionCard({
     required this.title,
     this.subtitle,
@@ -130,6 +163,7 @@ class _AddMealOptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
+      // Only respond to taps if enabled.
       onTap: enabled ? onTap : null,
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -139,6 +173,7 @@ class _AddMealOptionCard extends StatelessWidget {
         ),
         child: Column(
           children: [
+            // Title text.
             Text(
               title,
               style: context.text.titleMedium?.copyWith(
@@ -148,6 +183,8 @@ class _AddMealOptionCard extends StatelessWidget {
                     : AppColors.textSecondary,
               ),
             ),
+
+            // Subtitle if provided.
             if (subtitle != null) ...[
               const SizedBox(height: 2),
               Text(
@@ -158,16 +195,21 @@ class _AddMealOptionCard extends StatelessWidget {
                 ),
               ),
             ],
+
             const SizedBox(height: AppSpacing.md),
+
+            // Option image with grayscale filter when disabled.
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: ColorFiltered(
                 colorFilter: enabled
+                // No filter when enabled.
                     ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
+                // Grayscale overlay when disabled.
                     : ColorFilter.mode(
-                        Colors.white.withValues(alpha: 0.45),
-                        BlendMode.srcATop,
-                      ),
+                  Colors.white.withValues(alpha: 0.45),
+                  BlendMode.srcATop,
+                ),
                 child: Image.asset(
                   imagePath,
                   width: 96,
@@ -176,7 +218,10 @@ class _AddMealOptionCard extends StatelessWidget {
                 ),
               ),
             ),
+
             const SizedBox(height: AppSpacing.lg),
+
+            // Description text.
             Text(
               description,
               textAlign: TextAlign.center,

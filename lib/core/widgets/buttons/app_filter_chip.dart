@@ -3,11 +3,19 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/theme_extension.dart';
 
+/// Filter chip widget for selection and filtering.
+/// Used in meal plan filters and other selection contexts.
 class AppFilterChip extends StatelessWidget {
+  /// Label text displayed on the chip.
   final String label;
+
+  /// Whether the chip is selected.
   final bool selected;
+
+  /// Callback when the chip is tapped.
   final VoidCallback onTap;
 
+  /// Creates a new app filter chip instance.
   const AppFilterChip({
     super.key,
     required this.label,
@@ -17,6 +25,7 @@ class AppFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the color scheme.
     final colorScheme = Theme.of(context).colorScheme;
 
     return Material(

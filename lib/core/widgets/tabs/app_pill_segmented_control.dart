@@ -3,11 +3,19 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/theme_extension.dart';
 
+/// Pill-style segmented control with animated selection.
+/// Used for tab-like selection in a compact horizontal layout.
 class AppPillSegmentedControl extends StatelessWidget {
+  /// Labels for each segment.
   final List<String> labels;
+
+  /// Index of the selected segment.
   final int selectedIndex;
+
+  /// Callback when a segment is selected.
   final ValueChanged<int> onChanged;
 
+  /// Creates a new app pill segmented control instance.
   const AppPillSegmentedControl({
     super.key,
     required this.labels,
@@ -19,20 +27,28 @@ class AppPillSegmentedControl extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Constants.
         const gap = 6.0;
         const minSegmentWidth = 112.0;
+
+        // Calculate estimated total width.
         final estimatedWidth = labels.fold<double>(
           0,
-          (total, label) =>
-              total +
+              (total, label) =>
+          total +
               (label.length * 8.5).clamp(minSegmentWidth, double.infinity),
         );
+
+        // Determine if scrolling is needed.
         final shouldScroll =
             estimatedWidth + (labels.length - 1) * gap > constraints.maxWidth;
 
+        // Build segments.
         final children = labels.asMap().entries.map((entry) {
           final index = entry.key;
           final isSelected = selectedIndex == index;
+
+          // Segment content.
           final segment = InkWell(
             onTap: () => onChanged(index),
             borderRadius: BorderRadius.circular(8),
@@ -57,6 +73,7 @@ class AppPillSegmentedControl extends StatelessWidget {
             ),
           );
 
+          // Calculate segment width.
           final segmentWidth = (entry.value.length * 8.5).clamp(
             minSegmentWidth,
             double.infinity,
@@ -67,6 +84,7 @@ class AppPillSegmentedControl extends StatelessWidget {
               : Expanded(child: segment);
         }).toList();
 
+        // Build the container.
         return Container(
           height: 44,
           padding: const EdgeInsets.all(3),
@@ -77,21 +95,24 @@ class AppPillSegmentedControl extends StatelessWidget {
           ),
           child: shouldScroll
               ? SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(children: _withGaps(children, gap)),
-                )
+            scrollDirection: Axis.horizontal,
+            child: Row(children: _withGaps(children, gap)),
+          )
               : Row(children: _withGaps(children, gap)),
         );
       },
     );
   }
 
+  /// Adds gaps between children.
   List<Widget> _withGaps(List<Widget> children, double gap) {
     final spaced = <Widget>[];
+
     for (var index = 0; index < children.length; index++) {
       if (index > 0) spaced.add(SizedBox(width: gap));
       spaced.add(children[index]);
     }
+
     return spaced;
   }
 }
