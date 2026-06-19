@@ -502,7 +502,13 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
         .doc(categoryId)
         .get();
 
-    final name = doc.data()?['name']?.toString().trim() ?? '';
+    final data = doc.data();
+    final isActive = data?['isActive'] is bool
+        ? data!['isActive'] as bool
+        : true;
+    if (!isActive) return null;
+
+    final name = data?['name']?.toString().trim() ?? '';
     return name.isEmpty ? null : name;
   }
 

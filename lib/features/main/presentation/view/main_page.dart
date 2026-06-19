@@ -6,6 +6,7 @@ import '../../../../app/navigation/navigation_events.dart';
 import '../../../../app/routers/app_router.dart';
 import '../../../../app/routers/router_args.dart';
 import '../../../../core/widgets/buttons/app_floating_action_button.dart';
+import '../../../admin_home/domain/entities/admin_home_dashboard.dart';
 import '../../../admin_home/presentation/view/admin_home_page.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../admin_manage/presentation/view/admin_manage_page.dart';
@@ -134,7 +135,7 @@ class _MainPageViewState extends State<_MainPageView> {
     // Check if focus or refresh changed.
     final focusChanged =
         oldWidget.focusedRecipeId != widget.focusedRecipeId ||
-            oldWidget.focusedRecipeIsPublished != widget.focusedRecipeIsPublished;
+        oldWidget.focusedRecipeIsPublished != widget.focusedRecipeIsPublished;
     final refreshChanged =
         oldWidget.libraryRefreshToken != widget.libraryRefreshToken;
 
@@ -290,7 +291,19 @@ class _MainPageViewState extends State<_MainPageView> {
       // Admin pages.
       switch (currentIndex) {
         case 0:
-          return AdminHomePage(adminName: viewModel.user.name ?? 'Admin');
+          return AdminHomePage(
+            adminName: viewModel.user.name ?? 'Admin',
+            onQuickAccessTap: (item) =>
+                _handleAdminQuickAccess(context, item, viewModel),
+            onViewAllPendingReviews: () => context.push(
+              AppRouter.helpCenter,
+              extra: const HelpCenterArgs(isAdmin: true),
+            ),
+            onViewAllFeedback: () => context.push(
+              AppRouter.rateUs,
+              extra: const RateUsArgs(isAdmin: true),
+            ),
+          );
         case 1:
           return const AdminManagePage();
         case 2:
@@ -301,12 +314,37 @@ class _MainPageViewState extends State<_MainPageView> {
     }
   }
 
+  /// Handles admin home quick access shortcuts.
+  void _handleAdminQuickAccess(
+    BuildContext context,
+    AdminQuickAccessItem item,
+    MainViewModel viewModel,
+  ) {
+    switch (item.title) {
+      case 'Manage Content':
+        viewModel.onTabTapped(1);
+        break;
+      case 'View Stats':
+        viewModel.onTabTapped(2);
+        break;
+      case 'Manage Feedback':
+        context.push(AppRouter.rateUs, extra: const RateUsArgs(isAdmin: true));
+        break;
+      case 'Settings':
+        context.push(
+          AppRouter.settings,
+          extra: SettingsArgs(user: viewModel.user),
+        );
+        break;
+    }
+  }
+
   /// Handles user home quick link taps.
   void _handleUserHomeQuickLink(
-      BuildContext context,
-      UserHomeQuickLinkTarget target,
-      MainViewModel viewModel,
-      ) {
+    BuildContext context,
+    UserHomeQuickLinkTarget target,
+    MainViewModel viewModel,
+  ) {
     switch (target) {
       case UserHomeQuickLinkTarget.explore:
         viewModel.goToExplore();
@@ -344,9 +382,9 @@ class _MainPageViewState extends State<_MainPageView> {
 
   /// Handles the build bottom navigation bar operation.
   Widget _buildBottomNavigationBar(
-      BuildContext context,
-      MainViewModel viewModel,
-      ) {
+    BuildContext context,
+    MainViewModel viewModel,
+  ) {
     // Get admin status.
     final isAdmin = viewModel.isAdmin;
 
@@ -363,51 +401,51 @@ class _MainPageViewState extends State<_MainPageView> {
         type: BottomNavigationBarType.fixed,
         items: isAdmin
             ? const [
-          // Admin items.
-          /// Creates a bottom navigation bar item instance.
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+                // Admin items.
+                /// Creates a bottom navigation bar item instance.
+                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
 
-          /// Creates a bottom navigation bar item instance.
-          BottomNavigationBarItem(
-            icon: Icon(Icons.admin_panel_settings),
-            label: 'Manage',
-          ),
+                /// Creates a bottom navigation bar item instance.
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.admin_panel_settings),
+                  label: 'Manage',
+                ),
 
-          /// Creates a bottom navigation bar item instance.
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Statistics',
-          ),
-        ]
+                /// Creates a bottom navigation bar item instance.
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.bar_chart),
+                  label: 'Statistics',
+                ),
+              ]
             : const [
-          // User items.
-          /// Creates a bottom navigation bar item instance.
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+                // User items.
+                /// Creates a bottom navigation bar item instance.
+                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
 
-          /// Creates a bottom navigation bar item instance.
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore),
-            label: 'Explore',
-          ),
+                /// Creates a bottom navigation bar item instance.
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.explore),
+                  label: 'Explore',
+                ),
 
-          /// Creates a bottom navigation bar item instance.
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_box),
-            label: 'Add',
-          ),
+                /// Creates a bottom navigation bar item instance.
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.add_box),
+                  label: 'Add',
+                ),
 
-          /// Creates a bottom navigation bar item instance.
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month),
-            label: 'Meal Plan',
-          ),
+                /// Creates a bottom navigation bar item instance.
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_month),
+                  label: 'Meal Plan',
+                ),
 
-          /// Creates a bottom navigation bar item instance.
-          BottomNavigationBarItem(
-            icon: Icon(Icons.library_books),
-            label: 'Library',
-          ),
-        ],
+                /// Creates a bottom navigation bar item instance.
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.library_books),
+                  label: 'Library',
+                ),
+              ],
       ),
     );
   }
@@ -433,18 +471,18 @@ class _MainPageViewState extends State<_MainPageView> {
 
   /// Handles navigation events.
   void _handleNavigation(
-      BuildContext context,
-      MainNavigationEvent event,
-      MainViewModel viewModel,
-      ) {
+    BuildContext context,
+    MainNavigationEvent event,
+    MainViewModel viewModel,
+  ) {
     switch (event) {
       case MainNavigationEvent.goToSettings:
-      // Navigate to settings.
+        // Navigate to settings.
         context
             .push(AppRouter.settings, extra: SettingsArgs(user: viewModel.user))
             .then((_) {
-          viewModel.refreshProfile();
-        });
+              viewModel.refreshProfile();
+            });
         break;
       case MainNavigationEvent.goToStatistics:
         context.push(

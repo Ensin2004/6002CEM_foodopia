@@ -14,9 +14,9 @@ extension ExploreRemoteDataSourceIngredients on ExploreRemoteDataSource {
   /// percentages relative to total calories, and builds [ExploreIngredient]
   /// objects for each ingredient.
   Future<List<ExploreIngredient>> _getIngredients(
-      DocumentReference<Map<String, dynamic>> recipe, {
-        required int totalCalories,
-      }) async {
+    DocumentReference<Map<String, dynamic>> recipe, {
+    required int totalCalories,
+  }) async {
     // Fetch all ingredient documents for the recipe.
     final snapshot = await recipe.collection('ingredients').get();
     // Extract unique ingredient category IDs from the ingredients.
@@ -76,8 +76,8 @@ extension ExploreRemoteDataSourceIngredients on ExploreRemoteDataSource {
   /// documents from the app configuration collection. Returns a map
   /// where each ID maps to its display name.
   Future<Map<String, String>> _resolveIngredientCategoryNames(
-      Set<String> categoryIds,
-      ) async {
+    Set<String> categoryIds,
+  ) async {
     if (categoryIds.isEmpty) return const {};
 
     // Fetch all category documents concurrently.
@@ -89,12 +89,18 @@ extension ExploreRemoteDataSourceIngredients on ExploreRemoteDataSource {
             .collection('items')
             .doc(id)
             .get();
+        final data = doc.data();
+        final isActive = data?['isActive'] is bool
+            ? data!['isActive'] as bool
+            : true;
+        if (!isActive) return null;
+
         // Use the category ID as fallback if the name is not found.
-        return MapEntry(id, _stringValue(doc.data()?['name'], fallback: id));
+        return MapEntry(id, _stringValue(data?['name'], fallback: id));
       }),
     );
 
-    return Map.fromEntries(entries);
+    return Map.fromEntries(entries.whereType<MapEntry<String, String>>());
   }
 
   /// Formats a calorie value into a display string with "kcal" suffix.
@@ -167,12 +173,12 @@ extension ExploreRemoteDataSourceIngredients on ExploreRemoteDataSource {
   /// sorts them by section index and step index, groups them into sections
   /// by section title, and builds [ExploreInstructionSection] objects.
   Future<List<ExploreInstructionSection>> _getInstructionSections(
-      DocumentReference<Map<String, dynamic>> recipe,
-      ) async {
+    DocumentReference<Map<String, dynamic>> recipe,
+  ) async {
     // Fetch all instruction documents for the recipe.
     final snapshot = await recipe.collection('instructions').get();
     final steps = snapshot.docs.map((doc) => doc.data()).toList()
-    // Sort by section index first, then by step index within each section.
+      // Sort by section index first, then by step index within each section.
       ..sort((first, second) {
         final sectionCompare = _intValue(
           first['sectionIndex'],

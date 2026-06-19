@@ -146,25 +146,45 @@ mixin _MealPlanDashboardViewModelMixin
     _preferencesErrorMessage = null;
     _notifyIfActive();
 
-    final result = await _getPreferencesUseCase.execute(userId);
+    try {
+      final result = await _getPreferencesUseCase.execute(userId);
 
-    if (_isDisposed) return;
+      if (_isDisposed) return;
 
-    result.ifRight((preferences) {
-      _preferences = preferences;
-      _overrideDiet = preferences.diet.trim().isEmpty
-          ? 'No specific diet'
-          : preferences.diet;
-      _replaceValues(_overrideAllergies, preferences.allergies);
-      _replaceValues(_overrideDislikes, preferences.dislikes);
-    });
+      result.ifRight((preferences) {
+        _preferences = preferences;
+        _overrideDiet = preferences.diet.trim().isEmpty
+            ? 'No specific diet'
+            : preferences.diet;
+        _replaceValues(_overrideAllergies, preferences.allergies);
+        _replaceValues(_overrideDislikes, preferences.dislikes);
+      });
 
-    result.ifLeft((failure) {
-      _preferencesErrorMessage = failure.message;
-    });
+      result.ifLeft((failure) {
+        _preferences = _emptyPreferences;
+        _preferencesErrorMessage = failure.message;
+      });
+    } catch (error) {
+      _preferences = _emptyPreferences;
+      _preferencesErrorMessage = error.toString();
+    } finally {
+      if (!_isDisposed) {
+        _isPreferencesLoading = false;
+        _notifyIfActive();
+      }
+    }
+  }
 
-    _isPreferencesLoading = false;
-    _notifyIfActive();
+  /// Empty preferences used when no saved target/profile exists.
+  MealPlanPreferenceSummary get _emptyPreferences {
+    return const MealPlanPreferenceSummary(
+      diet: 'Not set',
+      allergies: [],
+      dislikes: [],
+      targetCalories: null,
+      calorieUnit: 'kcal',
+      calorieTargetEnabled: false,
+    );
   }
 
   /// Refreshes the weather data.

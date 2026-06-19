@@ -330,7 +330,10 @@ class LibraryRemoteDataSource {
     final data = doc.data() ?? const <String, dynamic>{};
     final creatorUid = data['creatorUid']?.toString() ?? '';
     final creatorData = await _getUserData(creatorUid);
-    final media = _stringList(data['media']);
+    final rawMedia = _stringList(data['media']);
+    final media = rawMedia
+        .where((path) => !_isDefaultRecipeImage(path))
+        .toList();
     // Supports both display names and stored id lists for categories and allergens.
     final categories = _stringList(data['categories']).isNotEmpty
         ? _stringList(data['categories'])
@@ -340,8 +343,26 @@ class LibraryRemoteDataSource {
         : _stringList(data['allergenIds']);
     final visibility = data['visibility']?.toString().toLowerCase() ?? '';
     final isPublished = visibility == 'public' || visibility == 'published';
-    final imagePath = media.isNotEmpty
-        ? media.first
+    final title = _firstNotBlank([
+      data['name']?.toString(),
+      data['recipeName']?.toString(),
+      'Untitled Recipe',
+    ]);
+    final recoveredAiImage = media.isEmpty
+        ? await _recoverAiGeneratedRecipeImage(
+            recipeRef: doc.reference,
+            recipeData: data,
+            recipeTitle: title,
+            creatorUid: creatorUid,
+            currentUid: uid,
+          )
+        : null;
+    final displayMedia = [
+      ...media,
+      if (recoveredAiImage != null) recoveredAiImage,
+    ];
+    final imagePath = displayMedia.isNotEmpty
+        ? displayMedia.first
         : 'assets/images/meal1.png';
     final createdAt = data['createdAt'];
     final rating =
@@ -352,11 +373,7 @@ class LibraryRemoteDataSource {
 
     return LibraryRecipeModel(
       id: doc.id,
-      title: _firstNotBlank([
-        data['name']?.toString(),
-        data['recipeName']?.toString(),
-        'Untitled Recipe',
-      ]),
+      title: title,
       author: _firstNotBlank([
         data['creatorName']?.toString(),
         data['author']?.toString(),
@@ -369,7 +386,7 @@ class LibraryRemoteDataSource {
         creatorData['profileImage']?.toString(),
       ]),
       imagePath: imagePath,
-      imagePaths: media.isEmpty ? null : media,
+      imagePaths: displayMedia.isEmpty ? null : displayMedia,
       description: _firstNotBlank([
         data['description']?.toString(),
         categories.isEmpty ? null : categories.join(', '),
@@ -404,6 +421,73 @@ class LibraryRemoteDataSource {
       ),
       relatedRecipes: const [],
     );
+  }
+
+  Future<String?> _recoverAiGeneratedRecipeImage({
+    required DocumentReference<Map<String, dynamic>> recipeRef,
+    required Map<String, dynamic> recipeData,
+    required String recipeTitle,
+    required String creatorUid,
+    required String currentUid,
+  }) async {
+    if (!_isAiGeneratedRecipe(recipeData) || recipeTitle.trim().isEmpty) {
+      return null;
+    }
+
+    try {
+      final snapshot = await firestore
+          .collectionGroup('ai_context')
+          .where('generatedRecipe.title', isEqualTo: recipeTitle)
+          .limit(10)
+          .get()
+          .timeout(const Duration(seconds: 8));
+
+      for (final contextDoc in snapshot.docs) {
+        final mealPlanRef = contextDoc.reference.parent.parent;
+        if (mealPlanRef == null) continue;
+
+        final mealPlan = await mealPlanRef.get();
+        final mealData = mealPlan.data();
+        if (mealData?['uid']?.toString() != creatorUid) continue;
+
+        final generated = contextDoc.data()['generatedRecipe'];
+        final imagePath = generated is Map
+            ? generated['imagePath']?.toString().trim() ?? ''
+            : '';
+        if (!_isRecoverableImagePath(imagePath)) continue;
+
+        if (creatorUid == currentUid) {
+          await recipeRef.set({
+            'media': [imagePath],
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+
+        return imagePath;
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
+  }
+
+  bool _isAiGeneratedRecipe(Map<String, dynamic> data) {
+    final sourceMethod = data['sourceMethod']?.toString() ?? '';
+    final mode = data['mode']?.toString() ?? '';
+    return sourceMethod == 'ai_generated' || mode == 'ai_generated';
+  }
+
+  bool _isRecoverableImagePath(String imagePath) {
+    if (imagePath.trim().isEmpty || _isDefaultRecipeImage(imagePath)) {
+      return false;
+    }
+    return imagePath.startsWith('http://') || imagePath.startsWith('https://');
+  }
+
+  bool _isDefaultRecipeImage(String imagePath) {
+    final normalized = imagePath.trim();
+    return normalized.isEmpty || normalized == 'assets/images/meal1.png';
   }
 
   Future<Map<String, dynamic>> _getUserData(String uid) async {

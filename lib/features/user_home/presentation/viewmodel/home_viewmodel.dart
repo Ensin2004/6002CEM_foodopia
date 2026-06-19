@@ -53,7 +53,7 @@ class HomeViewModel extends ChangeNotifier {
     required GetUserHomeDashboardUseCase getDashboardUseCase,
     required GetUserHomeWeatherUseCase getWeatherUseCase,
   }) : _getDashboardUseCase = getDashboardUseCase,
-        _getWeatherUseCase = getWeatherUseCase {
+       _getWeatherUseCase = getWeatherUseCase {
     // Load the dashboard asynchronously after construction.
     Future.microtask(loadDashboard);
   }
@@ -91,22 +91,30 @@ class HomeViewModel extends ChangeNotifier {
     _errorMessage = null;
     _notifyIfActive();
 
-    // Execute the use case.
-    final dashboardResult = await _getDashboardUseCase.execute(userName);
+    try {
+      // Execute the use case.
+      final dashboardResult = await _getDashboardUseCase.execute(userName);
 
-    // Check if disposed.
+      // Check if disposed.
+      if (_isDisposed) return;
+
+      // Handle result.
+      dashboardResult.ifLeft((failure) => _errorMessage = failure.message);
+      dashboardResult.ifRight((dashboard) {
+        _dashboard = dashboard;
+        _isWeatherLoading = true;
+      });
+    } catch (error) {
+      _errorMessage = error.toString();
+    } finally {
+      if (!_isDisposed) {
+        // Reset loading state.
+        _isLoading = false;
+        _notifyIfActive();
+      }
+    }
+
     if (_isDisposed) return;
-
-    // Handle result.
-    dashboardResult.ifLeft((failure) => _errorMessage = failure.message);
-    dashboardResult.ifRight((dashboard) {
-      _dashboard = dashboard;
-      _isWeatherLoading = true;
-    });
-
-    // Reset loading state.
-    _isLoading = false;
-    _notifyIfActive();
 
     // Refresh weather data.
     await refreshWeather();

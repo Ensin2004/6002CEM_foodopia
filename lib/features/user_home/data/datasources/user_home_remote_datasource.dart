@@ -296,21 +296,26 @@ class UserHomeRemoteDataSource {
   Future<_CalorieTarget> _getCalorieTarget(String uid) async {
     if (uid.trim().isEmpty) return const _CalorieTarget();
 
-    final doc = await firestore
-        .collection('users')
-        .doc(uid)
-        .collection('preferences')
-        .doc('food_profile')
-        .get()
-        .timeout(const Duration(seconds: 8));
-    final data = doc.data();
-    if (data == null) return const _CalorieTarget();
+    try {
+      final doc = await firestore
+          .collection('users')
+          .doc(uid)
+          .collection('preferences')
+          .doc('food_profile')
+          .get()
+          .timeout(const Duration(seconds: 8));
+      final data = doc.data();
+      if (data == null) return const _CalorieTarget();
 
-    return _CalorieTarget(
-      targetCalories: _intValue(data['targetCalories']),
-      calorieUnit: data['calorieUnit']?.toString() ?? 'kcal',
-      enabled: data['calorieTargetEnabled'] == true,
-    );
+      final targetCalories = _intValue(data['targetCalories']);
+      return _CalorieTarget(
+        targetCalories: targetCalories,
+        calorieUnit: data['calorieUnit']?.toString() ?? 'kcal',
+        enabled: data['calorieTargetEnabled'] == true && targetCalories != null,
+      );
+    } catch (_) {
+      return const _CalorieTarget();
+    }
   }
 
   List<String> _stringList(Object? value) {

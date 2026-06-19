@@ -8,7 +8,6 @@ import '../../../../../app/routers/router_args.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
-import '../../../../../core/widgets/buttons/app_filter_chip.dart';
 import '../../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
@@ -299,35 +298,6 @@ class _GrocerySearchRowState extends State<_GrocerySearchRow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Filter chips.
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              AppFilterChip(
-                label: 'Active lists',
-                selected:
-                    context.watch<MealPlanViewModel>().selectedGroceryListTab ==
-                    GroceryListTabFilter.active,
-                onTap: () => context
-                    .read<MealPlanViewModel>()
-                    .selectGroceryListTab(GroceryListTabFilter.active),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              AppFilterChip(
-                label: 'Past lists',
-                selected:
-                    context.watch<MealPlanViewModel>().selectedGroceryListTab ==
-                    GroceryListTabFilter.past,
-                onTap: () => context
-                    .read<MealPlanViewModel>()
-                    .selectGroceryListTab(GroceryListTabFilter.past),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-
         // Search field.
         TextField(
           controller: _controller,

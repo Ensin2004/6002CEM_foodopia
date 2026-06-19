@@ -199,7 +199,7 @@ class _CalorieTargetCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: LinearProgressIndicator(
-              value: hasTarget ? progress : null,
+              value: hasTarget ? progress : 0,
               minHeight: 8,
               backgroundColor: AppColors.border.withValues(alpha: 0.6),
               valueColor: AlwaysStoppedAnimation<Color>(status.color),

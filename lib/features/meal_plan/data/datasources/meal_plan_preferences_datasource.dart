@@ -26,7 +26,8 @@ class MealPlanPreferencesDataSource {
         .doc(uid)
         .collection('preferences')
         .doc('food_profile')
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 8));
 
     final data = doc.data();
     if (data == null) return MealPlanPreferenceSummaryModel.empty();

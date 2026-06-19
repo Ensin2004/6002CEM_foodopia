@@ -208,7 +208,9 @@ class _DailyCaloriesCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
               minHeight: 8,
-              value: targetCalories == null ? null : progress,
+              value: targetCalories == null || targetCalories <= 0
+                  ? 0
+                  : progress,
               backgroundColor: const Color(0xFFE9EEF0),
               valueColor: AlwaysStoppedAnimation<Color>(status.color),
             ),

@@ -13,9 +13,6 @@ class UserSetupRemoteDataSource {
   /// Service for searching foods.
   final FoodSearchService foodSearchService;
 
-  /// Cache for admin options by category ID.
-  final Map<String, List<UserSetupOption>> _adminOptionsCache = {};
-
   /// Cache for user preferences by UID.
   final Map<String, UserSetupPreferencesModel> _preferencesCache = {};
 
@@ -31,10 +28,6 @@ class UserSetupRemoteDataSource {
 
   /// Retrieves admin-configured options for a category.
   Future<List<UserSetupOption>> getAdminOptions(String categoryId) async {
-    // Check cache first.
-    final cached = _adminOptionsCache[categoryId];
-    if (cached != null) return cached;
-
     // Query the collection.
     final snapshot = await firestore
         .collection('app_config')
@@ -56,25 +49,23 @@ class UserSetupRemoteDataSource {
     // Map to options, filtering inactive ones.
     final options = docs
         .map((doc) {
-      final data = doc.data();
-      final isActive = data['isActive'] is bool
-          ? data['isActive'] as bool
-          : true;
-      if (!isActive) return null;
+          final data = doc.data();
+          final isActive = data['isActive'] is bool
+              ? data['isActive'] as bool
+              : true;
+          if (!isActive) return null;
 
-      return UserSetupOption(
-        id: doc.id,
-        name: data['name']?.toString() ?? '',
-      );
-    })
+          return UserSetupOption(
+            id: doc.id,
+            name: data['name']?.toString() ?? '',
+          );
+        })
         .whereType<UserSetupOption>()
         .where((item) {
-      return item.name.trim().isNotEmpty;
-    })
+          return item.name.trim().isNotEmpty;
+        })
         .toList();
 
-    // Cache the results.
-    _adminOptionsCache[categoryId] = options;
     return options;
   }
 
@@ -96,11 +87,11 @@ class UserSetupRemoteDataSource {
     return terms
         .map(
           (name) => UserSetupOption(
-        id: name.toLowerCase().replaceAll(' ', '_'),
-        name: name,
-        isCustom: true,
-      ),
-    )
+            id: name.toLowerCase().replaceAll(' ', '_'),
+            name: name,
+            isCustom: true,
+          ),
+        )
         .toList();
   }
 
@@ -240,8 +231,8 @@ class UserSetupRemoteDataSource {
     // Check if calorie target changed.
     final changed =
         previous.calorieTargetEnabled != next.calorieTargetEnabled ||
-            previous.targetCalories != next.targetCalories ||
-            previous.calorieUnit != next.calorieUnit;
+        previous.targetCalories != next.targetCalories ||
+        previous.calorieUnit != next.calorieUnit;
 
     // Return if no changes.
     if (!changed) return;

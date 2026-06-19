@@ -18,19 +18,19 @@ extension ExploreRemoteDataSourceMapping on ExploreRemoteDataSource {
 
     // Filter for public finalized recipes and sort by date descending.
     final docs =
-    snapshot.docs.where((doc) {
-      return _isPublicFinalizedRecipe(doc.data());
-    }).toList()..sort((first, second) {
-      final firstData = first.data();
-      final secondData = second.data();
-      final firstDate = _dateTime(
-        firstData['updatedAt'] ?? firstData['createdAt'],
-      );
-      final secondDate = _dateTime(
-        secondData['updatedAt'] ?? secondData['createdAt'],
-      );
-      return secondDate.compareTo(firstDate);
-    });
+        snapshot.docs.where((doc) {
+          return _isPublicFinalizedRecipe(doc.data());
+        }).toList()..sort((first, second) {
+          final firstData = first.data();
+          final secondData = second.data();
+          final firstDate = _dateTime(
+            firstData['updatedAt'] ?? firstData['createdAt'],
+          );
+          final secondDate = _dateTime(
+            secondData['updatedAt'] ?? secondData['createdAt'],
+          );
+          return secondDate.compareTo(firstDate);
+        });
 
     // Build recipe models sequentially.
     final recipes = <ExploreRecipeModel>[];
@@ -42,9 +42,9 @@ extension ExploreRemoteDataSourceMapping on ExploreRemoteDataSource {
 
   // Constructs a complete recipe model from a Firestore document snapshot.
   Future<ExploreRecipeModel> _recipeFromDoc(
-      DocumentSnapshot<Map<String, dynamic>> doc, {
-        required bool includeCommunity,
-      }) async {
+    DocumentSnapshot<Map<String, dynamic>> doc, {
+    required bool includeCommunity,
+  }) async {
     final data = doc.data() ?? {};
     // Determine creator UID from either field.
     final creatorUid = _stringValue(data['creatorId']).isNotEmpty
@@ -89,21 +89,21 @@ extension ExploreRemoteDataSourceMapping on ExploreRemoteDataSource {
     final community = includeCommunity
         ? await _getCommunity(doc.reference, creator.name)
         : const ExploreCommunity(
-      authorBio: '',
-      ratingBreakdown: [],
-      reviews: [],
-      comments: [],
-    );
+            authorBio: '',
+            ratingBreakdown: [],
+            reviews: [],
+            comments: [],
+          );
     final relatedRecipes = includeCommunity
         ? await _getRelatedRecipes(
-      creatorUid: creatorUid,
-      currentRecipeId: doc.id,
-    )
+            creatorUid: creatorUid,
+            currentRecipeId: doc.id,
+          )
         : const <ExploreRecipeSummary>[];
     // Check if current user has rated this recipe.
     final hasRatedByCurrentUser = includeCommunity && currentUid.isNotEmpty
         ? (await doc.reference.collection('ratings').doc(currentUid).get())
-        .exists
+              .exists
         : false;
     final ratingCount = _intValue(data['ratingCount']);
     final publishedAt = _dateTime(data['updatedAt'] ?? data['createdAt']);
@@ -170,22 +170,22 @@ extension ExploreRemoteDataSourceMapping on ExploreRemoteDataSource {
 
   // Converts raw nutrient data into a list of nutrient amounts based on provided definitions.
   List<ExploreNutrientAmount> _nutrientAmountsFromData(
-      Map<dynamic, dynamic> nutrients,
-      List<_NutrientDefinition> definitions,
-      ) {
+    Map<dynamic, dynamic> nutrients,
+    List<_NutrientDefinition> definitions,
+  ) {
     return definitions
         .map((definition) {
-      final amount = _numericValue(nutrients[definition.key]);
-      // Skip nutrients with no positive amount.
-      if (amount == null || amount <= 0) return null;
-      return ExploreNutrientAmount(
-        key: definition.key,
-        label: definition.label,
-        amount: amount,
-        unit: definition.unit,
-        dailyValue: definition.dailyValue,
-      );
-    })
+          final amount = _numericValue(nutrients[definition.key]);
+          // Skip nutrients with no positive amount.
+          if (amount == null || amount <= 0) return null;
+          return ExploreNutrientAmount(
+            key: definition.key,
+            label: definition.label,
+            amount: amount,
+            unit: definition.unit,
+            dailyValue: definition.dailyValue,
+          );
+        })
         .whereType<ExploreNutrientAmount>()
         .toList(growable: false);
   }
@@ -211,20 +211,20 @@ extension ExploreRemoteDataSourceMapping on ExploreRemoteDataSource {
 
     // Filter out current recipe and non-public ones, then sort by date.
     final docs =
-    snapshot.docs.where((doc) {
-      final data = doc.data();
-      return doc.id != currentRecipeId && _isPublicFinalizedRecipe(data);
-    }).toList()..sort((first, second) {
-      final firstData = first.data();
-      final secondData = second.data();
-      final firstDate = _dateTime(
-        firstData['updatedAt'] ?? firstData['createdAt'],
-      );
-      final secondDate = _dateTime(
-        secondData['updatedAt'] ?? secondData['createdAt'],
-      );
-      return secondDate.compareTo(firstDate);
-    });
+        snapshot.docs.where((doc) {
+          final data = doc.data();
+          return doc.id != currentRecipeId && _isPublicFinalizedRecipe(data);
+        }).toList()..sort((first, second) {
+          final firstData = first.data();
+          final secondData = second.data();
+          final firstDate = _dateTime(
+            firstData['updatedAt'] ?? firstData['createdAt'],
+          );
+          final secondDate = _dateTime(
+            secondData['updatedAt'] ?? secondData['createdAt'],
+          );
+          return secondDate.compareTo(firstDate);
+        });
 
     // Take top 4 and map to summary objects.
     return docs.take(4).map((doc) {
@@ -299,7 +299,13 @@ extension ExploreRemoteDataSourceMapping on ExploreRemoteDataSource {
           .collection('items')
           .doc(id)
           .get();
-      names.add(_stringValue(doc.data()?['name'], fallback: id));
+      final data = doc.data();
+      final isActive = data?['isActive'] is bool
+          ? data!['isActive'] as bool
+          : true;
+      if (!isActive) continue;
+
+      names.add(_stringValue(data?['name'], fallback: id));
     }
 
     // Fetch names from custom items.

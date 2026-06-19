@@ -323,7 +323,7 @@ class _ReviewStepState extends State<_ReviewStep> {
     setState(() => _isSavingRecipe = true);
 
     // Save the recipe draft.
-    final success = await _saveRecipeDraft(viewModel);
+    final savedRecipeId = await _saveRecipeDraft(viewModel);
 
     // Check if context is still mounted.
     if (!context.mounted) return;
@@ -331,9 +331,9 @@ class _ReviewStepState extends State<_ReviewStep> {
     // Reset saving state.
     setState(() => _isSavingRecipe = false);
 
-    // Show success message.
-    if (!success) return;
-    _showSnack(context, 'Recipe saved.');
+    // Open the saved private recipe in the user's library.
+    if (savedRecipeId == null) return;
+    _goToLibraryRecipe(context, savedRecipeId);
   }
 
   /// Saves both meal plan and recipe.
@@ -348,13 +348,13 @@ class _ReviewStepState extends State<_ReviewStep> {
     setState(() => _isSavingBoth = true);
 
     // Save the recipe draft.
-    final recipeSaved = await _saveRecipeDraft(viewModel);
+    final savedRecipeId = await _saveRecipeDraft(viewModel);
 
     // Check if context is still mounted.
     if (!context.mounted) return;
 
     // Show error if recipe save failed.
-    if (!recipeSaved) {
+    if (savedRecipeId == null) {
       setState(() => _isSavingBoth = false);
       return;
     }
@@ -412,10 +412,10 @@ class _ReviewStepState extends State<_ReviewStep> {
   }
 
   /// Saves the recipe draft using use cases.
-  Future<bool> _saveRecipeDraft(GenerateAiMealViewModel viewModel) async {
+  Future<String?> _saveRecipeDraft(GenerateAiMealViewModel viewModel) async {
     // Get the basic info.
-    final basicInfo = viewModel.recipeDraftBasicInfo;
-    if (basicInfo == null) return false;
+    final basicInfo = await _recipeBasicInfoForSave(viewModel);
+    if (basicInfo == null) return null;
 
     // Save basic info.
     final basicResult = await sl<SaveAddRecipeBasicInfoUseCase>().execute(
@@ -423,7 +423,7 @@ class _ReviewStepState extends State<_ReviewStep> {
     );
     if (basicResult.isLeft()) {
       if (mounted) _showSnack(context, basicResult.left?.message);
-      return false;
+      return null;
     }
 
     // Get the saved recipe ID.
@@ -437,7 +437,7 @@ class _ReviewStepState extends State<_ReviewStep> {
         );
     if (ingredientResult.isLeft()) {
       if (mounted) _showSnack(context, ingredientResult.left?.message);
-      return false;
+      return null;
     }
 
     // Save instructions.
@@ -449,7 +449,7 @@ class _ReviewStepState extends State<_ReviewStep> {
         );
     if (instructionResult.isLeft()) {
       if (mounted) _showSnack(context, instructionResult.left?.message);
-      return false;
+      return null;
     }
 
     // Complete the recipe.
@@ -459,10 +459,102 @@ class _ReviewStepState extends State<_ReviewStep> {
     );
     if (completeResult.isLeft()) {
       if (mounted) _showSnack(context, completeResult.left?.message);
-      return false;
+      return null;
     }
 
-    return true;
+    return savedRecipeId;
+  }
+
+  /// Ensures AI recipe media is present before saving to the library.
+  Future<AddRecipeBasicInfo?> _recipeBasicInfoForSave(
+    GenerateAiMealViewModel viewModel,
+  ) async {
+    final basicInfo = viewModel.recipeDraftBasicInfo;
+    if (basicInfo == null) return null;
+    if (basicInfo.mediaFiles.isNotEmpty ||
+        basicInfo.existingMediaUrls.isNotEmpty) {
+      return basicInfo;
+    }
+
+    final recipe = viewModel.selectedRecipes.firstOrNull;
+    if (recipe == null) return basicInfo;
+
+    final aiImageFile = await _aiImageFileForSave(recipe);
+    if (aiImageFile != null) {
+      return AddRecipeBasicInfo(
+        recipeId: basicInfo.recipeId,
+        mediaFiles: [aiImageFile],
+        existingMediaUrls: basicInfo.existingMediaUrls,
+        recipeName: basicInfo.recipeName,
+        description: basicInfo.description,
+        otherNames: basicInfo.otherNames,
+        categoryIds: basicInfo.categoryIds,
+        customCategories: basicInfo.customCategories,
+        preparationMinutes: basicInfo.preparationMinutes,
+        difficultyLevel: basicInfo.difficultyLevel,
+        servings: basicInfo.servings,
+        allergenIds: basicInfo.allergenIds,
+        customAllergens: basicInfo.customAllergens,
+        visibility: basicInfo.visibility,
+        isAiGenerated: basicInfo.isAiGenerated,
+      );
+    }
+
+    final existingAiImage = _aiExistingImageUrlForSave(recipe);
+    if (existingAiImage == null) return basicInfo;
+
+    return AddRecipeBasicInfo(
+      recipeId: basicInfo.recipeId,
+      mediaFiles: basicInfo.mediaFiles,
+      existingMediaUrls: [existingAiImage],
+      recipeName: basicInfo.recipeName,
+      description: basicInfo.description,
+      otherNames: basicInfo.otherNames,
+      categoryIds: basicInfo.categoryIds,
+      customCategories: basicInfo.customCategories,
+      preparationMinutes: basicInfo.preparationMinutes,
+      difficultyLevel: basicInfo.difficultyLevel,
+      servings: basicInfo.servings,
+      allergenIds: basicInfo.allergenIds,
+      customAllergens: basicInfo.customAllergens,
+      visibility: basicInfo.visibility,
+      isAiGenerated: basicInfo.isAiGenerated,
+    );
+  }
+
+  Future<File?> _aiImageFileForSave(AddMealAiRecipe recipe) async {
+    final encoded = recipe.imageBase64;
+    if (encoded == null || encoded.trim().isEmpty) return null;
+
+    try {
+      final bytes = base64Decode(_base64Payload(encoded));
+      final safeId = recipe.id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]+'), '_');
+      final file = File(
+        '${Directory.systemTemp.path}${Platform.pathSeparator}'
+        'foodopia_${safeId}_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      return file;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _aiExistingImageUrlForSave(AddMealAiRecipe recipe) {
+    if (recipe.imageBase64?.trim().isNotEmpty == true) return null;
+
+    final imagePath = recipe.imagePath.trim();
+    if (imagePath.isEmpty || imagePath.startsWith('assets/')) return null;
+    if (!imagePath.startsWith('http://') && !imagePath.startsWith('https://')) {
+      return null;
+    }
+
+    return imagePath;
+  }
+
+  String _base64Payload(String value) {
+    final commaIndex = value.indexOf(',');
+    return commaIndex >= 0 ? value.substring(commaIndex + 1) : value;
   }
 
   /// Navigates to the meal plan page.
@@ -476,6 +568,21 @@ class _ReviewStepState extends State<_ReviewStep> {
     context.go(
       AppRouter.mealPlan,
       extra: MealPlanArgs(initialTabIndex: 0, userId: viewModel.userId),
+    );
+  }
+
+  /// Opens the saved recipe in the private library tab.
+  void _goToLibraryRecipe(BuildContext context, String recipeId) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Recipe saved.')));
+
+    context.go(
+      AppRouter.library,
+      extra: LibraryArgs(
+        focusedRecipeId: recipeId,
+        focusedRecipeIsPublished: false,
+      ),
     );
   }
 

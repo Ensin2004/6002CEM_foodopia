@@ -1277,7 +1277,13 @@ class AddRecipeRemoteDataSource {
           .collection('items')
           .doc(optionId)
           .get();
-      final name = doc.data()?['name']?.toString().trim() ?? '';
+      final data = doc.data();
+      final isActive = data?['isActive'] is bool
+          ? data!['isActive'] as bool
+          : true;
+      if (!isActive) continue;
+
+      final name = data?['name']?.toString().trim() ?? '';
       names.add(name.isEmpty ? optionId : name);
     }
     for (final customId in customIds) {

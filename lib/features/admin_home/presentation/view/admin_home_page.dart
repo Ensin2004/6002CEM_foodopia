@@ -18,8 +18,23 @@ class AdminHomePage extends StatelessWidget {
   /// Name of the admin user.
   final String adminName;
 
+  /// Called when a quick access item is tapped.
+  final ValueChanged<AdminQuickAccessItem>? onQuickAccessTap;
+
+  /// Called when pending reviews "View All" is tapped.
+  final VoidCallback? onViewAllPendingReviews;
+
+  /// Called when feedback "View All" is tapped.
+  final VoidCallback? onViewAllFeedback;
+
   /// Creates a new admin home page instance.
-  const AdminHomePage({super.key, required this.adminName});
+  const AdminHomePage({
+    super.key,
+    required this.adminName,
+    this.onQuickAccessTap,
+    this.onViewAllPendingReviews,
+    this.onViewAllFeedback,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,15 +44,32 @@ class AdminHomePage extends StatelessWidget {
         adminName: adminName,
         getDashboardUseCase: sl<GetAdminHomeDashboardUseCase>(),
       ),
-      child: const _AdminHomeView(),
+      child: _AdminHomeView(
+        onQuickAccessTap: onQuickAccessTap,
+        onViewAllPendingReviews: onViewAllPendingReviews,
+        onViewAllFeedback: onViewAllFeedback,
+      ),
     );
   }
 }
 
 /// Internal view for the admin home page.
 class _AdminHomeView extends StatelessWidget {
+  /// Called when a quick access item is tapped.
+  final ValueChanged<AdminQuickAccessItem>? onQuickAccessTap;
+
+  /// Called when pending reviews "View All" is tapped.
+  final VoidCallback? onViewAllPendingReviews;
+
+  /// Called when feedback "View All" is tapped.
+  final VoidCallback? onViewAllFeedback;
+
   /// Creates a new admin home view instance.
-  const _AdminHomeView();
+  const _AdminHomeView({
+    this.onQuickAccessTap,
+    this.onViewAllPendingReviews,
+    this.onViewAllFeedback,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +117,10 @@ class _AdminHomeView extends StatelessWidget {
                       padding: EdgeInsets.only(
                         right: isLast ? 0 : AppSpacing.sm,
                       ),
-                      child: AdminQuickAccessCard(item: item),
+                      child: AdminQuickAccessCard(
+                        item: item,
+                        onTap: () => onQuickAccessTap?.call(item),
+                      ),
                     ),
                   );
                 }).toList(),
@@ -97,16 +132,17 @@ class _AdminHomeView extends StatelessWidget {
           _Section(
             title: 'Pending Review',
             actionLabel: 'View All',
+            onActionTap: onViewAllPendingReviews,
             child: Row(
               children: dashboard.pendingReviews
                   .map(
                     (review) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm),
-                    child: AdminReviewCard(review: review),
-                  ),
-                ),
-              )
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: AppSpacing.sm),
+                        child: AdminReviewCard(review: review),
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -115,16 +151,17 @@ class _AdminHomeView extends StatelessWidget {
           _Section(
             title: 'Rating & Feedback',
             actionLabel: 'View All',
+            onActionTap: onViewAllFeedback,
             child: Row(
               children: dashboard.feedbackItems
                   .map(
                     (feedback) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm),
-                    child: AdminFeedbackCard(feedback: feedback),
-                  ),
-                ),
-              )
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: AppSpacing.sm),
+                        child: AdminFeedbackCard(feedback: feedback),
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -157,9 +194,7 @@ class _HeroStatsSection extends StatelessWidget {
 
         // Content overlay.
         Padding(
-          padding: AppSpacing.pagePadding.copyWith(
-            top: AppSpacing.lg,
-          ),
+          padding: AppSpacing.pagePadding.copyWith(top: AppSpacing.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -249,11 +284,19 @@ class _Section extends StatelessWidget {
   /// Action label (e.g., "View All").
   final String? actionLabel;
 
+  /// Called when the action label is tapped.
+  final VoidCallback? onActionTap;
+
   /// Child content.
   final Widget child;
 
   /// Creates a new section instance.
-  const _Section({required this.title, required this.child, this.actionLabel});
+  const _Section({
+    required this.title,
+    required this.child,
+    this.actionLabel,
+    this.onActionTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -277,11 +320,20 @@ class _Section extends StatelessWidget {
                 ),
               ),
               if (actionLabel != null)
-                Text(
-                  actionLabel!,
-                  style: context.text.titleMedium?.copyWith(
-                    color: context.colors.primary,
-                    fontWeight: FontWeight.w800,
+                TextButton(
+                  onPressed: onActionTap,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(48, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    alignment: Alignment.centerRight,
+                  ),
+                  child: Text(
+                    actionLabel!,
+                    style: context.text.titleMedium?.copyWith(
+                      color: context.colors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
             ],
