@@ -17,6 +17,9 @@ import '../entities/posted_meal_time_statistics.dart';
 import '../entities/recipe_performance_statistics.dart';
 import '../entities/statistics_dashboard.dart';
 
+// This contract lists every statistics report that the app can ask for.
+// The domain and presentation layers use this, so they do not need to know
+// which Firestore collections or local sources are used underneath.
 abstract class StatisticsRepository {
   Future<Either<Failure, StatisticsDashboard>> getUserStatistics();
 

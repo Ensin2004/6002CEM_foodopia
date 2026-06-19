@@ -15,6 +15,9 @@ import '../../domain/entities/post_difficulty_statistics.dart';
 import '../../domain/entities/posted_meal_time_statistics.dart';
 import '../../domain/entities/statistics_dashboard.dart';
 
+// Local statistics data source.
+// This keeps fixed menu/dashboard data that does not need Firestore, such as
+// the list of report pages and sample fallback statistics.
 class StatisticsLocalDataSource {
   Future<StatisticsDashboardModel> getUserStatistics() async {
     await Future<void>.delayed(const Duration(milliseconds: 250));

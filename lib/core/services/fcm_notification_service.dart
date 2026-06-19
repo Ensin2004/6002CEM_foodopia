@@ -7,6 +7,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+// Handles Firebase Cloud Messaging for the app.
+// It saves this device's FCM token in Firestore, listens for new notification
+// documents, and asks Android to show native notifications when allowed.
 class FcmNotificationService {
   static const MethodChannel _channel = MethodChannel('foodopia/notifications');
   static StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
@@ -17,6 +20,8 @@ class FcmNotificationService {
   static bool _isInitialized = false;
 
   static Future<void> initialize() async {
+    // Set up FCM once, request notification permission, save the device token,
+    // then start listening for incoming messages and Firestore notifications.
     if (!_isInitialized) {
       FirebaseMessaging.onBackgroundMessage(
         _firebaseMessagingBackgroundHandler,
@@ -47,6 +52,8 @@ class FcmNotificationService {
   }
 
   static Future<void> _saveToken(String token) async {
+    // Stores the current device token in users/{uid}.fcmTokens so backend/app
+    // code can send push notifications to this user's device.
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || uid.isEmpty || token.isEmpty) return;
 
@@ -60,6 +67,8 @@ class FcmNotificationService {
     required String uid,
     required String token,
   }) async {
+    // If the same phone was used by another account, remove this token from
+    // that old user document so notifications do not go to the wrong person.
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -85,6 +94,8 @@ class FcmNotificationService {
   }
 
   static Future<void> _showForegroundNotification(RemoteMessage message) async {
+    // When an FCM message arrives while the app is open, check the user's
+    // notification preference before showing an Android notification.
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     final type = message.data['type']?.toString() ?? '';
     final enabled = await _isNotificationEnabledForType(uid: uid, type: type);
@@ -109,6 +120,8 @@ class FcmNotificationService {
   }
 
   static void _watchFirestoreNotifications() {
+    // Watches new unread notification documents in Firestore. When a new one
+    // appears, the app can show it as a native notification immediately.
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || uid.isEmpty) return;
 
@@ -170,6 +183,8 @@ class FcmNotificationService {
     required String uid,
     required String type,
   }) async {
+    // Checks the user's role and saved notification preference before showing
+    // a push/local notification.
     if (uid.isEmpty) return true;
     final isAdmin = await _isAdmin(uid);
     const adminTypes = {

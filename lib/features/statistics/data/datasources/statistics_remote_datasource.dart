@@ -18,6 +18,9 @@ import '../../domain/entities/post_difficulty_statistics.dart';
 import '../../domain/entities/recipe_performance_statistics.dart';
 import '../../domain/entities/statistics_dashboard.dart';
 
+// This is the main database reader for statistics.
+// It collects raw Firestore data such as users, meal plans, recipes,
+// grocery lists, ratings, and preferences, then turns them into report data.
 class StatisticsRemoteDataSource {
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
@@ -28,6 +31,8 @@ class StatisticsRemoteDataSource {
   });
 
   Future<List<StatisticsHeroSlide>> getUserSelfHeroSlides() async {
+    // Get the current user's meal plans from the database so the top
+    // statistics cards can show their personal meal planning progress.
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) {
       return _buildSelfSlides(const [], createdAt: DateTime.now());
@@ -42,6 +47,8 @@ class StatisticsRemoteDataSource {
   }
 
   Future<List<StatisticsHeroSlide>> getUserCommunityHeroSlides() async {
+    // Get recipes posted by the current user, then build the community
+    // statistics cards from those recipe records.
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) return _buildCommunitySlides(const []);
 
@@ -50,6 +57,8 @@ class StatisticsRemoteDataSource {
   }
 
   Future<List<StatisticsHeroSlide>> getAdminHeroSlides() async {
+    // Admin cards look at system-wide database data, so this reads all meal
+    // plans and public recipes instead of only the logged-in user's records.
     final today = _resolveRange(DateTime.now(), DateTime.now());
     final todayPlans = await _getAllMealPlans(today);
     final todayRecipes = await _getAllSharedRecipes(today);
@@ -168,6 +177,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads meal plan records for the selected date range and groups them
+    // into admin-friendly sections like top meal, category, time, and method.
     var range = _resolveAdminRange(startDate, endDate);
     final plans = await _getAllMealPlans(range);
     final categoryConfigs = await _getMealCategoryConfigs();
@@ -268,6 +279,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads public recipe posts and related meal plans, then compares ratings,
+    // views, difficulty, and how often posted recipes are planned.
     var range = _resolveAdminRange(startDate, endDate);
     final recipes = await _getAllSharedRecipes(range);
     final allPlans = await _getAllMealPlans(range);
@@ -357,6 +370,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads every normal user's food profile from Firestore and counts diets,
+    // allergies, and dislikes so admins can see common dietary needs.
     var range = _resolveAdminRange(startDate, endDate);
     final users = await firestore.collection('users').get();
     final counts = <String, int>{};
@@ -409,6 +424,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Checks user profile records and counts gender choices for users created
+    // inside the selected date range.
     var range = _resolveAdminRange(startDate, endDate);
     final users = await firestore.collection('users').get();
     final userDocs = users.docs
@@ -453,6 +470,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Counts user account creation dates from the users collection to show
+    // how many new users joined each month.
     var range = _resolveAdminRange(startDate, endDate);
     final users = await firestore.collection('users').get();
     final createdDates = users.docs
@@ -527,6 +546,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads app-rating feedback stored in the support center collection and
+    // turns the star ratings into a monthly admin report.
     var range = _resolveAdminRange(startDate, endDate);
     final nonAdminUserIds = await _nonAdminUserIds();
     final ratings = await firestore
@@ -590,6 +611,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads the current user's shared recipes and counts post activity such
+    // as ratings, comments, and total engagement.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final recipes = uid.isEmpty
@@ -629,6 +652,7 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads the user's posted recipes and groups them by difficulty level.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final recipes = uid.isEmpty
@@ -679,6 +703,8 @@ class StatisticsRemoteDataSource {
   }
 
   Future<RecipePerformanceStatistics> getUserRecipePerformance() async {
+    // Reads the user's public recipes and compares views, ratings, and
+    // comments so the creator can see which recipe performs best.
     final uid = auth.currentUser?.uid ?? '';
     final recipes = uid.isEmpty
         ? <_CommunityRecipeStat>[]
@@ -802,6 +828,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads the user's meal plans and groups the planned recipes by food,
+    // ingredient, and category for the food analytics charts.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final plans = uid.isEmpty
@@ -869,6 +897,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads meal plans and counts which meal time is used most, like
+    // breakfast, lunch, dinner, or snack.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final plans = uid.isEmpty
@@ -981,6 +1011,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads grocery lists stored under the current user and counts how many
+    // lists were created in each month.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final monthKeys = _monthsInRange(
@@ -1049,6 +1081,7 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads planned meals and counts their difficulty levels from 1 to 5.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final plans = uid.isEmpty
@@ -1093,6 +1126,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads the source saved with each meal plan, then shows whether meals
+    // came from Explore, Library, AI generation, or another method.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final plans = uid.isEmpty
@@ -1141,6 +1176,8 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads meal plans connected to the user's own recipes, then counts which
+    // recipe other users planned to cook the most.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) {
@@ -1446,6 +1483,8 @@ class StatisticsRemoteDataSource {
     String uid,
     ({DateTime start, DateTime end}) range,
   ) async {
+    // Reads meal_plans from Firestore for one user and one date range.
+    // Each document is converted into a small statistics row for calculations.
     final snapshot = await firestore
         .collection('meal_plans')
         .where('uid', isEqualTo: uid)
@@ -1463,6 +1502,8 @@ class StatisticsRemoteDataSource {
   Future<List<_MealPlanStat>> _getAllMealPlans(
     ({DateTime start, DateTime end}) range,
   ) async {
+    // Admin reports use this to read every meal plan in the database, then
+    // filter by date before building the charts.
     final nonAdminUserIds = await _nonAdminUserIds();
     final snapshot = await firestore.collection('meal_plans').get();
     final plans = <_MealPlanStat>[];
@@ -1854,6 +1895,8 @@ class StatisticsRemoteDataSource {
     String uid,
     ({DateTime start, DateTime end}) range,
   ) async {
+    // Gets the user's planned recipes first, then opens each recipe document
+    // to collect nutrition data for calories, protein, carbs, and fat.
     final plans = await _getUserMealPlans(uid, range);
     final items = <_RecipeNutritionStat>[];
     for (final plan in plans) {
@@ -1874,6 +1917,8 @@ class StatisticsRemoteDataSource {
   Future<List<_RecipeNutritionStat>> _getAllPlannedRecipeNutrition(
     ({DateTime start, DateTime end}) range,
   ) async {
+    // Admin nutrient insight uses this to collect nutrition from all planned
+    // recipes in the selected date range.
     final plans = await _getAllMealPlans(range);
     final items = <_RecipeNutritionStat>[];
     for (final plan in plans) {
@@ -2327,6 +2372,8 @@ class StatisticsRemoteDataSource {
   }
 
   Future<List<_CommunityRecipeStat>> _getUserSharedRecipes(String uid) async {
+    // Loads recipes owned by the user, then keeps only recipes that are shared
+    // publicly and finalized.
     final recipes = await _getUserOwnedRecipes(uid);
     return recipes.where((recipe) => recipe.isShared).toList();
   }
@@ -2334,6 +2381,8 @@ class StatisticsRemoteDataSource {
   Future<List<_CommunityRecipeStat>> _getAllSharedRecipes(
     ({DateTime start, DateTime end}) range,
   ) async {
+    // Loads all recipe documents from Firestore, then keeps public finalized
+    // posts that fall inside the requested date range.
     final nonAdminUserIds = await _nonAdminUserIds();
     final snapshot = await firestore.collection('recipes').get();
     final recipes = snapshot.docs
@@ -2352,6 +2401,8 @@ class StatisticsRemoteDataSource {
   }
 
   Future<List<_CommunityRecipeStat>> _getUserOwnedRecipes(String uid) async {
+    // Checks the recipes collection for records that belong to this user.
+    // The code supports a few possible creator id fields used by older data.
     final docsById = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
 
     final creatorIdSnapshot = await firestore

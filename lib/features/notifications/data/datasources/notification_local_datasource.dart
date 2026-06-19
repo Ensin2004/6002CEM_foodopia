@@ -7,6 +7,9 @@ import '../models/app_notification_model.dart';
 import '../../domain/entities/app_notification.dart';
 import '../../domain/entities/notification_preference.dart';
 
+// Local data source for notifications.
+// This stores device-only notification data in SharedPreferences and talks to
+// the native Android notification channel for scheduled reminders.
 class NotificationLocalDataSource {
   static const String _notificationsKey = 'notifications_items';
   static const String _pendingNotificationsKey = 'pending_notifications_items';
@@ -14,6 +17,8 @@ class NotificationLocalDataSource {
   static const MethodChannel _channel = MethodChannel('foodopia/notifications');
 
   Future<List<AppNotificationModel>> getNotifications() async {
+    // Before showing notifications, move any scheduled reminder that is now
+    // due from the pending list into the visible notification list.
     await _moveDuePendingNotifications();
 
     final rawItems = SharedPrefsManager.instance.getStringList(
@@ -28,6 +33,8 @@ class NotificationLocalDataSource {
   }
 
   Future<List<NotificationPreference>> getPreferences() async {
+    // Builds the local copy of notification settings from SharedPreferences.
+    // This is used as a fallback when Firestore cannot be reached.
     return const [
           NotificationPreference(
             id: 'new_follower_notification',
@@ -84,6 +91,7 @@ class NotificationLocalDataSource {
   }
 
   Future<void> saveNotifications(List<AppNotification> notifications) async {
+    // Saves visible in-app notifications on the device.
     final rawItems = notifications
         .map(
           (item) => jsonEncode(AppNotificationModel.fromEntity(item).toJson()),
@@ -98,6 +106,8 @@ class NotificationLocalDataSource {
   Future<void> savePendingNotifications(
     List<AppNotification> notifications,
   ) async {
+    // Saves reminders that are scheduled for the future but should not appear
+    // in the notification list yet.
     final rawItems = notifications
         .map(
           (item) => jsonEncode(AppNotificationModel.fromEntity(item).toJson()),
@@ -110,6 +120,8 @@ class NotificationLocalDataSource {
   }
 
   Future<void> markAsRead(String notificationId) async {
+    // Marks one local notification as read and cancels its OS notification
+    // if Android has already shown it.
     final notifications = await getNotifications();
     AppNotificationModel? notification;
     for (final item in notifications) {
@@ -142,6 +154,8 @@ class NotificationLocalDataSource {
     required String preferenceId,
     required bool enabled,
   }) async {
+    // Stores one notification preference locally, then updates the overall
+    // notification enabled flag based on whether any type is still enabled.
     await SharedPrefsManager.setNotificationTypeEnabled(preferenceId, enabled);
     await SharedPrefsManager.setNotificationEnabled(
       (await getPreferences()).any((item) => item.enabled),
@@ -149,6 +163,8 @@ class NotificationLocalDataSource {
   }
 
   Future<void> schedulePlanReminder(DateTime scheduledAt) async {
+    // Requests native notification permission, schedules the Android reminder,
+    // and stores a pending in-app notification for the same reminder.
     const nativeNotificationId = _planReminderNativeId;
 
     await _channel.invokeMethod<bool>('requestPermission');
@@ -173,6 +189,8 @@ class NotificationLocalDataSource {
   }
 
   Future<void> _moveDuePendingNotifications() async {
+    // Checks pending reminders and moves the ones whose time has arrived into
+    // the normal notification list.
     final rawPending = SharedPrefsManager.instance.getStringList(
       _pendingNotificationsKey,
     );
