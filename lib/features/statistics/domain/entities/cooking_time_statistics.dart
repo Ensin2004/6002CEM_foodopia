@@ -1,11 +1,17 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 
+// Handles CookingTimeStatistics for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class CookingTimeStatistics {
   final String dateRange;
   final int totalMealPlanned;
   final int totalCookingMinutes;
   final List<CookingTimeDay> days;
 
+  // Handles CookingTimeStatistics for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const CookingTimeStatistics({
     required this.dateRange,
     required this.totalMealPlanned,
@@ -14,6 +20,8 @@ class CookingTimeStatistics {
   });
 }
 
+// Handles CookingTimeDay for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class CookingTimeDay {
   final DateTime date;
   final String label;
@@ -21,6 +29,8 @@ class CookingTimeDay {
   final int totalCookingMinutes;
   final List<CookingTimeMeal> meals;
 
+  // Handles CookingTimeDay for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const CookingTimeDay({
     required this.date,
     required this.label,
@@ -30,6 +40,8 @@ class CookingTimeDay {
   });
 }
 
+// Handles CookingTimeMeal for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class CookingTimeMeal {
   final String name;
   final int cookingMinutes;
@@ -37,6 +49,8 @@ class CookingTimeMeal {
   final IconData icon;
   final String? imageUrl;
 
+  // Handles CookingTimeMeal for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const CookingTimeMeal({
     required this.name,
     required this.cookingMinutes,

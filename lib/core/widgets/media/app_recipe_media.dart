@@ -118,6 +118,9 @@ class AppRecipeMediaPreview extends StatelessWidget {
   /// Size of the play icon.
   final double playIconSize;
 
+  /// Whether video previews display the play overlay.
+  final bool showPlayOverlay;
+
   /// Creates a new app recipe media preview instance.
   const AppRecipeMediaPreview({
     super.key,
@@ -125,12 +128,17 @@ class AppRecipeMediaPreview extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.playOverlaySize = 46,
     this.playIconSize = 30,
+    this.showPlayOverlay = true,
   });
 
   @override
   Widget build(BuildContext context) {
     // Display image without overlay.
     if (!isRecipeVideoPath(mediaPath)) {
+      return AppRecipeMedia(mediaPath: mediaPath, fit: fit);
+    }
+
+    if (!showPlayOverlay) {
       return AppRecipeMedia(mediaPath: mediaPath, fit: fit);
     }
 
@@ -163,9 +171,9 @@ class AppRecipeMediaPreview extends StatelessWidget {
 
 /// Shows a fullscreen dialog for viewing media.
 Future<void> showRecipeMediaDialog(
-    BuildContext context,
-    String mediaPath,
-    ) async {
+  BuildContext context,
+  String mediaPath,
+) async {
   await showDialog<void>(
     context: context,
     builder: (dialogContext) {
@@ -178,31 +186,31 @@ Future<void> showRecipeMediaDialog(
               Center(
                 child: mediaPath.trim().isEmpty
                     ? const Icon(
-                  Icons.image_not_supported_outlined,
-                  color: Colors.white70,
-                  size: 56,
-                )
+                        Icons.image_not_supported_outlined,
+                        color: Colors.white70,
+                        size: 56,
+                      )
                     : isRecipeVideoPath(mediaPath)
                     ? AppRecipeMedia(
-                  mediaPath: mediaPath,
-                  fit: BoxFit.contain,
-                  showVideoControls: true,
-                  autoPlayVideo: true,
-                  allowFullscreen: true,
-                  isFullscreen: true,
-                  onFullscreenTap: () =>
-                      Navigator.of(dialogContext).pop(),
-                )
+                        mediaPath: mediaPath,
+                        fit: BoxFit.contain,
+                        showVideoControls: true,
+                        autoPlayVideo: true,
+                        allowFullscreen: true,
+                        isFullscreen: true,
+                        onFullscreenTap: () =>
+                            Navigator.of(dialogContext).pop(),
+                      )
                     : InteractiveViewer(
-                  minScale: 1,
-                  maxScale: 4,
-                  child: AppRecipeMedia(
-                    mediaPath: mediaPath,
-                    width: double.infinity,
-                    height: double.infinity,
-                    fit: BoxFit.contain,
-                  ),
-                ),
+                        minScale: 1,
+                        maxScale: 4,
+                        child: AppRecipeMedia(
+                          mediaPath: mediaPath,
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
               ),
               // Close button.
               Positioned(
@@ -655,22 +663,22 @@ class _VideoControlsState extends State<_VideoControls> {
                             },
                             child: _showVolumeSlider
                                 ? SizedBox(
-                              key: const ValueKey('volume-slider'),
-                              width: 78,
-                              child: SliderTheme(
-                                data: _volumeSliderTheme(context),
-                                child: Slider(
-                                  value: volume,
-                                  min: 0,
-                                  max: 1,
-                                  onChanged: widget.onVolumeChanged,
-                                ),
-                              ),
-                            )
+                                    key: const ValueKey('volume-slider'),
+                                    width: 78,
+                                    child: SliderTheme(
+                                      data: _volumeSliderTheme(context),
+                                      child: Slider(
+                                        value: volume,
+                                        min: 0,
+                                        max: 1,
+                                        onChanged: widget.onVolumeChanged,
+                                      ),
+                                    ),
+                                  )
                                 : const SizedBox(
-                              key: ValueKey('volume-slider-hidden'),
-                              width: 0,
-                            ),
+                                    key: ValueKey('volume-slider-hidden'),
+                                    width: 0,
+                                  ),
                           ),
                           // Time display.
                           ConstrainedBox(

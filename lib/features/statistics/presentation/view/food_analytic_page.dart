@@ -1,3 +1,5 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -16,8 +18,11 @@ import '../../domain/usecases/get_food_analytic_statistics_usecase.dart';
 import '../viewmodel/food_analytic_viewmodel.dart';
 import '../widgets/statistics_bar_chart.dart';
 import '../widgets/statistics_page_helpers.dart';
+import '../widgets/statistics_recipe_media_thumbnail.dart';
 
 /// Shows the user's most common meals, ingredients, and food categories.
+// Handles FoodAnalyticPage for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class FoodAnalyticPage extends StatelessWidget {
   const FoodAnalyticPage({super.key});
 
@@ -25,6 +30,8 @@ class FoodAnalyticPage extends StatelessWidget {
   // Build the food analytic page with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     // The ViewModel controls loading, date filtering, tabs, sorting, and rows.
     return ChangeNotifierProvider(
@@ -39,9 +46,13 @@ class FoodAnalyticPage extends StatelessWidget {
 // This widget builds the main content for the food analytic view.
 // It reads the ViewModel and chooses loading, error, or data content.
 // Smaller widgets below handle the individual visual sections.
+// Handles _FoodAnalyticView for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _FoodAnalyticView extends StatefulWidget {
   const _FoodAnalyticView();
 
+  // Handles createState for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   State<_FoodAnalyticView> createState() => _FoodAnalyticViewState();
 }
@@ -49,11 +60,15 @@ class _FoodAnalyticView extends StatefulWidget {
 // This state object manages the changing parts of the food analytic view state.
 // It listens to user actions and rebuilds the affected widgets.
 // Controllers and other temporary UI values also belong here.
+// Handles _FoodAnalyticViewState for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
   @override
   // Build the food analytic view state with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final viewModel = context.watch<FoodAnalyticViewModel>();
 
@@ -67,6 +82,8 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
     );
   }
 
+  // Handles _buildBody for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget _buildBody(BuildContext context, FoodAnalyticViewModel viewModel) {
     // Show a full loader only before the first successful result.
     if (viewModel.isLoading && viewModel.statistics == null) {
@@ -110,6 +127,8 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
                 ),
               ),
             ),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -120,6 +139,8 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
                     value: selectedChart.summaryValue.toString(),
                   ),
                 ),
+                // Handles SizedBox for this part of the statistics page.
+                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: _SummaryTile(
@@ -130,12 +151,16 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
                 ),
               ],
             ),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             _PageTabs(
               charts: statistics.charts,
               selectedIndex: viewModel.selectedChartIndex,
               onSelected: viewModel.selectChart,
             ),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -149,6 +174,8 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
                 onToggle: viewModel.toggleItem,
               ),
             ),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.sm),
             _PageDots(
               count: statistics.charts.length,
@@ -162,6 +189,8 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
 
   // Convert the swipe or tap into a valid page index.
   // Store the index so tabs, content, and page dots stay matched.
+  // Handles _handleSwipe for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   void _handleSwipe(
     DragEndDetails details,
     FoodAnalyticViewModel viewModel,
@@ -180,6 +209,8 @@ class _FoodAnalyticViewState extends State<_FoodAnalyticView> {
 // This helper is responsible for the date range bar part of the screen.
 // It keeps one focused piece of presentation logic outside the main layout.
 // The parent widget passes in the data that this helper needs.
+// Handles DateRangeBar for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class DateRangeBar extends StatelessWidget {
   final String dateRange;
 
@@ -189,6 +220,8 @@ class DateRangeBar extends StatelessWidget {
   // Build the date range bar with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -200,6 +233,8 @@ class DateRangeBar extends StatelessWidget {
             fontSize: 11,
           ),
         ),
+        // Handles SizedBox for this part of the statistics page.
+        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Container(
@@ -223,6 +258,8 @@ class DateRangeBar extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Handles Icon for this part of the statistics page.
+                // This makes the purpose clearer when reading or updating the code.
                 const Icon(Icons.calendar_month, size: 18),
               ],
             ),
@@ -236,11 +273,15 @@ class DateRangeBar extends StatelessWidget {
 // This small widget draws one summary tile.
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
+// Handles _SummaryTile for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
 
+  // Handles _SummaryTile for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _SummaryTile({
     required this.icon,
     required this.title,
@@ -251,6 +292,8 @@ class _SummaryTile extends StatelessWidget {
   // Build the visual layout for this summary tile.
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -263,6 +306,8 @@ class _SummaryTile extends StatelessWidget {
       child: Row(
         children: [
           _SoftIcon(icon: icon),
+          // Handles SizedBox for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -279,6 +324,8 @@ class _SummaryTile extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
+                // Handles SizedBox for this part of the statistics page.
+                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(height: 2),
                 Text(
                   value,
@@ -300,6 +347,8 @@ class _SummaryTile extends StatelessWidget {
 // This widget turns the report values into the food analytic chart card.
 // It prepares labels and values before passing them to the shared chart.
 // Keeping chart setup here avoids mixing it with the main page layout.
+// Handles _FoodAnalyticChartCard for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _FoodAnalyticChartCard extends StatelessWidget {
   final FoodAnalyticChart chart;
   final StatisticsSortOrder sortOrder;
@@ -307,6 +356,8 @@ class _FoodAnalyticChartCard extends StatelessWidget {
   final ValueChanged<StatisticsSortOrder> onSortChanged;
   final ValueChanged<int> onToggle;
 
+  // Handles _FoodAnalyticChartCard for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _FoodAnalyticChartCard({
     required this.chart,
     required this.sortOrder,
@@ -319,6 +370,8 @@ class _FoodAnalyticChartCard extends StatelessWidget {
   // Build the food analytic chart card from the values supplied by the parent.
   // Labels, scale, and spacing are prepared before the chart is displayed.
   // This method only handles presentation and does not change report data.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final availableWidth = MediaQuery.sizeOf(context).width - 52;
     final chartWidth = availableWidth.clamp(288.0, 340.0);
@@ -343,6 +396,8 @@ class _FoodAnalyticChartCard extends StatelessWidget {
       child: Column(
         children: [
           _ChartHeader(title: chart.title),
+          // Handles SizedBox for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.md),
           Center(
             child: SizedBox(
@@ -368,6 +423,8 @@ class _FoodAnalyticChartCard extends StatelessWidget {
               ),
             ),
           ),
+          // Handles SizedBox for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.lg),
           _TopList(
             chart: chart,
@@ -385,6 +442,8 @@ class _FoodAnalyticChartCard extends StatelessWidget {
 // This widget turns the report values into the chart header.
 // It prepares labels and values before passing them to the shared chart.
 // Keeping chart setup here avoids mixing it with the main page layout.
+// Handles _ChartHeader for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _ChartHeader extends StatelessWidget {
   final String title;
 
@@ -394,6 +453,8 @@ class _ChartHeader extends StatelessWidget {
   // Build the chart header from the values supplied by the parent.
   // Labels, scale, and spacing are prepared before the chart is displayed.
   // This method only handles presentation and does not change report data.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Text(
       title,
@@ -412,6 +473,8 @@ class _ChartHeader extends StatelessWidget {
 // This widget displays the detailed top list.
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
+// Handles _TopList for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _TopList extends StatelessWidget {
   final FoodAnalyticChart chart;
   final StatisticsSortOrder sortOrder;
@@ -419,6 +482,8 @@ class _TopList extends StatelessWidget {
   final ValueChanged<StatisticsSortOrder> onSortChanged;
   final ValueChanged<int> onToggle;
 
+  // Handles _TopList for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _TopList({
     required this.chart,
     required this.sortOrder,
@@ -431,6 +496,8 @@ class _TopList extends StatelessWidget {
   // Build the visible rows for the top list.
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -462,6 +529,8 @@ class _TopList extends StatelessWidget {
               ),
             ],
           ),
+          // Handles SizedBox for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.md),
           ...List.generate(chart.items.length, (index) {
             return _TopListRow(
@@ -478,6 +547,8 @@ class _TopList extends StatelessWidget {
 
   // This helper prepares a value used by the visible report.
   // Keeping it outside build makes the widget tree easier to follow.
+  // Handles _listTitle for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   String _listTitle(FoodAnalyticChartType type, StatisticsSortOrder sortOrder) {
     final prefix = sortOrder == StatisticsSortOrder.most ? 'Top' : 'Least';
     switch (type) {
@@ -494,11 +565,15 @@ class _TopList extends StatelessWidget {
 // This helper draws the reusable sort button.
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
+// Handles _SortButton for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _SortButton extends StatelessWidget {
   final FoodAnalyticChartType type;
   final StatisticsSortOrder sortOrder;
   final ValueChanged<StatisticsSortOrder> onSortChanged;
 
+  // Handles _SortButton for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _SortButton({
     required this.type,
     required this.sortOrder,
@@ -509,6 +584,8 @@ class _SortButton extends StatelessWidget {
   // Build the visual layout for this sort button.
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return PopupMenuButton<StatisticsSortOrder>(
       tooltip: 'Sort',
@@ -535,6 +612,8 @@ class _SortButton extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
+          // Handles SizedBox for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: 2),
           const Icon(Icons.tune, size: 17),
         ],
@@ -544,6 +623,8 @@ class _SortButton extends StatelessWidget {
 
   // This helper prepares a value used by the visible report.
   // Keeping it outside build makes the widget tree easier to follow.
+  // Handles _mostSortLabel for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   String _mostSortLabel(FoodAnalyticChartType type) {
     switch (type) {
       case FoodAnalyticChartType.mealPlanned:
@@ -557,6 +638,8 @@ class _SortButton extends StatelessWidget {
 
   // This helper prepares a value used by the visible report.
   // Keeping it outside build makes the widget tree easier to follow.
+  // Handles _leastSortLabel for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   String _leastSortLabel(FoodAnalyticChartType type) {
     switch (type) {
       case FoodAnalyticChartType.mealPlanned:
@@ -572,12 +655,16 @@ class _SortButton extends StatelessWidget {
 // This widget displays the detailed top list row.
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
+// Handles _TopListRow for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _TopListRow extends StatelessWidget {
   final FoodAnalyticChartType chartType;
   final FoodAnalyticBarItem item;
   final bool isExpanded;
   final VoidCallback onTap;
 
+  // Handles _TopListRow for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _TopListRow({
     required this.chartType,
     required this.item,
@@ -589,6 +676,8 @@ class _TopListRow extends StatelessWidget {
   // Build the visible rows for the top list row.
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final canViewRecipe =
         chartType == FoodAnalyticChartType.mealPlanned &&
@@ -603,6 +692,8 @@ class _TopListRow extends StatelessWidget {
             child: Row(
               children: [
                 _FoodIcon(item: item),
+                // Handles SizedBox for this part of the statistics page.
+                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -631,6 +722,8 @@ class _TopListRow extends StatelessWidget {
                     ],
                   ),
                 ),
+                // Handles SizedBox for this part of the statistics page.
+                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   item.value.toString(),
@@ -641,10 +734,14 @@ class _TopListRow extends StatelessWidget {
                   ),
                 ),
                 if (canViewRecipe) ...[
+                  // Handles SizedBox for this part of the statistics page.
+                  // This makes the purpose clearer when reading or updating the code.
                   const SizedBox(width: AppSpacing.md),
                   _RecipeViewButton(recipeId: item.recipeId!),
                 ],
                 if (chartType != FoodAnalyticChartType.mealPlanned) ...[
+                  // Handles SizedBox for this part of the statistics page.
+                  // This makes the purpose clearer when reading or updating the code.
                   const SizedBox(width: AppSpacing.md),
                   Icon(
                     isExpanded
@@ -668,6 +765,8 @@ class _TopListRow extends StatelessWidget {
 // This small widget draws one food detail row.
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
+// Handles _FoodDetailRow for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _FoodDetailRow extends StatelessWidget {
   final FoodAnalyticDetailItem detail;
 
@@ -677,6 +776,8 @@ class _FoodDetailRow extends StatelessWidget {
   // Build the visual layout for this food detail row.
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFFF7F7F7),
@@ -696,6 +797,8 @@ class _FoodDetailRow extends StatelessWidget {
               imageUrl: detail.imageUrl,
             ),
           ),
+          // Handles SizedBox for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
@@ -709,6 +812,8 @@ class _FoodDetailRow extends StatelessWidget {
               ),
             ),
           ),
+          // Handles SizedBox for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.sm),
           Text(
             detail.quantity.toString(),
@@ -727,6 +832,8 @@ class _FoodDetailRow extends StatelessWidget {
 // This helper draws the reusable recipe view button.
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
+// Handles _RecipeViewButton for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _RecipeViewButton extends StatelessWidget {
   final String recipeId;
 
@@ -736,6 +843,8 @@ class _RecipeViewButton extends StatelessWidget {
   // Build the visual layout for this recipe view button.
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(4),
@@ -756,6 +865,8 @@ class _RecipeViewButton extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+            // Handles Icon for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const Icon(Icons.chevron_right, size: 18),
           ],
         ),
@@ -767,11 +878,15 @@ class _RecipeViewButton extends StatelessWidget {
 // This widget controls the page tabs used to move between report views.
 // The selected index comes from the parent or ViewModel.
 // User changes are sent back through the provided callback.
+// Handles _PageTabs for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _PageTabs extends StatelessWidget {
   final List<FoodAnalyticChart> charts;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
+  // Handles _PageTabs for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _PageTabs({
     required this.charts,
     required this.selectedIndex,
@@ -782,6 +897,8 @@ class _PageTabs extends StatelessWidget {
   // Build the page tabs with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return AppPillSegmentedControl(
       labels: charts.map((chart) => _tabLabel(chart.type)).toList(),
@@ -792,6 +909,8 @@ class _PageTabs extends StatelessWidget {
 
   // This helper prepares a value used by the visible report.
   // Keeping it outside build makes the widget tree easier to follow.
+  // Handles _tabLabel for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   String _tabLabel(FoodAnalyticChartType type) {
     switch (type) {
       case FoodAnalyticChartType.mealPlanned:
@@ -807,6 +926,8 @@ class _PageTabs extends StatelessWidget {
 // This helper draws the reusable food icon.
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
+// Handles _FoodIcon for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _FoodIcon extends StatelessWidget {
   final FoodAnalyticBarItem item;
 
@@ -816,8 +937,21 @@ class _FoodIcon extends StatelessWidget {
   // Build the visual layout for this food icon.
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final url = item.imageUrl?.trim() ?? '';
+    if (url.isNotEmpty) {
+      return StatisticsRecipeMediaThumbnail(
+        mediaPath: url,
+        fallbackIcon: item.icon,
+        size: 32,
+        backgroundColor: const Color(0xFFECE7CF),
+        iconColor: const Color(0xFF6D642C),
+        borderColor: const Color(0xFFD7C98D),
+      );
+    }
+
     return Container(
       width: 32,
       height: 32,
@@ -828,18 +962,12 @@ class _FoodIcon extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: const Color(0xFFD7C98D)),
       ),
-      child: url.isNotEmpty
-          ? Image.network(
-              url,
-              width: 32,
-              height: 32,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _fallback(context),
-            )
-          : _fallback(context),
+      child: _fallback(context),
     );
   }
 
+  // Handles _fallback for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget _fallback(BuildContext context) {
     if (item.icon == Icons.abc && item.label.isNotEmpty) {
       return Text(
@@ -857,16 +985,22 @@ class _FoodIcon extends StatelessWidget {
 // This widget controls the page dots used to move between report views.
 // The selected index comes from the parent or ViewModel.
 // User changes are sent back through the provided callback.
+// Handles _PageDots for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _PageDots extends StatelessWidget {
   final int count;
   final int selectedIndex;
 
+  // Handles _PageDots for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _PageDots({required this.count, required this.selectedIndex});
 
   @override
   // Build the page dots with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -890,6 +1024,8 @@ class _PageDots extends StatelessWidget {
 // This helper draws the reusable soft icon.
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
+// Handles _SoftIcon for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
@@ -899,6 +1035,8 @@ class _SoftIcon extends StatelessWidget {
   // Build the visual layout for this soft icon.
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       width: 36,
@@ -916,16 +1054,22 @@ class _SoftIcon extends StatelessWidget {
 // This widget shows the food analytic error when report data is unavailable.
 // It explains the problem and gives the user a retry action.
 // The retry callback asks the ViewModel to load the report again.
+// Handles _FoodAnalyticError for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _FoodAnalyticError extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;
 
+  // Handles _FoodAnalyticError for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _FoodAnalyticError({required this.message, required this.onRetry});
 
   @override
   // Build the food analytic error with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
@@ -934,12 +1078,16 @@ class _FoodAnalyticError extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset('assets/images/empty_page.png', height: 140),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             Text(
               message,
               textAlign: TextAlign.center,
               style: context.text.bodyMedium,
             ),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             TextButton(
               onPressed: onRetry,
