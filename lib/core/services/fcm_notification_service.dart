@@ -7,6 +7,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+// Handles Firebase Cloud Messaging for the app.
+// It saves this device's FCM token in Firestore, listens for new notification
+// documents, and asks Android to show native notifications when allowed.
 /// Service for handling Firebase Cloud Messaging (FCM) notifications.
 /// Manages token registration, foreground notifications, and Firestore notifications.
 class FcmNotificationService {
@@ -43,6 +46,8 @@ class FcmNotificationService {
 
   /// Initializes the FCM notification service.
   static Future<void> initialize() async {
+    // Set up FCM once, request notification permission, save the device token,
+    // then start listening for incoming messages and Firestore notifications.
     // Set up background message handler.
     if (!_isInitialized) {
       FirebaseMessaging.onBackgroundMessage(
@@ -94,6 +99,8 @@ class FcmNotificationService {
 
   /// Saves an FCM token to the user's document.
   static Future<void> _saveToken(String token) async {
+    // Stores the current device token in users/{uid}.fcmTokens so backend/app
+    // code can send push notifications to this user's device.
     // Get the current user ID.
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
@@ -114,6 +121,8 @@ class FcmNotificationService {
     required String uid,
     required String token,
   }) async {
+    // If the same phone was used by another account, remove this token from
+    // that old user document so notifications do not go to the wrong person.
     try {
       // Find users with this token.
       final snapshot = await FirebaseFirestore.instance
@@ -149,6 +158,8 @@ class FcmNotificationService {
 
   /// Shows a foreground notification when an FCM message is received.
   static Future<void> _showForegroundNotification(RemoteMessage message) async {
+    // When an FCM message arrives while the app is open, check the user's
+    // notification preference before showing an Android notification.
     // Get the current user ID.
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
@@ -188,6 +199,8 @@ class FcmNotificationService {
 
   /// Watches Firestore for new notifications.
   static void _watchFirestoreNotifications() {
+    // Watches new unread notification documents in Firestore. When a new one
+    // appears, the app can show it as a native notification immediately.
     // Get the current user ID.
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
@@ -279,6 +292,8 @@ class FcmNotificationService {
     required String uid,
     required String type,
   }) async {
+    // Checks the user's role and saved notification preference before showing
+    // a push/local notification.
     // Return default if no user.
     if (uid.isEmpty) return true;
 

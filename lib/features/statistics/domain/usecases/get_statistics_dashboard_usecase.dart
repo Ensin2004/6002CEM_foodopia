@@ -4,6 +4,8 @@ import '../../../../core/error/failures.dart';
 import '../entities/statistics_dashboard.dart';
 import '../repositories/statistics_repository.dart';
 
+// Use case for loading the main statistics dashboard.
+// It chooses the admin or normal user dashboard based on the current role.
 class GetStatisticsDashboardUseCase {
   final StatisticsRepository _repository;
 
@@ -12,6 +14,8 @@ class GetStatisticsDashboardUseCase {
   Future<Either<Failure, StatisticsDashboard>> execute({
     required bool isAdmin,
   }) {
+    // Admins get system-wide statistics, while normal users get their own
+    // personal/community statistics.
     return isAdmin
         ? _repository.getAdminStatistics()
         : _repository.getUserStatistics();

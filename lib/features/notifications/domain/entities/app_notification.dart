@@ -13,6 +13,9 @@ enum AppNotificationType {
   planReminder,
 }
 
+// Domain entity for one notification shown inside the app.
+// It stores the message, read status, time, and optional native Android
+// notification id if the notification also exists on the device.
 class AppNotification {
   final String id;
   final AppNotificationType type;
