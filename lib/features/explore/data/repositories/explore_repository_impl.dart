@@ -5,11 +5,13 @@ import '../../domain/entities/explore_recipe.dart';
 import '../../domain/repositories/explore_repository.dart';
 import '../datasources/explore_remote_datasource.dart';
 
+// Implementation of ExploreRepository that delegates to a remote data source.
 class ExploreRepositoryImpl implements ExploreRepository {
   final ExploreRemoteDataSource remoteDataSource;
 
   const ExploreRepositoryImpl({required this.remoteDataSource});
 
+  // Fetches a list of recipes from the remote source and wraps in Either.
   @override
   Future<Either<Failure, List<ExploreRecipe>>> getRecipes() async {
     try {
@@ -20,28 +22,33 @@ class ExploreRepositoryImpl implements ExploreRepository {
     }
   }
 
+  // Retrieves detailed information for a single recipe by ID.
   @override
   Future<Either<Failure, ExploreRecipe>> getRecipeDetail(
-    String recipeId,
-  ) async {
+      String recipeId,
+      ) async {
     try {
       final recipe = await remoteDataSource.getRecipeDetail(recipeId);
       return Right(recipe);
     } on StateError {
+      // Handles missing recipe case specifically.
       return Left(NotFoundFailure(message: 'Recipe not found'));
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
   }
 
+  // Submits a user rating with validation of recipe ID and rating range.
   @override
   Future<Either<Failure, void>> submitRating({
     required String recipeId,
     required double rating,
   }) async {
+    // Validate that recipe ID is not empty.
     if (recipeId.trim().isEmpty) {
       return Left(ValidationFailure(message: 'Recipe id is missing.'));
     }
+    // Validate rating is within acceptable range.
     if (rating < 1 || rating > 5) {
       return Left(
         ValidationFailure(message: 'Please select a rating from 1 to 5.'),
@@ -56,6 +63,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
     }
   }
 
+  // Adds a comment to a recipe with content validation.
   @override
   Future<Either<Failure, void>> addComment({
     required String recipeId,
@@ -76,16 +84,19 @@ class ExploreRepositoryImpl implements ExploreRepository {
     }
   }
 
+  // Establishes a real-time stream of recipe list updates.
   @override
   Stream<List<ExploreRecipe>> watchRecipes() {
     return remoteDataSource.watchRecipes();
   }
 
+  // Establishes a real-time stream of a single recipe detail updates.
   @override
   Stream<ExploreRecipe> watchRecipeDetail(String recipeId) {
     return remoteDataSource.watchRecipeDetail(recipeId);
   }
 
+  // Increments the view count for a recipe with ID validation.
   @override
   Future<Either<Failure, void>> incrementViewCount(String recipeId) async {
     if (recipeId.trim().isEmpty) {
@@ -100,6 +111,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
     }
   }
 
+  // Toggles like status on a specific comment.
   @override
   Future<Either<Failure, void>> toggleCommentLike({
     required String recipeId,
@@ -120,6 +132,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
     }
   }
 
+  // Adds a reply to a comment with content validation.
   @override
   Future<Either<Failure, void>> addCommentReply({
     required String recipeId,
@@ -145,6 +158,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
     }
   }
 
+  // Toggles like status on a reply using its document path.
   @override
   Future<Either<Failure, void>> toggleReplyLike({
     required String replyPath,
@@ -161,6 +175,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
     }
   }
 
+  // Adds a nested reply to an existing reply.
   @override
   Future<Either<Failure, void>> addReplyToReply({
     required String replyPath,
@@ -184,10 +199,11 @@ class ExploreRepositoryImpl implements ExploreRepository {
     }
   }
 
+  // Fetches detailed profile information for a recipe creator.
   @override
   Future<Either<Failure, ExploreCreatorDetail>> getCreatorDetail(
-    String creatorUid,
-  ) async {
+      String creatorUid,
+      ) async {
     if (creatorUid.trim().isEmpty) {
       return Left(ValidationFailure(message: 'Creator is missing.'));
     }
@@ -196,12 +212,14 @@ class ExploreRepositoryImpl implements ExploreRepository {
       final creator = await remoteDataSource.getCreatorDetail(creatorUid);
       return Right(creator);
     } on StateError {
+      // Indicates creator document does not exist.
       return Left(NotFoundFailure(message: 'Creator not found'));
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
   }
 
+  // Follows or unfollows a creator based on the follow flag.
   @override
   Future<Either<Failure, void>> toggleCreatorFollow({
     required String creatorUid,
@@ -222,6 +240,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
     }
   }
 
+  // Updates the visibility (published/draft) status of a recipe.
   @override
   Future<Either<Failure, void>> updateRecipeVisibility({
     required String recipeId,

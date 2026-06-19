@@ -1,5 +1,6 @@
 import '../../domain/entities/explore_recipe.dart';
 
+// Data model extension of ExploreRecipe for mapping Firestore data to domain entities.
 class ExploreRecipeModel extends ExploreRecipe {
   const ExploreRecipeModel({
     required super.id,

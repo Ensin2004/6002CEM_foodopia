@@ -17,6 +17,8 @@ import '../viewmodel/explore_creator_detail_viewmodel.dart';
 import '../widgets/explore_empty_state.dart';
 import '../widgets/explore_recipe_grid.dart';
 
+/// Page that displays detailed information about a specific creator.
+/// Shows the creator's profile, bio, follower counts, and recipe collections.
 class ExploreCreatorDetailPage extends StatelessWidget {
   final String creatorUid;
 
@@ -24,6 +26,7 @@ class ExploreCreatorDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Provider setup with all required use cases for creator detail operations.
     return ChangeNotifierProvider(
       create: (_) => ExploreCreatorDetailViewModel(
         creatorUid: creatorUid,
@@ -36,6 +39,8 @@ class ExploreCreatorDetailPage extends StatelessWidget {
   }
 }
 
+/// Stateful view that manages tab switching between recipe categories.
+/// Tabs include All, Popular, and Recent recipes from the creator.
 class _ExploreCreatorDetailView extends StatefulWidget {
   const _ExploreCreatorDetailView();
 
@@ -46,6 +51,7 @@ class _ExploreCreatorDetailView extends StatefulWidget {
 
 class _ExploreCreatorDetailViewState extends State<_ExploreCreatorDetailView>
     with SingleTickerProviderStateMixin {
+  // Tab controller for switching between recipe categories.
   late final TabController _tabController;
 
   @override
@@ -58,6 +64,7 @@ class _ExploreCreatorDetailViewState extends State<_ExploreCreatorDetailView>
     _tabController.addListener(_handleTabChanged);
   }
 
+  /// Syncs tab selection with the viewmodel when the user changes tabs.
   void _handleTabChanged() {
     if (_tabController.indexIsChanging) return;
     context.read<ExploreCreatorDetailViewModel>().selectTab(
@@ -65,12 +72,14 @@ class _ExploreCreatorDetailViewState extends State<_ExploreCreatorDetailView>
     );
   }
 
+  /// Displays a snackbar for features not yet implemented.
   void _showComingSoonMessage() {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
+  /// Shows a full-screen dialog displaying the recipe image.
   Future<void> _showRecipeImage(ExploreRecipe recipe) async {
     await showRecipeMediaDialog(context, recipe.imagePath);
   }
@@ -111,6 +120,8 @@ class _ExploreCreatorDetailViewState extends State<_ExploreCreatorDetailView>
   }
 }
 
+/// Body widget that displays the creator profile and recipe grid.
+/// Handles loading, error, and content states for the creator detail view.
 class _CreatorBody extends StatelessWidget {
   final ExploreCreatorDetailViewModel viewModel;
   final TabController tabController;
@@ -126,6 +137,7 @@ class _CreatorBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading indicator while fetching creator data.
     if (viewModel.isLoading) {
       return const LoadingDialog(message: 'Loading creator...', inline: true);
     }
@@ -145,10 +157,12 @@ class _CreatorBody extends StatelessWidget {
       );
     }
 
+    // Main content with pull-to-refresh capability.
     return RefreshIndicator(
       onRefresh: viewModel.loadCreator,
       child: Column(
         children: [
+          // Creator profile header with avatar, bio, and metrics.
           _CreatorHeader(
             creator: creator,
             isUpdatingFollow: viewModel.isUpdatingFollow,
@@ -172,6 +186,7 @@ class _CreatorBody extends StatelessWidget {
               );
             },
           ),
+          // Segmented tab bar for filtering recipes.
           AppSegmentedTabs(
             controller: tabController,
             tabs: ExploreCreatorRecipeTab.values.map(_creatorTabLabel).toList(),
@@ -203,6 +218,8 @@ class _CreatorBody extends StatelessWidget {
   }
 }
 
+/// Header widget displaying creator avatar, name, bio, and social metrics.
+/// Shows follow/unfollow button based on the current follow state.
 class _CreatorHeader extends StatelessWidget {
   final ExploreCreatorDetail creator;
   final bool isUpdatingFollow;
@@ -240,6 +257,7 @@ class _CreatorHeader extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // Creator avatar with border and shadow.
                 Container(
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
@@ -276,64 +294,66 @@ class _CreatorHeader extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 10),
+                          // Follow/Following button with dynamic styling.
                           creator.isFollowing
                               ? FilledButton.icon(
-                                  onPressed: isUpdatingFollow
-                                      ? null
-                                      : () => onFollowTap(),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: colors.primary,
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    visualDensity: VisualDensity.compact,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    minimumSize: const Size(0, 36),
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  icon: const Icon(Icons.check, size: 16),
-                                  label: const Text(
-                                    'Following',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                )
+                            onPressed: isUpdatingFollow
+                                ? null
+                                : () => onFollowTap(),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: colors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              minimumSize: const Size(0, 36),
+                              tapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            icon: const Icon(Icons.check, size: 16),
+                            label: const Text(
+                              'Following',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          )
                               : OutlinedButton.icon(
-                                  onPressed: isUpdatingFollow
-                                      ? null
-                                      : () => onFollowTap(),
-                                  style: OutlinedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: colors.primary,
-                                    side: BorderSide(color: colors.primary),
-                                    elevation: 0,
-                                    visualDensity: VisualDensity.compact,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    minimumSize: const Size(0, 36),
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  icon: const Icon(Icons.add, size: 16),
-                                  label: const Text(
-                                    'Follow',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
+                            onPressed: isUpdatingFollow
+                                ? null
+                                : () => onFollowTap(),
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: colors.primary,
+                              side: BorderSide(color: colors.primary),
+                              elevation: 0,
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              minimumSize: const Size(0, 36),
+                              tapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            icon: const Icon(Icons.add, size: 16),
+                            label: const Text(
+                              'Follow',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
+                      // Display creator bio if available.
                       if (creator.bio.trim().isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Text(
@@ -350,6 +370,7 @@ class _CreatorHeader extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 18),
+            // Creator metrics: Posts, Followers, Following.
             Row(
               children: [
                 Expanded(
@@ -383,6 +404,8 @@ class _CreatorHeader extends StatelessWidget {
   }
 }
 
+/// Metric card displaying a numeric value with a label.
+/// Supports tap interaction for navigating to followers/following lists.
 class _CreatorMetric extends StatelessWidget {
   final String value;
   final String label;
@@ -437,6 +460,8 @@ class _CreatorMetric extends StatelessWidget {
   }
 }
 
+/// Grid widget that displays recipes in a sliver grid layout.
+/// Shows empty state when no recipes are available for the selected tab.
 class _RecipeGrid extends StatelessWidget {
   final List<ExploreRecipe> recipes;
   final VoidCallback onComingSoonTap;
@@ -474,6 +499,8 @@ class _RecipeGrid extends StatelessWidget {
   }
 }
 
+/// Avatar widget for the creator detail header.
+/// Displays a remote image or a person icon fallback.
 class _CreatorDetailAvatar extends StatelessWidget {
   final String imagePath;
 
@@ -488,17 +515,18 @@ class _CreatorDetailAvatar extends StatelessWidget {
       backgroundColor: Colors.white,
       child: hasImage
           ? ClipOval(
-              child: AppRemoteOrAssetImage(
-                imagePath: imagePath,
-                width: 76,
-                height: 76,
-              ),
-            )
+        child: AppRemoteOrAssetImage(
+          imagePath: imagePath,
+          width: 76,
+          height: 76,
+        ),
+      )
           : const Icon(Icons.person, color: AppColors.primary, size: 44),
     );
   }
 }
 
+/// Maps tab enum values to display labels for the segmented tab bar.
 String _creatorTabLabel(ExploreCreatorRecipeTab tab) {
   switch (tab) {
     case ExploreCreatorRecipeTab.all:
@@ -510,6 +538,8 @@ String _creatorTabLabel(ExploreCreatorRecipeTab tab) {
   }
 }
 
+/// Formats a number into a compact string with 'k' suffix for thousands.
+/// Example: 1500 -> '1.5k', 10000 -> '10k'
 String _compactCount(int value) {
   if (value >= 1000) {
     final compact = value / 1000;

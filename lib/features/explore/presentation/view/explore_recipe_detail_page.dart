@@ -25,6 +25,8 @@ part 'explore_recipe_detail_recipe_tab.dart';
 part 'explore_recipe_detail_nutrition_tab.dart';
 part 'explore_recipe_detail_community_tab.dart';
 
+/// Displays detailed recipe information with three tab views: recipe, nutrition, and community.
+/// Supports library actions, meal plan selection, and favourite toggling.
 class ExploreRecipeDetailPage extends StatelessWidget {
   final String recipeId;
   final bool showLibraryActions;
@@ -41,6 +43,7 @@ class ExploreRecipeDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Provides the view model to the widget tree for state management.
     return ChangeNotifierProvider(
       create: (_) => ExploreRecipeDetailViewModel(
         recipeId: recipeId,
@@ -84,6 +87,7 @@ class _ExploreRecipeDetailView extends StatefulWidget {
       _ExploreRecipeDetailViewState();
 }
 
+/// Manages the recipe detail view state, tab navigation, and user interactions.
 class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
@@ -91,6 +95,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   @override
   void initState() {
     super.initState();
+    // Initializes the tab controller with the number of available tabs.
     _tabController = TabController(
       length: ExploreRecipeDetailTab.values.length,
       vsync: this,
@@ -98,23 +103,27 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     _tabController.addListener(_handleTabChanged);
   }
 
+  // Synchronizes tab changes with the view model state.
   void _handleTabChanged() {
     if (_tabController.indexIsChanging) return;
     _selectDetailTab(_tabController.index);
   }
 
+  // Updates the selected tab in the view model.
   void _selectDetailTab(int index) {
     context.read<ExploreRecipeDetailViewModel>().selectTab(
       ExploreRecipeDetailTab.values[index],
     );
   }
 
+  // Displays a snackbar indicating the feature is not yet available.
   void _showComingSoonMessage() {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
+  // Navigates to the add meal plan screen with default parameters.
   void _openAddMealPlan() {
     context.push(
       AppRouter.addMealPlan,
@@ -126,6 +135,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     );
   }
 
+  // Navigates to the recipe review screen for editing.
   void _openRecipeReview(ExploreRecipeDetailViewModel viewModel) {
     final recipeId = viewModel.recipe?.id;
     if (recipeId == null || recipeId.isEmpty) return;
@@ -136,29 +146,34 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     );
   }
 
+  // Toggles the favourite status and shows a feedback message.
   Future<void> _toggleFavourite(ExploreRecipeDetailViewModel viewModel) async {
     final success = await viewModel.toggleFavourite();
     if (!mounted) return;
 
     final message = success
         ? viewModel.recipe?.isFavourite == true
-              ? 'Added to library favourites.'
-              : 'Removed from library favourites.'
+        ? 'Added to library favourites.'
+        : 'Removed from library favourites.'
         : viewModel.communityActionErrorMessage ??
-              'Unable to update favourites.';
+        'Unable to update favourites.';
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Opens a bottom sheet for selecting dates and meal categories to add the recipe to a meal plan.
+  /// Handles loading states, user authentication, and error feedback.
   Future<void> _openMealPlanCalendar(
-    ExploreRecipeDetailViewModel viewModel,
-  ) async {
+      ExploreRecipeDetailViewModel viewModel,
+      ) async {
     var isShowingLoadingDialog = false;
     try {
+      // Guards against null recipe or in-progress operations.
       if (viewModel.recipe == null || viewModel.isSavingMealPlan) return;
 
+      // Verifies user authentication before proceeding.
       final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
       if (userId.isEmpty) {
         ScaffoldMessenger.of(context)
@@ -169,24 +184,27 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         return;
       }
 
+      // Loads meal categories if not already available.
       if (viewModel.mealCategories.isEmpty) {
         await viewModel.loadMealCategories();
         if (!mounted) return;
       }
 
+      // Displays the calendar selection bottom sheet.
       final request =
-          await showModalBottomSheet<_RecipeCalendarMealPlanRequest>(
-            context: context,
-            isScrollControlled: true,
-            builder: (_) => _RecipeCalendarMealPlanSheet(
-              categories: viewModel.mealCategories.isEmpty
-                  ? RecipeDetailMealPlanDefaults.categories
-                  : viewModel.mealCategories,
-              initialServings: viewModel.recipe?.servings ?? 1,
-            ),
-          );
+      await showModalBottomSheet<_RecipeCalendarMealPlanRequest>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => _RecipeCalendarMealPlanSheet(
+          categories: viewModel.mealCategories.isEmpty
+              ? RecipeDetailMealPlanDefaults.categories
+              : viewModel.mealCategories,
+          initialServings: viewModel.recipe?.servings ?? 1,
+        ),
+      );
       if (request == null || !mounted) return;
 
+      // Shows a loading dialog while saving the meal plan.
       isShowingLoadingDialog = true;
       showDialog<void>(
         context: context,
@@ -204,15 +222,17 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       Navigator.of(context, rootNavigator: true).pop();
       isShowingLoadingDialog = false;
 
+      // Displays success or error feedback.
       final message = result.isSuccess
           ? result.savedCount == 1
-                ? 'Meal plan added.'
-                : '${result.savedCount} meal plans added.'
+          ? 'Meal plan added.'
+          : '${result.savedCount} meal plans added.'
           : result.errorMessage ?? 'Unable to add meal plan.';
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
     } catch (error) {
+      // Handles unexpected errors and cleans up loading state.
       if (!mounted) return;
       if (isShowingLoadingDialog) {
         Navigator.of(context, rootNavigator: true).pop();
@@ -225,11 +245,14 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     }
   }
 
+  /// Handles selecting a recipe for a specific meal plan slot from a selection context.
+  /// Checks for duplicates, asks for serving count, and navigates to the meal plan screen on success.
   Future<void> _selectForMealPlan(
-    ExploreRecipeDetailViewModel viewModel,
-  ) async {
+      ExploreRecipeDetailViewModel viewModel,
+      ) async {
     final selection = widget.mealPlanSelection;
     if (selection == null) return;
+    // Prevents duplicate additions to the meal plan.
     final recipeId = viewModel.recipe?.id;
     if (recipeId != null && selection.existingRecipeIds.contains(recipeId)) {
       ScaffoldMessenger.of(context)
@@ -239,11 +262,13 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         );
       return;
     }
+    // Prompts the user for the desired serving count.
     final servingCount = await _showMealPlanServingDialog(
       initialServings: viewModel.recipe?.servings ?? 1,
     );
     if (servingCount == null || !mounted) return;
 
+    // Saves the recipe to the meal plan.
     final success = await viewModel.saveToMealPlan(
       userId: selection.userId,
       date: selection.selectedDate,
@@ -256,6 +281,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     );
     if (!mounted) return;
 
+    // Shows feedback message based on the operation result.
     final message = success
         ? 'Meal plan added.'
         : viewModel.communityActionErrorMessage ?? 'Unable to add meal plan.';
@@ -264,12 +290,14 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       ..showSnackBar(SnackBar(content: Text(message)));
     if (!success) return;
 
+    // Navigates to the meal plan screen after successful addition.
     context.go(
       AppRouter.mealPlan,
       extra: MealPlanArgs(initialTabIndex: 0, userId: selection.userId),
     );
   }
 
+  // Shows a dialog to select the number of servings for a meal plan.
   Future<int?> _showMealPlanServingDialog({required int initialServings}) {
     return showDialog<int>(
       context: context,
@@ -289,11 +317,12 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<ExploreRecipeDetailViewModel>();
+    // Checks if the recipe is already added to the meal plan in selection mode.
     final alreadyAdded =
         widget.mealPlanSelection?.existingRecipeIds.contains(
           viewModel.recipe?.id ?? '',
         ) ??
-        false;
+            false;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -332,30 +361,32 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         onFavouriteTap: () => _toggleFavourite(viewModel),
         isMealPlanSelection: widget.mealPlanSelection != null,
       ),
+      // Shows a bottom action button when in meal plan selection mode.
       bottomNavigationBar: widget.mealPlanSelection == null
           ? null
           : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: PrimaryButton(
-                  text: alreadyAdded
-                      ? 'Already Added'
-                      : viewModel.isSavingMealPlan
-                      ? 'Adding...'
-                      : 'Select',
-                  onPressed:
-                      viewModel.recipe == null ||
-                          viewModel.isSavingMealPlan ||
-                          alreadyAdded
-                      ? null
-                      : () => _selectForMealPlan(viewModel),
-                ),
-              ),
-            ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: PrimaryButton(
+            text: alreadyAdded
+                ? 'Already Added'
+                : viewModel.isSavingMealPlan
+                ? 'Adding...'
+                : 'Select',
+            onPressed:
+            viewModel.recipe == null ||
+                viewModel.isSavingMealPlan ||
+                alreadyAdded
+                ? null
+                : () => _selectForMealPlan(viewModel),
+          ),
+        ),
+      ),
     );
   }
 }
 
+/// Encapsulates the data required to add a recipe to a meal plan calendar.
 class _RecipeCalendarMealPlanRequest {
   final List<DateTime> dates;
   final List<AddMealCategoryOption> mealCategories;
@@ -368,6 +399,7 @@ class _RecipeCalendarMealPlanRequest {
   });
 }
 
+/// Bottom sheet widget that allows users to select dates, meal categories, and servings.
 class _RecipeCalendarMealPlanSheet extends StatefulWidget {
   final List<AddMealCategoryOption> categories;
   final int initialServings;
@@ -392,19 +424,23 @@ class _RecipeCalendarMealPlanSheetState
   @override
   void initState() {
     super.initState();
+    // Sets today as the default focused date and selected date.
     final today = _dateOnly(DateTime.now());
     _focusedDate = today;
     _selectedDates.add(today);
+    // Selects a preferred initial category (breakfast if available).
     _selectedCategoryIds.add(_preferredInitialCategory(_categories).id);
     _servings = widget.initialServings.clamp(1, 99);
   }
 
+  // Returns the list of categories, falling back to defaults if empty.
   List<AddMealCategoryOption> get _categories {
     return widget.categories.isEmpty
         ? RecipeDetailMealPlanDefaults.categories
         : widget.categories;
   }
 
+  // Toggles a date in the selected dates set.
   void _toggleDate(DateTime date) {
     final normalized = _dateOnly(date);
     setState(() {
@@ -416,6 +452,7 @@ class _RecipeCalendarMealPlanSheetState
     });
   }
 
+  // Toggles a meal category in the selected categories set.
   void _toggleCategory(AddMealCategoryOption category) {
     setState(() {
       if (_selectedCategoryIds.contains(category.id)) {
@@ -426,6 +463,7 @@ class _RecipeCalendarMealPlanSheetState
     });
   }
 
+  // Submits the selection and returns the request to the parent widget.
   void _submit() {
     if (_selectedDates.isEmpty || _selectedCategoryIds.isEmpty) return;
     final dates = _selectedDates.toList()..sort();
@@ -457,6 +495,7 @@ class _RecipeCalendarMealPlanSheetState
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Drag handle indicator at the top of the sheet.
               Center(
                 child: Container(
                   width: 44,
@@ -468,6 +507,7 @@ class _RecipeCalendarMealPlanSheetState
                 ),
               ),
               const SizedBox(height: 16),
+              // Header row with title and close button.
               Row(
                 children: [
                   Expanded(
@@ -486,6 +526,7 @@ class _RecipeCalendarMealPlanSheetState
                 ],
               ),
               const SizedBox(height: 8),
+              // Meal type selection section with filter chips.
               Text('Meal type', style: textTheme.labelLarge),
               const SizedBox(height: 8),
               Wrap(
@@ -510,6 +551,7 @@ class _RecipeCalendarMealPlanSheetState
                 }).toList(),
               ),
               const SizedBox(height: 8),
+              // Selection count summary.
               Text(
                 _selectedCategoryIds.isEmpty
                     ? 'Select one or more meal types.'
@@ -521,6 +563,7 @@ class _RecipeCalendarMealPlanSheetState
                 style: textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
+              // Date selection section with calendar picker.
               Text('Dates', style: textTheme.labelLarge),
               const SizedBox(height: 8),
               DecoratedBox(
@@ -541,11 +584,13 @@ class _RecipeCalendarMealPlanSheetState
                 ),
               ),
               const SizedBox(height: 10),
+              // Displays selected dates as removable chips.
               _SelectedDateChips(
                 dates: _selectedDates.toList()..sort(),
                 onRemove: _toggleDate,
               ),
               const SizedBox(height: 16),
+              // Serving count adjustment section.
               Text('Servings', style: textTheme.labelLarge),
               const SizedBox(height: 8),
               Container(
@@ -588,6 +633,7 @@ class _RecipeCalendarMealPlanSheetState
                 ),
               ),
               const SizedBox(height: 16),
+              // Action buttons: cancel and submit.
               Row(
                 children: [
                   Expanded(
@@ -600,7 +646,7 @@ class _RecipeCalendarMealPlanSheetState
                   Expanded(
                     child: FilledButton(
                       onPressed:
-                          _selectedDates.isEmpty || _selectedCategoryIds.isEmpty
+                      _selectedDates.isEmpty || _selectedCategoryIds.isEmpty
                           ? null
                           : _submit,
                       child: const Text('Add meal'),
@@ -615,16 +661,18 @@ class _RecipeCalendarMealPlanSheetState
     );
   }
 
+  // Selects a preferred initial category, defaulting to breakfast if available.
   static AddMealCategoryOption _preferredInitialCategory(
-    List<AddMealCategoryOption> categories,
-  ) {
+      List<AddMealCategoryOption> categories,
+      ) {
     return categories.firstWhere(
-      (category) => category.id.toLowerCase() == 'breakfast',
+          (category) => category.id.toLowerCase() == 'breakfast',
       orElse: () => categories.first,
     );
   }
 }
 
+/// Displays selected dates as removable chips for visual feedback.
 class _SelectedDateChips extends StatelessWidget {
   final List<DateTime> dates;
   final ValueChanged<DateTime> onRemove;
@@ -650,6 +698,7 @@ class _SelectedDateChips extends StatelessWidget {
   }
 }
 
+/// Dialog for selecting the number of servings when adding a recipe to a meal plan.
 class _MealPlanServingDialog extends StatefulWidget {
   final int initialServings;
 
@@ -732,6 +781,7 @@ class _MealPlanServingDialogState extends State<_MealPlanServingDialog> {
   }
 }
 
+/// Builds the main scrollable body of the recipe detail page with tabs.
 class _DetailBody extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final TabController tabController;
@@ -757,12 +807,14 @@ class _DetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Shows a loading indicator while the recipe is being fetched.
     if (viewModel.isLoading) {
       return const LoadingDialog(message: 'Loading recipe...', inline: true);
     }
 
     final error = viewModel.errorMessage;
     final recipe = viewModel.recipe;
+    // Displays an error message if the recipe failed to load.
     if (error != null || recipe == null) {
       return Center(
         child: Padding(
@@ -830,6 +882,7 @@ class _DetailBody extends StatelessWidget {
   }
 }
 
+/// Displays the recipe hero image with a page view for multiple images.
 class _HeroImage extends StatefulWidget {
   final ExploreRecipe recipe;
 
@@ -846,6 +899,7 @@ class _HeroImageState extends State<_HeroImage> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final recipeImages = widget.recipe.imagePaths;
+    // Falls back to a single image if no image list is provided.
     final images = recipeImages == null || recipeImages.isEmpty
         ? <String>[widget.recipe.imagePath]
         : recipeImages;
@@ -876,6 +930,7 @@ class _HeroImageState extends State<_HeroImage> {
             ),
           ),
         ),
+        // Image counter badge displayed on top of the hero image.
         Positioned(
           right: 10,
           top: 10,
@@ -899,6 +954,7 @@ class _HeroImageState extends State<_HeroImage> {
   }
 }
 
+/// Displays the recipe title, author, publication info, and key metrics.
 class _RecipeHeader extends StatelessWidget {
   final ExploreRecipe recipe;
   final bool isPublished;
@@ -917,6 +973,7 @@ class _RecipeHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Title row with favourite button.
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -946,6 +1003,7 @@ class _RecipeHeader extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
+        // Author and publication date.
         Text(
           'By ${recipe.author} - ${recipe.publishedAtLabel}',
           maxLines: 1,
@@ -953,6 +1011,7 @@ class _RecipeHeader extends StatelessWidget {
           style: textTheme.bodyMedium,
         ),
         const SizedBox(height: 14),
+        // Metrics grid: time, difficulty, servings, rating.
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
@@ -994,6 +1053,7 @@ class _RecipeHeader extends StatelessWidget {
   }
 }
 
+/// Individual metric tile displaying an icon, value, and label.
 class _MetricTile extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -1055,6 +1115,7 @@ class _MetricTile extends StatelessWidget {
   }
 }
 
+/// Renders the tab bar for switching between recipe, nutrition, and community views.
 class _TopTabs extends StatelessWidget {
   final TabController tabController;
   final ValueChanged<int> onTabSelected;
@@ -1076,6 +1137,7 @@ class _TopTabs extends StatelessWidget {
   }
 }
 
+/// Manages the height of tab content dynamically using a page view.
 class _AutoSizingDetailTabView extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onPageChanged;
@@ -1094,6 +1156,7 @@ class _AutoSizingDetailTabView extends StatefulWidget {
 
 class _AutoSizingDetailTabViewState extends State<_AutoSizingDetailTabView> {
   late final PageController _pageController;
+  // Caches measured heights for each tab content.
   final Map<int, double> _heights = {};
   int _currentIndex = 0;
 
@@ -1110,6 +1173,7 @@ class _AutoSizingDetailTabViewState extends State<_AutoSizingDetailTabView> {
     if (widget.selectedIndex == _currentIndex) return;
 
     _currentIndex = widget.selectedIndex;
+    // Animates to the selected page when the index changes externally.
     if (_pageController.hasClients) {
       _pageController.animateToPage(
         widget.selectedIndex,
@@ -1130,6 +1194,7 @@ class _AutoSizingDetailTabViewState extends State<_AutoSizingDetailTabView> {
     final height = _heights[_currentIndex] ??
         (_heights.isEmpty ? 1.0 : _heights.values.first);
 
+    // Animates height changes smoothly when tab content changes.
     return AnimatedSize(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
@@ -1151,6 +1216,7 @@ class _AutoSizingDetailTabViewState extends State<_AutoSizingDetailTabView> {
               maxHeight: double.infinity,
               child: _MeasureSize(
                 onChange: (size) {
+                  // Updates the cached height only when it changes.
                   if (size.height <= 0 || _heights[index] == size.height) {
                     return;
                   }
@@ -1166,6 +1232,7 @@ class _AutoSizingDetailTabViewState extends State<_AutoSizingDetailTabView> {
   }
 }
 
+/// Measures the size of its child widget and reports changes.
 class _MeasureSize extends StatefulWidget {
   final Widget child;
   final ValueChanged<Size> onChange;
@@ -1181,6 +1248,7 @@ class _MeasureSizeState extends State<_MeasureSize> {
 
   @override
   Widget build(BuildContext context) {
+    // Reports the size after the frame is rendered.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final renderObject = context.findRenderObject();
@@ -1196,6 +1264,7 @@ class _MeasureSizeState extends State<_MeasureSize> {
   }
 }
 
+/// Selects and builds the appropriate tab content based on the current tab.
 class _SelectedTabContent extends StatelessWidget {
   final ExploreRecipeDetailTab tab;
   final ExploreRecipeDetailViewModel viewModel;
@@ -1239,6 +1308,7 @@ class _SelectedTabContent extends StatelessWidget {
   }
 }
 
+// Converts a tab enum to its display label.
 String _detailTabLabel(ExploreRecipeDetailTab tab) {
   switch (tab) {
     case ExploreRecipeDetailTab.recipe:
@@ -1250,8 +1320,10 @@ String _detailTabLabel(ExploreRecipeDetailTab tab) {
   }
 }
 
+// Normalizes a DateTime to date-only format (ignores time).
 DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
 
+// Formats a date as a readable string (e.g., "Jan 1, 2023").
 String _dateLabel(DateTime date) {
   return '${_monthNames[date.month - 1]} ${date.day}, ${date.year}';
 }
