@@ -10,6 +10,9 @@ class UserHomeDashboardModel extends UserHomeDashboard {
     required super.weather,
     required super.quickLinks,
     required super.mealPlan,
+    super.targetCalories,
+    super.calorieUnit,
+    super.calorieTargetEnabled,
   });
 }
 

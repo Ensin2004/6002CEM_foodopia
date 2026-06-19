@@ -63,67 +63,61 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
   // =========================================================================
 
   /// Builds the sections for the meal plan dashboard.
-  List<MealPlanSection> _buildSections(
+  Future<List<MealPlanSection>> _buildSections(
     List<AddMealCategoryOption> categories,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> plans,
-  ) {
+  ) async {
     // Map each category to a section containing its meals.
-    return categories.map((category) {
-      // Filter plans that match the category.
-      final meals = plans
-          .where((doc) {
-            final data = doc.data();
-            final id = data['mealCategoryId']?.toString() ?? '';
-            final name = data['mealCategoryName']?.toString() ?? '';
-            return id == category.id ||
-                name.toLowerCase() == category.name.toLowerCase();
-          })
-          .map(_mealFromDoc)
-          .toList();
+    return Future.wait(
+      categories.map((category) async {
+        // Filter plans that match the category.
+        final mealDocs = plans.where((doc) {
+          final data = doc.data();
+          final id = data['mealCategoryId']?.toString() ?? '';
+          return id == category.id;
+        }).toList();
+        final meals = await Future.wait(mealDocs.map(_mealFromDoc));
 
-      // Create a section for the category.
-      return MealPlanSection(
-        mealType: category.name,
-        mealCategoryId: category.id,
-        meals: meals,
-      );
-    }).toList();
+        // Create a section for the category.
+        return MealPlanSection(
+          mealType: category.name,
+          mealCategoryId: category.id,
+          meals: meals,
+        );
+      }),
+    );
   }
 
   /// Builds grocery meal sections for the grocery list plan screen.
-  List<GroceryMealSectionPlan> _buildGroceryMealSections(
+  Future<List<GroceryMealSectionPlan>> _buildGroceryMealSections(
     List<AddMealCategoryOption> categories,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> plans,
-  ) {
+  ) async {
     // Map each category to a section with its meals.
-    return categories
-        .map((category) {
-          // Filter plans that match the category.
-          final meals = plans
-              .where((doc) {
-                final data = doc.data();
-                final id = data['mealCategoryId']?.toString() ?? '';
-                final name = data['mealCategoryName']?.toString() ?? '';
-                return id == category.id ||
-                    name.toLowerCase() == category.name.toLowerCase();
-              })
-              .map((doc) {
-                final data = doc.data();
-                return GroceryMealPlanItem(
-                  id: doc.id,
-                  title: data['recipeName']?.toString() ?? 'Untitled Meal',
-                  imagePath:
-                      data['recipeImage']?.toString() ??
-                      'assets/images/meal1.png',
-                );
-              })
-              .toList();
+    final sections = await Future.wait(
+      categories.map((category) async {
+        // Filter plans that match the category.
+        final mealDocs = plans.where((doc) {
+          final data = doc.data();
+          final id = data['mealCategoryId']?.toString() ?? '';
+          return id == category.id;
+        }).toList();
+        final meals = await Future.wait(
+          mealDocs.map((doc) async {
+            final display = await _mealDisplayFromPlan(doc);
+            return GroceryMealPlanItem(
+              id: doc.id,
+              title: display.title,
+              imagePath: display.imagePath,
+            );
+          }),
+        );
 
-          // Return the section if it has meals.
-          return GroceryMealSectionPlan(title: category.name, meals: meals);
-        })
-        .where((section) => section.meals.isNotEmpty)
-        .toList();
+        // Return the section if it has meals.
+        return GroceryMealSectionPlan(title: category.name, meals: meals);
+      }),
+    );
+    return sections.where((section) => section.meals.isNotEmpty).toList();
   }
 
   /// Builds the month days grid for the dashboard calendar.
@@ -461,6 +455,7 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
           ? null
           : await firestore.collection('recipes').doc(recipeId).get();
       final recipeData = recipeDoc?.data();
+      final aiGenerated = await _generatedRecipeFromPlan(doc);
 
       // Get image from recipe media or fallback.
       final media = _stringList(recipeData?['media']);
@@ -482,10 +477,13 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
         recipeId: recipeId,
         recipeName:
             recipeData?['name']?.toString() ??
+            aiGenerated?['title']?.toString() ??
             data['recipeName']?.toString() ??
             'Untitled Meal',
         recipeImage: imageFromMedia.isNotEmpty
             ? imageFromMedia
+            : aiGenerated?['imagePath']?.toString().trim().isNotEmpty == true
+            ? aiGenerated!['imagePath'].toString()
             : data['recipeImage']?.toString() ?? 'assets/images/meal1.png',
       );
     }
@@ -506,109 +504,6 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
 
     final name = doc.data()?['name']?.toString().trim() ?? '';
     return name.isEmpty ? null : name;
-  }
-
-  /// Resolves ingredient category names for a list of items.
-  Future<Map<String, String>> _resolveIngredientCategoryNames(
-    QuerySnapshot<Map<String, dynamic>> itemsSnapshot,
-    Map<String, _ResolvedGroceryCategory> categoryOverrides,
-  ) async {
-    // Collect all unique category IDs.
-    final ids = <String>{};
-    for (final doc in itemsSnapshot.docs) {
-      final categoryId =
-          _ingredientCategoryIdFrom(doc.data()) ??
-          categoryOverrides[doc.id]?.id ??
-          '';
-      if (categoryId.isNotEmpty) ids.add(categoryId);
-    }
-
-    // Fetch category names from app configuration.
-    final names = <String, String>{};
-    for (final id in ids) {
-      final doc = await firestore
-          .collection('app_config')
-          .doc('ingredient_categories')
-          .collection('items')
-          .doc(id)
-          .get();
-      final name = doc.data()?['name']?.toString().trim() ?? '';
-      names[id] = name.isEmpty ? 'Uncategorized' : name;
-    }
-    return names;
-  }
-
-  /// Resolves missing grocery item categories by looking at related recipes.
-  Future<Map<String, _ResolvedGroceryCategory>>
-  _resolveMissingGroceryItemCategories(
-    QuerySnapshot<Map<String, dynamic>> itemsSnapshot,
-  ) async {
-    final overrides = <String, _ResolvedGroceryCategory>{};
-
-    // Process each item.
-    for (final itemDoc in itemsSnapshot.docs) {
-      final data = itemDoc.data();
-
-      // Skip if category already exists.
-      final existingId = _ingredientCategoryIdFrom(data) ?? '';
-      final existingName = data['categoryName']?.toString().trim() ?? '';
-      if (existingId.isNotEmpty || existingName.isNotEmpty) continue;
-
-      // Get ingredient name and related recipe IDs.
-      final ingredientName =
-          data['ingredientName']?.toString() ?? data['name']?.toString() ?? '';
-      final recipeIds = _stringList(
-        data['relatedRecipeIds'] ?? data['recipeIds'] ?? data['recipeId'],
-      );
-
-      // Try to resolve category from related recipes.
-      final resolved = await _resolveCategoryFromRelatedRecipes(
-        ingredientName,
-        recipeIds,
-      );
-
-      // Use resolved category or fallback to generated category.
-      overrides[itemDoc.id] =
-          resolved ??
-          _ResolvedGroceryCategory(
-            id: '',
-            name: _categoryNameForIngredient(ingredientName),
-          );
-    }
-    return overrides;
-  }
-
-  /// Resolves a category from related recipes by matching ingredient name.
-  Future<_ResolvedGroceryCategory?> _resolveCategoryFromRelatedRecipes(
-    String ingredientName,
-    List<String> recipeIds,
-  ) async {
-    final normalizedName = ingredientName.trim().toLowerCase();
-    if (normalizedName.isEmpty) return null;
-
-    // Check each related recipe.
-    for (final recipeId in recipeIds) {
-      // Get ingredients from the recipe.
-      final snapshot = await firestore
-          .collection('recipes')
-          .doc(recipeId)
-          .collection('ingredients')
-          .get();
-
-      // Find matching ingredient.
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final name = data['name']?.toString().trim().toLowerCase() ?? '';
-        if (name != normalizedName) continue;
-
-        // Return the category if found.
-        final categoryId = _ingredientCategoryIdFrom(data) ?? '';
-        if (categoryId.isNotEmpty) {
-          return _ResolvedGroceryCategory(id: categoryId, name: '');
-        }
-      }
-    }
-    return null;
   }
 
   /// Resolves a unit name from unit ID or custom unit ID.
@@ -750,6 +645,16 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
     return normalizedDate.subtract(Duration(days: offset));
   }
 
+  /// Stable weekly grocery list document ID for a user and week.
+  String _weeklyGroceryListId(String userId, DateTime weekStart) {
+    final safeUserId = userId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]+'), '_');
+    final dateKey =
+        '${weekStart.year.toString().padLeft(4, '0')}'
+        '${weekStart.month.toString().padLeft(2, '0')}'
+        '${weekStart.day.toString().padLeft(2, '0')}';
+    return 'weekly_${safeUserId}_$dateKey';
+  }
+
   // =========================================================================
   // PRIVATE UTILITY FUNCTIONS
   // =========================================================================
@@ -771,6 +676,29 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
     return sanitized.length > 120 ? sanitized.substring(0, 120) : sanitized;
   }
 
+  /// Removes stale generated grocery item state for a normalized grocery list.
+  Future<void> _pruneGeneratedGroceryItemState(
+    DocumentReference<Map<String, dynamic>> listRef,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> mealDocs,
+  ) async {
+    final currentGeneratedIds = (await _buildGroceryItems(
+      mealDocs,
+    )).map(_groceryItemDocId).toSet();
+    final existingItems = await listRef.collection('items').get();
+    final batch = firestore.batch();
+    var hasDeletes = false;
+
+    for (final doc in existingItems.docs) {
+      final data = doc.data();
+      if (data['isManual'] == true) continue;
+      if (currentGeneratedIds.contains(doc.id)) continue;
+      batch.delete(doc.reference);
+      hasDeletes = true;
+    }
+
+    if (hasDeletes) await batch.commit();
+  }
+
   /// Splits a list into chunks of a given size.
   List<List<String>> _chunks(List<String> source, int size) {
     final chunks = <List<String>>[];
@@ -781,8 +709,11 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
   }
 
   /// Converts a query document snapshot to a meal plan meal entity.
-  MealPlanMeal _mealFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+  Future<MealPlanMeal> _mealFromDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
     final data = doc.data();
+    final display = await _mealDisplayFromPlan(doc);
     final servings = data['servings'];
     final servingLabel = servings is num
         ? '${servings.toInt()} Serving Pax'
@@ -791,12 +722,208 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
       id: doc.id,
       recipeId: data['recipeId']?.toString() ?? '',
       source: data['source']?.toString() ?? '',
-      title: data['recipeName']?.toString() ?? 'Untitled Meal',
+      title: display.title,
       servingLabel: servingLabel,
-      durationLabel: data['durationLabel']?.toString() ?? 'No time set',
-      imagePath: data['recipeImage']?.toString() ?? 'assets/images/meal1.png',
-      calories: _intValue(data['calories']) ?? 0,
+      durationLabel: display.durationLabel,
+      imagePath: display.imagePath,
+      calories: display.calories,
+      aiDescription: display.aiDescription,
+      aiIngredients: display.aiIngredients,
+      aiInstructions: display.aiInstructions,
     );
+  }
+
+  /// Resolves meal display data from the referenced recipe or AI context.
+  Future<_MealDisplayData> _mealDisplayFromPlan(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final data = doc.data();
+    final recipeId = data['recipeId']?.toString() ?? '';
+    final source = data['source']?.toString() ?? '';
+    final isAiGenerated = source == 'method3_generate_with_ai';
+    final aiGenerated = await _generatedRecipeFromPlan(doc);
+    final recipeDoc = recipeId.isEmpty || isAiGenerated
+        ? null
+        : await firestore.collection('recipes').doc(recipeId).get();
+    final recipeData = recipeDoc?.data();
+    final media = _stringList(recipeData?['media']);
+
+    final title =
+        recipeData?['name']?.toString() ??
+        aiGenerated?['title']?.toString() ??
+        data['recipeName']?.toString() ??
+        'Untitled Meal';
+    final duration =
+        _durationLabelFromRecipe(recipeData) ??
+        aiGenerated?['durationLabel']?.toString() ??
+        data['durationLabel']?.toString() ??
+        'No time set';
+    final imagePath = media.isNotEmpty
+        ? media.first
+        : aiGenerated?['imagePath']?.toString().trim().isNotEmpty == true
+        ? aiGenerated!['imagePath'].toString()
+        : data['recipeImage']?.toString() ?? 'assets/images/meal1.png';
+
+    final calories = await _mealCaloriesForPlan(
+      planData: data,
+      recipeId: recipeId,
+      recipeData: recipeData,
+      aiGenerated: aiGenerated,
+    );
+
+    return _MealDisplayData(
+      title: title,
+      durationLabel: duration,
+      imagePath: imagePath,
+      calories: calories,
+      aiDescription: aiGenerated?['description']?.toString() ?? '',
+      aiIngredients: _aiIngredientLabels(aiGenerated?['ingredients']),
+      aiInstructions: _stringList(aiGenerated?['instructions']),
+    );
+  }
+
+  /// Converts AI ingredient maps into compact display labels.
+  List<String> _aiIngredientLabels(Object? value) {
+    if (value is! Iterable) return const [];
+    return value
+        .map((item) {
+          if (item is! Map) return item.toString().trim();
+          final name = item['name']?.toString().trim() ?? '';
+          final amount = item['amount']?.toString().trim() ?? '';
+          final unit = item['unit']?.toString().trim() ?? '';
+          final quantity = [
+            amount,
+            unit,
+          ].where((part) => part.isNotEmpty && part != '0').join(' ');
+          return [quantity, name].where((part) => part.isNotEmpty).join(' ');
+        })
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
+  /// Resolves planned meal calories from normalized recipe/AI data.
+  Future<int> _mealCaloriesForPlan({
+    required Map<String, dynamic> planData,
+    required String recipeId,
+    required Map<String, dynamic>? recipeData,
+    required Map<String, dynamic>? aiGenerated,
+  }) async {
+    final aiCalories = _caloriesFromGeneratedRecipe(aiGenerated);
+    if (aiCalories > 0) return aiCalories.round();
+
+    final recipeCalories = await _recipeCalories(recipeId, recipeData);
+    if (recipeCalories > 0) {
+      final recipeServings =
+          _intValue(recipeData?['servings']) ??
+          _intValue(recipeData?['servingSize']);
+      final servingScale = _mealServingScale(planData, recipeServings);
+      return (recipeCalories * servingScale).round();
+    }
+
+    final legacyCalories = _intValue(planData['calories']) ?? 0;
+    if (legacyCalories <= 0) {
+      debugPrint(
+        '[MealCalories] Unable to resolve calories for mealPlan '
+        'recipeId=$recipeId source=${planData['source']} '
+        'hasRecipe=${recipeData != null} hasAi=${aiGenerated != null}',
+      );
+    }
+    return legacyCalories;
+  }
+
+  /// Reads calories from several AI context shapes used by saved generations.
+  double _caloriesFromGeneratedRecipe(Map<String, dynamic>? generated) {
+    if (generated == null) return 0;
+
+    final direct = _doubleValue(generated['calories']);
+    if (direct > 0) return direct;
+
+    final nutrition = generated['nutrition'];
+    if (nutrition is Map) {
+      final nutritionCalories = _nutrientValue(nutrition, const [
+        'calories',
+        'energy',
+      ]);
+      if (nutritionCalories > 0) return nutritionCalories;
+    }
+
+    final ingredients = generated['ingredients'];
+    if (ingredients is! Iterable) return 0;
+
+    var total = 0.0;
+    for (final ingredient in ingredients) {
+      if (ingredient is! Map) continue;
+      final ingredientCalories = _doubleValue(ingredient['calories']);
+      if (ingredientCalories > 0) {
+        total += ingredientCalories;
+        continue;
+      }
+
+      final nutrients = ingredient['nutrients'];
+      if (nutrients is Map) {
+        total += _nutrientValue(nutrients, const ['calories', 'energy']);
+      }
+    }
+    return total;
+  }
+
+  /// Reads total recipe calories from totalNutrients or ingredient nutrients.
+  Future<double> _recipeCalories(
+    String recipeId,
+    Map<String, dynamic>? recipeData,
+  ) async {
+    final totalNutrients = recipeData?['totalNutrients'];
+    if (totalNutrients is Map) {
+      final total = _nutrientValue(totalNutrients, const [
+        'calories',
+        'energy',
+      ]);
+      if (total > 0) return total;
+    }
+
+    if (recipeId.isEmpty) return 0;
+
+    try {
+      final ingredients = await firestore
+          .collection('recipes')
+          .doc(recipeId)
+          .collection('ingredients')
+          .get();
+
+      var total = 0.0;
+      for (final ingredient in ingredients.docs) {
+        final nutrients = ingredient.data()['nutrients'];
+        if (nutrients is Map) {
+          total += _nutrientValue(nutrients, const ['calories', 'energy']);
+        }
+      }
+      if (total > 0) return total;
+    } on FirebaseException catch (error) {
+      debugPrint(
+        '[MealCalories] Unable to load recipe ingredients for $recipeId: '
+        '${error.message ?? error.code}',
+      );
+    }
+
+    return _doubleValue(recipeData?['calories']);
+  }
+
+  /// Loads the generated recipe context for AI-created meal plans.
+  Future<Map<String, dynamic>?> _generatedRecipeFromPlan(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final context = await doc.reference
+        .collection('ai_context')
+        .doc('context')
+        .get();
+    final generated = context.data()?['generatedRecipe'];
+    return generated is Map<String, dynamic> ? generated : null;
+  }
+
+  String? _durationLabelFromRecipe(Map<String, dynamic>? recipeData) {
+    final minutes = _intValue(recipeData?['preparationTime']);
+    if (minutes != null && minutes > 0) return '$minutes mins';
+    return null;
   }
 
   /// Converts a recipe document to an AI recipe entity.
@@ -864,6 +991,29 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
+  /// Reads a nutrient value by trying common key variants case-insensitively.
+  double _nutrientValue(Map<dynamic, dynamic> nutrients, List<String> keys) {
+    for (final key in keys) {
+      for (final entry in nutrients.entries) {
+        if (entry.key.toString().toLowerCase() != key.toLowerCase()) continue;
+        final parsed = _numberFromNutrient(entry.value);
+        if (parsed != null) return parsed;
+      }
+    }
+    return 0;
+  }
+
+  double? _numberFromNutrient(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is Map) {
+      for (final key in const ['value', 'amount', 'quantity']) {
+        final parsed = _numberFromNutrient(value[key]);
+        if (parsed != null) return parsed;
+      }
+    }
+    return double.tryParse(value?.toString() ?? '');
+  }
+
   /// Converts difficulty level to a readable label.
   String _difficultyLabel(int? level) {
     switch (level) {
@@ -886,6 +1036,27 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
 // =============================================================================
 // PRIVATE DATA CLASSES
 // =============================================================================
+
+/// Resolved display data for a normalized meal plan.
+class _MealDisplayData {
+  final String title;
+  final String durationLabel;
+  final String imagePath;
+  final int calories;
+  final String aiDescription;
+  final List<String> aiIngredients;
+  final List<String> aiInstructions;
+
+  const _MealDisplayData({
+    required this.title,
+    required this.durationLabel,
+    required this.imagePath,
+    required this.calories,
+    this.aiDescription = '',
+    this.aiIngredients = const [],
+    this.aiInstructions = const [],
+  });
+}
 
 /// Draft representation of a grocery item used during aggregation.
 class _GroceryItemDraft {
@@ -928,36 +1099,6 @@ class _GroceryItemDraft {
       sortOrder: sortOrder,
     );
   }
-
-  /// Converts to Firestore document data.
-  Map<String, dynamic> toFirestore() {
-    return {
-      'ingredientName': ingredientName,
-      'ingredientCategoryId': ingredientCategoryId,
-      'categoryName': categoryName,
-      'amount': amount,
-      'unit': unit,
-      'relatedMealPlanIds': relatedMealPlanIds,
-      'relatedRecipeIds': relatedRecipeIds,
-      'isBought': false,
-      'boughtAt': null,
-      'sortOrder': sortOrder,
-    };
-  }
-
-  /// Converts to Firestore data for sync operations.
-  Map<String, dynamic> toFirestoreForSync() {
-    return {
-      'ingredientName': ingredientName,
-      'ingredientCategoryId': ingredientCategoryId,
-      'categoryName': categoryName,
-      'amount': amount,
-      'unit': unit,
-      'relatedMealPlanIds': relatedMealPlanIds,
-      'relatedRecipeIds': relatedRecipeIds,
-      'sortOrder': sortOrder,
-    };
-  }
 }
 
 /// Record representation of a grocery item for display.
@@ -986,7 +1127,6 @@ class _GroceryItemRecord {
   factory _GroceryItemRecord.fromDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
     Map<String, String> categoryNames,
-    _ResolvedGroceryCategory? categoryOverride,
   ) {
     final data = doc.data();
     final categoryId =
@@ -996,7 +1136,7 @@ class _GroceryItemRecord {
         ? data['ingredient_categories_id'].toString().trim()
         : data['categoryId']?.toString().trim().isNotEmpty == true
         ? data['categoryId'].toString().trim()
-        : categoryOverride?.id ?? '';
+        : '';
     final name =
         data['ingredientName']?.toString() ??
         data['name']?.toString() ??
@@ -1007,7 +1147,6 @@ class _GroceryItemRecord {
       categoryId: categoryId,
       categoryName:
           categoryNames[categoryId] ??
-          categoryOverride?.name ??
           data['categoryName']?.toString() ??
           _fallbackCategoryName(name),
       amount: data['amount'] is num ? (data['amount'] as num).toDouble() : 0,
@@ -1109,14 +1248,6 @@ class _GroceryItemRecord {
     }
     return 'Uncategorized';
   }
-}
-
-/// Resolved grocery category with ID and name.
-class _ResolvedGroceryCategory {
-  final String id;
-  final String name;
-
-  const _ResolvedGroceryCategory({required this.id, required this.name});
 }
 
 /// Snapshot of a meal plan with key details.

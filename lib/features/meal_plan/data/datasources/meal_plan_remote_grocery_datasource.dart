@@ -49,12 +49,15 @@ mixin _MealPlanRemoteGroceryDataSource
     }
 
     // Convert grouped plans to grocery meal day plans.
-    final days = plansByDate.entries.map((entry) {
-      return GroceryMealDayPlan(
-        date: entry.key,
-        sections: _buildGroceryMealSections(categories, entry.value),
-      );
-    }).toList()..sort((first, second) => first.date.compareTo(second.date));
+    final days = await Future.wait(
+      plansByDate.entries.map((entry) async {
+        return GroceryMealDayPlan(
+          date: entry.key,
+          sections: await _buildGroceryMealSections(categories, entry.value),
+        );
+      }),
+    );
+    days.sort((first, second) => first.date.compareTo(second.date));
 
     // Return the plan with icon options and meal days.
     return AddGroceryListPlan(
@@ -97,12 +100,6 @@ mixin _MealPlanRemoteGroceryDataSource
       throw StateError('Selected meals do not have saved ingredients yet.');
     }
 
-    // Extract unique category IDs from items.
-    final categories = items
-        .map((item) => item.ingredientCategoryId)
-        .where((id) => id.isNotEmpty)
-        .toSet();
-
     // Start a batch write for atomic operation.
     final batch = firestore.batch();
 
@@ -121,18 +118,9 @@ mixin _MealPlanRemoteGroceryDataSource
       'status': _dateOnly(request.endDate).isBefore(_dateOnly(DateTime.now()))
           ? 'past'
           : 'active',
-      'totalItems': items.length,
-      'totalCategories': categories.length,
-      'totalMeals': mealDocs.length,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
-
-    // Add all grocery items as subcollections.
-    for (final item in items) {
-      final itemRef = listRef.collection('items').doc();
-      batch.set(itemRef, item.toFirestore());
-    }
 
     // Commit the batch write.
     await batch.commit();
@@ -155,6 +143,7 @@ mixin _MealPlanRemoteGroceryDataSource
     // Calculate the start and end of the current week.
     final weekStart = _weekStartFor(now, weekStartDay);
     final weekEnd = weekStart.add(const Duration(days: 6));
+    final stableListId = _weeklyGroceryListId(userId, weekStart);
 
     // Query for existing weekly grocery lists.
     final existing = await firestore
@@ -164,26 +153,37 @@ mixin _MealPlanRemoteGroceryDataSource
         .get()
         .timeout(const Duration(seconds: 8));
 
-    // Check if a list already exists for the current week.
-    for (final doc in existing.docs) {
+    // Keep exactly one active weekly list for the current week.
+    final currentWeekDocs = existing.docs.where((doc) {
       final existingStart = _timestampDate(doc.data()['weekStartDate']);
-      if (existingStart != null && _sameDay(existingStart, weekStart)) {
-        // Sync the existing list with current meal plans.
-        await _syncWeeklyGroceryList(
-          listRef: doc.reference,
-          userId: userId,
-          weekStartDay: weekStartDay,
-          weekStart: weekStart,
-          weekEnd: weekEnd,
-          isNewList: false,
-        );
-        return;
-      }
+      return existingStart != null && _sameDay(existingStart, weekStart);
+    }).toList();
+
+    if (currentWeekDocs.isNotEmpty) {
+      final preferredDoc = currentWeekDocs.firstWhere(
+        (doc) => doc.id == stableListId,
+        orElse: () => currentWeekDocs.first,
+      );
+      await _retireDuplicateWeeklyLists(
+        keepListId: preferredDoc.id,
+        weeklyDocs: currentWeekDocs,
+      );
+
+      // Sync the chosen list with current meal plans.
+      await _syncWeeklyGroceryList(
+        listRef: preferredDoc.reference,
+        userId: userId,
+        weekStartDay: weekStartDay,
+        weekStart: weekStart,
+        weekEnd: weekEnd,
+        isNewList: false,
+      );
+      return;
     }
 
     // Create a new weekly grocery list if none exists.
     await _syncWeeklyGroceryList(
-      listRef: firestore.collection('grocery_lists').doc(),
+      listRef: firestore.collection('grocery_lists').doc(stableListId),
       userId: userId,
       weekStartDay: weekStartDay,
       weekStart: weekStart,
@@ -209,15 +209,6 @@ mixin _MealPlanRemoteGroceryDataSource
       end: weekEnd.add(const Duration(days: 1)),
     );
 
-    // Build grocery items from the meal plans.
-    final items = await _buildGroceryItems(mealDocs);
-
-    // Extract unique category IDs.
-    final categoryIds = items
-        .map((item) => item.ingredientCategoryId)
-        .where((id) => id.isNotEmpty)
-        .toSet();
-
     // Start a batch write.
     final batch = firestore.batch();
 
@@ -236,9 +227,6 @@ mixin _MealPlanRemoteGroceryDataSource
       'excludedDates': const <Timestamp>[],
       'selectedMealPlanIds': mealDocs.map((doc) => doc.id).toList(),
       'status': weekEnd.isBefore(_dateOnly(DateTime.now())) ? 'past' : 'active',
-      'totalItems': items.length,
-      'totalCategories': categoryIds.length,
-      'totalMeals': mealDocs.length,
       'updatedAt': FieldValue.serverTimestamp(),
     };
 
@@ -250,30 +238,31 @@ mixin _MealPlanRemoteGroceryDataSource
     // Set the list metadata.
     batch.set(listRef, metadata, SetOptions(merge: true));
 
-    // Get current item IDs for comparison.
-    final itemIds = items.map(_groceryItemDocId).toSet();
-
-    // If updating an existing list, remove items no longer needed.
-    if (!isNewList) {
-      final existingItems = await listRef.collection('items').get();
-      for (final doc in existingItems.docs) {
-        if (!itemIds.contains(doc.id)) {
-          batch.delete(doc.reference);
-        }
-      }
-    }
-
-    // Add or update all grocery items.
-    for (final item in items) {
-      batch.set(
-        listRef.collection('items').doc(_groceryItemDocId(item)),
-        isNewList ? item.toFirestore() : item.toFirestoreForSync(),
-        SetOptions(merge: true),
-      );
-    }
-
     // Commit the batch write.
     await batch.commit();
+
+    await _pruneGeneratedGroceryItemState(listRef, mealDocs);
+  }
+
+  /// Marks duplicate current-week weekly grocery lists as past.
+  Future<void> _retireDuplicateWeeklyLists({
+    required String keepListId,
+    required List<QueryDocumentSnapshot<Map<String, dynamic>>> weeklyDocs,
+  }) async {
+    final batch = firestore.batch();
+    var hasUpdates = false;
+
+    for (final doc in weeklyDocs) {
+      if (doc.id == keepListId) continue;
+      if (doc.data()['status'] == 'past') continue;
+      batch.update(doc.reference, {
+        'status': 'past',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      hasUpdates = true;
+    }
+
+    if (hasUpdates) await batch.commit();
   }
 
   /// Updates the user's week start day preference.
@@ -359,44 +348,51 @@ mixin _MealPlanRemoteGroceryDataSource
 
     // Map each document to a summary object.
     final lists =
-        snapshot.docs.map((doc) {
-          final data = doc.data();
+        await Future.wait(
+            snapshot.docs.map((doc) async {
+              final data = doc.data();
+              final computed = await _computedGroceryListItems(
+                doc.reference,
+                data,
+              );
 
-          // Parse start and end dates.
-          final startDate = _timestampDate(data['startDate']) ?? today;
-          final endDate = _timestampDate(data['endDate']) ?? startDate;
+              // Parse start and end dates.
+              final startDate = _timestampDate(data['startDate']) ?? today;
+              final endDate = _timestampDate(data['endDate']) ?? startDate;
 
-          // Determine list type.
-          final status = data['status']?.toString();
-          final type = data['type']?.toString() == 'weekly'
-              ? GroceryListType.weekly
-              : GroceryListType.custom;
+              // Determine list type.
+              final status = data['status']?.toString();
+              final type = data['type']?.toString() == 'weekly'
+                  ? GroceryListType.weekly
+                  : GroceryListType.custom;
 
-          // Build the summary object.
-          return GroceryListSummary(
-            id: doc.id,
-            title:
-                data['name']?.toString() ??
-                data['title']?.toString() ??
-                'Grocery List',
-            itemCount:
-                _intValue(data['totalItems']) ??
-                _intValue(data['itemCount']) ??
-                0,
-            startDate: startDate,
-            endDate: endDate,
-            status: status == 'past' || endDate.isBefore(today)
-                ? GroceryListStatus.past
-                : GroceryListStatus.active,
-            type: type,
-            weekStartDay: data['weekStartDay']?.toString() ?? 'monday',
-            isDefault: type == GroceryListType.weekly,
-            categories: const [],
-            extraCategoryCount: _intValue(data['totalCategories']) ?? 0,
+              // Build the summary object.
+              return GroceryListSummary(
+                id: doc.id,
+                title:
+                    data['name']?.toString() ??
+                    data['title']?.toString() ??
+                    'Grocery List',
+                itemCount: computed.length,
+                startDate: startDate,
+                endDate: endDate,
+                status: status == 'past' || endDate.isBefore(today)
+                    ? GroceryListStatus.past
+                    : GroceryListStatus.active,
+                type: type,
+                weekStartDay: data['weekStartDay']?.toString() ?? 'monday',
+                isDefault: type == GroceryListType.weekly,
+                categories: const [],
+                extraCategoryCount: computed
+                    .map((item) => item.categoryName)
+                    .toSet()
+                    .length,
+              );
+            }),
+          )
+          ..sort(
+            (first, second) => second.startDate.compareTo(first.startDate),
           );
-        }).toList()..sort(
-          (first, second) => second.startDate.compareTo(first.startDate),
-        );
 
     return lists;
   }
@@ -451,32 +447,8 @@ mixin _MealPlanRemoteGroceryDataSource
     // Build meal snapshots from the documents.
     final mealSnapshots = await _buildMealSnapshots(mealDocs);
 
-    // Fetch all items in the grocery list.
-    final itemsSnapshot = await doc.reference.collection('items').get();
-
-    // Resolve missing category information for items.
-    final categoryOverrides = await _resolveMissingGroceryItemCategories(
-      itemsSnapshot,
-    );
-
-    // Resolve category names from app configuration.
-    final categoryNames = await _resolveIngredientCategoryNames(
-      itemsSnapshot,
-      categoryOverrides,
-    );
-
-    // Build item records from the snapshot data.
-    final items =
-        itemsSnapshot.docs
-            .map(
-              (itemDoc) => _GroceryItemRecord.fromDoc(
-                itemDoc,
-                categoryNames,
-                categoryOverrides[itemDoc.id],
-              ),
-            )
-            .toList()
-          ..sort((first, second) => first.name.compareTo(second.name));
+    // Build item records dynamically from meal references and saved item state.
+    final items = await _computedGroceryListItems(doc.reference, data);
 
     // Build categorized view of items.
     final categories = _buildManageCategories(items);
@@ -499,10 +471,7 @@ mixin _MealPlanRemoteGroceryDataSource
           data['title']?.toString() ??
           'Grocery List',
       itemCount: items.length,
-      mealCount:
-          _intValue(data['totalMeals']) ??
-          _intValue(data['mealCount']) ??
-          upcomingMeals.length,
+      mealCount: upcomingMeals.length,
       categoryCount: categories.length,
       startDate: startDate,
       endDate: endDate,
@@ -524,10 +493,11 @@ mixin _MealPlanRemoteGroceryDataSource
         .doc(listId)
         .collection('items')
         .doc(itemId)
-        .update({
+        .set({
           'isBought': bought,
           'boughtAt': bought ? FieldValue.serverTimestamp() : null,
-        });
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
   }
 
   /// Adds a new manual item to a grocery list.
@@ -567,9 +537,6 @@ mixin _MealPlanRemoteGroceryDataSource
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
-
-    // Refresh the list's summary counts.
-    await _refreshGroceryListTotals(listRef);
   }
 
   /// Deletes an item from a grocery list.
@@ -587,9 +554,6 @@ mixin _MealPlanRemoteGroceryDataSource
 
     // Delete the item.
     await itemRef.delete();
-
-    // Refresh the list's summary counts.
-    await _refreshGroceryListTotals(listRef);
   }
 
   /// Updates the details of a grocery list.
@@ -624,15 +588,6 @@ mixin _MealPlanRemoteGroceryDataSource
       end: rangeEnd,
     );
 
-    // Build grocery items from the meal plans.
-    final items = await _buildGroceryItems(mealDocs);
-
-    // Extract unique category IDs.
-    final categoryIds = items
-        .map((item) => item.ingredientCategoryId)
-        .where((id) => id.isNotEmpty)
-        .toSet();
-
     // Start a batch write.
     final batch = firestore.batch();
 
@@ -645,64 +600,86 @@ mixin _MealPlanRemoteGroceryDataSource
       'status': normalizedEnd.isBefore(_dateOnly(DateTime.now()))
           ? 'past'
           : 'active',
-      'totalItems': items.length,
-      'totalCategories': categoryIds.length,
-      'totalMeals': mealDocs.length,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-
-    // Remove items that are no longer needed.
-    final itemIds = items.map(_groceryItemDocId).toSet();
-    final existingItems = await listRef.collection('items').get();
-    for (final doc in existingItems.docs) {
-      if (!itemIds.contains(doc.id)) {
-        batch.delete(doc.reference);
-      }
-    }
-
-    // Add or update all items.
-    for (final item in items) {
-      batch.set(
-        listRef.collection('items').doc(_groceryItemDocId(item)),
-        item.toFirestoreForSync(),
-        SetOptions(merge: true),
-      );
-    }
 
     // Commit the batch write.
     await batch.commit();
+
+    await _pruneGeneratedGroceryItemState(listRef, mealDocs);
   }
 
   // =========================================================================
-  // GROCERY LIST UTILITY
+  // GROCERY LIST NORMALIZED ITEM RESOLUTION
   // =========================================================================
 
-  /// Refreshes the summary counters for a grocery list.
-  /// Updates total items and categories based on the current items subcollection.
-  Future<void> _refreshGroceryListTotals(
+  /// Computes generated grocery items from meal references and merges item state.
+  Future<List<_GroceryItemRecord>> _computedGroceryListItems(
     DocumentReference<Map<String, dynamic>> listRef,
+    Map<String, dynamic> listData,
   ) async {
-    // Summary counters stay aligned with the items subcollection.
+    final mealPlanIds = _stringList(
+      listData['selectedMealPlanIds'] ?? listData['mealPlanIds'],
+    );
+    final mealDocs = await _getMealPlanDocs(mealPlanIds);
+    final generated = await _buildGroceryItems(mealDocs);
+    final itemStateSnapshot = await listRef.collection('items').get();
+    final stateById = {
+      for (final doc in itemStateSnapshot.docs) doc.id: doc.data(),
+    };
 
-    // Fetch all items in the list.
-    final items = await listRef.collection('items').get();
+    final generatedRecords = await Future.wait(
+      generated.map((item) async {
+        final id = _groceryItemDocId(item);
+        final state = stateById[id] ?? const <String, dynamic>{};
+        return _groceryRecordFromDraft(
+          id: id,
+          draft: item,
+          bought: state['isBought'] == true || state['bought'] == true,
+        );
+      }),
+    );
 
-    // Count unique categories from items.
-    final categories = items.docs
-        .map((doc) {
-          final data = doc.data();
-          final id = data['ingredientCategoryId']?.toString() ?? '';
-          if (id.isNotEmpty) return id;
-          return data['categoryName']?.toString().trim() ?? 'Uncategorized';
-        })
-        .where((value) => value.isNotEmpty)
-        .toSet();
+    final manualRecords = itemStateSnapshot.docs
+        .where((doc) => doc.data()['isManual'] == true)
+        .map((doc) => _GroceryItemRecord.fromDoc(doc, const <String, String>{}))
+        .toList();
 
-    // Update the list with new counts.
-    await listRef.set({
-      'totalItems': items.docs.length,
-      'totalCategories': categories.length,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    return [...generatedRecords, ...manualRecords]
+      ..sort((first, second) => first.name.compareTo(second.name));
+  }
+
+  /// Converts an in-memory generated grocery draft into a display record.
+  Future<_GroceryItemRecord> _groceryRecordFromDraft({
+    required String id,
+    required _GroceryItemDraft draft,
+    required bool bought,
+  }) async {
+    final categoryName = draft.categoryName.trim().isNotEmpty
+        ? draft.categoryName
+        : await _ingredientCategoryNameById(draft.ingredientCategoryId) ??
+              'Uncategorized';
+    return _GroceryItemRecord(
+      id: id,
+      name: draft.ingredientName,
+      categoryId: draft.ingredientCategoryId,
+      categoryName: categoryName,
+      amount: draft.amount,
+      unit: draft.unit,
+      relatedMealPlanIds: draft.relatedMealPlanIds,
+      bought: bought,
+    );
+  }
+
+  Future<String?> _ingredientCategoryNameById(String id) async {
+    if (id.trim().isEmpty) return null;
+    final doc = await firestore
+        .collection('app_config')
+        .doc('ingredient_categories')
+        .collection('items')
+        .doc(id)
+        .get();
+    final name = doc.data()?['name']?.toString().trim() ?? '';
+    return name.isEmpty ? null : name;
   }
 }

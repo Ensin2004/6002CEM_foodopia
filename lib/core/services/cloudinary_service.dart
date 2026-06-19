@@ -27,7 +27,8 @@ class CloudinaryService {
   static String get _cloudName => EnvConfig.cloudinaryCloudName;
 
   /// Upload preset for user profile images.
-  static String get _userProfileUploadPreset => EnvConfig.userProfileUploadPreset;
+  static String get _userProfileUploadPreset =>
+      EnvConfig.userProfileUploadPreset;
 
   /// Upload preset for settings images.
   static String get _settingsUploadPreset => EnvConfig.settingsUploadPreset;
@@ -39,7 +40,8 @@ class CloudinaryService {
   static String get _ingredientUploadPreset => EnvConfig.ingredientUploadPreset;
 
   /// Upload preset for instruction images.
-  static String get _instructionUploadPreset => EnvConfig.instructionUploadPreset;
+  static String get _instructionUploadPreset =>
+      EnvConfig.instructionUploadPreset;
 
   // =========================================================================
   // PRIVATE HELPERS
@@ -55,7 +57,7 @@ class CloudinaryService {
     if (_cloudName.isEmpty || uploadPreset.isEmpty) {
       throw Exception(
         'Cloudinary configuration is missing. Run Flutter with '
-            '--dart-define-from-file=.env',
+        '--dart-define-from-file=.env',
       );
     }
   }
@@ -66,10 +68,10 @@ class CloudinaryService {
 
   /// Generic upload method for files.
   static Future<String> _uploadFile(
-      File imageFile,
-      String uploadPreset, {
-        String resourceType = 'image',
-      }) async {
+    File imageFile,
+    String uploadPreset, {
+    String resourceType = 'image',
+  }) async {
     try {
       // Validate configuration.
       _validateConfig(uploadPreset);
@@ -98,11 +100,43 @@ class CloudinaryService {
         return json['secure_url'];
       } else {
         final responseData = await response.stream.bytesToString();
+
         /// Handles the exception operation.
-        throw Exception('Upload failed (${response.statusCode}): $responseData');
+        throw Exception(
+          'Upload failed (${response.statusCode}): $responseData',
+        );
       }
     } catch (e) {
       /// Handles the exception operation.
+      throw Exception('Cloudinary upload error: $e');
+    }
+  }
+
+  /// Generic upload method for base64 image data.
+  static Future<String> _uploadBase64Image(
+    String base64Data,
+    String uploadPreset, {
+    String resourceType = 'image',
+  }) async {
+    try {
+      _validateConfig(uploadPreset);
+
+      final uri = Uri.parse(_getUploadUrl(resourceType: resourceType));
+      final request = http.MultipartRequest('POST', uri);
+      request.fields['upload_preset'] = uploadPreset;
+      request.fields['file'] = base64Data.startsWith('data:image/')
+          ? base64Data
+          : 'data:image/png;base64,$base64Data';
+
+      final response = await request.send();
+      final responseData = await response.stream.bytesToString();
+      if (response.statusCode == 200) {
+        final json = jsonDecode(responseData);
+        return json['secure_url'];
+      }
+
+      throw Exception('Upload failed (${response.statusCode}): $responseData');
+    } catch (e) {
       throw Exception('Cloudinary upload error: $e');
     }
   }
@@ -126,7 +160,20 @@ class CloudinaryService {
   /// Upload recipe image and video.
   static Future<String> uploadRecipeImage(File imageFile) async {
     /// Handles the upload image operation.
-    return await _uploadFile(imageFile, _recipeUploadPreset, resourceType: 'auto');
+    return await _uploadFile(
+      imageFile,
+      _recipeUploadPreset,
+      resourceType: 'auto',
+    );
+  }
+
+  /// Upload generated recipe image from base64 data.
+  static Future<String> uploadRecipeImageBase64(String base64Data) async {
+    return await _uploadBase64Image(
+      base64Data,
+      _recipeUploadPreset,
+      resourceType: 'image',
+    );
   }
 
   /// Upload ingredient image.

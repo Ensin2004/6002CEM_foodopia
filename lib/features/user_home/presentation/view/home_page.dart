@@ -90,7 +90,13 @@ class _HomeView extends StatelessWidget {
           // Meal plan section.
           HomeSection(
             title: "Today's Meal Plan",
-            child: UserMealPlanList(sections: dashboard.mealPlan),
+            child: UserMealPlanList(
+              sections: dashboard.mealPlan,
+              targetCalories: dashboard.calorieTargetEnabled
+                  ? dashboard.targetCalories
+                  : null,
+              calorieUnit: dashboard.calorieUnit,
+            ),
           ),
           const SizedBox(height: AppSpacing.xl),
         ],

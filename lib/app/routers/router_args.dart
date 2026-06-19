@@ -188,6 +188,9 @@ class MealPlanSelectionArgs {
   /// Existing recipe IDs to exclude.
   final List<String> existingRecipeIds;
 
+  /// Existing planned meal names to avoid repeating.
+  final List<String> existingMealNames;
+
   /// Calorie budget for the selected day.
   final MealCalorieBudget calorieBudget;
 
@@ -199,6 +202,7 @@ class MealPlanSelectionArgs {
     required this.mealCategoryName,
     required this.source,
     this.existingRecipeIds = const [],
+    this.existingMealNames = const [],
     this.calorieBudget = const MealCalorieBudget.empty(),
   });
 }
@@ -220,6 +224,9 @@ class AddMealPlanArgs {
   /// Existing recipe IDs to exclude.
   final List<String> existingRecipeIds;
 
+  /// Existing planned meal names to avoid repeating.
+  final List<String> existingMealNames;
+
   /// Calorie budget for the selected day.
   final MealCalorieBudget calorieBudget;
 
@@ -230,6 +237,7 @@ class AddMealPlanArgs {
     this.mealCategoryId,
     this.selectedDate,
     this.existingRecipeIds = const [],
+    this.existingMealNames = const [],
     this.calorieBudget = const MealCalorieBudget.empty(),
   });
 }
@@ -257,6 +265,9 @@ class GenerateAiMealArgs {
   /// Calorie budget for the selected day.
   final MealCalorieBudget calorieBudget;
 
+  /// Existing planned meal names to avoid repeating.
+  final List<String> existingMealNames;
+
   /// Creates a new generate AI meal args instance.
   const GenerateAiMealArgs({
     this.userId,
@@ -266,6 +277,7 @@ class GenerateAiMealArgs {
     this.initialRequest,
     this.autoGenerate = false,
     this.calorieBudget = const MealCalorieBudget.empty(),
+    this.existingMealNames = const [],
   });
 }
 

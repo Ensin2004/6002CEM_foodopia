@@ -30,7 +30,7 @@ class UserQuickLinksGrid extends StatelessWidget {
         crossAxisCount: 3,
         mainAxisSpacing: AppSpacing.sm,
         crossAxisSpacing: AppSpacing.sm,
-        childAspectRatio: 1.02,
+        childAspectRatio: 1.28,
       ),
       itemBuilder: (context, index) {
         // Get the link at the current index.
@@ -45,13 +45,16 @@ class UserQuickLinksGrid extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.sm),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs,
+                vertical: AppSpacing.sm,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Icon.
-                  Icon(link.icon, color: context.colors.primary, size: 28),
-                  const SizedBox(height: AppSpacing.sm),
+                  Icon(link.icon, color: context.colors.primary, size: 24),
+                  const SizedBox(height: AppSpacing.xs),
 
                   // Title.
                   Text(

@@ -55,8 +55,8 @@ class MealPlanCalendar extends StatelessWidget {
           startingDayOfWeek: StartingDayOfWeek.monday,
 
           // Row heights.
-          rowHeight: 34,
-          daysOfWeekHeight: 24,
+          rowHeight: 44,
+          daysOfWeekHeight: 28,
 
           // Selection predicate.
           selectedDayPredicate: (day) => isSameDay(day, selectedDate),
@@ -72,7 +72,7 @@ class MealPlanCalendar extends StatelessWidget {
           headerStyle: HeaderStyle(
             formatButtonVisible: false,
             titleCentered: true,
-            headerPadding: EdgeInsets.zero,
+            headerPadding: const EdgeInsets.only(bottom: AppSpacing.xs),
             leftChevronPadding: EdgeInsets.zero,
             rightChevronPadding: EdgeInsets.zero,
             leftChevronMargin: EdgeInsets.zero,
@@ -87,7 +87,7 @@ class MealPlanCalendar extends StatelessWidget {
                   height: 1.1,
                 ) ??
                 const TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: AppColors.textPrimary,
                   height: 1.1,
                 ),
@@ -95,8 +95,8 @@ class MealPlanCalendar extends StatelessWidget {
 
           // Days of week style.
           daysOfWeekStyle: const DaysOfWeekStyle(
-            weekdayStyle: TextStyle(fontSize: 10, color: Color(0xFF9AA3AF)),
-            weekendStyle: TextStyle(fontSize: 10, color: Color(0xFF9AA3AF)),
+            weekdayStyle: TextStyle(fontSize: 11, color: Color(0xFF9AA3AF)),
+            weekendStyle: TextStyle(fontSize: 11, color: Color(0xFF9AA3AF)),
           ),
 
           // Calendar style.
@@ -140,7 +140,7 @@ class MealPlanCalendar extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ) ??
                 const TextStyle(fontSize: 12, color: Colors.white),
-            cellMargin: EdgeInsets.zero,
+            cellMargin: const EdgeInsets.all(2),
             markersMaxCount: 0,
           ),
 
@@ -154,7 +154,7 @@ class MealPlanCalendar extends StatelessWidget {
               return const Positioned(
                 left: 0,
                 right: 0,
-                bottom: 1,
+                bottom: 4,
                 child: Center(child: _MealDot()),
               );
             },
@@ -180,14 +180,19 @@ class _CalendarArrow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 28,
-      height: 22,
+      width: 44,
+      height: 44,
+      padding: const EdgeInsets.all(8),
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F7F8),
-        borderRadius: BorderRadius.circular(8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF6F7F8),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: SizedBox.expand(
+          child: Icon(icon, size: 18, color: AppColors.textPrimary),
+        ),
       ),
-      child: Icon(icon, size: 16, color: AppColors.textPrimary),
     );
   }
 }

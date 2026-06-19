@@ -942,6 +942,7 @@ class AppRouter {
             mealCategoryId: args?.mealCategoryId ?? 'breakfast',
             selectedDate: args?.selectedDate ?? DateTime.now(),
             existingRecipeIds: args?.existingRecipeIds ?? const [],
+            existingMealNames: args?.existingMealNames ?? const [],
             calorieBudget:
                 args?.calorieBudget ?? const MealCalorieBudget.empty(),
             userId:
@@ -966,6 +967,7 @@ class AppRouter {
             autoGenerate: args?.autoGenerate ?? false,
             calorieBudget:
                 args?.calorieBudget ?? const MealCalorieBudget.empty(),
+            existingMealNames: args?.existingMealNames ?? const [],
           );
         },
       ),

@@ -70,6 +70,9 @@ class GenerateAiMealPage extends StatelessWidget {
   /// Calorie budget for the selected day.
   final MealCalorieBudget calorieBudget;
 
+  /// Existing planned meal names to avoid repeating.
+  final List<String> existingMealNames;
+
   /// Creates a new generate AI meal page instance.
   const GenerateAiMealPage({
     super.key,
@@ -80,6 +83,7 @@ class GenerateAiMealPage extends StatelessWidget {
     this.initialRequest,
     this.autoGenerate = false,
     this.calorieBudget = const MealCalorieBudget.empty(),
+    this.existingMealNames = const [],
   });
 
   @override
@@ -94,6 +98,7 @@ class GenerateAiMealPage extends StatelessWidget {
         initialRequest: initialRequest,
         autoGenerate: autoGenerate,
         calorieBudget: calorieBudget,
+        existingMealNames: existingMealNames,
         getPlanUseCase: sl<GetAddMealAiPlanUseCase>(),
         generateIdeasUseCase: sl<GenerateAiMealIdeasUseCase>(),
         getMealCategoriesUseCase: sl<GetMealCategoriesUseCase>(),
@@ -122,7 +127,7 @@ class _GenerateAiMealView extends StatelessWidget {
     // Show loading dialog while plan is loading.
     if (viewModel.isLoading && viewModel.plan == null) {
       return const Scaffold(
-        body: LoadingDialog(inline: true, message: 'Loading AI meal setup...'),
+        body: LoadingDialog(message: 'Loading AI meal setup...'),
       );
     }
 

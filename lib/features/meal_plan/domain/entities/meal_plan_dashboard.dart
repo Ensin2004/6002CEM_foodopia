@@ -174,6 +174,15 @@ class MealPlanMeal {
   /// Estimated calories for the planned meal.
   final int calories;
 
+  /// AI-generated recipe description, if this meal was created by AI.
+  final String aiDescription;
+
+  /// AI-generated ingredient display rows.
+  final List<String> aiIngredients;
+
+  /// AI-generated instruction display rows.
+  final List<String> aiInstructions;
+
   /// Creates a new meal plan meal instance.
   const MealPlanMeal({
     this.id = '',
@@ -184,6 +193,9 @@ class MealPlanMeal {
     required this.durationLabel,
     required this.imagePath,
     this.calories = 0,
+    this.aiDescription = '',
+    this.aiIngredients = const [],
+    this.aiInstructions = const [],
   });
 }
 

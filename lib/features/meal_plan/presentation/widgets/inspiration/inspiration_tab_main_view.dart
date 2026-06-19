@@ -198,6 +198,15 @@ class InspirationTabMainView extends StatelessWidget {
     final selectedIngredients = viewModel.selectedIngredients
         .map((item) => item.name)
         .toList();
+    final existingMealNames = dashboard.sections
+        .where(
+          (section) =>
+              section.mealType.toLowerCase() == preset.mealType.toLowerCase(),
+        )
+        .expand((section) => section.meals)
+        .map((meal) => meal.title.trim())
+        .where((title) => title.isNotEmpty)
+        .toList();
     final weatherSnapshot = weather;
     final request = AddMealAiGenerationRequest(
       planningDate: dashboard.selectedDate,
@@ -225,6 +234,7 @@ class InspirationTabMainView extends StatelessWidget {
       servingCount: 1,
       servingSize: '1 serving',
       calorieBudget: calorieBudget,
+      existingMealNames: existingMealNames,
     );
 
     // Route to AI page with auto-generation enabled.
@@ -236,6 +246,7 @@ class InspirationTabMainView extends StatelessWidget {
         initialRequest: request,
         autoGenerate: true,
         calorieBudget: calorieBudget,
+        existingMealNames: existingMealNames,
       ),
     );
   }

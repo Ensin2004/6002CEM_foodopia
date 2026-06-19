@@ -69,8 +69,8 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
   /// Retrieves weather information for a specific date.
   @override
   Future<Either<Failure, MealPlanWeather>> getWeatherForDate(
-      DateTime date,
-      ) async {
+    DateTime date,
+  ) async {
     try {
       // Delegate to weather data source.
       final weather = await weatherDataSource.getWeatherForDate(date);
@@ -91,8 +91,8 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
   /// Retrieves meal preferences for a user.
   @override
   Future<Either<Failure, MealPlanPreferenceSummary>> getPreferences(
-      String uid,
-      ) async {
+    String uid,
+  ) async {
     try {
       // Delegate to preferences data source.
       final preferences = await preferencesDataSource.getPreferences(uid);
@@ -158,8 +158,8 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
   /// Retrieves the plan for creating a new grocery list.
   @override
   Future<Either<Failure, AddGroceryListPlan>> getAddGroceryListPlan(
-      String userId,
-      ) async {
+    String userId,
+  ) async {
     try {
       // Delegate to remote data source.
       final plan = await remoteDataSource.getAddGroceryListPlan(userId);
@@ -173,8 +173,8 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
   /// Creates a new grocery list from a request.
   @override
   Future<Either<Failure, String>> createGroceryList(
-      CreateGroceryListRequest request,
-      ) async {
+    CreateGroceryListRequest request,
+  ) async {
     try {
       // Delegate to remote data source.
       final listId = await remoteDataSource.createGroceryList(request);
@@ -219,17 +219,6 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
         dislikes: preferences.dislikes,
       );
 
-      // Fetch recipe database matches based on preferences.
-      final topMatches = await remoteDataSource.getRecipeDatabaseMatches(
-        userId: userId,
-        mealType: mealType,
-        keywords: [
-          preferences.diet,
-          ...preferences.allergies,
-          ...preferences.dislikes,
-        ],
-      );
-
       // Return the complete meal plan.
       return Right(
         AddMealAiPlan(
@@ -243,7 +232,7 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
             ...preferences.dislikes,
           ],
           dishPreferences: categories.map((item) => item.name).toList(),
-          topMatches: topMatches,
+          topMatches: const [],
           aiIdeas: const [],
         ),
       );
@@ -278,8 +267,8 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
   /// Generates AI meal ideas based on a request.
   @override
   Future<Either<Failure, List<AddMealAiRecipe>>> generateAiMealIdeas(
-      AddMealAiGenerationRequest request,
-      ) async {
+    AddMealAiGenerationRequest request,
+  ) async {
     try {
       // Delegate to inspiration data source.
       final ideas = await inspirationDataSource.generateAiMealIdeas(request);
@@ -372,8 +361,8 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
   /// Retrieves detailed information about a grocery list.
   @override
   Future<Either<Failure, ManageGroceryListDetail>> getManageGroceryListDetail(
-      String listId,
-      ) async {
+    String listId,
+  ) async {
     try {
       // Delegate to remote data source.
       final detail = await remoteDataSource.getManageGroceryListDetail(listId);
@@ -387,8 +376,8 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
   /// Adds an item to a grocery list.
   @override
   Future<Either<Failure, void>> addGroceryItem(
-      AddGroceryItemRequest request,
-      ) async {
+    AddGroceryItemRequest request,
+  ) async {
     try {
       // Delegate to remote data source.
       await remoteDataSource.addGroceryItem(request);

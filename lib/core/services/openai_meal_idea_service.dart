@@ -112,6 +112,7 @@ class OpenAiMealIdeaService {
   String _buildPrompt(AddMealAiGenerationRequest request) {
     // Build optional calorie target guidance.
     final calorieGuidance = _calorieGuidancePrompt(request);
+    final duplicateGuidance = _duplicateGuidancePrompt(request);
 
     return '''
 Generate exactly 3 AI recipe ideas for this meal plan.
@@ -129,6 +130,7 @@ Cooking time: ${request.cookingTime}
 Difficulty: ${request.difficulty}
 Serving size: ${request.servingSize}
 $calorieGuidance
+$duplicateGuidance
 
 Each idea needs: name, recipe category, short description, prep time label, difficulty label, serving label, AI-estimated nutrition, 3 recommendation reasons, 4-8 ingredients with amount/unit, 1-3 practical alternatives for each ingredient, 5-8 cooking instructions, and a food photography image prompt.
 
@@ -139,6 +141,25 @@ Nutrition rules:
 - Use kcal for calories and grams for carbohydrates, fat, and protein.
 - Ingredient alternatives must avoid listed allergies and disliked/avoid ingredients.
 - Ingredient alternatives should be practical swaps with similar cooking use.
+- Do not repeat existing planned meals or generate near-duplicate versions of them.
+''';
+  }
+
+  /// Builds duplicate prevention guidance for already planned meals.
+  String _duplicateGuidancePrompt(AddMealAiGenerationRequest request) {
+    final names = request.existingMealNames
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList();
+
+    if (names.isEmpty) {
+      return 'Existing planned ${request.mealType} meals to avoid: None.';
+    }
+
+    return '''
+Existing planned ${request.mealType} meals to avoid: ${names.join(', ')}
+Avoid generating the same dish, a renamed version, or a very similar dish using the same main ingredients.
 ''';
   }
 

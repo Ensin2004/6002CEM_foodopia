@@ -89,6 +89,9 @@ class AddMealAiGenerationRequest {
   /// Calorie budget for the selected planning day.
   final MealCalorieBudget calorieBudget;
 
+  /// Existing planned meal names to avoid repeating.
+  final List<String> existingMealNames;
+
   /// Creates a new AI generation request.
   const AddMealAiGenerationRequest({
     required this.planningDate,
@@ -105,6 +108,7 @@ class AddMealAiGenerationRequest {
     required this.servingCount,
     required this.servingSize,
     this.calorieBudget = const MealCalorieBudget.empty(),
+    this.existingMealNames = const [],
   });
 }
 

@@ -31,75 +31,89 @@ class PlanningTabMainView extends StatelessWidget {
     // Get the selected date.
     final selectedDate = dashboard.selectedDate;
 
-    return RefreshIndicator(
-      onRefresh: viewModel.loadDashboard,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.xl,
-        ),
-        children: [
-          // Summary strip.
-          MealPlanSummaryStrip(summary: dashboard.summary),
-          const SizedBox(height: AppSpacing.md),
-
-          // Date header.
-          Text(
-            'Today, ${DateFormat('d MMMM yyyy').format(selectedDate)}',
-            style: context.text.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // Weather box or loading.
-          if (viewModel.isWeatherLoading && dashboard.weather == null)
-            const SizedBox(
-              height: 84,
-              child: LoadingDialog(inline: true, message: 'Loading weather...'),
-            )
-          else
-            _WeatherBox(
-              weather: dashboard.weather,
-              errorMessage: viewModel.weatherErrorMessage,
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: viewModel.loadDashboard,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.xl,
             ),
-          const SizedBox(height: AppSpacing.md),
+            children: [
+              // Summary strip.
+              MealPlanSummaryStrip(summary: dashboard.summary),
+              const SizedBox(height: AppSpacing.md),
 
-          // Daily calorie progress.
-          _DailyCaloriesCard(
-            sections: dashboard.sections,
-            preferences: viewModel.preferences,
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Calendar.
-          MealPlanCalendar(
-            selectedDate: selectedDate,
-            days: dashboard.monthDays,
-            onDateSelected: viewModel.selectDate,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // Meal plan sections header.
-          Text("Today's Meal Plan", style: context.text.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
-
-          // Meal filters.
-          const _MealFilters(),
-          const SizedBox(height: AppSpacing.md),
-
-          // Meal sections or empty state.
-          if (viewModel.filteredSections.isEmpty)
-            const _EmptyMeals()
-          else
-            ...viewModel.filteredSections.map(
-              (section) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: MealPlanSectionCard(section: section),
+              // Date header.
+              Text(
+                'Today, ${DateFormat('d MMMM yyyy').format(selectedDate)}',
+                style: context.text.titleMedium,
               ),
-            ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // Weather box or loading.
+              if (viewModel.isWeatherLoading && dashboard.weather == null)
+                const SizedBox(
+                  height: 84,
+                  child: LoadingDialog(
+                    inline: true,
+                    message: 'Loading weather...',
+                  ),
+                )
+              else
+                _WeatherBox(
+                  weather: dashboard.weather,
+                  errorMessage: viewModel.weatherErrorMessage,
+                ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Daily calorie progress.
+              _DailyCaloriesCard(
+                sections: dashboard.sections,
+                preferences: viewModel.preferences,
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Calendar.
+              MealPlanCalendar(
+                selectedDate: selectedDate,
+                days: dashboard.monthDays,
+                onDateSelected: viewModel.selectDate,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
+              // Meal plan sections header.
+              Text("Today's Meal Plan", style: context.text.titleMedium),
+              const SizedBox(height: AppSpacing.sm),
+
+              // Meal filters.
+              const _MealFilters(),
+              const SizedBox(height: AppSpacing.md),
+
+              // Meal sections or empty state.
+              if (viewModel.filteredSections.isEmpty)
+                const _EmptyMeals()
+              else
+                ...viewModel.filteredSections.map(
+                  (section) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: MealPlanSectionCard(section: section),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        // Loading overlay matches the Generate with AI flow.
+        if (viewModel.isLoading) ...[
+          const Positioned.fill(child: ColoredBox(color: Colors.white)),
+          const Positioned.fill(
+            child: LoadingDialog(message: 'Loading meal plan...'),
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -127,6 +141,11 @@ class _DailyCaloriesCard extends StatelessWidget {
     final progress = targetCalories == null || targetCalories <= 0
         ? 0.0
         : (plannedDisplayCalories / targetCalories).clamp(0.0, 1.0);
+    final status = _CalorieStatus.from(
+      plannedCalories: plannedDisplayCalories,
+      targetCalories: targetCalories,
+      unit: unit,
+    );
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -148,16 +167,16 @@ class _DailyCaloriesCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF4E3),
+                  color: status.color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.local_fire_department_outlined,
-                  color: Color(0xFFC76A00),
-                  size: 20,
+                  color: status.color,
+                  size: 22,
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -173,9 +192,7 @@ class _DailyCaloriesCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      targetCalories == null
-                          ? '$plannedDisplayCalories $unit planned'
-                          : '$plannedDisplayCalories / $targetCalories $unit',
+                      status.message,
                       style: context.text.bodySmall?.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -183,11 +200,7 @@ class _DailyCaloriesCard extends StatelessWidget {
                   ],
                 ),
               ),
-              _CalorieStatusChip(
-                plannedCalories: plannedDisplayCalories,
-                targetCalories: targetCalories,
-                unit: unit,
-              ),
+              _CalorieStatusChip(status: status),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -197,9 +210,7 @@ class _DailyCaloriesCard extends StatelessWidget {
               minHeight: 8,
               value: targetCalories == null ? null : progress,
               backgroundColor: const Color(0xFFE9EEF0),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                _progressColor(progress, targetCalories),
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(status.color),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -224,59 +235,93 @@ class _DailyCaloriesCard extends StatelessWidget {
     if (unit.toLowerCase() == 'kj') return (kcal * 4.184).round();
     return kcal;
   }
-
-  /// Progress color based on target usage.
-  Color _progressColor(double progress, int? targetCalories) {
-    // Neutral color is used when no target exists.
-    if (targetCalories == null || targetCalories <= 0) return AppColors.primary;
-
-    // Values above target use a warm warning color.
-    if (progress >= 1) return const Color(0xFFE2762D);
-
-    return AppColors.primary;
-  }
 }
 
 /// Calorie target status chip.
 class _CalorieStatusChip extends StatelessWidget {
-  /// Planned calories for the selected date.
-  final int plannedCalories;
-
-  /// Daily target calories.
-  final int? targetCalories;
-
-  /// Calorie unit label.
-  final String unit;
+  /// Status data.
+  final _CalorieStatus status;
 
   /// Creates a new calorie status chip instance.
-  const _CalorieStatusChip({
-    required this.plannedCalories,
-    required this.targetCalories,
-    required this.unit,
-  });
+  const _CalorieStatusChip({required this.status});
 
   @override
   Widget build(BuildContext context) {
-    final target = targetCalories;
-    final text = target == null || target <= 0
-        ? 'No target'
-        : plannedCalories > target
-        ? '+${plannedCalories - target} $unit'
-        : '${target - plannedCalories} $unit left';
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F7F8),
+        color: status.color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: status.color.withValues(alpha: 0.16)),
       ),
       child: Text(
-        text,
+        status.label,
         style: context.text.bodySmall?.copyWith(
-          color: AppColors.textPrimary,
+          color: status.color,
           fontWeight: FontWeight.w700,
         ),
       ),
+    );
+  }
+}
+
+/// Presentation status for the daily calorie summary.
+class _CalorieStatus {
+  /// Short chip label.
+  final String label;
+
+  /// Helpful message.
+  final String message;
+
+  /// Status color.
+  final Color color;
+
+  const _CalorieStatus({
+    required this.label,
+    required this.message,
+    required this.color,
+  });
+
+  factory _CalorieStatus.from({
+    required int plannedCalories,
+    required int? targetCalories,
+    required String unit,
+  }) {
+    final target = targetCalories;
+    if (target == null || target <= 0) {
+      return _CalorieStatus(
+        label: 'Set target',
+        message:
+            '$plannedCalories $unit planned today. Add a target to track your day.',
+        color: AppColors.textSecondary,
+      );
+    }
+
+    if (plannedCalories > target) {
+      final over = plannedCalories - target;
+      return _CalorieStatus(
+        label: 'Over by $over $unit',
+        message:
+            'You are over target. Choose lighter meals for the rest of today.',
+        color: AppColors.error,
+      );
+    }
+
+    final remaining = target - plannedCalories;
+    final ratio = plannedCalories / target;
+    if (ratio >= 0.85) {
+      return _CalorieStatus(
+        label: '$remaining $unit left',
+        message:
+            'Almost at your target. Keep the next meal light and balanced.',
+        color: AppColors.secondary,
+      );
+    }
+
+    return _CalorieStatus(
+      label: '$remaining $unit left',
+      message: 'On track today. You still have room for planned meals.',
+      color: AppColors.primary,
     );
   }
 }

@@ -18,6 +18,15 @@ class UserHomeDashboard {
   /// Meal plan sections grouped by meal type.
   final List<UserHomeMealSection> mealPlan;
 
+  /// Daily calorie target value.
+  final int? targetCalories;
+
+  /// Calorie unit label.
+  final String calorieUnit;
+
+  /// Whether calorie target is enabled.
+  final bool calorieTargetEnabled;
+
   /// Creates a new user home dashboard instance.
   const UserHomeDashboard({
     required this.userName,
@@ -25,6 +34,9 @@ class UserHomeDashboard {
     required this.weather,
     required this.quickLinks,
     required this.mealPlan,
+    this.targetCalories,
+    this.calorieUnit = 'kcal',
+    this.calorieTargetEnabled = false,
   });
 
   /// Creates a copy of this dashboard with optional field updates.
@@ -35,6 +47,9 @@ class UserHomeDashboard {
       weather: weather ?? this.weather,
       quickLinks: quickLinks,
       mealPlan: mealPlan,
+      targetCalories: targetCalories,
+      calorieUnit: calorieUnit,
+      calorieTargetEnabled: calorieTargetEnabled,
     );
   }
 }
@@ -151,6 +166,15 @@ class UserHomeMealSection {
 /// Individual meal item in a meal section.
 /// Contains title, subtitle, duration, and image path.
 class UserHomeMeal {
+  /// ID of the recipe used for this meal.
+  final String recipeId;
+
+  /// Unique meal plan ID.
+  final String mealPlanId;
+
+  /// Source used to create the planned meal.
+  final String source;
+
   /// Display title of the meal.
   final String title;
 
@@ -163,11 +187,30 @@ class UserHomeMeal {
   /// Path to the meal's image asset.
   final String imagePath;
 
+  /// Estimated calories for the planned meal.
+  final int calories;
+
+  /// AI-generated recipe description, if available.
+  final String aiDescription;
+
+  /// AI-generated ingredient display rows.
+  final List<String> aiIngredients;
+
+  /// AI-generated instruction display rows.
+  final List<String> aiInstructions;
+
   /// Creates a new user home meal instance.
   const UserHomeMeal({
+    this.recipeId = '',
+    this.mealPlanId = '',
+    this.source = '',
     required this.title,
     required this.subtitle,
     required this.duration,
     required this.imagePath,
+    this.calories = 0,
+    this.aiDescription = '',
+    this.aiIngredients = const [],
+    this.aiInstructions = const [],
   });
 }

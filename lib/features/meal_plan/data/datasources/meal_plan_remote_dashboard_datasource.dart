@@ -30,15 +30,28 @@ mixin _MealPlanRemoteDashboardDataSource
     // Start of the next month for range end.
     final nextMonth = DateTime(selectedDate.year, selectedDate.month + 1);
 
-    // Fetch all available meal categories from app configuration.
-    final categories = await getMealCategories();
-
-    // Fetch all meal plans for the current month.
-    final monthPlans = await _mealPlansBetween(
+    // Start independent dashboard queries together.
+    final categoriesFuture = getMealCategories();
+    final monthPlansFuture = _mealPlansBetween(
       userId: userId,
       start: monthStart,
       end: nextMonth,
     );
+    final groceryListsFuture = getGroceryListSummaries(userId);
+    final groceryGroupsFuture = getGroceryGroups(userId);
+
+    // Weekly list creation is best-effort and should not block planning.
+    if (userId.trim().isNotEmpty) {
+      unawaited(
+        ensureCurrentWeeklyGroceryList(userId).catchError((Object error) {
+          debugPrint('[MealPlan] Weekly grocery sync skipped: $error');
+        }),
+      );
+    }
+
+    // Fetch meal categories and monthly plans.
+    final categories = await categoriesFuture;
+    final monthPlans = await monthPlansFuture;
 
     // Filter plans that fall on the selected date.
     final selectedPlans = monthPlans.where((doc) {
@@ -68,16 +81,10 @@ mixin _MealPlanRemoteDashboardDataSource
       return value is Timestamp && value.toDate().isAfter(today);
     }).length;
 
-    // Ensure weekly grocery list exists for the user.
-    if (userId.trim().isNotEmpty) {
-      await ensureCurrentWeeklyGroceryList(userId);
-    }
-
-    // Fetch grocery list summaries.
-    final groceryLists = await getGroceryListSummaries(userId);
-
-    // Fetch grocery list groups.
-    final groceryGroups = await getGroceryGroups(userId);
+    // Build sections after resolving recipe/AI display data.
+    final sections = await _buildSections(categories, selectedPlans);
+    final groceryLists = await groceryListsFuture;
+    final groceryGroups = await groceryGroupsFuture;
 
     // Build and return the complete dashboard object.
     return MealPlanDashboard(
@@ -89,7 +96,7 @@ mixin _MealPlanRemoteDashboardDataSource
         futureCount: futureCount,
       ),
       monthDays: _buildMonthDays(dayStart, monthPlans),
-      sections: _buildSections(categories, selectedPlans),
+      sections: sections,
       inspirations: const [],
       quickInspirations: const [],
       groceryLists: groceryLists,

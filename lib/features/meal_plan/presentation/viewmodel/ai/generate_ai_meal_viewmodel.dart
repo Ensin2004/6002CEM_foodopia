@@ -66,6 +66,9 @@ class GenerateAiMealViewModel extends ChangeNotifier {
   /// Calorie budget for the selected day.
   final MealCalorieBudget calorieBudget;
 
+  /// Existing planned meal names to avoid repeating.
+  final List<String> existingMealNames;
+
   // =========================================================================
   // STATE
   // =========================================================================
@@ -176,6 +179,7 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     this.initialRequest,
     this.autoGenerate = false,
     this.calorieBudget = const MealCalorieBudget.empty(),
+    this.existingMealNames = const [],
     required GetAddMealAiPlanUseCase getPlanUseCase,
     required GenerateAiMealIdeasUseCase generateIdeasUseCase,
     required GetMealCategoriesUseCase getMealCategoriesUseCase,
@@ -213,9 +217,6 @@ class GenerateAiMealViewModel extends ChangeNotifier {
 
   /// Whether saving is in progress.
   bool get isSaving => _isSaving;
-
-  /// Whether to show database results.
-  bool get showDatabaseResults => initialRequest == null;
 
   /// Source request if available.
   AddMealAiGenerationRequest? get sourceRequest => initialRequest;
@@ -668,7 +669,7 @@ class GenerateAiMealViewModel extends ChangeNotifier {
         ingredientsToInclude: request.ingredientsToInclude,
         ingredientsToAvoid: request.ingredientsToAvoid,
         dishPreferences: currentPlan.dishPreferences,
-        topMatches: showDatabaseResults ? currentPlan.topMatches : const [],
+        topMatches: const [],
         aiIdeas: ideas,
       );
       _selectedRecipeIds.clear();
@@ -718,7 +719,16 @@ class GenerateAiMealViewModel extends ChangeNotifier {
       servingCount: _selectedServingSize,
       servingSize: selectedServingSize,
       calorieBudget: calorieBudget,
+      existingMealNames: _mergedExistingMealNames,
     );
+  }
+
+  List<String> get _mergedExistingMealNames {
+    return [...existingMealNames, ...?initialRequest?.existingMealNames]
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList();
   }
 
   /// Builds calorie guidance for a candidate AI recipe.

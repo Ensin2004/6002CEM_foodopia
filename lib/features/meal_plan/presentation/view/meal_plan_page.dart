@@ -107,7 +107,7 @@ class _MealPlanViewState extends State<_MealPlanView>
 
     // Show loading dialog while dashboard is loading.
     if (viewModel.isLoading && viewModel.dashboard == null) {
-      return const LoadingDialog(inline: true, message: 'Loading meal plan...');
+      return const LoadingDialog(message: 'Loading meal plan...');
     }
 
     // Get the dashboard.

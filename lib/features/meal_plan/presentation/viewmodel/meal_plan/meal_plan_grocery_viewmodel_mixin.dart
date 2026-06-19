@@ -52,7 +52,25 @@ mixin _MealPlanGroceryViewModelMixin
 
   /// Filtered weekly history.
   List<GroceryListSummary> get filteredWeeklyHistory {
-    return filteredGroceryLists.where((list) => list.isWeekly).toList();
+    final weeklyLists = filteredGroceryLists
+        .where((list) => list.isWeekly)
+        .toList();
+    final uniqueByWeek = <String, GroceryListSummary>{};
+
+    for (final list in weeklyLists) {
+      final key =
+          '${list.status.name}-'
+          '${_dateKey(list.startDate)}-'
+          '${_dateKey(list.endDate)}';
+      uniqueByWeek.putIfAbsent(key, () => list);
+    }
+
+    return uniqueByWeek.values.toList();
+  }
+
+  String _dateKey(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+    return normalized.toIso8601String();
   }
 
   /// Selects a grocery list tab.

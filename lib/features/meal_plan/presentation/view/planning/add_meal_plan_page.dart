@@ -24,6 +24,9 @@ class AddMealPlanPage extends StatelessWidget {
   /// List of recipe IDs already planned for this category/date.
   final List<String> existingRecipeIds;
 
+  /// List of meal names already planned for this category/date.
+  final List<String> existingMealNames;
+
   /// ID of the user creating the meal plan.
   final String userId;
 
@@ -37,6 +40,7 @@ class AddMealPlanPage extends StatelessWidget {
     required this.mealCategoryId,
     required this.selectedDate,
     required this.existingRecipeIds,
+    required this.existingMealNames,
     required this.userId,
     required this.calorieBudget,
   });
@@ -131,6 +135,7 @@ class AddMealPlanPage extends StatelessWidget {
                   selectedDate: selectedDate,
                   mealCategoryId: mealCategoryId,
                   calorieBudget: calorieBudget,
+                  existingMealNames: existingMealNames,
                 ),
               ),
             ),

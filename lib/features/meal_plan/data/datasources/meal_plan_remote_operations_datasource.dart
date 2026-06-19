@@ -95,19 +95,10 @@ mixin _MealPlanRemoteOperationsDataSource
       'uid': userId,
       'date': Timestamp.fromDate(dayStart),
       'mealCategoryId': mealCategory.id,
-      'mealCategoryName': mealCategory.name,
       'recipeId': recipe.id,
-      'recipeName': recipe.title,
-      'recipeImage': recipe.imagePath,
       'source': source,
       'creationMethod': source,
       'servings': servingCount.clamp(1, 99),
-      'durationLabel': recipe.durationLabel,
-      'difficultyLabel': recipe.difficultyLabel,
-      'calories': recipe.calories,
-      'carbohydrates': recipe.carbohydrates,
-      'fat': recipe.fat,
-      'protein': recipe.protein,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -155,6 +146,18 @@ mixin _MealPlanRemoteOperationsDataSource
 
     // Commit the batch write.
     await batch.commit();
+
+    // Remove stale generated grocery item state from affected lists.
+    for (final listDoc in listsSnapshot.docs) {
+      final remainingIds = _stringList(
+        listDoc.data()['selectedMealPlanIds'],
+      ).where((id) => id != mealPlanId).toList();
+      final remainingMealDocs = await _getMealPlanDocs(remainingIds);
+      await _pruneGeneratedGroceryItemState(
+        listDoc.reference,
+        remainingMealDocs,
+      );
+    }
   }
 
   // =========================================================================

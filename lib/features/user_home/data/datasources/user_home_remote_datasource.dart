@@ -37,6 +37,7 @@ class UserHomeRemoteDataSource {
 
     // Get today's meal sections.
     final sections = await _getTodayMealSections(currentUser.uid);
+    final calorieTarget = await _getCalorieTarget(currentUser.uid);
 
     return UserHomeDashboardModel(
       userName: userName,
@@ -44,6 +45,9 @@ class UserHomeRemoteDataSource {
       weather: null,
       quickLinks: _quickLinks,
       mealPlan: sections,
+      targetCalories: calorieTarget.targetCalories,
+      calorieUnit: calorieTarget.calorieUnit,
+      calorieTargetEnabled: calorieTarget.enabled,
     );
   }
 
@@ -120,10 +124,10 @@ class UserHomeRemoteDataSource {
 
     // Build sections from categories and meal plans.
     final docs = planSnapshot.docs;
-    return categories
-        .map((category) => _mealSectionFromDocs(category, docs))
-        .where((section) => section.meals.isNotEmpty)
-        .toList();
+    final sections = await Future.wait(
+      categories.map((category) => _mealSectionFromDocs(category, docs)),
+    );
+    return sections.where((section) => section.meals.isNotEmpty).toList();
   }
 
   // =========================================================================
@@ -132,8 +136,8 @@ class UserHomeRemoteDataSource {
 
   /// Parses meal categories from Firestore snapshot.
   List<_MealCategoryOption> _categoryOptions(
-      QuerySnapshot<Map<String, dynamic>> snapshot,
-      ) {
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) {
     // Sort by sort order.
     final docs = snapshot.docs.toList()
       ..sort((first, second) {
@@ -145,14 +149,14 @@ class UserHomeRemoteDataSource {
     // Map to category options, filtering inactive ones.
     final categories = docs
         .map((doc) {
-      final data = doc.data();
-      final name = data['name']?.toString().trim() ?? '';
-      final active = data['isActive'] is bool
-          ? data['isActive'] as bool
-          : true;
-      if (!active || name.isEmpty) return null;
-      return _MealCategoryOption(id: doc.id, name: name);
-    })
+          final data = doc.data();
+          final name = data['name']?.toString().trim() ?? '';
+          final active = data['isActive'] is bool
+              ? data['isActive'] as bool
+              : true;
+          if (!active || name.isEmpty) return null;
+          return _MealCategoryOption(id: doc.id, name: name);
+        })
         .whereType<_MealCategoryOption>()
         .toList();
 
@@ -170,26 +174,22 @@ class UserHomeRemoteDataSource {
   // =========================================================================
 
   /// Builds a meal section from category and meal documents.
-  UserHomeMealSection _mealSectionFromDocs(
-      _MealCategoryOption category,
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
-      ) {
+  Future<UserHomeMealSection> _mealSectionFromDocs(
+    _MealCategoryOption category,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) async {
     // Filter meals that match the category.
-    final meals = docs
-        .where((doc) {
+    final mealDocs = docs.where((doc) {
       final data = doc.data();
       final id = data['mealCategoryId']?.toString() ?? '';
-      final name = data['mealCategoryName']?.toString() ?? '';
-      return id == category.id ||
-          name.toLowerCase() == category.name.toLowerCase();
-    })
-        .map(_mealFromDoc)
-        .toList();
+      return id == category.id;
+    }).toList();
+    final meals = await Future.wait(mealDocs.map(_mealFromDoc));
 
     return UserHomeMealSection(
       mealType: category.name,
       countLabel:
-      'Total ${meals.length} ${meals.length == 1 ? 'meal' : 'meals'}',
+          'Total ${meals.length} ${meals.length == 1 ? 'meal' : 'meals'}',
       accentColor: _accentColor(category.name),
       icon: _mealIcon(category.name),
       meals: meals,
@@ -201,8 +201,11 @@ class UserHomeRemoteDataSource {
   // =========================================================================
 
   /// Parses a meal from a Firestore document.
-  UserHomeMeal _mealFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+  Future<UserHomeMeal> _mealFromDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
     final data = doc.data();
+    final display = await _mealDisplayFromPlan(doc);
 
     // Get serving label.
     final servings = data['servings'];
@@ -211,11 +214,67 @@ class UserHomeRemoteDataSource {
         : data['servingLabel']?.toString() ?? data['source']?.toString() ?? '';
 
     return UserHomeMeal(
-      title: data['recipeName']?.toString() ?? 'Untitled Meal',
+      mealPlanId: doc.id,
+      recipeId: data['recipeId']?.toString() ?? '',
+      source: data['source']?.toString() ?? '',
+      title: display.title,
       subtitle: subtitle.trim().isEmpty ? 'Planned meal' : subtitle,
-      duration: data['durationLabel']?.toString() ?? 'No time set',
-      imagePath: data['recipeImage']?.toString() ?? 'assets/images/meal1.png',
+      duration: display.durationLabel,
+      imagePath: display.imagePath,
+      calories: display.calories,
+      aiDescription: display.aiDescription,
+      aiIngredients: display.aiIngredients,
+      aiInstructions: display.aiInstructions,
     );
+  }
+
+  Future<_MealDisplayData> _mealDisplayFromPlan(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final data = doc.data();
+    final recipeId = data['recipeId']?.toString() ?? '';
+    final source = data['source']?.toString() ?? '';
+    final isAiGenerated = source == 'method3_generate_with_ai';
+    final aiGenerated = await _generatedRecipeFromPlan(doc);
+    final recipeDoc = recipeId.isEmpty || isAiGenerated
+        ? null
+        : await firestore.collection('recipes').doc(recipeId).get();
+    final recipeData = recipeDoc?.data();
+    final media = _stringList(recipeData?['media']);
+    final minutes = _intValue(recipeData?['preparationTime']);
+
+    return _MealDisplayData(
+      title:
+          recipeData?['name']?.toString() ??
+          aiGenerated?['title']?.toString() ??
+          data['recipeName']?.toString() ??
+          'Untitled Meal',
+      durationLabel: minutes != null && minutes > 0
+          ? '$minutes mins'
+          : aiGenerated?['durationLabel']?.toString() ??
+                data['durationLabel']?.toString() ??
+                'No time set',
+      imagePath: media.isNotEmpty
+          ? media.first
+          : aiGenerated?['imagePath']?.toString().trim().isNotEmpty == true
+          ? aiGenerated!['imagePath'].toString()
+          : data['recipeImage']?.toString() ?? 'assets/images/meal1.png',
+      calories: _caloriesForMeal(data, recipeData, aiGenerated),
+      aiDescription: aiGenerated?['description']?.toString() ?? '',
+      aiIngredients: _aiIngredientLabels(aiGenerated?['ingredients']),
+      aiInstructions: _stringList(aiGenerated?['instructions']),
+    );
+  }
+
+  Future<Map<String, dynamic>?> _generatedRecipeFromPlan(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final context = await doc.reference
+        .collection('ai_context')
+        .doc('context')
+        .get();
+    final generated = context.data()?['generatedRecipe'];
+    return generated is Map<String, dynamic> ? generated : null;
   }
 
   // =========================================================================
@@ -232,6 +291,88 @@ class UserHomeRemoteDataSource {
 
   /// Cleans a string value.
   String _cleanName(Object? value) => value?.toString().trim() ?? '';
+
+  /// Loads daily calorie target settings from meal preferences.
+  Future<_CalorieTarget> _getCalorieTarget(String uid) async {
+    if (uid.trim().isEmpty) return const _CalorieTarget();
+
+    final doc = await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('preferences')
+        .doc('food_profile')
+        .get()
+        .timeout(const Duration(seconds: 8));
+    final data = doc.data();
+    if (data == null) return const _CalorieTarget();
+
+    return _CalorieTarget(
+      targetCalories: _intValue(data['targetCalories']),
+      calorieUnit: data['calorieUnit']?.toString() ?? 'kcal',
+      enabled: data['calorieTargetEnabled'] == true,
+    );
+  }
+
+  List<String> _stringList(Object? value) {
+    if (value is Iterable) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
+  int? _intValue(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  /// Resolves calories from AI context, recipe data, or legacy meal plan data.
+  int _caloriesForMeal(
+    Map<String, dynamic> planData,
+    Map<String, dynamic>? recipeData,
+    Map<String, dynamic>? aiGenerated,
+  ) {
+    final aiCalories = _intValue(aiGenerated?['calories']);
+    if (aiCalories != null && aiCalories > 0) return aiCalories;
+
+    final nutrition = aiGenerated?['nutrition'];
+    final nutritionCalories = nutrition is Map
+        ? _intValue(nutrition['calories'] ?? nutrition['energy'])
+        : null;
+    if (nutritionCalories != null && nutritionCalories > 0) {
+      return nutritionCalories;
+    }
+
+    final totalNutrients = recipeData?['totalNutrients'];
+    final recipeCalories = totalNutrients is Map
+        ? _intValue(totalNutrients['calories'] ?? totalNutrients['energy'])
+        : _intValue(recipeData?['calories']);
+    if (recipeCalories != null && recipeCalories > 0) return recipeCalories;
+
+    return _intValue(planData['calories']) ?? 0;
+  }
+
+  /// Converts AI ingredient maps into compact display labels.
+  List<String> _aiIngredientLabels(Object? value) {
+    if (value is! Iterable) return const [];
+    return value
+        .map((item) {
+          if (item is! Map) return item.toString().trim();
+          final name = item['name']?.toString().trim() ?? '';
+          final amount = item['amount']?.toString().trim() ?? '';
+          final unit = item['unit']?.toString().trim() ?? '';
+          final quantity = [
+            amount,
+            unit,
+          ].where((part) => part.isNotEmpty && part != '0').join(' ');
+          return [quantity, name].where((part) => part.isNotEmpty).join(' ');
+        })
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
 
   /// Returns an icon for a meal type.
   IconData _mealIcon(String mealType) {
@@ -302,4 +443,36 @@ class _MealCategoryOption {
 
   /// Creates a new meal category option instance.
   const _MealCategoryOption({required this.id, required this.name});
+}
+
+class _CalorieTarget {
+  final int? targetCalories;
+  final String calorieUnit;
+  final bool enabled;
+
+  const _CalorieTarget({
+    this.targetCalories,
+    this.calorieUnit = 'kcal',
+    this.enabled = false,
+  });
+}
+
+class _MealDisplayData {
+  final String title;
+  final String durationLabel;
+  final String imagePath;
+  final int calories;
+  final String aiDescription;
+  final List<String> aiIngredients;
+  final List<String> aiInstructions;
+
+  const _MealDisplayData({
+    required this.title,
+    required this.durationLabel,
+    required this.imagePath,
+    this.calories = 0,
+    this.aiDescription = '',
+    this.aiIngredients = const [],
+    this.aiInstructions = const [],
+  });
 }

@@ -260,34 +260,35 @@ class _ReviewStepState extends State<_ReviewStep> {
           ...selectedRecipes.map((recipe) => _ReviewRecipeCard(recipe: recipe)),
         const SizedBox(height: AppSpacing.lg),
 
-        // Action buttons.
-        _PrimaryActionButton(
-          label: viewModel.isSaving ? 'Adding...' : 'Add to Meal Plan',
-          onPressed: viewModel.isSaving
+        // Save options.
+        _SaveOptionsSection(
+          isBusy: _isBusy(viewModel),
+          hasRecipeDraft: viewModel.hasRecipeDraft,
+          primaryLabel: _isSavingBoth
+              ? 'Saving both...'
+              : 'Add to Meal Plan + Save Recipe',
+          onSaveBoth: viewModel.hasRecipeDraft && !_isBusy(viewModel)
+              ? () => _saveBoth(context, viewModel)
+              : null,
+          mealPlanLabel: viewModel.isSaving
+              ? 'Adding to meal plan...'
+              : 'Add to Meal Plan Only',
+          onSaveMealPlan: _isBusy(viewModel)
               ? null
               : () => _saveMealPlan(context, viewModel),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-
-        _PrimaryActionButton(
-          label: _isSavingRecipe ? 'Saving...' : 'Save Recipe',
-          onPressed: _isSavingRecipe || !viewModel.hasRecipeDraft
-              ? null
-              : () => _saveRecipe(context, viewModel),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-
-        OutlinedButton(
-          onPressed:
-              viewModel.isSaving || _isSavingBoth || !viewModel.hasRecipeDraft
-              ? null
-              : () => _saveBoth(context, viewModel),
-          child: Text(
-            _isSavingBoth ? 'Saving...' : 'Add to Meal Plan & Recipe',
-          ),
+          recipeLabel: _isSavingRecipe
+              ? 'Saving recipe...'
+              : 'Save Recipe Only',
+          onSaveRecipe: viewModel.hasRecipeDraft && !_isBusy(viewModel)
+              ? () => _saveRecipe(context, viewModel)
+              : null,
         ),
       ],
     );
+  }
+
+  bool _isBusy(GenerateAiMealViewModel viewModel) {
+    return viewModel.isSaving || _isSavingRecipe || _isSavingBoth;
   }
 
   /// Saves the meal plan.
@@ -482,6 +483,268 @@ class _ReviewStepState extends State<_ReviewStep> {
   void _showSnack(BuildContext context, String? message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message ?? 'Unable to save recipe.')),
+    );
+  }
+}
+
+/// Clear save destination choices for the final AI recipe step.
+class _SaveOptionsSection extends StatelessWidget {
+  /// Whether any save action is in progress.
+  final bool isBusy;
+
+  /// Whether a reviewed recipe draft is ready to be saved.
+  final bool hasRecipeDraft;
+
+  /// Primary action label.
+  final String primaryLabel;
+
+  /// Save both callback.
+  final VoidCallback? onSaveBoth;
+
+  /// Meal-plan-only label.
+  final String mealPlanLabel;
+
+  /// Meal-plan-only callback.
+  final VoidCallback? onSaveMealPlan;
+
+  /// Recipe-only label.
+  final String recipeLabel;
+
+  /// Recipe-only callback.
+  final VoidCallback? onSaveRecipe;
+
+  /// Creates a new save options section.
+  const _SaveOptionsSection({
+    required this.isBusy,
+    required this.hasRecipeDraft,
+    required this.primaryLabel,
+    required this.onSaveBoth,
+    required this.mealPlanLabel,
+    required this.onSaveMealPlan,
+    required this.recipeLabel,
+    required this.onSaveRecipe,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: AppSpacing.cardPadding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.task_alt,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Choose where to save',
+                      style: context.text.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      hasRecipeDraft
+                          ? 'Save the reviewed AI recipe to one or both places.'
+                          : 'Review the recipe details first to save it to your recipe library.',
+                      style: context.text.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          _RecommendedSaveButton(
+            label: primaryLabel,
+            enabled: onSaveBoth != null,
+            isBusy: isBusy,
+            onPressed: onSaveBoth,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _SaveOptionCard(
+                  icon: Icons.event_available_outlined,
+                  title: mealPlanLabel,
+                  subtitle: 'Plan this meal for the selected date.',
+                  onPressed: onSaveMealPlan,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _SaveOptionCard(
+                  icon: Icons.menu_book_outlined,
+                  title: recipeLabel,
+                  subtitle: 'Keep this recipe in your library.',
+                  onPressed: onSaveRecipe,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Recommended combined save action.
+class _RecommendedSaveButton extends StatelessWidget {
+  /// Button label.
+  final String label;
+
+  /// Whether the button can be used.
+  final bool enabled;
+
+  /// Whether saving is active.
+  final bool isBusy;
+
+  /// Callback when pressed.
+  final VoidCallback? onPressed;
+
+  /// Creates a recommended save button.
+  const _RecommendedSaveButton({
+    required this.label,
+    required this.enabled,
+    required this.isBusy,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton.icon(
+        onPressed: enabled ? onPressed : null,
+        icon: isBusy
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.done_all_outlined),
+        label: Text(label, textAlign: TextAlign.center),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.border,
+          disabledForegroundColor: AppColors.textSecondary,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: context.text.labelLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Secondary save option card.
+class _SaveOptionCard extends StatelessWidget {
+  /// Option icon.
+  final IconData icon;
+
+  /// Option title.
+  final String title;
+
+  /// Option explanation.
+  final String subtitle;
+
+  /// Callback when selected.
+  final VoidCallback? onPressed;
+
+  /// Creates a new save option card.
+  const _SaveOptionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Material(
+      color: enabled ? const Color(0xFFF8F9FA) : const Color(0xFFF2F3F2),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 132),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: enabled
+                  ? AppColors.primary.withValues(alpha: 0.24)
+                  : AppColors.border,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                icon,
+                color: enabled ? AppColors.primary : AppColors.textSecondary,
+                size: 22,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.bodyMedium?.copyWith(
+                  color: enabled
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                subtitle,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

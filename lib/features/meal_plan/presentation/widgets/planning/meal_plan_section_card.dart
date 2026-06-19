@@ -9,6 +9,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../../core/widgets/media/app_recipe_media.dart';
+import '../../../../../core/widgets/recipe/planned_ai_recipe_sheet.dart';
 import '../../../domain/entities/meal_calorie_guidance.dart';
 import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
@@ -36,6 +37,10 @@ class MealPlanSectionCard extends StatelessWidget {
     final existingRecipeIds = section.meals
         .map((meal) => meal.recipeId)
         .where((id) => id.trim().isNotEmpty)
+        .toList();
+    final existingMealNames = section.meals
+        .map((meal) => meal.title.trim())
+        .where((title) => title.isNotEmpty)
         .toList();
 
     return Container(
@@ -115,6 +120,7 @@ class MealPlanSectionCard extends StatelessWidget {
                           mealCategoryId: section.mealCategoryId,
                           selectedDate: selectedDate,
                           existingRecipeIds: existingRecipeIds,
+                          existingMealNames: existingMealNames,
                           calorieBudget: calorieBudget,
                         ),
                       );
@@ -247,68 +253,114 @@ class _MealRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          // Meal image.
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 48,
-              height: 48,
-              child: AppRecipeMediaPreview(
-                mediaPath: meal.imagePath,
-                fit: BoxFit.cover,
-                playOverlaySize: 30,
-                playIconSize: 20,
+    return InkWell(
+      onTap: () => _openRecipe(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.border)),
+        ),
+        child: Row(
+          children: [
+            // Meal image.
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: AppRecipeMediaPreview(
+                  mediaPath: meal.imagePath,
+                  fit: BoxFit.cover,
+                  playOverlaySize: 30,
+                  playIconSize: 20,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
+            const SizedBox(width: AppSpacing.sm),
 
-          // Meal details.
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  meal.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.bodyMedium?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
+            // Meal details.
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    meal.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.bodyMedium?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${meal.servingLabel} • ${meal.durationLabel}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.bodySmall,
-                ),
-              ],
+                  const SizedBox(height: 3),
+                  Text(
+                    '${meal.servingLabel} • ${meal.durationLabel}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
+            const SizedBox(width: AppSpacing.xs),
 
-          // Delete button.
-          IconButton(
-            tooltip: 'Remove meal',
-            visualDensity: VisualDensity.compact,
-            onPressed: () => _confirmRemoveMeal(context, meal),
-            icon: const Icon(
-              Icons.delete_outline,
-              size: 20,
-              color: AppColors.textSecondary,
+            if (meal.calories > 0) ...[
+              _MealMetaPill(
+                icon: Icons.local_fire_department_outlined,
+                label: '${meal.calories} kcal',
+                color: AppColors.secondary,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+            ],
+
+            // Delete button.
+            IconButton(
+              tooltip: 'Remove meal',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _confirmRemoveMeal(context, meal),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  /// Opens the planned meal's recipe detail page.
+  void _openRecipe(BuildContext context) {
+    final aiPreview = PlannedAiRecipePreview(
+      title: meal.title,
+      description: meal.aiDescription,
+      durationLabel: meal.durationLabel,
+      servingLabel: meal.servingLabel,
+      imagePath: meal.imagePath,
+      ingredients: meal.aiIngredients,
+      instructions: meal.aiInstructions,
+    );
+    if (aiPreview.hasDetails) {
+      showPlannedAiRecipeSheet(context, aiPreview);
+      return;
+    }
+
+    final recipeId = meal.recipeId.trim();
+    if (recipeId.isEmpty) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Recipe details are unavailable.')),
+        );
+      return;
+    }
+
+    context.push(
+      AppRouter.exploreRecipeDetail,
+      extra: ExploreRecipeDetailArgs(recipeId: recipeId),
     );
   }
 
@@ -364,5 +416,49 @@ class _MealRow extends StatelessWidget {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+/// Compact metadata pill for meal rows.
+class _MealMetaPill extends StatelessWidget {
+  /// Pill icon.
+  final IconData icon;
+
+  /// Pill label.
+  final String label;
+
+  /// Accent color.
+  final Color color;
+
+  /// Creates a meal metadata pill.
+  const _MealMetaPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: context.text.labelSmall?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

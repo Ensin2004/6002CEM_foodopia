@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../core/services/food_search_service.dart';
+import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/services/openai_meal_idea_service.dart';
 import '../../domain/entities/add_meal_ai_plan.dart';
 import '../../domain/entities/meal_plan_inspiration_input.dart';
@@ -183,24 +184,17 @@ class MealPlanInspirationDataSource {
     final collection = firestore.collection('meal_plans');
     for (final recipe in recipes) {
       final doc = collection.doc();
+      final imagePath = await _persistGeneratedImage(recipe);
 
       // Set main meal plan document.
       batch.set(doc, {
         'uid': userId,
         'date': Timestamp.fromDate(dayStart),
         'mealCategoryId': mealCategory.id,
-        'mealCategoryName': mealCategory.name,
         'recipeId': recipe.id,
-        'recipeName': recipe.title,
-        'recipeImage': recipe.imagePath,
         'source': 'method3_generate_with_ai',
         'creationMethod': 'method3_generate_with_ai',
         'servings': _servingsFromLabel(recipe.servingLabel),
-        'calories': recipe.calories,
-        'carbohydrates': recipe.carbohydrates,
-        'fat': recipe.fat,
-        'protein': recipe.protein,
-        'nutritionSource': 'ai',
         'weatherSnapshot': {
           'condition': request.weather.condition,
           'temperature': request.weather.temperature,
@@ -265,6 +259,7 @@ class MealPlanInspirationDataSource {
               .toList(),
           'instructions': recipe.instructions,
           'imagePrompt': recipe.imagePrompt,
+          'imagePath': imagePath,
         },
       });
     }
@@ -282,5 +277,16 @@ class MealPlanInspirationDataSource {
   int _servingsFromLabel(String label) {
     final match = RegExp(r'\d+').firstMatch(label);
     return int.tryParse(match?.group(0) ?? '') ?? 1;
+  }
+
+  Future<String> _persistGeneratedImage(AddMealAiRecipe recipe) async {
+    final imageBase64 = recipe.imageBase64;
+    if (imageBase64 == null || imageBase64.isEmpty) return recipe.imagePath;
+
+    try {
+      return await CloudinaryService.uploadRecipeImageBase64(imageBase64);
+    } catch (_) {
+      return recipe.imagePath;
+    }
   }
 }

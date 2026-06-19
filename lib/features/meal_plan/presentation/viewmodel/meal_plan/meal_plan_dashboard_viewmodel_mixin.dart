@@ -92,8 +92,8 @@ mixin _MealPlanDashboardViewModelMixin
 
   /// Loads the meal plan dashboard.
   Future<void> loadDashboard() async {
-    // First load shows the full dashboard loading state.
-    _isLoading = _dashboard == null;
+    // Keep existing dashboard visible while refreshing selected-day meals.
+    _isLoading = true;
     _errorMessage = null;
     _notifyIfActive();
 
@@ -117,15 +117,25 @@ mixin _MealPlanDashboardViewModelMixin
     _isLoading = false;
     _notifyIfActive();
 
-    // Related dashboard side data loads after the main dashboard payload.
-    await refreshWeather();
-    await loadPreferences();
-    await loadInspirationInputs();
+    // Related side data should not block showing the selected day's meals.
+    unawaited(refreshWeather());
+    if (_preferences == null) unawaited(loadPreferences());
+    unawaited(loadInspirationInputs());
   }
 
   /// Selects a date and reloads the dashboard.
   Future<void> selectDate(DateTime date) async {
     _selectedDate = DateTime(date.year, date.month, date.day);
+    final currentDashboard = _dashboard;
+    if (currentDashboard != null) {
+      _isLoading = true;
+      _dashboard = currentDashboard.copyWith(
+        selectedDate: _selectedDate,
+        sections: const <MealPlanSection>[],
+      );
+      _normalizeSelectedFilter();
+      _notifyIfActive();
+    }
     await loadDashboard();
   }
 
