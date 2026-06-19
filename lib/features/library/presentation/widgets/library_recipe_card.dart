@@ -7,6 +7,7 @@ import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../meal_plan/domain/entities/meal_calorie_guidance.dart';
 import '../../domain/entities/library_recipe.dart';
 
+// Shows a compact recipe summary card for library grids, favourite lists, and meal-plan selection.
 class LibraryRecipeCard extends StatelessWidget {
   final LibraryRecipe recipe;
   final VoidCallback onTap;
@@ -34,6 +35,7 @@ class LibraryRecipeCard extends StatelessWidget {
     final textTheme = context.text;
     final colors = context.colors;
 
+    // Uses a stronger shadow when the card is focused after returning from recipe detail navigation.
     return Material(
       color: colors.surface,
       borderRadius: BorderRadius.circular(8),
@@ -42,9 +44,11 @@ class LibraryRecipeCard extends StatelessWidget {
           ? colors.primary.withValues(alpha: 0.24)
           : Colors.black.withValues(alpha: 0.18),
       child: InkWell(
+        // Disables card opening when the recipe has already been added to the active meal plan.
         onTap: disabled ? null : onTap,
         borderRadius: BorderRadius.circular(8),
         child: Opacity(
+          // Fades disabled cards while keeping the recipe information visible.
           opacity: disabled ? 0.48 : 1,
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -63,6 +67,7 @@ class LibraryRecipeCard extends StatelessWidget {
                     fit: StackFit.expand,
                     children: [
                       GestureDetector(
+                        // Allows long-press media preview without changing the normal card tap behavior.
                         onLongPress: onImageLongPress,
                         child: ClipRRect(
                           borderRadius: const BorderRadius.vertical(
@@ -79,11 +84,13 @@ class LibraryRecipeCard extends StatelessWidget {
                       Positioned(
                         left: 8,
                         top: 8,
+                        // Shows total recipe views in the image overlay.
                         child: _ViewsBadge(count: recipe.totalViews),
                       ),
                       Positioned(
                         top: 6,
                         right: 6,
+                        // Toggles the saved recipe state from the image overlay.
                         child: _ImageIconButton(
                           icon: recipe.isFollowingAuthor
                               ? Icons.favorite
@@ -97,12 +104,14 @@ class LibraryRecipeCard extends StatelessWidget {
                       Positioned(
                         left: 8,
                         bottom: 8,
+                        // Labels the recipe as public, private, or favourite.
                         child: _StatusBadge(recipe: recipe),
                       ),
                       if (calorieGuidance != null)
                         Positioned(
                           right: 8,
                           bottom: 8,
+                          // Displays meal-plan calorie guidance only during meal selection.
                           child: _LibraryCalorieBadge(
                             guidance: calorieGuidance!,
                           ),
@@ -124,6 +133,7 @@ class LibraryRecipeCard extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
+                                  // Keeps long recipe titles from overflowing the card header.
                                   recipe.title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -136,6 +146,7 @@ class LibraryRecipeCard extends StatelessWidget {
                               const SizedBox(width: 4),
                               Padding(
                                 padding: const EdgeInsets.only(top: 1),
+                                // Shows rating for public recipes and a placeholder for private recipes.
                                 child: _RatingLabel(recipe: recipe),
                               ),
                             ],
@@ -145,6 +156,7 @@ class LibraryRecipeCard extends StatelessWidget {
                         SizedBox(
                           height: 18,
                           child: Text(
+                            // Shows a one-line recipe summary below the title.
                             recipe.description,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -157,6 +169,7 @@ class LibraryRecipeCard extends StatelessWidget {
                           child: Row(
                             children: [
                               Container(
+                                // Adds a primary color ring around the recipe author avatar.
                                 padding: const EdgeInsets.all(1.5),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
@@ -176,6 +189,7 @@ class LibraryRecipeCard extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
+                                      // Displays the recipe creator name beside the avatar.
                                       recipe.author,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -184,6 +198,7 @@ class LibraryRecipeCard extends StatelessWidget {
                                       ),
                                     ),
                                     Text(
+                                      // Shows the formatted published time below the author name.
                                       recipe.publishedAtLabel,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -198,6 +213,7 @@ class LibraryRecipeCard extends StatelessWidget {
                               _CountWithIcon(
                                 icon: Icons.chat_bubble,
                                 label: _compactCount(recipe.commentCount),
+                                // Opens the placeholder action for comments until comment navigation is available.
                                 onTap: onComingSoonTap,
                               ),
                             ],
@@ -223,6 +239,7 @@ class _AuthorAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Falls back to a person icon when no author image is available.
     final hasImage = imagePath.trim().isNotEmpty;
 
     return CircleAvatar(
@@ -254,6 +271,7 @@ class _ImageIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Provides a circular tap target for overlay actions on top of recipe media.
     return Material(
       color: Colors.black.withValues(alpha: 0.58),
       shape: const CircleBorder(),
@@ -277,6 +295,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Chooses the badge text from ownership and publication state.
     final label = recipe.isSelfPublished
         ? recipe.isPublished
               ? 'PUBLIC'
@@ -286,6 +305,7 @@ class _StatusBadge extends StatelessWidget {
         ? AppColors.primary
         : AppColors.error;
 
+    // Uses white overlay styling so the status stays readable on any recipe image.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -350,6 +370,7 @@ class _RatingLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Private recipes do not show a public rating value.
     if (!recipe.isPublished) {
       return SizedBox(
         width: 64,
@@ -369,6 +390,7 @@ class _RatingLabel extends StatelessWidget {
       );
     }
 
+    // Public recipes display the average rating beside a star icon.
     return SizedBox(
       width: 44,
       child: Row(
@@ -397,6 +419,7 @@ class _ViewsBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Displays recipe view count as an image overlay badge.
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.88),
@@ -438,6 +461,7 @@ class _CountWithIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Combines a compact count label with a tappable trailing icon.
     return InkResponse(
       onTap: onTap,
       radius: 18,
@@ -466,6 +490,7 @@ class _CountWithIcon extends StatelessWidget {
 }
 
 String _compactCount(int value) {
+  // Shortens large counts into a compact thousands label.
   if (value >= 1000) {
     final compact = value / 1000;
     return '${compact.toStringAsFixed(compact >= 10 ? 0 : 1)}k';

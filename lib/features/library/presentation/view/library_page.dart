@@ -22,6 +22,7 @@ import '../widgets/library_recipe_card.dart';
 
 const int _libraryDescriptionWordLimit = 20;
 
+// Builds the library screen with profile details, recipe tabs, refresh support, and optional meal-plan selection behavior.
 class LibraryPage extends StatelessWidget {
   final bool showAppBar;
   final VoidCallback? onExploreNow;
@@ -40,6 +41,7 @@ class LibraryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Opens the private tab first when navigation focuses an unpublished recipe.
     final initialTab = focusedRecipeIsPublished == false
         ? LibraryRecipeTab.private
         : LibraryRecipeTab.public;
@@ -139,6 +141,7 @@ class _LibraryPageViewState extends State<_LibraryPageView>
     if (_focusedRecipeId != null) {
       setState(() => _focusedRecipeId = null);
     }
+    // Syncs the selected recipe tab with the view model after manual tab changes.
     context.read<LibraryViewModel>().selectTab(
       LibraryRecipeTab.values[_tabController.index],
     );
@@ -151,6 +154,7 @@ class _LibraryPageViewState extends State<_LibraryPageView>
   }
 
   Future<void> _showEditDescriptionSheet() async {
+    // Opens the library description editor and confirms successful profile updates.
     final viewModel = context.read<LibraryViewModel>();
     final profile = viewModel.profile;
     if (profile == null) return;
@@ -175,6 +179,7 @@ class _LibraryPageViewState extends State<_LibraryPageView>
   }
 
   Future<void> _toggleFavourite(String recipeId) async {
+    // Updates a recipe favourite state and shows an error message when saving fails.
     final viewModel = context.read<LibraryViewModel>();
     final success = await viewModel.toggleFavourite(recipeId);
     if (!mounted || success) return;
@@ -201,6 +206,12 @@ class _LibraryPageViewState extends State<_LibraryPageView>
   Widget build(BuildContext context) {
     final viewModel = context.watch<LibraryViewModel>();
 
+    /*
+      Displays the owned recipe library by connecting the LibraryViewModel to the page UI.
+      The screen loads profile data, separates recipes into Public, Private, and Favourites tabs,
+      handles recipe focus after navigation, supports pull-to-refresh, and opens recipe details,
+      follower lists, favourite updates, and the edit-description bottom sheet.
+    */
     return _LibraryContent(
       viewModel: viewModel,
       tabController: _tabController,
@@ -209,10 +220,12 @@ class _LibraryPageViewState extends State<_LibraryPageView>
       onComingSoonTap: _showComingSoonMessage,
       onEditDescriptionTap: _showEditDescriptionSheet,
       onFavouriteTap: _toggleFavourite,
+      // Opens the followers list from the profile statistics row.
       onFollowersTap: () => context.push(
         AppRouter.libraryProfileUsers,
         extra: const LibraryProfileUsersArgs(showFollowers: true),
       ),
+      // Opens the following list from the profile statistics row.
       onFollowingTap: () => context.push(
         AppRouter.libraryProfileUsers,
         extra: const LibraryProfileUsersArgs(showFollowers: false),
@@ -250,10 +263,12 @@ class _LibraryContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Shows an inline loading state while the profile and recipe list are first loaded.
     if (viewModel.isLoading && viewModel.profile == null) {
       return const LoadingDialog(message: 'Loading library...', inline: true);
     }
 
+    // Shows the load failure message when profile data is unavailable.
     final error = viewModel.errorMessage;
     if (error != null && viewModel.profile == null) {
       return Center(
@@ -277,6 +292,7 @@ class _LibraryContent extends StatelessWidget {
       top: false,
       child: Column(
         children: [
+          // Displays profile details, recipe post count, and connection statistics.
           _LibraryProfileHeader(
             profile: profile,
             postCount: viewModel.postCount,
@@ -284,6 +300,7 @@ class _LibraryContent extends StatelessWidget {
             onFollowersTap: onFollowersTap,
             onFollowingTap: onFollowingTap,
           ),
+          // Provides segmented navigation between Public, Private, and Favourites recipes.
           _LibraryTabs(tabController: tabController),
           Expanded(
             child: TabBarView(
@@ -310,6 +327,7 @@ class _LibraryContent extends StatelessWidget {
   }
 
   List<LibraryRecipe> _focusedFirst(List<LibraryRecipe> recipes) {
+    // Moves the focused recipe to the first grid position after returning from detail navigation.
     final focusedId = focusedRecipeId;
     if (focusedId == null || focusedId.isEmpty) return recipes;
 
@@ -351,6 +369,7 @@ class _LibraryRecipeResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
+      // Reloads profile and recipe data when the library grid is pulled down.
       onRefresh: onRefresh,
       child: CustomScrollView(
         key: PageStorageKey(tab),
@@ -358,6 +377,7 @@ class _LibraryRecipeResults extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           if (isEmpty)
+            // Shows the explore prompt when the selected tab has no recipes.
             SliverFillRemaining(
               hasScrollBody: false,
               child: LibraryEmptyState(onExploreNow: onExploreNow),
@@ -376,6 +396,7 @@ class _LibraryRecipeResults extends StatelessWidget {
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final recipe = recipes[index];
+                  // Prevents duplicate meal-plan selection for recipes already added.
                   final disabled =
                       mealPlanSelection?.existingRecipeIds.contains(
                         recipe.id,
@@ -385,6 +406,7 @@ class _LibraryRecipeResults extends StatelessWidget {
                     recipe: recipe,
                     isHighlighted: recipe.id == focusedRecipeId,
                     disabled: disabled,
+                    // Adds calorie guidance only while choosing a recipe for a meal plan.
                     calorieGuidance: mealPlanSelection == null
                         ? null
                         : MealCalorieGuidanceService().evaluate(
@@ -393,8 +415,10 @@ class _LibraryRecipeResults extends StatelessWidget {
                           ),
                     onComingSoonTap: onComingSoonTap,
                     onFavouriteTap: () => onFavouriteTap(recipe.id),
+                    // Opens the recipe media preview after a long press on the card image.
                     onImageLongPress: () =>
                         showRecipeMediaDialog(context, recipe.imagePath),
+                    // Opens the recipe detail page and refreshes the library after returning.
                     onTap: () async {
                       await context.push(
                         AppRouter.libraryRecipeDetail,
@@ -437,6 +461,7 @@ class _LibraryProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = context.text;
     final width = MediaQuery.sizeOf(context).width;
+    // Reduces avatar and statistic height on narrow screens.
     final compact = width < 380;
 
     return Padding(
@@ -515,6 +540,7 @@ class _LibraryProfileHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              // Opens the bottom sheet used for updating the library description.
               IconButton(
                 tooltip: 'Edit description',
                 onPressed: onEditDescriptionTap,
@@ -565,12 +591,14 @@ class _EditLibraryDescriptionSheetState
   }
 
   void _updateWordCount() {
+    // Refreshes the visible word counter only when the count changes.
     final nextCount = _countWords(_bioController.text);
     if (nextCount == _wordCount) return;
     setState(() => _wordCount = nextCount);
   }
 
   Future<void> _save() async {
+    // Saves the trimmed description through the library profile view model.
     final viewModel = context.read<LibraryViewModel>();
     final success = await viewModel.updateProfile(
       name: widget.profile.name,
@@ -624,6 +652,7 @@ class _EditLibraryDescriptionSheetState
               TextField(
                 controller: _bioController,
                 enabled: !viewModel.isSavingProfile,
+                // Restricts the description field to the library word limit.
                 inputFormatters: const [
                   _WordLimitTextInputFormatter(_libraryDescriptionWordLimit),
                 ],
