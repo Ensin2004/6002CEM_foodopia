@@ -146,11 +146,6 @@ class _CookingChartCard extends StatelessWidget {
   // Labels, scale, and spacing are prepared before the chart is displayed.
   // This method only handles presentation and does not change report data.
   Widget build(BuildContext context) {
-    final chartWidth = (MediaQuery.sizeOf(context).width - 52).clamp(
-      288.0,
-      340.0,
-    );
-
     return Container(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -174,25 +169,33 @@ class _CookingChartCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          SizedBox(
-            width: chartWidth,
-            // COOKING-TIME LINE-CHART UI CALL STARTS HERE.
-            // Daily cooking values are passed to the shared line-chart widget.
-            // Draws a line chart showing total cooking time for each day.
-            // Link: CookingTimePage -> StatisticsLineChart.
-            // Widget file: ../widgets/statistics_line_chart.dart.
-            child: StatisticsLineChart(
-              height: chartWidth * 0.72,
-              color: const Color(0xFF21AEEA),
-              points: statistics.days
-                  .map(
-                    (day) => StatisticsLineChartPoint(
-                      label: day.label,
-                      value: day.totalCookingMinutes,
-                    ),
-                  )
-                  .toList(),
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final chartWidth = (statistics.days.length * 52.0).clamp(
+                constraints.maxWidth,
+                double.infinity,
+              );
+
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: chartWidth,
+                  // Give every date enough room and scroll for longer ranges.
+                  child: StatisticsLineChart(
+                    height: 220,
+                    color: const Color(0xFF21AEEA),
+                    points: statistics.days
+                        .map(
+                          (day) => StatisticsLineChartPoint(
+                            label: day.label,
+                            value: day.totalCookingMinutes,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
