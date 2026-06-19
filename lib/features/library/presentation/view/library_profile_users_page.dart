@@ -13,6 +13,7 @@ import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../domain/entities/library_profile.dart';
 import '../viewmodel/library_profile_users_viewmodel.dart';
 
+// Shows either the followers list or following list with search, refresh, empty, loading, and error states.
 class LibraryProfileUsersPage extends StatelessWidget {
   final bool showFollowers;
   final String? ownerUid;
@@ -25,6 +26,7 @@ class LibraryProfileUsersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Creates the profile user list view model with the selected followers or following mode.
     return ChangeNotifierProvider(
       create: (_) => LibraryProfileUsersViewModel(
         getFollowersUseCase: sl(),
@@ -45,21 +47,30 @@ class _LibraryProfileUsersView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<LibraryProfileUsersViewModel>();
+    // Uses the same screen structure for both connection list types.
     final title = showFollowers ? 'Followers' : 'Following';
     final colors = context.colors;
 
+    /*
+      Presents profile connections for the library owner.
+      The page chooses between followers and following based on the showFollowers flag,
+      loads the matching profile list through LibraryProfileUsersViewModel, filters names through
+      the search field, and opens the selected creator profile from each result card.
+    */
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: colors.surface,
       appBar: CustomAppBar(
         title: title,
         leading: IconButton(
+          // Returns to the previous library page after viewing profile connections.
           onPressed: () => context.pop(),
           icon: const Icon(Icons.chevron_left),
         ),
       ),
       body: SafeArea(
         child: RefreshIndicator(
+          // Reloads the current followers or following list with pull-to-refresh.
           onRefresh: viewModel.loadUsers,
           child: _ProfileUsersBody(
             title: title,
@@ -96,29 +107,35 @@ class _ProfileUsersBodyState extends State<_ProfileUsersBody> {
 
   @override
   void dispose() {
+    // Releases the search field controller when the connection list is removed.
     _searchController.dispose();
     super.dispose();
   }
 
   List<LibraryProfileUser> get _filteredUsers {
+    // Normalizes search text so matching remains case-insensitive and ignores extra spaces.
     final normalizedQuery = _query.trim().toLowerCase();
     if (normalizedQuery.isEmpty) return widget.users;
 
+    // Keeps only profile names containing the current search query.
     return widget.users.where((user) {
       return user.name.toLowerCase().contains(normalizedQuery);
     }).toList();
   }
 
   void _handleSearchChanged(String value) {
+    // Stores the latest search query and rebuilds the filtered profile results.
     setState(() => _query = value);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Shows the loading dialog while profile connection data is being fetched.
     if (widget.isLoading) {
       return const LoadingDialog(message: 'Loading profiles...', inline: true);
     }
 
+    // Keeps the list scrollable while displaying an error message for refresh support.
     if (widget.errorMessage != null) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -132,6 +149,7 @@ class _ProfileUsersBodyState extends State<_ProfileUsersBody> {
       );
     }
 
+    // Shows an empty connection message when no followers or following profiles exist.
     if (widget.users.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -147,16 +165,20 @@ class _ProfileUsersBodyState extends State<_ProfileUsersBody> {
 
     final filteredUsers = _filteredUsers;
 
+    // Builds the header, search field, and profile cards in one scrollable list.
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 24),
+      // Reserves rows for the header, search bar, and either results or a no-match message.
       itemCount: filteredUsers.isEmpty ? 3 : filteredUsers.length + 2,
       separatorBuilder: (_, index) {
+        // Uses larger gaps around the search area and smaller gaps between profile cards.
         if (index == 0) return const SizedBox(height: 10);
         if (index == 1) return const SizedBox(height: 18);
         return const SizedBox(height: 14);
       },
       itemBuilder: (context, index) {
+        // Places the summary header at the top of the connection list.
         if (index == 0) {
           return _ProfileUsersHeader(
             title: widget.title,
@@ -164,6 +186,7 @@ class _ProfileUsersBodyState extends State<_ProfileUsersBody> {
           );
         }
 
+        // Places the search input directly below the profile count header.
         if (index == 1) {
           return _ProfileSearchBar(
             controller: _searchController,
@@ -172,6 +195,7 @@ class _ProfileUsersBodyState extends State<_ProfileUsersBody> {
           );
         }
 
+        // Displays a no-match state when search removes every visible profile.
         if (filteredUsers.isEmpty) {
           return _MessageState(
             icon: Icons.search_off,
@@ -179,12 +203,14 @@ class _ProfileUsersBodyState extends State<_ProfileUsersBody> {
           );
         }
 
+        // Offsets by two because the first rows are reserved for header and search input.
         final user = filteredUsers[index - 2];
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _ProfileUserCard(
             user: user,
             onTap: () {
+              // Opens the selected creator detail page from the connection result card.
               context.push(
                 AppRouter.exploreCreatorDetail,
                 extra: ExploreCreatorDetailArgs(creatorUid: user.uid),
@@ -214,6 +240,7 @@ class _ProfileSearchBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: TextField(
         controller: controller,
+        // Sends every text change back to the parent list for live filtering.
         onChanged: onChanged,
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
@@ -255,6 +282,7 @@ class _ProfileUsersHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
+    // Summarizes the current connection list type and total available profile count.
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       child: DecoratedBox(
@@ -321,6 +349,7 @@ class _ProfileUserCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
+    // Presents a tappable profile summary with avatar, display name, follower count, and navigation hint.
     return Material(
       color: colors.surface,
       elevation: 2,
@@ -412,6 +441,7 @@ class _MessageState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Reuses one visual empty-state layout for errors, empty lists, and no search matches.
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 70, 24, 24),
       child: Column(
@@ -441,6 +471,7 @@ class _ProfileUserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Falls back to a person icon when no profile image path is available.
     final hasImage = imagePath.trim().isNotEmpty;
 
     return CircleAvatar(
@@ -460,6 +491,7 @@ class _ProfileUserAvatar extends StatelessWidget {
 }
 
 String _compactCount(int value) {
+  // Shortens large follower counts into a compact thousands format.
   if (value >= 1000) {
     final compact = value / 1000;
     return '${compact.toStringAsFixed(compact >= 10 ? 0 : 1)}k';

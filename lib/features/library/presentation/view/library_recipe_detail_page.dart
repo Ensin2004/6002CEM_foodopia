@@ -10,6 +10,7 @@ import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../domain/entities/library_recipe.dart';
 import '../viewmodel/library_recipe_detail_viewmodel.dart';
 
+// Displays full recipe details including hero image, author metadata, recipe metrics, description, categories, and allergens.
 class LibraryRecipeDetailPage extends StatelessWidget {
   final String recipeId;
 
@@ -17,6 +18,7 @@ class LibraryRecipeDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Creates the recipe detail view model with the selected recipe id.
     return ChangeNotifierProvider(
       create: (_) => LibraryRecipeDetailViewModel(
         recipeId: recipeId,
@@ -34,11 +36,18 @@ class _LibraryRecipeDetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<LibraryRecipeDetailViewModel>();
 
+    /*
+      Renders the detail view for a selected library recipe.
+      The view model loads the recipe by id, then the page switches between loading, error,
+      unavailable, and content states. The content layout highlights the recipe image,
+      ownership actions, time, difficulty, rating, description, category, and allergen information.
+    */
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: CustomAppBar(
         title: 'Recipe Details',
         leading: IconButton(
+          // Returns to the previous library screen from the recipe detail page.
           onPressed: () => context.pop(),
           icon: const Icon(Icons.chevron_left),
         ),
@@ -55,12 +64,14 @@ class _DetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Shows an inline loading dialog while the selected recipe detail is fetched.
     if (viewModel.isLoading) {
       return const LoadingDialog(message: 'Loading recipe...', inline: true);
     }
 
     final recipe = viewModel.recipe;
     final error = viewModel.errorMessage;
+    // Displays a centered failure message when the recipe cannot be loaded.
     if (recipe == null || error != null) {
       return Center(
         child: Padding(
@@ -74,15 +85,18 @@ class _DetailBody extends StatelessWidget {
       );
     }
 
+    // Presents the recipe content in a vertical scroll view for smaller screens.
     return ListView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
+        // Shows the main recipe image and ownership action labels.
         _HeroImage(recipe: recipe),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Displays the recipe title with overflow protection for longer names.
               Text(
                 recipe.title,
                 maxLines: 3,
@@ -90,6 +104,7 @@ class _DetailBody extends StatelessWidget {
                 style: context.text.headlineSmall,
               ),
               const SizedBox(height: 6),
+              // Shows author and published date metadata below the recipe title.
               Text(
                 'By ${recipe.author} - ${recipe.publishedAtLabel}',
                 maxLines: 1,
@@ -97,17 +112,21 @@ class _DetailBody extends StatelessWidget {
                 style: context.text.bodyMedium,
               ),
               const SizedBox(height: 14),
+              // Groups time, difficulty, and rating into compact recipe metric tiles.
               _MetricRow(recipe: recipe),
               const SizedBox(height: 20),
               Text('About This Recipe', style: context.text.titleMedium),
               const SizedBox(height: 8),
+              // Shows the full recipe description with readable line spacing.
               Text(
                 recipe.description,
                 style: context.text.bodyLarge?.copyWith(height: 1.35),
               ),
               const SizedBox(height: 18),
+              // Lists recipe category information after the description.
               _InfoLine(label: 'Categories', value: recipe.category),
               const SizedBox(height: 8),
+              // Lists allergen information for dietary awareness.
               _InfoLine(label: 'Allergens', value: recipe.allergenInfo),
             ],
           ),
@@ -124,10 +143,12 @@ class _HeroImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Uses the first available recipe image, falling back to the primary image path.
     final images = recipe.imagePaths == null || recipe.imagePaths!.isEmpty
         ? <String>[recipe.imagePath]
         : recipe.imagePaths!;
 
+    // Layers owner action labels over the hero image when the recipe belongs to the current account.
     return Stack(
       children: [
         ColoredBox(
@@ -137,6 +158,7 @@ class _HeroImage extends StatelessWidget {
             child: _RecipeImage(path: images.first),
           ),
         ),
+        // Shows edit and publish privacy actions only for self-published recipes.
         if (recipe.isSelfPublished) ...[
           Positioned(
             left: 8,
@@ -168,6 +190,7 @@ class _ImageActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Renders a small label-style action chip over the recipe image.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -192,6 +215,7 @@ class _MetricRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Displays the key recipe summary metrics in a single horizontal row.
     return Row(
       children: [
         Expanded(
@@ -215,6 +239,7 @@ class _MetricRow extends StatelessWidget {
         Expanded(
           child: _MetricTile(
             icon: Icons.star,
+            // Hides rating values for private recipes that do not have public rating data.
             title: recipe.isPublished
                 ? recipe.rating.toStringAsFixed(1)
                 : 'No rating',
@@ -242,6 +267,7 @@ class _MetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Builds one bordered metric tile with a colored icon, main value, and label.
     return Container(
       height: 68,
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -291,6 +317,7 @@ class _InfoLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Combines a bold field label with the matching recipe value on the same line.
     return RichText(
       text: TextSpan(
         style: context.text.bodyMedium,
@@ -316,6 +343,7 @@ class _RecipeImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Loads remote recipe images from the network and local recipe images from bundled assets.
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return Image.network(
         path,

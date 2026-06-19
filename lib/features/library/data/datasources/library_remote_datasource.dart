@@ -8,6 +8,7 @@ import '../../domain/entities/library_profile.dart';
 import '../../domain/entities/library_recipe.dart';
 import '../models/library_recipe_model.dart';
 
+// Handles Firebase and Cloudinary access for library profile, connection, recipe, and favourite data.
 class LibraryRemoteDataSource {
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
@@ -15,6 +16,7 @@ class LibraryRemoteDataSource {
   const LibraryRemoteDataSource({required this.firestore, required this.auth});
 
   Future<LibraryProfile> getProfile() async {
+    // Loads the signed-in profile document and falls back to Firebase Auth display data when Firestore fields are missing.
     final uid = _currentUid();
     final doc = await firestore.collection('users').doc(uid).get();
     final data = doc.data() ?? const <String, dynamic>{};
@@ -41,6 +43,7 @@ class LibraryRemoteDataSource {
   }
 
   Future<List<LibraryProfileUser>> getFollowers({String? ownerUid}) async {
+    // Finds profiles that have the target account inside the followingCreators subcollection.
     final uid = _targetUid(ownerUid);
     final usersSnapshot = await firestore.collection('users').get();
 
@@ -59,6 +62,7 @@ class LibraryRemoteDataSource {
   }
 
   Future<List<LibraryProfileUser>> getFollowing({String? ownerUid}) async {
+    // Reads creator profiles followed by the target account from the followingCreators subcollection.
     final uid = _targetUid(ownerUid);
     final snapshot = await firestore
         .collection('users')
@@ -79,6 +83,7 @@ class LibraryRemoteDataSource {
     required String bio,
     File? imageFile,
   }) async {
+    // Uploads a replacement profile image when provided before saving profile fields.
     final uid = _currentUid();
     String? imageUrl;
 
@@ -87,6 +92,7 @@ class LibraryRemoteDataSource {
     }
 
     final nameParts = name.trim().split(RegExp(r'\s+'));
+    // Stores split name fields alongside the full name for screens that still read firstName and lastName.
     final firstName = nameParts.isNotEmpty ? nameParts.first : name.trim();
     final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
     final data = <String, dynamic>{
@@ -112,6 +118,7 @@ class LibraryRemoteDataSource {
   }
 
   Future<int> _followingCount(String uid, Map<String, dynamic> data) async {
+    // Uses cached counters first, then counts following documents when no stored value exists.
     final storedCount =
         _intValue(data['followingCount']) ?? _intValue(data['following']);
     if (storedCount != null && storedCount > 0) return storedCount;
@@ -129,6 +136,7 @@ class LibraryRemoteDataSource {
     if (uids.isEmpty) return const [];
 
     final users = <LibraryProfileUser>[];
+    // Firestore whereIn supports a maximum of 10 document ids per query.
     for (final chunk in _chunks(uids.toList(), 10)) {
       final snapshot = await firestore
           .collection('users')
@@ -144,6 +152,7 @@ class LibraryRemoteDataSource {
   LibraryProfileUser _profileUserFromSnapshot(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
+    // Converts a user document into the compact profile item shown in followers and following lists.
     final data = doc.data() ?? const <String, dynamic>{};
     return LibraryProfileUser(
       uid: doc.id,
@@ -161,6 +170,7 @@ class LibraryRemoteDataSource {
   }
 
   Future<List<LibraryRecipeModel>> getRecipes() async {
+    // Combines owned recipes and saved recipes, then removes duplicates by recipe id.
     final uid = _currentUid();
     final selfRecipes = await _getSelfRecipes(uid);
     final followedRecipes = await _getFollowedRecipes(uid);
@@ -174,6 +184,7 @@ class LibraryRemoteDataSource {
   }
 
   Future<LibraryRecipeModel> getRecipeDetail(String recipeId) async {
+    // Loads one recipe and marks it as favourite when the recipe id exists in saved recipe sources.
     final uid = _currentUid();
     final doc = await firestore.collection('recipes').doc(recipeId).get();
     if (!doc.exists) {
@@ -192,6 +203,7 @@ class LibraryRemoteDataSource {
     required String recipeId,
     required bool isFavourite,
   }) async {
+    // Adds or removes a saved recipe document for the signed-in account.
     final uid = _currentUid();
     final favouriteRef = firestore
         .collection('users')
@@ -211,6 +223,7 @@ class LibraryRemoteDataSource {
   }
 
   String _currentUid() {
+    // Requires an authenticated Firebase account before any library data is requested.
     final uid = auth.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
       throw FirebaseAuthException(
@@ -222,12 +235,14 @@ class LibraryRemoteDataSource {
   }
 
   String _targetUid(String? ownerUid) {
+    // Uses an explicit profile owner when viewing another account, otherwise uses the signed-in account.
     final uid = ownerUid?.trim();
     if (uid != null && uid.isNotEmpty) return uid;
     return _currentUid();
   }
 
   Future<List<LibraryRecipeModel>> _getSelfRecipes(String uid) async {
+    // Loads all recipes created by the signed-in account.
     final snapshot = await firestore
         .collection('recipes')
         .where('creatorUid', isEqualTo: uid)
@@ -241,10 +256,12 @@ class LibraryRemoteDataSource {
   }
 
   Future<List<LibraryRecipeModel>> _getFollowedRecipes(String uid) async {
+    // Loads recipe documents saved through any supported favourite or bookmark source.
     final recipeIds = await _getFollowedRecipeIds(uid);
     if (recipeIds.isEmpty) return const [];
 
     final recipes = <LibraryRecipeModel>[];
+    // Batches recipe id lookups to respect Firestore whereIn limits.
     for (final chunk in _chunks(recipeIds.toList(), 10)) {
       final snapshot = await firestore
           .collection('recipes')
@@ -265,6 +282,7 @@ class LibraryRemoteDataSource {
   }
 
   Future<Set<String>> _getFollowedRecipeIds(String uid) async {
+    // Collects saved recipe ids from legacy array fields and newer subcollection documents.
     final ids = <String>{};
     final userDoc = await firestore.collection('users').doc(uid).get();
     final userData = userDoc.data() ?? const <String, dynamic>{};
@@ -308,10 +326,12 @@ class LibraryRemoteDataSource {
     required String uid,
     required bool isFollowingAuthor,
   }) async {
+    // Normalizes Firestore recipe fields into the library recipe model used by presentation widgets.
     final data = doc.data() ?? const <String, dynamic>{};
     final creatorUid = data['creatorUid']?.toString() ?? '';
     final creatorData = await _getUserData(creatorUid);
     final media = _stringList(data['media']);
+    // Supports both display names and stored id lists for categories and allergens.
     final categories = _stringList(data['categories']).isNotEmpty
         ? _stringList(data['categories'])
         : _stringList(data['categoryIds']);
@@ -387,6 +407,7 @@ class LibraryRemoteDataSource {
   }
 
   Future<Map<String, dynamic>> _getUserData(String uid) async {
+    // Returns empty creator data when a recipe has no valid creator id.
     if (!_isNotBlank(uid)) return const <String, dynamic>{};
 
     final doc = await firestore.collection('users').doc(uid).get();
@@ -394,6 +415,7 @@ class LibraryRemoteDataSource {
   }
 
   List<String> _stringList(Object? value) {
+    // Converts Firestore array-like values into trimmed non-empty strings.
     if (value is Iterable) {
       return value
           .map((item) => item.toString().trim())
@@ -404,6 +426,7 @@ class LibraryRemoteDataSource {
   }
 
   String _firstNotBlank(List<String?> values) {
+    // Selects the first usable fallback string from highest to lowest priority.
     for (final value in values) {
       final normalized = value?.trim() ?? '';
       if (normalized.isNotEmpty) return normalized;
@@ -414,18 +437,21 @@ class LibraryRemoteDataSource {
   static bool _isNotBlank(String value) => value.trim().isNotEmpty;
 
   int? _intValue(Object? value) {
+    // Accepts numeric Firestore values and parseable numeric strings.
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '');
   }
 
   double? _doubleValue(Object? value) {
+    // Accepts decimal Firestore values and parseable decimal strings.
     if (value is double) return value;
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '');
   }
 
   String _difficultyLabel(int? level) {
+    // Maps stored difficulty levels to labels shown on library recipe cards.
     switch (level) {
       case 1:
         return 'Novice';
@@ -443,6 +469,7 @@ class LibraryRemoteDataSource {
   }
 
   String _formatPublishedAt(Object? value) {
+    // Formats Firestore timestamps into short relative labels for recipe cards.
     if (value is! Timestamp) return 'Just now';
 
     final date = value.toDate();
@@ -455,6 +482,7 @@ class LibraryRemoteDataSource {
   }
 
   List<LibraryRatingBreakdown> _ratingBreakdown(int ratingCount) {
+    // Builds a placeholder rating distribution until detailed review breakdown data is available.
     if (ratingCount <= 0) {
       return const [
         LibraryRatingBreakdown(stars: 5, count: 0),
@@ -475,6 +503,7 @@ class LibraryRemoteDataSource {
   }
 
   List<List<T>> _chunks<T>(List<T> items, int size) {
+    // Splits long id lists into smaller groups for Firestore query constraints.
     final chunks = <List<T>>[];
     for (var index = 0; index < items.length; index += size) {
       final end = index + size > items.length ? items.length : index + size;
