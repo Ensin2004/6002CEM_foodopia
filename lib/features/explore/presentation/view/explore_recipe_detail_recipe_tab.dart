@@ -153,15 +153,6 @@ class _IngredientsList extends StatelessWidget {
             ),
           ],
         ),
-        // Meal plan button displayed conditionally.
-        if (showPlanMeal) ...[
-          const SizedBox(height: 18),
-          PrimaryButton(
-            onPressed: onPlanMeal,
-            text:
-            'Plan a meal (Total Calorie: ${recipe.nutrition.calories} kcal)',
-            verticalPadding: 14,
-          ),
         if (showPlanMeal || calorieGuidance != null) ...[
           const SizedBox(height: 18),
           if (calorieGuidance != null) ...[
