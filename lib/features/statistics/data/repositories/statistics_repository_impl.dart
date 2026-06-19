@@ -21,6 +21,9 @@ import '../datasources/statistics_local_datasource.dart';
 import '../datasources/statistics_remote_datasource.dart';
 import '../models/statistics_dashboard_model.dart';
 
+// Repository layer for statistics.
+// It decides whether each report comes from local fixed data or Firestore data,
+// and converts any error into a Failure that the UI can understand.
 class StatisticsRepositoryImpl implements StatisticsRepository {
   final StatisticsLocalDataSource localDataSource;
   final StatisticsRemoteDataSource remoteDataSource;
@@ -33,6 +36,8 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   @override
   Future<Either<Failure, StatisticsDashboard>> getUserStatistics() async {
     try {
+      // The dashboard menu is local, while the hero cards use live database
+      // numbers from the current user's meal plans and shared recipes.
       final localDashboard = await localDataSource.getUserStatistics();
       final userHeroSlides = await remoteDataSource.getUserSelfHeroSlides();
       final communityHeroSlides = await remoteDataSource
@@ -54,6 +59,8 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   @override
   Future<Either<Failure, StatisticsDashboard>> getAdminStatistics() async {
     try {
+      // Admin dashboard keeps the menu locally but fills the top cards with
+      // system-wide Firestore statistics.
       final localDashboard = await localDataSource.getAdminStatistics();
       final adminHeroSlides = await remoteDataSource.getAdminHeroSlides();
 
@@ -229,6 +236,8 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
     DateTime? endDate,
   }) async {
     try {
+      // This report still uses local sample data, unlike most statistics that
+      // read live Firestore records through the remote data source.
       return Right(
         await localDataSource.getPostedMealTime(
           startDate: startDate,

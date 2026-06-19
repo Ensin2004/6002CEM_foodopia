@@ -9,11 +9,12 @@ import '../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../auth/domain/entities/user_entity.dart';
-import '../../../notifications/domain/entities/notification_preference.dart';
 import '../../../notifications/domain/usecases/get_notification_preferences_usecase.dart';
 import '../../../notifications/domain/usecases/update_notification_preference_usecase.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../viewmodel/settings_viewmodel.dart';
+import '../widgets/settings_notification_section.dart';
+import '../widgets/settings_profile_header.dart';
 import '../widgets/settings_section_widget.dart';
 
 /// Defines behavior for settings page.
@@ -77,7 +78,7 @@ class _SettingsPageView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildProfileSection(context, viewModel),
+                  SettingsProfileHeader(viewModel: viewModel),
                   ..._buildSettingsSections(context, viewModel),
 
                   /// Creates a sized box instance.
@@ -89,76 +90,6 @@ class _SettingsPageView extends StatelessWidget {
                 ],
               ),
             ),
-    );
-  }
-
-  /// Handles the build profile section operation.
-  Widget _buildProfileSection(
-    BuildContext context,
-    SettingsViewModel viewModel,
-  ) {
-    /// Handles the container operation.
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.green.shade50, Colors.yellow.shade100],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-      ),
-      child: Row(
-        children: [
-          /// Creates a circle avatar instance.
-          CircleAvatar(
-            radius: 40,
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            backgroundImage: viewModel.profileImageUrl != null
-                ? NetworkImage(viewModel.profileImageUrl!)
-                : null,
-            child: viewModel.profileImageUrl == null
-                ? Icon(
-                    Icons.person,
-                    size: 40,
-                    color: Theme.of(context).colorScheme.primary,
-                  )
-                : null,
-          ),
-
-          /// Creates a sized box instance.
-          const SizedBox(width: 16),
-
-          /// Creates a expanded instance.
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// Creates a text instance.
-                Text(
-                  viewModel.fullName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-
-                /// Creates a sized box instance.
-                const SizedBox(height: 4),
-
-                /// Creates a text instance.
-                Text(
-                  viewModel.email,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -188,131 +119,11 @@ class _SettingsPageView extends StatelessWidget {
 
       if (shouldInsertNotifications &&
           viewModel.notificationPreferences.isNotEmpty) {
-        sections.add(_buildNotificationSection(context, viewModel));
+        sections.add(SettingsNotificationSection(viewModel: viewModel));
       }
     }
 
     return sections;
-  }
-
-  Widget _buildNotificationSection(
-    BuildContext context,
-    SettingsViewModel viewModel,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            'Notifications',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
-        ..._buildNotificationPreferenceTiles(context, viewModel),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Divider(height: 1, color: Colors.grey[300], thickness: 2),
-        ),
-      ],
-    );
-  }
-
-  List<Widget> _buildNotificationPreferenceTiles(
-    BuildContext context,
-    SettingsViewModel viewModel,
-  ) {
-    if (viewModel.isAdmin) {
-      return viewModel.notificationPreferences
-          .map((item) => _buildNotificationTile(viewModel, item))
-          .toList(growable: false);
-    }
-
-    final groupedIds = <String, List<String>>{
-      'Follower Notification': [
-        'new_follower_notification',
-        'new_recipe_notification',
-      ],
-      'Community Notification': [
-        'new_rating_notification',
-        'new_comment_notification',
-        'new_like_notification',
-        'new_reply_notification',
-      ],
-      'System Notification': ['help_center_reply_notification'],
-    };
-    final byId = {
-      for (final item in viewModel.notificationPreferences) item.id: item,
-    };
-    final widgets = <Widget>[];
-
-    for (final entry in groupedIds.entries) {
-      final items = entry.value
-          .map((id) => byId[id])
-          .whereType<NotificationPreference>()
-          .toList(growable: false);
-      if (items.isEmpty) continue;
-
-      widgets.add(_NotificationCategoryHeader(title: entry.key));
-      widgets.addAll(
-        items.map((item) => _buildNotificationTile(viewModel, item)),
-      );
-    }
-
-    final groupedIdSet = groupedIds.values.expand((ids) => ids).toSet();
-    final remaining = viewModel.notificationPreferences
-        .where((item) => !groupedIdSet.contains(item.id))
-        .toList(growable: false);
-    if (remaining.isNotEmpty) {
-      widgets.add(const _NotificationCategoryHeader(title: 'Other'));
-      widgets.addAll(
-        remaining.map((item) => _buildNotificationTile(viewModel, item)),
-      );
-    }
-
-    return widgets;
-  }
-
-  Widget _buildNotificationTile(
-    SettingsViewModel viewModel,
-    NotificationPreference item,
-  ) {
-    return _NotificationPreferenceTile(
-      icon: _iconForNotification(item),
-      title: item.title,
-      description: item.description,
-      value: item.enabled,
-      onChanged: (value) => viewModel.toggleNotification(item.id, value),
-    );
-  }
-
-  IconData _iconForNotification(NotificationPreference preference) {
-    switch (preference.id) {
-      case 'new_follower_notification':
-        return Icons.group_add_outlined;
-      case 'new_rating_notification':
-        return Icons.info_outline;
-      case 'new_comment_notification':
-        return Icons.comment_outlined;
-      case 'new_recipe_notification':
-        return Icons.restaurant_menu_outlined;
-      case 'new_reply_notification':
-        return Icons.reply_outlined;
-      case 'new_like_notification':
-        return Icons.favorite_border;
-      case 'new_user_notification':
-        return Icons.person_add_alt_1_outlined;
-      case 'system_rating_notification':
-        return Icons.star_rate_outlined;
-      case 'new_help_ticket_notification':
-        return Icons.support_agent_outlined;
-      case 'new_category_notification':
-        return Icons.category_outlined;
-      case 'help_center_reply_notification':
-        return Icons.mark_chat_read_outlined;
-      default:
-        return Icons.notifications_none;
-    }
   }
 
   // Type-safe navigation handler
@@ -481,65 +292,5 @@ class _SettingsPageView extends StatelessWidget {
   /// Handles the navigate to onboarding operation.
   void _navigateToOnboarding(BuildContext context) {
     context.go(AppRouter.onboarding);
-  }
-}
-
-class _NotificationCategoryHeader extends StatelessWidget {
-  final String title;
-
-  const _NotificationCategoryHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-class _NotificationPreferenceTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String description;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _NotificationPreferenceTile({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SwitchListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      visualDensity: const VisualDensity(vertical: -2),
-      title: Text(
-        title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.bodyLarge,
-      ),
-      subtitle: Text(
-        description,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.2),
-      ),
-      value: value,
-      onChanged: onChanged,
-      activeThumbColor: Theme.of(context).colorScheme.primary,
-      secondary: Icon(icon, color: Theme.of(context).colorScheme.primary),
-    );
   }
 }

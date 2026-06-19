@@ -4,6 +4,7 @@ import '../../../../core/error/failures.dart';
 import '../entities/app_notification.dart';
 import '../repositories/notification_repository.dart';
 
+// Use case for loading the notification list shown on the notification page.
 class GetNotificationsUseCase {
   final NotificationRepository _repository;
 

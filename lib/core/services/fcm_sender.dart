@@ -5,6 +5,9 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 
+// Sends Firebase Cloud Messaging pushes to a single device token.
+// Other features can create a notification in Firestore, then use this helper
+// to also alert the user's phone.
 /// Service for sending Firebase Cloud Messaging (FCM) push notifications.
 /// Uses server-side authentication with service account credentials.
 class FcmSender {
@@ -43,6 +46,8 @@ class FcmSender {
 
   /// Gets access credentials from the service account.
   Future<AccessCredentials> _getAccessCredentials() async {
+    // Loads the Firebase service account and creates a short-lived access
+    // token for the FCM HTTP v1 API.
     // Load the service account JSON.
     final jsonStr = await rootBundle.loadString(_serviceAccountAssetPath);
 
@@ -86,6 +91,7 @@ class FcmSender {
 
   /// Sanitizes data keys to avoid reserved keywords.
   Map<String, String> _sanitizeData(Map<String, dynamic>? data) {
+    // FCM blocks some reserved data keys, so rename them before sending.
     // Return empty map if no data.
     if (data == null) return const <String, String>{};
 
@@ -120,6 +126,8 @@ class FcmSender {
     required String body,
     Map<String, dynamic>? data,
   }) async {
+    // Sends one push message to one saved device token. Returns false instead
+    // of crashing if the token, network call, or Firebase response fails.
     // Trim the token.
     final token = deviceToken.trim();
 

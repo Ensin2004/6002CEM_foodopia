@@ -11,7 +11,14 @@ import '../../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../domain/entities/meal_plan_inspiration_input.dart';
 import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../../domain/entities/add_meal_ai_plan.dart';
+import '../../../domain/entities/meal_calorie_guidance.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
+
+part 'smart_inspiration_box.dart';
+part 'inspiration_input_cards.dart';
+part 'ingredient_picker_sheet.dart';
+part 'preference_editor_sheet.dart';
+part 'quick_inspiration_grid.dart';
 
 /// List of quick inspiration items.
 const _quickInspirationItems = [
@@ -126,47 +133,12 @@ class InspirationTabMainView extends StatelessWidget {
             height: 48,
             child: ElevatedButton(
               onPressed: () {
-                // Build the generation request.
-                final weatherSnapshot = weather;
-                final request = AddMealAiGenerationRequest(
-                  planningDate: dashboard.selectedDate,
-                  mealType: 'Breakfast',
-                  weather: AddMealWeather(
-                    temperature: weatherSnapshot?.currentTemp ?? 28,
-                    condition:
-                    weatherSnapshot?.condition ??
-                        viewModel.selectedWeatherCategory.label,
-                    summary:
-                    weatherSnapshot?.summary ??
-                        'Use the selected weather category.',
-                  ),
-                  preferences: AddMealPreferenceSnapshot(
-                    diet: preferences.diet,
-                    allergies: preferences.allergies,
-                    dislikes: preferences.dislikes,
-                  ),
-                  ingredientsToInclude: viewModel.selectedIngredients
-                      .map((item) => item.name)
-                      .toList(),
-                  ingredientsToAvoid: preferences.dislikes,
-                  dishIncludes: const [],
-                  dishAvoids: const [],
-                  cookingTime: 30,
-                  difficultyLevel: 1,
-                  difficulty: 'Any',
-                  servingCount: 1,
-                  servingSize: '1 serving',
-                );
-
-                // Navigate to AI generation page.
-                context.push(
-                  AppRouter.generateAiMeal,
-                  extra: GenerateAiMealArgs(
-                    userId: viewModel.userId,
-                    mealType: request.mealType,
-                    initialRequest: request,
-                    autoGenerate: true,
-                  ),
+                _openAiGeneration(
+                  context,
+                  viewModel: viewModel,
+                  preferences: preferences,
+                  weather: weather,
+                  preset: _QuickInspirationPreset.defaultRequest(),
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -193,17 +165,86 @@ class InspirationTabMainView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          _QuickInspirationGrid(items: _quickInspirationItems),
+          _QuickInspirationGrid(
+            items: _quickInspirationItems,
+            onSelected: (item) {
+              _openAiGeneration(
+                context,
+                viewModel: viewModel,
+                preferences: preferences,
+                weather: weather,
+                preset: _QuickInspirationPreset.fromTitle(item.title),
+              );
+            },
+          ),
         ],
+      ),
+    );
+  }
+
+  /// Opens AI generation with the selected inspiration preset.
+  void _openAiGeneration(
+    BuildContext context, {
+    required MealPlanViewModel viewModel,
+    required MealPlanPreferenceSummary preferences,
+    required MealPlanWeather? weather,
+    required _QuickInspirationPreset preset,
+  }) {
+    /*
+     * Quick inspiration cards use the same request route as the main button.
+     * Weather, preferences, ingredients, calorie budget, and alternatives stay aligned.
+     */
+    final calorieBudget = _calorieBudgetFor(dashboard, viewModel.preferences);
+    final selectedIngredients = viewModel.selectedIngredients
+        .map((item) => item.name)
+        .toList();
+    final weatherSnapshot = weather;
+    final request = AddMealAiGenerationRequest(
+      planningDate: dashboard.selectedDate,
+      mealType: preset.mealType,
+      weather: AddMealWeather(
+        temperature: weatherSnapshot?.currentTemp ?? 28,
+        condition:
+            weatherSnapshot?.condition ??
+            viewModel.selectedWeatherCategory.label,
+        summary:
+            weatherSnapshot?.summary ?? 'Use the selected weather category.',
+      ),
+      preferences: AddMealPreferenceSnapshot(
+        diet: preferences.diet,
+        allergies: preferences.allergies,
+        dislikes: preferences.dislikes,
+      ),
+      ingredientsToInclude: selectedIngredients,
+      ingredientsToAvoid: preferences.dislikes,
+      dishIncludes: preset.dishIncludes,
+      dishAvoids: const [],
+      cookingTime: preset.cookingTime,
+      difficultyLevel: preset.difficultyLevel,
+      difficulty: preset.difficulty,
+      servingCount: 1,
+      servingSize: '1 serving',
+      calorieBudget: calorieBudget,
+    );
+
+    // Route to AI page with auto-generation enabled.
+    context.push(
+      AppRouter.generateAiMeal,
+      extra: GenerateAiMealArgs(
+        userId: viewModel.userId,
+        mealType: request.mealType,
+        initialRequest: request,
+        autoGenerate: true,
+        calorieBudget: calorieBudget,
       ),
     );
   }
 
   /// Shows the preference editor bottom sheet.
   void _showPreferenceEditor(
-      BuildContext context,
-      MealPlanViewModel viewModel,
-      ) {
+    BuildContext context,
+    MealPlanViewModel viewModel,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -217,1310 +258,126 @@ class InspirationTabMainView extends StatelessWidget {
       ),
     );
   }
+
+  /// Builds the calorie budget for the selected dashboard date.
+  MealCalorieBudget _calorieBudgetFor(
+    MealPlanDashboard dashboard,
+    MealPlanPreferenceSummary? preferences,
+  ) {
+    /*
+     * Inspiration generation uses the same selected-date budget as planning.
+     * Dashboard sections already represent the currently selected day.
+     */
+    final plannedCalories = dashboard.sections.fold<int>(0, (
+      sectionTotal,
+      section,
+    ) {
+      return sectionTotal +
+          section.meals.fold<int>(
+            0,
+            (mealTotal, meal) => mealTotal + meal.calories,
+          );
+    });
+
+    return MealCalorieBudget(
+      plannedCalories: plannedCalories,
+      targetCalories: preferences?.targetCalories,
+      calorieUnit: preferences?.calorieUnit ?? 'kcal',
+      targetEnabled: preferences?.calorieTargetEnabled ?? false,
+    );
+  }
 }
 
-/// Smart inspiration box widget.
-class _SmartInspirationBox extends StatelessWidget {
-  /// Weather data.
-  final MealPlanWeather? weather;
+/// Quick inspiration preset values.
+class _QuickInspirationPreset {
+  /// Meal type sent to the AI generation flow.
+  final String mealType;
 
-  /// User preferences.
-  final MealPlanPreferenceSummary? preferences;
+  /// Dish include hints sent to the AI prompt.
+  final List<String> dishIncludes;
 
-  /// Ingredients label.
-  final String ingredientsLabel;
+  /// Cooking time target in minutes.
+  final int cookingTime;
 
-  /// Whether weather is loading.
-  final bool isWeatherLoading;
+  /// Difficulty level value.
+  final int difficultyLevel;
 
-  /// Whether preferences are loading.
-  final bool isPreferencesLoading;
+  /// Difficulty label.
+  final String difficulty;
 
-  /// Creates a new smart inspiration box instance.
-  const _SmartInspirationBox({
-    required this.weather,
-    required this.preferences,
-    required this.ingredientsLabel,
-    required this.isWeatherLoading,
-    required this.isPreferencesLoading,
+  /// Creates a new quick inspiration preset.
+  const _QuickInspirationPreset({
+    required this.mealType,
+    required this.dishIncludes,
+    required this.cookingTime,
+    required this.difficultyLevel,
+    required this.difficulty,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    // Get current weather and preference labels.
-    final currentWeather = weather;
-    final preferenceLabel = isPreferencesLoading
-        ? 'Loading...'
-        : preferences?.shortLabel ?? 'Not set';
-    final weatherLabel = isWeatherLoading
-        ? 'Loading...'
-        : currentWeather == null
-        ? 'Unavailable'
-        : '${currentWeather.condition} - ${currentWeather.currentTemp}C';
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.035),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Top indicator bar.
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: 56,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Header row.
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.secondary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.tips_and_updates_outlined,
-                  color: Color(0xFF8A6400),
-                  size: 23,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Smart AI Inspiration',
-                      style: context.text.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Get recipe ideas based on what you have, today\'s weather and your preferences.',
-                      style: context.text.bodySmall?.copyWith(height: 1.35),
-                    ),
-                  ],
-                ),
-              ),
-              _SmartChip(),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Metrics.
-          Column(
-            children: [
-              _SmartMetric(
-                icon: Icons.shopping_basket_outlined,
-                title: 'Ingredients',
-                value: ingredientsLabel,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              _SmartMetric(
-                icon: Icons.wb_sunny_outlined,
-                title: 'Weather',
-                value: weatherLabel,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              _SmartMetric(
-                icon: Icons.favorite_border,
-                title: 'Preferences',
-                value: preferenceLabel,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Smart chip widget.
-class _SmartChip extends StatelessWidget {
-  /// Creates a new smart chip instance.
-  const _SmartChip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.secondary.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.auto_awesome, color: Color(0xFF8A6400), size: 14),
-          const SizedBox(width: 4),
-          Text(
-            'Smart',
-            style: context.text.bodySmall?.copyWith(
-              color: const Color(0xFF8A6400),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Smart metric widget.
-class _SmartMetric extends StatelessWidget {
-  /// Icon to display.
-  final IconData icon;
-
-  /// Title text.
-  final String title;
-
-  /// Value text.
-  final String value;
-
-  /// Creates a new smart metric instance.
-  const _SmartMetric({
-    required this.icon,
-    required this.title,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 9,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAF8),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 17, color: AppColors.primary),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.text.bodySmall?.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Flexible(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.end,
-              style: context.text.bodySmall,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Weather input card widget.
-class _WeatherInputCard extends StatelessWidget {
-  /// Weather data.
-  final MealPlanWeather? weather;
-
-  /// Whether loading.
-  final bool isLoading;
-
-  /// Error message.
-  final String? errorMessage;
-
-  /// Selected weather category ID.
-  final String selectedCategoryId;
-
-  /// Callback when weather category changes.
-  final ValueChanged<String> onChanged;
-
-  /// Creates a new weather input card instance.
-  const _WeatherInputCard({
-    required this.weather,
-    required this.isLoading,
-    this.errorMessage,
-    required this.selectedCategoryId,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Get current weather.
-    final currentWeather = weather;
-
-    // Build title and message.
-    final title = isLoading
-        ? 'Loading weather'
-        : currentWeather == null
-        ? 'Weather unavailable'
-        : '${currentWeather.condition} - ${currentWeather.currentTemp}C';
-    final message =
-        currentWeather?.summary ??
-            errorMessage ??
-            'Weather data will appear here.';
-
-    return _InputCard(
-      icon: Icons.wb_sunny_outlined,
-      title: 'Weather',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Weather category dropdown.
-          DropdownButtonFormField<String>(
-            initialValue: selectedCategoryId,
-            isExpanded: true,
-            style: context.text.bodyMedium,
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: 10,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'sunny', child: Text('Sunny')),
-              DropdownMenuItem(value: 'rainy', child: Text('Rainy')),
-              DropdownMenuItem(value: 'windy', child: Text('Windy')),
-              DropdownMenuItem(value: 'cloudy', child: Text('Cloudy')),
-              DropdownMenuItem(value: 'hot', child: Text('Hot')),
-              DropdownMenuItem(value: 'cool', child: Text('Cool')),
-            ],
-            onChanged: (value) {
-              if (value != null) onChanged(value);
-            },
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // Weather details.
-          Text(title, style: context.text.bodyMedium),
-          const SizedBox(height: 4),
-          Text(
-            message,
-            style: context.text.bodySmall?.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Ingredient input card widget.
-class _IngredientInputCard extends StatelessWidget {
-  /// The view model.
-  final MealPlanViewModel viewModel;
-
-  /// Creates a new ingredient input card instance.
-  const _IngredientInputCard({required this.viewModel});
-
-  @override
-  Widget build(BuildContext context) {
-    // Get selected ingredients.
-    final selected = viewModel.selectedIngredients;
-
-    return _InputCard(
-      icon: Icons.shopping_cart_outlined,
-      title: 'Add ingredients you have',
-      onTap: () => _showIngredientSheet(context, viewModel),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Selected ingredients chips or empty message.
-          if (selected.isEmpty)
-            Text(
-              'Search foods or add a custom ingredient.',
-              style: context.text.bodyMedium?.copyWith(height: 1.35),
-            )
-          else
-            _IngredientChips(
-              ingredients: selected,
-              isSelected: (_) => true,
-              onTap: viewModel.toggleIngredient,
-            ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // Add ingredient action.
-          _AddIngredientAction(
-            label: selected.isEmpty ? 'Add ingredient' : 'Add another',
-          ),
-        ],
-      ),
+  /// Default request values used by the main generate button.
+  factory _QuickInspirationPreset.defaultRequest() {
+    return const _QuickInspirationPreset(
+      mealType: 'Breakfast',
+      dishIncludes: [],
+      cookingTime: 30,
+      difficultyLevel: 1,
+      difficulty: 'Any',
     );
   }
 
-  /// Shows the ingredient picker bottom sheet.
-  void _showIngredientSheet(BuildContext context, MealPlanViewModel viewModel) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => ChangeNotifierProvider.value(
-        value: viewModel,
-        child: const _IngredientPickerSheet(),
-      ),
-    );
-  }
-}
-
-/// Add ingredient action button.
-class _AddIngredientAction extends StatelessWidget {
-  /// Button label.
-  final String label;
-
-  /// Creates a new add ingredient action instance.
-  const _AddIngredientAction({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.add_circle_outline,
-            size: 18,
-            color: AppColors.primary,
-          ),
-          const SizedBox(width: 7),
-          Text(
-            label,
-            style: context.text.labelLarge?.copyWith(color: AppColors.primary),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Preference input card widget.
-class _PreferenceInputCard extends StatelessWidget {
-  /// User preferences.
-  final MealPlanPreferenceSummary? preferences;
-
-  /// Callback when expanded.
-  final VoidCallback onExpand;
-
-  /// Creates a new preference input card instance.
-  const _PreferenceInputCard({
-    required this.preferences,
-    required this.onExpand,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Get preference values.
-    final mealPreference = preferences?.diet ?? 'Any';
-    final allergy = preferences?.allergies.isNotEmpty == true
-        ? preferences!.allergies.first
-        : 'Any';
-    final dislike = preferences?.dislikes.isNotEmpty == true
-        ? preferences!.dislikes.first
-        : 'Any';
-
-    return _InputCard(
-      icon: Icons.room_service_outlined,
-      title: 'Set your preferences',
-      trailing: Icons.chevron_right,
-      onTap: onExpand,
-      child: Row(
-        children: [
-          Expanded(
-            child: _PreferenceMetric(
-              icon: Icons.restaurant_menu,
-              title: 'Meal Pref.',
-              value: mealPreference,
-            ),
-          ),
-          Expanded(
-            child: _PreferenceMetric(
-              icon: Icons.warning_amber_outlined,
-              title: 'Allergies',
-              value: allergy,
-            ),
-          ),
-          Expanded(
-            child: _PreferenceMetric(
-              icon: Icons.block,
-              title: 'Dislikes',
-              value: dislike,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Preference metric widget.
-class _PreferenceMetric extends StatelessWidget {
-  /// Icon to display.
-  final IconData icon;
-
-  /// Title text.
-  final String title;
-
-  /// Value text.
-  final String value;
-
-  /// Creates a new preference metric instance.
-  const _PreferenceMetric({
-    required this.icon,
-    required this.title,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppColors.textSecondary),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: context.text.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: context.text.bodySmall?.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Input card widget.
-class _InputCard extends StatelessWidget {
-  /// Icon to display.
-  final IconData icon;
-
-  /// Title text.
-  final String title;
-
-  /// Child widget.
-  final Widget child;
-
-  /// Trailing icon.
-  final IconData? trailing;
-
-  /// Callback when tapped.
-  final VoidCallback? onTap;
-
-  /// Creates a new input card instance.
-  const _InputCard({
-    required this.icon,
-    required this.title,
-    required this.child,
-    this.trailing,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.035),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Icon container.
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppColors.secondary.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 21, color: const Color(0xFF8A6400)),
-            ),
-            const SizedBox(width: AppSpacing.md),
-
-            // Content.
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.text.bodyMedium?.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      if (trailing != null)
-                        Icon(
-                          trailing,
-                          size: 20,
-                          color: AppColors.textSecondary,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  child,
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Ingredient chips widget.
-class _IngredientChips extends StatelessWidget {
-  /// List of ingredients.
-  final List<MealPlanInspirationIngredient> ingredients;
-
-  /// Function to check if an ingredient is selected.
-  final bool Function(MealPlanInspirationIngredient ingredient) isSelected;
-
-  /// Callback when an ingredient is tapped.
-  final ValueChanged<MealPlanInspirationIngredient> onTap;
-
-  /// Creates a new ingredient chips instance.
-  const _IngredientChips({
-    required this.ingredients,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final ingredient in ingredients)
-          _MiniChoiceChip(
-            label: ingredient.name,
-            selected: isSelected(ingredient),
-            onTap: () => onTap(ingredient),
-          ),
-      ],
-    );
-  }
-}
-
-/// Mini choice chip widget.
-class _MiniChoiceChip extends StatelessWidget {
-  /// Chip label.
-  final String label;
-
-  /// Whether selected.
-  final bool selected;
-
-  /// Callback when tapped.
-  final VoidCallback onTap;
-
-  /// Creates a new mini choice chip instance.
-  const _MiniChoiceChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : const Color(0xFFF6F7F6),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border,
-          ),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: context.text.bodySmall?.copyWith(
-            color: selected ? Colors.white : AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Ingredient picker bottom sheet.
-class _IngredientPickerSheet extends StatefulWidget {
-  /// Creates a new ingredient picker sheet instance.
-  const _IngredientPickerSheet();
-
-  @override
-  State<_IngredientPickerSheet> createState() => _IngredientPickerSheetState();
-}
-
-/// State for the ingredient picker sheet.
-class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
-  /// Text controller for search input.
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Watch the view model for state changes.
-    final viewModel = context.watch<MealPlanViewModel>();
-
-    // Get bottom inset for keyboard.
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.lg + bottomInset,
-      ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.78,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Drag handle.
-            Center(
-              child: Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Header.
-            Text('Ingredients you have', style: context.text.titleMedium),
-            const SizedBox(height: AppSpacing.md),
-
-            // Search input.
-            TextField(
-              controller: _controller,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Search or add custom ingredient',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                suffixIcon: const Icon(Icons.search),
-              ),
-              onChanged: viewModel.searchIngredients,
-              onSubmitted: viewModel.addCustomIngredient,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // Add custom button.
-            SizedBox(
-              width: double.infinity,
-              height: 42,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  viewModel.addCustomIngredient(_controller.text);
-                  _controller.clear();
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Add typed ingredient'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: BorderSide(
-                    color: AppColors.primary.withValues(alpha: 0.45),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // Selected ingredients.
-            Expanded(
-              child: ListView(
-                children: [
-                  // Selected section.
-                  Text('Selected', style: context.text.titleMedium),
-                  const SizedBox(height: AppSpacing.sm),
-                  if (viewModel.selectedIngredients.isEmpty)
-                    Text(
-                      'No ingredients added yet.',
-                      style: context.text.bodyMedium,
-                    )
-                  else
-                    _IngredientChips(
-                      ingredients: viewModel.selectedIngredients,
-                      isSelected: (_) => true,
-                      onTap: viewModel.toggleIngredient,
-                    ),
-
-                  // Search results section.
-                  Text('Search results', style: context.text.titleMedium),
-                  const SizedBox(height: AppSpacing.sm),
-                  if (viewModel.isIngredientSearching)
-                    const LoadingDialog(
-                      inline: true,
-                      message: 'Searching ingredients...',
-                    )
-                  else if (_controller.text.trim().length < 2)
-                    Text(
-                      'Type at least 2 characters to search.',
-                      style: context.text.bodyMedium,
-                    )
-                  else if (viewModel.ingredientSearchResults.isEmpty)
-                      Center(
-                        child: Image.asset(
-                          'assets/images/empty_page.png',
-                          height: 110,
-                        ),
-                      )
-                    else
-                      _IngredientChips(
-                        ingredients: viewModel.ingredientSearchResults,
-                        isSelected: (item) =>
-                            viewModel.isIngredientSelected(item.name),
-                        onTap: viewModel.toggleIngredient,
-                      ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Preference editor bottom sheet.
-class _PreferenceEditorSheet extends StatefulWidget {
-  /// Creates a new preference editor sheet instance.
-  const _PreferenceEditorSheet();
-
-  @override
-  State<_PreferenceEditorSheet> createState() => _PreferenceEditorSheetState();
-}
-
-/// State for the preference editor sheet.
-class _PreferenceEditorSheetState extends State<_PreferenceEditorSheet> {
-  /// Controller for allergy input.
-  final _allergyController = TextEditingController();
-
-  /// Controller for dislike input.
-  final _dislikeController = TextEditingController();
-
-  @override
-  void dispose() {
-    _allergyController.dispose();
-    _dislikeController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Watch the view model for state changes.
-    final viewModel = context.watch<MealPlanViewModel>();
-
-    // Get bottom inset for keyboard.
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.lg + bottomInset,
-      ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.78,
-        ),
-        child: ListView(
-          children: [
-            // Drag handle.
-            Center(
-              child: Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Header.
-            Text(
-              'Set your preferences',
-              style: context.text.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Meal preference uses saved defaults. Allergies and dislikes can also come from search or custom input.',
-              style: context.text.bodyMedium?.copyWith(height: 1.35),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Meal preference section.
-            _PreferenceOptionSection(
-              title: 'Meal preference',
-              options: viewModel.dietOptions,
-              selectedValues: {viewModel.overrideDiet},
-              onSelected: viewModel.selectOverrideDiet,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Allergies section.
-            _PreferenceSearchOptionSection(
-              title: 'Allergies',
-              options: viewModel.allergyOptions,
-              selectedValues: viewModel.overrideAllergies.toSet(),
-              onSelected: viewModel.toggleOverrideAllergy,
-              controller: _allergyController,
-              onSearch: viewModel.searchPreferenceFoods,
-              onAddCustom: viewModel.addCustomOverrideAllergy,
-              isSearching: viewModel.isPreferenceSearching,
-              searchResults: viewModel.preferenceSearchResults,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Dislikes section.
-            _PreferenceSearchOptionSection(
-              title: 'Dislikes',
-              options: viewModel.dislikeOptions,
-              selectedValues: viewModel.overrideDislikes.toSet(),
-              onSelected: viewModel.toggleOverrideDislike,
-              controller: _dislikeController,
-              onSearch: viewModel.searchPreferenceFoods,
-              onAddCustom: viewModel.addCustomOverrideDislike,
-              isSearching: viewModel.isPreferenceSearching,
-              searchResults: viewModel.preferenceSearchResults,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Done button.
-            SizedBox(
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  'Done',
-                  style: context.text.labelLarge?.copyWith(color: Colors.white),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Preference option section widget.
-class _PreferenceOptionSection extends StatelessWidget {
-  /// Section title.
-  final String title;
-
-  /// List of options.
-  final List<MealPlanPreferenceOption> options;
-
-  /// Set of selected values.
-  final Set<String> selectedValues;
-
-  /// Callback when an option is selected.
-  final ValueChanged<String> onSelected;
-
-  /// Creates a new preference option section instance.
-  const _PreferenceOptionSection({
-    required this.title,
-    required this.options,
-    required this.selectedValues,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: context.text.titleMedium),
-        const SizedBox(height: AppSpacing.sm),
-
-        // Show options or empty message.
-        if (options.isEmpty)
-          Text('No options available yet.', style: context.text.bodyMedium)
-        else
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final option in options)
-                _MiniChoiceChip(
-                  label: option.name,
-                  selected: selectedValues.contains(option.name),
-                  onTap: () => onSelected(option.name),
-                ),
-            ],
-          ),
-      ],
-    );
-  }
-}
-
-/// Preference search option section widget.
-class _PreferenceSearchOptionSection extends StatelessWidget {
-  /// Section title.
-  final String title;
-
-  /// List of options.
-  final List<MealPlanPreferenceOption> options;
-
-  /// Set of selected values.
-  final Set<String> selectedValues;
-
-  /// Callback when an option is selected.
-  final ValueChanged<String> onSelected;
-
-  /// Text controller for search input.
-  final TextEditingController controller;
-
-  /// Callback when search text changes.
-  final ValueChanged<String> onSearch;
-
-  /// Callback when adding a custom value.
-  final ValueChanged<String> onAddCustom;
-
-  /// Whether search is in progress.
-  final bool isSearching;
-
-  /// Search results.
-  final List<MealPlanInspirationIngredient> searchResults;
-
-  /// Creates a new preference search option section instance.
-  const _PreferenceSearchOptionSection({
-    required this.title,
-    required this.options,
-    required this.selectedValues,
-    required this.onSelected,
-    required this.controller,
-    required this.onSearch,
-    required this.onAddCustom,
-    required this.isSearching,
-    required this.searchResults,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Get the search query.
-    final query = controller.text.trim();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Options section.
-        _PreferenceOptionSection(
-          title: title,
-          options: options,
-          selectedValues: selectedValues,
-          onSelected: onSelected,
-        ),
-        const SizedBox(height: AppSpacing.md),
-
-        // Search input.
-        TextField(
-          controller: controller,
-          textInputAction: TextInputAction.search,
-          decoration: InputDecoration(
-            hintText: 'Search or add custom ${title.toLowerCase()}',
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: 12,
-            ),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            suffixIcon: IconButton(
-              onPressed: () {
-                onAddCustom(controller.text);
-                controller.clear();
-              },
-              icon: const Icon(Icons.add),
-            ),
-          ),
-          onChanged: onSearch,
-          onSubmitted: onAddCustom,
-        ),
-
-        // Search results.
-        if (query.length >= 2) ...[
-          const SizedBox(height: AppSpacing.sm),
-          if (isSearching)
-            const LoadingDialog(inline: true, message: 'Searching foods...')
-          else if (searchResults.isEmpty)
-            Text('No results found.', style: context.text.bodyMedium)
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final item in searchResults)
-                  _MiniChoiceChip(
-                    label: item.name,
-                    selected: selectedValues.contains(item.name),
-                    onTap: () => onSelected(item.name),
-                  ),
-              ],
-            ),
-        ],
-      ],
-    );
-  }
-}
-
-/// Quick inspiration grid widget.
-class _QuickInspirationGrid extends StatelessWidget {
-  /// List of quick inspiration items.
-  final List<MealPlanQuickInspiration> items;
-
-  /// Creates a new quick inspiration grid instance.
-  const _QuickInspirationGrid({required this.items});
-
-  @override
-  Widget build(BuildContext context) {
-    // Show empty state if no items.
-    if (items.isEmpty) {
-      return Center(
-        child: Image.asset('assets/images/empty_page.png', height: 140),
-      );
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Calculate responsive item width.
-        const columns = 3;
-        const spacing = AppSpacing.sm;
-        final itemWidth =
-            (constraints.maxWidth - spacing * (columns - 1)) / columns;
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: [
-            for (final item in items)
-              SizedBox(
-                width: itemWidth,
-                height: 160,
-                child: _QuickInspirationCard(item: item),
-              ),
-          ],
+  /// Preset values based on quick inspiration title.
+  factory _QuickInspirationPreset.fromTitle(String title) {
+    switch (title) {
+      case 'What can I cook with what I have?':
+        return const _QuickInspirationPreset(
+          mealType: 'Breakfast',
+          dishIncludes: ['prioritize available ingredients'],
+          cookingTime: 30,
+          difficultyLevel: 1,
+          difficulty: 'Any',
         );
-      },
-    );
-  }
-}
-
-/// Quick inspiration card widget.
-class _QuickInspirationCard extends StatelessWidget {
-  /// The inspiration item.
-  final MealPlanQuickInspiration item;
-
-  /// Creates a new quick inspiration card instance.
-  const _QuickInspirationCard({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {},
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.025),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image.
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(8),
-              ),
-              child: Stack(
-                children: [
-                  Image.asset(
-                    item.imagePath,
-                    height: 64,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                  Positioned(
-                    right: 6,
-                    bottom: 6,
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.arrow_forward,
-                        color: AppColors.textPrimary,
-                        size: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Content.
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.text.bodySmall?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: Text(
-                        item.subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.text.bodySmall?.copyWith(height: 1.15),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+      case 'Surprise me!':
+        return const _QuickInspirationPreset(
+          mealType: 'Breakfast',
+          dishIncludes: ['creative surprise meal'],
+          cookingTime: 30,
+          difficultyLevel: 1,
+          difficulty: 'Any',
+        );
+      case 'Healthy Ideas':
+        return const _QuickInspirationPreset(
+          mealType: 'Breakfast',
+          dishIncludes: ['healthy balanced meal'],
+          cookingTime: 35,
+          difficultyLevel: 1,
+          difficulty: 'Any',
+        );
+      case 'Quick & Easy':
+        return const _QuickInspirationPreset(
+          mealType: 'Breakfast',
+          dishIncludes: ['quick and easy meal'],
+          cookingTime: 15,
+          difficultyLevel: 1,
+          difficulty: 'Easy',
+        );
+      case 'Rainy Day Comfort':
+        return const _QuickInspirationPreset(
+          mealType: 'Breakfast',
+          dishIncludes: ['warm comfort food'],
+          cookingTime: 35,
+          difficultyLevel: 2,
+          difficulty: 'Easy',
+        );
+      case 'High Protein Picks':
+        return const _QuickInspirationPreset(
+          mealType: 'Breakfast',
+          dishIncludes: ['high protein meal'],
+          cookingTime: 30,
+          difficultyLevel: 1,
+          difficulty: 'Any',
+        );
+      default:
+        return _QuickInspirationPreset.defaultRequest();
+    }
   }
 }

@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../core/widgets/media/app_recipe_media.dart';
+import '../../../meal_plan/domain/entities/meal_calorie_guidance.dart';
 import '../../domain/entities/explore_recipe.dart';
 
 // Displays a single recipe card with image, metadata, author info, and action buttons
@@ -20,6 +21,7 @@ class ExploreRecipeCard extends StatelessWidget {
   final VoidCallback? onImageLongPress;
   // Flag to disable all interactions and apply visual dimming
   final bool disabled;
+  final MealCalorieGuidance? calorieGuidance;
 
   const ExploreRecipeCard({
     super.key,
@@ -29,6 +31,7 @@ class ExploreRecipeCard extends StatelessWidget {
     required this.onFavouriteTap,
     this.onImageLongPress,
     this.disabled = false,
+    this.calorieGuidance,
   });
 
   @override
@@ -102,6 +105,14 @@ class ExploreRecipeCard extends StatelessWidget {
                         top: 8,
                         child: _ViewsBadge(count: recipe.totalViews),
                       ),
+                      if (calorieGuidance != null)
+                        Positioned(
+                          left: 8,
+                          bottom: 8,
+                          child: _ExploreCalorieBadge(
+                            guidance: calorieGuidance!,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -242,6 +253,44 @@ class ExploreRecipeCard extends StatelessWidget {
 }
 
 // Displays an "Added" badge indicating the recipe is already in the collection
+/// Calorie guidance badge for explore recipe cards.
+class _ExploreCalorieBadge extends StatelessWidget {
+  /// Guidance details for the recipe.
+  final MealCalorieGuidance guidance;
+
+  /// Creates a new explore calorie badge instance.
+  const _ExploreCalorieBadge({required this.guidance});
+
+  @override
+  Widget build(BuildContext context) {
+    // Badge color follows the shared calorie guidance status.
+    final foreground = switch (guidance.status) {
+      MealCalorieGuidanceStatus.exceeds => const Color(0xFFE2762D),
+      MealCalorieGuidanceStatus.nearTarget => AppColors.secondary,
+      MealCalorieGuidanceStatus.fits => AppColors.primary,
+      MealCalorieGuidanceStatus.unknown => AppColors.textSecondary,
+    };
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 116),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        guidance.badgeLabel,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.text.bodySmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
 class _AlreadyAddedBadge extends StatelessWidget {
   const _AlreadyAddedBadge();
 

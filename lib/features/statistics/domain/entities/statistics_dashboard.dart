@@ -1,3 +1,5 @@
+// Domain entity for the main statistics dashboard.
+// It only stores the data that the page needs to show hero cards and menus.
 class StatisticsDashboard {
   final List<StatisticsHeroSlide> heroSlides;
   final List<StatisticsHeroSlide> communityHeroSlides;
@@ -12,6 +14,7 @@ class StatisticsDashboard {
   });
 }
 
+// One slide/card in the top statistics carousel.
 class StatisticsHeroSlide {
   final String title;
   final StatisticsHeroSlideType type;
@@ -28,6 +31,7 @@ class StatisticsHeroSlide {
 
 enum StatisticsHeroSlideType { overview, appUsage, achievement }
 
+// One small number shown inside a statistics card, like total meals or top food.
 class StatisticsMetric {
   final String label;
   final String value;
@@ -46,6 +50,7 @@ class StatisticsMetric {
 
 enum StatisticsMetricTone { positive, negative, neutral }
 
+// Holds percentage values for progress-style statistics.
 class StatisticsProgress {
   final double positivePercent;
   final double negativePercent;
@@ -56,6 +61,7 @@ class StatisticsProgress {
   });
 }
 
+// One menu option that opens a detailed statistics report page.
 class StatisticsMenuItem {
   final String title;
 

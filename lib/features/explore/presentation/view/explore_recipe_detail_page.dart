@@ -16,6 +16,8 @@ import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/entities/meal_calorie_guidance.dart';
+import '../../../meal_plan/domain/services/meal_calorie_guidance_service.dart';
 import '../../../meal_plan/domain/usecases/get_meal_categories_usecase.dart';
 import '../../../meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
@@ -263,6 +265,15 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       return;
     }
     // Prompts the user for the desired serving count.
+    final guidance = MealCalorieGuidanceService().evaluate(
+      budget: selection.calorieBudget,
+      mealCalories: viewModel.recipe?.nutrition.calories ?? 0,
+    );
+    if (guidance.status == MealCalorieGuidanceStatus.exceeds) {
+      final shouldAdd = await _showOverTargetDialog(guidance);
+      if (shouldAdd != true || !mounted) return;
+    }
+
     final servingCount = await _showMealPlanServingDialog(
       initialServings: viewModel.recipe?.servings ?? 1,
     );
@@ -303,6 +314,30 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       context: context,
       builder: (_) => _MealPlanServingDialog(
         initialServings: initialServings <= 0 ? 1 : initialServings,
+      ),
+    );
+  }
+
+  /// Shows an over-target confirmation dialog.
+  Future<bool?> _showOverTargetDialog(MealCalorieGuidance guidance) {
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Calorie target exceeded'),
+        content: Text(
+          'This meal exceeds your daily target by '
+          '${guidance.exceededByCalories ?? 0} ${guidance.calorieUnit}.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Choose another'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Add anyway'),
+          ),
+        ],
       ),
     );
   }
@@ -360,6 +395,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         isPublished: widget.isPublished,
         onFavouriteTap: () => _toggleFavourite(viewModel),
         isMealPlanSelection: widget.mealPlanSelection != null,
+        mealPlanSelection: widget.mealPlanSelection,
       ),
       // Shows a bottom action button when in meal plan selection mode.
       bottomNavigationBar: widget.mealPlanSelection == null
@@ -792,6 +828,7 @@ class _DetailBody extends StatelessWidget {
   final bool showLibraryActions;
   final bool isPublished;
   final bool isMealPlanSelection;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const _DetailBody({
     required this.viewModel,
@@ -803,6 +840,7 @@ class _DetailBody extends StatelessWidget {
     required this.showLibraryActions,
     required this.isPublished,
     required this.isMealPlanSelection,
+    required this.mealPlanSelection,
   });
 
   @override
@@ -872,6 +910,7 @@ class _DetailBody extends StatelessWidget {
                   onPlanMeal: onPlanMeal,
                   isPublished: isPublished,
                   showPlanMeal: !isMealPlanSelection,
+                  mealPlanSelection: mealPlanSelection,
                 );
               }).toList(),
             ),
@@ -1120,10 +1159,7 @@ class _TopTabs extends StatelessWidget {
   final TabController tabController;
   final ValueChanged<int> onTabSelected;
 
-  const _TopTabs({
-    required this.tabController,
-    required this.onTabSelected,
-  });
+  const _TopTabs({required this.tabController, required this.onTabSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -1191,7 +1227,8 @@ class _AutoSizingDetailTabViewState extends State<_AutoSizingDetailTabView> {
 
   @override
   Widget build(BuildContext context) {
-    final height = _heights[_currentIndex] ??
+    final height =
+        _heights[_currentIndex] ??
         (_heights.isEmpty ? 1.0 : _heights.values.first);
 
     // Animates height changes smoothly when tab content changes.
@@ -1273,6 +1310,7 @@ class _SelectedTabContent extends StatelessWidget {
   final VoidCallback onPlanMeal;
   final bool showPlanMeal;
   final bool isPublished;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const _SelectedTabContent({
     required this.tab,
@@ -1282,6 +1320,7 @@ class _SelectedTabContent extends StatelessWidget {
     required this.onPlanMeal,
     required this.isPublished,
     required this.showPlanMeal,
+    required this.mealPlanSelection,
   });
 
   @override
@@ -1294,6 +1333,12 @@ class _SelectedTabContent extends StatelessWidget {
           onComingSoonTap: onComingSoonTap,
           onPlanMeal: onPlanMeal,
           showPlanMeal: showPlanMeal,
+          calorieGuidance: mealPlanSelection == null
+              ? null
+              : MealCalorieGuidanceService().evaluate(
+                  budget: mealPlanSelection!.calorieBudget,
+                  mealCalories: recipe.nutrition.calories,
+                ),
         );
       case ExploreRecipeDetailTab.nutrition:
         return _NutritionTab(recipe: recipe, onServingTap: onComingSoonTap);

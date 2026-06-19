@@ -42,10 +42,10 @@ class MealPlanPage extends StatelessWidget {
         getPreferencesUseCase: sl<GetMealPlanPreferencesUseCase>(),
         searchIngredientsUseCase: sl<SearchMealPlanIngredientsUseCase>(),
         getInspirationOptionsUseCase:
-        sl<GetMealPlanInspirationOptionsUseCase>(),
+            sl<GetMealPlanInspirationOptionsUseCase>(),
         deleteMealPlanUseCase: sl<DeleteMealPlanUseCase>(),
         updateWeeklyGroceryWeekStartDayUseCase:
-        sl<UpdateWeeklyGroceryWeekStartDayUseCase>(),
+            sl<UpdateWeeklyGroceryWeekStartDayUseCase>(),
       ),
       child: _MealPlanView(initialTabIndex: initialTabIndex),
     );

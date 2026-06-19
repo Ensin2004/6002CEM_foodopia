@@ -25,8 +25,8 @@ class MealPlanInspirationDataSource {
   /// Fetches preference options for a given category from Firestore.
   /// Sorts by [sortOrder] and filters out inactive or empty entries.
   Future<List<MealPlanPreferenceOption>> getPreferenceOptions(
-      String categoryId,
-      ) async {
+    String categoryId,
+  ) async {
     // Retrieve all items under the category document.
     final snapshot = await firestore
         .collection('app_config')
@@ -48,15 +48,15 @@ class MealPlanInspirationDataSource {
     // Map documents to option objects, excluding inactive or nameless entries.
     return docs
         .map((doc) {
-      final data = doc.data();
-      final isActive = data['isActive'] is bool
-          ? data['isActive'] as bool
-          : true;
-      final name = data['name']?.toString().trim() ?? '';
-      if (!isActive || name.isEmpty) return null;
+          final data = doc.data();
+          final isActive = data['isActive'] is bool
+              ? data['isActive'] as bool
+              : true;
+          final name = data['name']?.toString().trim() ?? '';
+          if (!isActive || name.isEmpty) return null;
 
-      return MealPlanPreferenceOption(id: doc.id, name: name);
-    })
+          return MealPlanPreferenceOption(id: doc.id, name: name);
+        })
         .whereType<MealPlanPreferenceOption>()
         .toList();
   }
@@ -67,7 +67,7 @@ class MealPlanInspirationDataSource {
     return options
         .map(
           (item) => MealPlanInspirationIngredient(id: item.id, name: item.name),
-    )
+        )
         .toList();
   }
 
@@ -78,18 +78,18 @@ class MealPlanInspirationDataSource {
   /// Searches for ingredients by query using the USDA food service.
   /// Wraps results in local entities with a custom flag.
   Future<List<MealPlanInspirationIngredient>> searchIngredients(
-      String query,
-      ) async {
+    String query,
+  ) async {
     final foods = await foodSearchService.searchUsdaFoods(query);
     return foods
         .map(
           (food) => MealPlanInspirationIngredient(
-        id: 'usda_${food.fdcId}',
-        name: food.name,
-        usdaId: food.fdcId,
-        isCustom: true,
-      ),
-    )
+            id: 'usda_${food.fdcId}',
+            name: food.name,
+            usdaId: food.fdcId,
+            isCustom: true,
+          ),
+        )
         .toList();
   }
 
@@ -99,8 +99,8 @@ class MealPlanInspirationDataSource {
 
   /// Delegates AI meal idea generation to the OpenAI service.
   Future<List<AddMealAiRecipe>> generateAiMealIdeas(
-      AddMealAiGenerationRequest request,
-      ) {
+    AddMealAiGenerationRequest request,
+  ) {
     return openAiMealIdeaService.generateMealIdeas(request);
   }
 
@@ -249,18 +249,19 @@ class MealPlanInspirationDataSource {
           'ingredients': recipe.ingredients
               .map(
                 (item) => {
-              'name': item.name,
-              'amount': item.amount,
-              'unit': item.unit,
-              'nutrients': {
-                'calories': item.calories,
-                'carbohydrates': item.carbohydrates,
-                'fat': item.fat,
-                'protein': item.protein,
-                'source': 'ai',
-              },
-            },
-          )
+                  'name': item.name,
+                  'amount': item.amount,
+                  'unit': item.unit,
+                  'nutrients': {
+                    'calories': item.calories,
+                    'carbohydrates': item.carbohydrates,
+                    'fat': item.fat,
+                    'protein': item.protein,
+                    'source': 'ai',
+                  },
+                  'alternatives': item.alternatives,
+                },
+              )
               .toList(),
           'instructions': recipe.instructions,
           'imagePrompt': recipe.imagePrompt,

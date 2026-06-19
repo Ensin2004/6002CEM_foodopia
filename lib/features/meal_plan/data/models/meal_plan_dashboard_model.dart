@@ -36,6 +36,9 @@ class MealPlanPreferenceSummaryModel extends MealPlanPreferenceSummary {
     required super.diet,
     required super.allergies,
     required super.dislikes,
+    super.targetCalories,
+    super.calorieUnit,
+    super.calorieTargetEnabled,
   });
 
   /// Creates an empty preference summary with default values.
@@ -44,6 +47,9 @@ class MealPlanPreferenceSummaryModel extends MealPlanPreferenceSummary {
       diet: 'Not set',
       allergies: [],
       dislikes: [],
+      targetCalories: null,
+      calorieUnit: 'kcal',
+      calorieTargetEnabled: false,
     );
   }
 
@@ -53,7 +59,19 @@ class MealPlanPreferenceSummaryModel extends MealPlanPreferenceSummary {
       diet: json['diet']?.toString() ?? 'Not set',
       allergies: _stringList(json['allergies']),
       dislikes: _stringList(json['dislikes']),
+      targetCalories: _intValue(json['targetCalories']),
+      calorieUnit: json['calorieUnit']?.toString() ?? 'kcal',
+      calorieTargetEnabled: json['calorieTargetEnabled'] == true,
     );
+  }
+
+  /// Converts a dynamic value to an integer.
+  static int? _intValue(dynamic value) {
+    // Numeric Firestore values can arrive as int or double.
+    if (value is num) return value.round();
+
+    // String values are accepted for older saved preference documents.
+    return int.tryParse(value?.toString() ?? '');
   }
 
   /// Converts a dynamic value to a list of non-empty strings.

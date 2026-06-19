@@ -51,7 +51,7 @@ class MealPlanCalendar extends StatelessWidget {
 
           // Calendar format and gestures.
           calendarFormat: CalendarFormat.month,
-          availableGestures: AvailableGestures.horizontalSwipe,
+          availableGestures: AvailableGestures.none,
           startingDayOfWeek: StartingDayOfWeek.monday,
 
           // Row heights.
@@ -65,7 +65,7 @@ class MealPlanCalendar extends StatelessWidget {
           eventLoader: (day) => days
               .where(
                 (mealDay) => mealDay.hasMeals && isSameDay(mealDay.date, day),
-          )
+              )
               .toList(),
 
           // Header style.
@@ -82,10 +82,10 @@ class MealPlanCalendar extends StatelessWidget {
             titleTextFormatter: (date, locale) =>
                 DateFormat('MMMM\nyyyy', locale).format(date),
             titleTextStyle:
-            textTheme.bodySmall?.copyWith(
-              color: AppColors.textPrimary,
-              height: 1.1,
-            ) ??
+                textTheme.bodySmall?.copyWith(
+                  color: AppColors.textPrimary,
+                  height: 1.1,
+                ) ??
                 const TextStyle(
                   fontSize: 12,
                   color: AppColors.textPrimary,
@@ -111,36 +111,36 @@ class MealPlanCalendar extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             defaultTextStyle:
-            context.text.bodySmall?.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w500,
-            ) ??
+                context.text.bodySmall?.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ) ??
                 const TextStyle(fontSize: 12, color: AppColors.textPrimary),
             weekendTextStyle:
-            context.text.bodySmall?.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w500,
-            ) ??
+                context.text.bodySmall?.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ) ??
                 const TextStyle(fontSize: 12, color: AppColors.textPrimary),
             outsideTextStyle:
-            context.text.bodySmall?.copyWith(
-              color: const Color(0xFFB8C0CC),
-              fontWeight: FontWeight.w500,
-            ) ??
+                context.text.bodySmall?.copyWith(
+                  color: const Color(0xFFB8C0CC),
+                  fontWeight: FontWeight.w500,
+                ) ??
                 const TextStyle(fontSize: 12, color: Color(0xFFB8C0CC)),
             todayTextStyle:
-            context.text.bodySmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ) ??
+                context.text.bodySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ) ??
                 const TextStyle(fontSize: 12, color: Colors.white),
             selectedTextStyle:
-            context.text.bodySmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ) ??
+                context.text.bodySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ) ??
                 const TextStyle(fontSize: 12, color: Colors.white),
-            cellMargin: const EdgeInsets.all(3),
+            cellMargin: EdgeInsets.zero,
             markersMaxCount: 0,
           ),
 
