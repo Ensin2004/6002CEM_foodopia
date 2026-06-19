@@ -126,8 +126,10 @@ class StatisticsLineChart extends StatelessWidget {
   }
 
   List<int> _gridValues(int highestValue) {
-    final step = (highestValue / 4).round();
-    return List.generate(5, (index) => highestValue - (step * index));
+    return List.generate(5, (index) {
+      if (index == 4) return 0;
+      return (highestValue * (4 - index) / 4).round();
+    });
   }
 }
 
