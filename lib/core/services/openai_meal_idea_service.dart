@@ -6,21 +6,34 @@ import 'package:http/http.dart' as http;
 import '../config/env_config.dart';
 import '../../features/meal_plan/domain/entities/add_meal_ai_plan.dart';
 
+/// Service for generating AI meal ideas using OpenAI's Responses API.
+/// Creates recipes with ingredients, instructions, and generated images.
 class OpenAiMealIdeaService {
+  /// HTTP client for making API requests.
   final http.Client client;
 
+  /// Creates a new OpenAI meal idea service instance.
   const OpenAiMealIdeaService({required this.client});
 
+  // =========================================================================
+  // GENERATE MEAL IDEAS
+  // =========================================================================
+
+  /// Generates AI meal ideas based on the given request.
   Future<List<AddMealAiRecipe>> generateMealIdeas(
     AddMealAiGenerationRequest request,
   ) async {
+    // Get the API key from environment configuration.
     final apiKey = EnvConfig.openAiApiKey.trim();
+
+    // Validate the API key.
     if (apiKey.isEmpty) {
       throw StateError(
         'OPENAI_API_KEY is missing. Add it to your dart defines before generating AI meals.',
       );
     }
 
+    // Make the API request.
     late final http.Response response;
     try {
       response = await client
@@ -34,11 +47,13 @@ class OpenAiMealIdeaService {
               'model': EnvConfig.openAiRecipeModel,
               'max_output_tokens': 2500,
               'input': [
+                // System instruction.
                 {
                   'role': 'system',
                   'content':
                       'You are Foodopia recipe AI. Return only valid JSON that matches the requested schema. Create practical home-cooking recipes with safe, concise instructions.',
                 },
+                // User prompt with request data.
                 {'role': 'user', 'content': _buildPrompt(request)},
               ],
               'text': {
@@ -59,27 +74,45 @@ class OpenAiMealIdeaService {
       );
     }
 
+    // Handle error response.
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('OpenAI recipe request failed: ${response.body}');
     }
 
+    // Parse the response.
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+
+    // Extract the JSON content.
     final content = _extractOutputText(decoded);
     final payload = jsonDecode(content) as Map<String, dynamic>;
+
+    // Extract ideas from the payload.
     final ideas = payload['ideas'] as List<dynamic>? ?? const [];
+
+    // Convert each idea to AddMealAiRecipe.
     final recipes = ideas
         .whereType<Map<String, dynamic>>()
         .map(_recipeFromJson)
         .toList();
 
+    // Generate images for each recipe.
     final withImages = <AddMealAiRecipe>[];
     for (final recipe in recipes) {
       withImages.add(await _withGeneratedImage(recipe));
     }
+
     return withImages;
   }
 
+  // =========================================================================
+  // PROMPT BUILDING
+  // =========================================================================
+
+  /// Builds the prompt for the AI.
   String _buildPrompt(AddMealAiGenerationRequest request) {
+    // Build optional calorie target guidance.
+    final calorieGuidance = _calorieGuidancePrompt(request);
+
     return '''
 Generate exactly 3 AI recipe ideas for this meal plan.
 
@@ -95,33 +128,94 @@ Dish types to avoid: ${request.dishAvoids.join(', ')}
 Cooking time: ${request.cookingTime}
 Difficulty: ${request.difficulty}
 Serving size: ${request.servingSize}
+$calorieGuidance
 
-Each idea needs: name, recipe category, short description, prep time label, difficulty label, serving label, AI-estimated nutrition, 3 recommendation reasons, 4-8 ingredients with amount/unit, 5-8 cooking instructions, and a food photography image prompt.
+Each idea needs: name, recipe category, short description, prep time label, difficulty label, serving label, AI-estimated nutrition, 3 recommendation reasons, 4-8 ingredients with amount/unit, 1-3 practical alternatives for each ingredient, 5-8 cooking instructions, and a food photography image prompt.
 
 Nutrition rules:
 - Use AI estimates only. Do not use or reference USDA data.
 - Recipe nutrition is for the full suggested serving label.
 - Ingredient nutrition is for the provided ingredient amount and unit.
 - Use kcal for calories and grams for carbohydrates, fat, and protein.
+- Ingredient alternatives must avoid listed allergies and disliked/avoid ingredients.
+- Ingredient alternatives should be practical swaps with similar cooking use.
 ''';
   }
 
+  /// Builds calorie guidance text for AI generation.
+  String _calorieGuidancePrompt(AddMealAiGenerationRequest request) {
+    /*
+     * Daily target guidance nudges generation without blocking creativity.
+     * Empty target data keeps the prompt focused on normal meal factors.
+     */
+    final budget = request.calorieBudget;
+    if (!budget.hasTarget || budget.targetCalories == null) {
+      return 'Daily calorie target: Not set.';
+    }
+
+    final planned = _displayCalories(
+      budget.plannedCalories,
+      budget.calorieUnit,
+    );
+    final target = budget.targetCalories!;
+    final remaining = target - planned;
+    final unit = budget.calorieUnit;
+
+    if (remaining <= 0) {
+      return '''
+Daily target: $target $unit
+Already planned today: $planned $unit
+Remaining budget: 0 $unit
+Meal should be light because the day is already at or above target.
+''';
+    }
+
+    return '''
+Daily target: $target $unit
+Already planned today: $planned $unit
+Remaining budget: $remaining $unit
+Meal should ideally fit within $remaining $unit or less.
+''';
+  }
+
+  /// Converts stored kcal into the selected display unit.
+  int _displayCalories(int kcal, String unit) {
+    if (unit.toLowerCase() == 'kj') return (kcal * 4.184).round();
+    return kcal;
+  }
+
+  // =========================================================================
+  // RESPONSE PARSING
+  // =========================================================================
+
+  /// Reads text content from the Responses API output format.
   String _extractOutputText(Map<String, dynamic> decoded) {
+    // Try to get output from the 'output' field.
     final output = decoded['output'] as List<dynamic>? ?? const [];
+
     for (final item in output.whereType<Map<String, dynamic>>()) {
       final content = item['content'] as List<dynamic>? ?? const [];
+
       for (final part in content.whereType<Map<String, dynamic>>()) {
         final text = part['text'];
         if (text is String && text.trim().isNotEmpty) return text;
       }
     }
+
+    // Try to get output from the 'output_text' field.
     final direct = decoded['output_text'];
     if (direct is String && direct.trim().isNotEmpty) return direct;
+
+    // Throw error if no output found.
     throw StateError('OpenAI response did not include recipe JSON.');
   }
 
+  /// Converts JSON to AddMealAiRecipe.
   AddMealAiRecipe _recipeFromJson(Map<String, dynamic> json) {
+    // Get the title.
     final title = json['title']?.toString().trim() ?? 'AI Meal Idea';
+
+    // Parse ingredients.
     final ingredients = (json['ingredients'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(
@@ -133,6 +227,7 @@ Nutrition rules:
             carbohydrates: _numberValue(item['carbohydrates']),
             fat: _numberValue(item['fat']),
             protein: _numberValue(item['protein']),
+            alternatives: _stringList(item['alternatives']),
           ),
         )
         .where((item) => item.name.isNotEmpty)
@@ -164,14 +259,34 @@ Nutrition rules:
     );
   }
 
+  /// Converts a value to a double.
   double _numberValue(dynamic value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
+  /// Converts a dynamic value to a clean string list.
+  List<String> _stringList(dynamic value) {
+    // Alternatives are expected as an array from the structured schema.
+    if (value is! List) return const [];
+
+    return value
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
+  // =========================================================================
+  // IMAGE GENERATION
+  // =========================================================================
+
+  /// Generates an image for a recipe using DALL-E.
   Future<AddMealAiRecipe> _withGeneratedImage(AddMealAiRecipe recipe) async {
+    // Get the API key.
     final apiKey = EnvConfig.openAiApiKey.trim();
+
     try {
+      // Make the image generation request.
       final response = await client
           .post(
             Uri.parse('https://api.openai.com/v1/images/generations'),
@@ -190,16 +305,22 @@ Nutrition rules:
           )
           .timeout(const Duration(seconds: 45));
 
+      // Return the original recipe if image generation fails.
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return recipe;
       }
+
+      // Parse the response.
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final data = decoded['data'] as List<dynamic>? ?? const [];
       final maps = data.whereType<Map<String, dynamic>>();
       final first = maps.isEmpty ? null : maps.first;
       final b64 = first?['b64_json']?.toString();
+
+      // Return the original recipe if no image data.
       if (b64 == null || b64.isEmpty) return recipe;
 
+      // Return the recipe with the generated image.
       return AddMealAiRecipe(
         id: recipe.id,
         title: recipe.title,
@@ -220,11 +341,17 @@ Nutrition rules:
         categoryName: recipe.categoryName,
       );
     } catch (_) {
+      // Return the original recipe on error.
       return recipe;
     }
   }
 }
 
+// =========================================================================
+// JSON SCHEMA
+// =========================================================================
+
+/// JSON schema for the AI, to ensure the results are provided in correct format.
 const Map<String, dynamic> _recipeSchema = {
   'type': 'object',
   'additionalProperties': false,
@@ -280,6 +407,7 @@ const Map<String, dynamic> _recipeSchema = {
                 'carbohydrates',
                 'fat',
                 'protein',
+                'alternatives',
               ],
               'properties': {
                 'name': {'type': 'string'},
@@ -289,6 +417,12 @@ const Map<String, dynamic> _recipeSchema = {
                 'carbohydrates': {'type': 'number'},
                 'fat': {'type': 'number'},
                 'protein': {'type': 'number'},
+                'alternatives': {
+                  'type': 'array',
+                  'minItems': 1,
+                  'maxItems': 3,
+                  'items': {'type': 'string'},
+                },
               },
             },
           },

@@ -4,8 +4,12 @@ import '../../domain/entities/settings_item.dart';
 import '../viewmodel/settings_viewmodel.dart';
 
 /// Defines behavior for settings item widget.
+/// Renders different types of settings items (toggle, info, navigation).
 class SettingsItemWidget extends StatelessWidget {
+  /// The settings item to display.
   final SettingsItem item;
+
+  /// The view model for handling interactions.
   final SettingsViewModel viewModel;
 
   /// Creates a settings item widget instance.
@@ -27,9 +31,9 @@ class SettingsItemWidget extends StatelessWidget {
         title: Text(item.title, style: context.text.bodyLarge),
         subtitle: item.subtitle != null
             ? Text(
-                item.subtitle!,
-                style: context.text.bodySmall?.copyWith(height: 1.2),
-              )
+          item.subtitle!,
+          style: context.text.bodySmall?.copyWith(height: 1.2),
+        )
             : null,
         value: viewModel.isNotificationEnabled(item.id),
         onChanged: (value) => viewModel.toggleNotification(item.id, value),
@@ -41,7 +45,7 @@ class SettingsItemWidget extends StatelessWidget {
       );
     }
 
-    // 🔹 Normal item - calls ViewModel to emit event
+    // 🔹 Info item - displays informational text.
     if (item.type == SettingsItemType.info) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
@@ -55,6 +59,7 @@ class SettingsItemWidget extends StatelessWidget {
       );
     }
 
+    // 🔹 Normal item - calls ViewModel to emit event.
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       visualDensity: const VisualDensity(vertical: -2),
@@ -73,9 +78,9 @@ class SettingsItemWidget extends StatelessWidget {
       ),
       subtitle: item.subtitle != null
           ? Text(
-              item.subtitle!,
-              style: context.text.bodySmall?.copyWith(height: 1.2),
-            )
+        item.subtitle!,
+        style: context.text.bodySmall?.copyWith(height: 1.2),
+      )
           : null,
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: () => viewModel.onSettingsItemTapped(item.id), // Emits typed event

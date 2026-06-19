@@ -3,14 +3,28 @@ import 'package:flutter/material.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/theme_extension.dart';
 
+/// Information box widget for displaying status messages.
+/// Used for weather, tips, and informational content.
 class AppInfoBox extends StatelessWidget {
+  /// Icon to display.
   final IconData icon;
+
+  /// Title text.
   final String title;
+
+  /// Message text.
   final String message;
+
+  /// Background color of the box.
   final Color backgroundColor;
+
+  /// Background color of the icon container.
   final Color iconBackgroundColor;
+
+  /// Color of the icon and border.
   final Color iconColor;
 
+  /// Creates a new app info box instance.
   const AppInfoBox({
     super.key,
     required this.icon,
@@ -32,6 +46,7 @@ class AppInfoBox extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Icon container.
           Container(
             width: 44,
             height: 44,
@@ -42,6 +57,8 @@ class AppInfoBox extends StatelessWidget {
             child: Icon(icon, color: iconColor, size: 24),
           ),
           const SizedBox(width: AppSpacing.md),
+
+          // Text content.
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

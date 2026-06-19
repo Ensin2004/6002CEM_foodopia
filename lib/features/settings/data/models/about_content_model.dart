@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/about_content.dart';
 
 /// Defines behavior for about content model.
+/// Maps Firestore documents to AboutContent domain entities.
 class AboutContentModel extends AboutContent {
   /// Creates a about content model instance.
   const AboutContentModel({
@@ -14,8 +15,9 @@ class AboutContentModel extends AboutContent {
     super.updatedAt,
   });
 
-  /// Creates a about content model instance.
+  /// Creates a about content model instance from a Firestore document.
   factory AboutContentModel.fromFirestore(DocumentSnapshot doc) {
+    // Extract data from the document.
     final data = doc.data() as Map<String, dynamic>;
 
     /// Handles the about content model operation.
@@ -45,6 +47,9 @@ class AboutContentModel extends AboutContent {
 
   /// Converts this instance into to json data.
   Map<String, dynamic> toJson() {
-    return {'content': content, 'updatedAt': FieldValue.serverTimestamp()};
+    return {
+      'content': content,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
   }
 }

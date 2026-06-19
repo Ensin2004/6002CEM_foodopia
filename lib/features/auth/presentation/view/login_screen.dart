@@ -10,6 +10,7 @@ import '../viewmodel/login_viewmodel.dart';
 import '../widgets/curved_header.dart';
 
 /// Runs the login screen operation.
+/// Screen for user login with email and password.
 class LoginScreen extends StatelessWidget {
   /// Runs the login screen operation.
   const LoginScreen({super.key});
@@ -37,7 +38,10 @@ class _LoginView extends StatefulWidget {
 
 /// Defines behavior for login view state.
 class _LoginViewState extends State<_LoginView> {
+  /// Controller for the email input field.
   final _emailController = TextEditingController();
+
+  /// Controller for the password input field.
   final _passwordController = TextEditingController();
 
   /// Releases resources before widget removal.
@@ -51,9 +55,10 @@ class _LoginViewState extends State<_LoginView> {
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<LoginViewModel>();
 
-    // Handle navigation events
+    // Handle navigation events.
     final navigationEvent = viewModel.navigationEvent;
     if (navigationEvent != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -67,6 +72,7 @@ class _LoginViewState extends State<_LoginView> {
         child: SingleChildScrollView(
           child: Column(
             children: [
+              // Curved header with navigation buttons.
               /// Creates a curved header instance.
               CurvedHeader(
                 onLeadingPressed: () => _handleBackPress(context),
@@ -75,6 +81,7 @@ class _LoginViewState extends State<_LoginView> {
                 trailingText: "Sign Up",
               ),
 
+              // Login form.
               /// Creates a padding instance.
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -84,11 +91,17 @@ class _LoginViewState extends State<_LoginView> {
 
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
+
+                    // Email field.
                     _buildEmailField(viewModel),
 
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
+
+                    // Password field.
                     _buildPasswordField(viewModel),
+
+                    // Error message.
                     if (viewModel.errorMessage != null) ...[
                       /// Creates a sized box instance.
                       const SizedBox(height: 8),
@@ -98,6 +111,7 @@ class _LoginViewState extends State<_LoginView> {
                     /// Creates a sized box instance.
                     const SizedBox(height: 24),
 
+                    // Login button.
                     /// Creates a primary button instance.
                     PrimaryButton(
                       text: 'Login',
@@ -109,6 +123,8 @@ class _LoginViewState extends State<_LoginView> {
 
                     /// Creates a sized box instance.
                     const SizedBox(height: 16),
+
+                    // Forgot password link.
                     _buildForgotPasswordLink(context),
                   ],
                 ),
@@ -120,12 +136,16 @@ class _LoginViewState extends State<_LoginView> {
     );
   }
 
-  // Type-safe navigation handler
+  // =========================================================================
+  // NAVIGATION
+  // =========================================================================
+
+  /// Type-safe navigation handler.
   void _handleNavigation(
-    BuildContext context,
-    AuthNavigationEvent event,
-    LoginViewModel viewModel,
-  ) {
+      BuildContext context,
+      AuthNavigationEvent event,
+      LoginViewModel viewModel,
+      ) {
     switch (event) {
       case AuthNavigationEvent.goToHome:
         final user = viewModel.authenticatedUser;
@@ -143,6 +163,10 @@ class _LoginViewState extends State<_LoginView> {
         break;
     }
   }
+
+  // =========================================================================
+  // WIDGET BUILDERS
+  // =========================================================================
 
   /// Handles the build title operation.
   Widget _buildTitle(BuildContext context) {
@@ -232,13 +256,20 @@ class _LoginViewState extends State<_LoginView> {
     );
   }
 
+  // =========================================================================
+  // ACTION HANDLERS
+  // =========================================================================
+
   /// Handles the handle login operation.
   Future<void> _handleLogin(
-    BuildContext context,
-    LoginViewModel viewModel,
-  ) async {
+      BuildContext context,
+      LoginViewModel viewModel,
+      ) async {
+    // Get email and password.
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+
+    // Perform login.
     await viewModel.login(email: email, password: password);
   }
 

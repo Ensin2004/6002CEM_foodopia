@@ -1,17 +1,32 @@
 import 'package:flutter/foundation.dart';
+
 import '../../../../app/navigation/navigation_events.dart';
 import '../../../../core/services/shared_prefs_manager.dart';
 import '../../domain/entities/onboarding_item.dart';
 
 /// Defines behavior for onboarding view model.
 class OnboardingViewModel extends ChangeNotifier {
-  int _currentIndex = 0;
-  bool _isLoading = false;
-  String? _errorMessage;  // Add error message state
+  // =========================================================================
+  // STATE
+  // =========================================================================
 
-  // Navigation event
+  /// Current page index in the onboarding carousel.
+  int _currentIndex = 0;
+
+  /// Whether an async operation is in progress.
+  bool _isLoading = false;
+
+  /// Error message from async operations.
+  String? _errorMessage;
+
+  /// Navigation event to be emitted.
   OnboardingNavigationEvent? _navigationEvent;
 
+  // =========================================================================
+  // ONBOARDING ITEMS
+  // =========================================================================
+
+  /// List of onboarding items displayed in the carousel.
   final List<OnboardingItem> onboardingItems = [
     /// Creates a onboarding item instance.
     OnboardingItem(
@@ -45,19 +60,35 @@ class OnboardingViewModel extends ChangeNotifier {
     ),
   ];
 
-  // Getters
-  int get currentIndex => _currentIndex;
-  /// Handles the is loading operation.
-  bool get isLoading => _isLoading;
-  /// Handles the error message operation.
-  String? get errorMessage => _errorMessage;  // Error message getter
+  // =========================================================================
+  // GETTERS
+  // =========================================================================
 
-  // One-time navigation event
+  /// Current page index.
+  int get currentIndex => _currentIndex;
+
+  /// Whether an async operation is in progress.
+  bool get isLoading => _isLoading;
+
+  /// Error message from async operations.
+  String? get errorMessage => _errorMessage;
+
+  /// One-time navigation event. Returns and clears the event.
   OnboardingNavigationEvent? get navigationEvent {
     final event = _navigationEvent;
     _navigationEvent = null;
     return event;
   }
+
+  /// Index of the next page (wraps around to 0 at the end).
+  int get nextPageIndex {
+    final isLast = _currentIndex == onboardingItems.length - 1;
+    return isLast ? 0 : _currentIndex + 1;
+  }
+
+  // =========================================================================
+  // PAGE CHANGE
+  // =========================================================================
 
   /// Handles the on page changed operation.
   void onPageChanged(int index) {
@@ -65,14 +96,13 @@ class OnboardingViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Handles the next page index operation.
-  int get nextPageIndex {
-    final isLast = _currentIndex == onboardingItems.length - 1;
-    return isLast ? 0 : _currentIndex + 1;
-  }
+  // =========================================================================
+  // ONBOARDING COMPLETION
+  // =========================================================================
 
-  // Complete onboarding with error handling
+  /// Completes the onboarding process and navigates to login.
   Future<void> completeOnboarding() async {
+    // Set loading state.
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -81,13 +111,13 @@ class OnboardingViewModel extends ChangeNotifier {
       // Runs the guarded operation that can throw.
       await SharedPrefsManager.setOnboardingCompleted(true);
 
+      // Reset loading state.
       _isLoading = false;
       notifyListeners();
 
-      // Success - emit navigation event
+      // Success - emit navigation event.
       _navigationEvent = OnboardingNavigationEvent.goToLogin;
       notifyListeners();
-
     } catch (e) {
       // Converts the thrown error into the local error path.
       _isLoading = false;
@@ -96,30 +126,44 @@ class OnboardingViewModel extends ChangeNotifier {
     }
   }
 
-  // Go to signup
+  /// Navigates to signup after completing onboarding.
   Future<void> goToSignup() async {
+    // Set loading state.
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      // Mark onboarding as completed.
       await SharedPrefsManager.setOnboardingCompleted(true);
 
+      // Reset loading state.
       _isLoading = false;
+
+      // Emit navigation event.
       _navigationEvent = OnboardingNavigationEvent.goToSignup;
       notifyListeners();
     } catch (e) {
+      // Handle error.
       _isLoading = false;
       _errorMessage = 'Failed to complete onboarding. Please try again.';
       notifyListeners();
     }
   }
 
-  // Clear error message
+  // =========================================================================
+  // ERROR HANDLING
+  // =========================================================================
+
+  /// Clear error message.
   void clearError() {
     _errorMessage = null;
     notifyListeners();
   }
+
+  // =========================================================================
+  // RESET
+  // =========================================================================
 
   /// Handles the reset onboarding operation.
   Future<void> resetOnboarding() async {

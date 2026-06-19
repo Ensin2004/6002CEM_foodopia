@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Shows a confirmation dialog before leaving an add-recipe page with unsaved changes.
 Future<bool> confirmDiscardRecipeChanges(BuildContext context) async {
   final confirmed = await showDialog<bool>(
     context: context,

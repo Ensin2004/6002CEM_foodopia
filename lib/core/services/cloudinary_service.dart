@@ -13,57 +13,85 @@ import '../config/env_config.dart';
 // - Rating/Feedback images
 // ============================================================================
 
+/// Service for uploading images to Cloudinary.
+/// Handles different resource types with appropriate upload presets.
 class CloudinaryService {
-  // Private constructor to prevent instantiation
+  // Private constructor to prevent instantiation.
   CloudinaryService._();
 
-  /// Handles the cloud name operation.
+  // =========================================================================
+  // CONFIGURATION GETTERS
+  // =========================================================================
+
+  /// Cloudinary cloud name.
   static String get _cloudName => EnvConfig.cloudinaryCloudName;
-  /// Handles the user profile upload preset operation.
+
+  /// Upload preset for user profile images.
   static String get _userProfileUploadPreset => EnvConfig.userProfileUploadPreset;
-  /// Handles the settings upload preset operation.
+
+  /// Upload preset for settings images.
   static String get _settingsUploadPreset => EnvConfig.settingsUploadPreset;
-  /// Handles the recipe upload preset operation.
+
+  /// Upload preset for recipe images.
   static String get _recipeUploadPreset => EnvConfig.recipeUploadPreset;
-  /// Handles the ingredient upload preset operation.
+
+  /// Upload preset for ingredient images.
   static String get _ingredientUploadPreset => EnvConfig.ingredientUploadPreset;
-  /// Handles the instruction upload preset operation.
+
+  /// Upload preset for instruction images.
   static String get _instructionUploadPreset => EnvConfig.instructionUploadPreset;
 
-  /// Base URL for Cloudinary uploads
+  // =========================================================================
+  // PRIVATE HELPERS
+  // =========================================================================
+
+  /// Builds the Cloudinary upload URL for a resource type.
   static String _getUploadUrl({String resourceType = 'image'}) {
     return 'https://api.cloudinary.com/v1_1/$_cloudName/$resourceType/upload';
   }
 
+  /// Validates that the Cloudinary configuration is present.
   static void _validateConfig(String uploadPreset) {
     if (_cloudName.isEmpty || uploadPreset.isEmpty) {
       throw Exception(
         'Cloudinary configuration is missing. Run Flutter with '
-        '--dart-define-from-file=.env',
+            '--dart-define-from-file=.env',
       );
     }
   }
 
-  /// Generic upload method
-  static Future<String> _uploadFile(File imageFile, String uploadPreset, {String resourceType = 'image'}) async {
+  // =========================================================================
+  // GENERIC UPLOAD
+  // =========================================================================
+
+  /// Generic upload method for files.
+  static Future<String> _uploadFile(
+      File imageFile,
+      String uploadPreset, {
+        String resourceType = 'image',
+      }) async {
     try {
+      // Validate configuration.
       _validateConfig(uploadPreset);
 
       // Runs the guarded operation that can throw.
       final uri = Uri.parse(_getUploadUrl(resourceType: resourceType));
+
+      // Create the multipart request.
       final request = http.MultipartRequest('POST', uri);
 
-      // Add upload preset
+      // Add upload preset.
       request.fields['upload_preset'] = uploadPreset;
 
-      // Add the image file
+      // Add the image file.
       request.files.add(
         await http.MultipartFile.fromPath('file', imageFile.path),
       );
 
-      // Send request
+      // Send request.
       final response = await request.send();
 
+      // Handle response.
       if (response.statusCode == 200) {
         final responseData = await response.stream.bytesToString();
         final json = jsonDecode(responseData);
@@ -79,37 +107,45 @@ class CloudinaryService {
     }
   }
 
-  /// Upload user profile image
+  // =========================================================================
+  // PUBLIC UPLOAD METHODS
+  // =========================================================================
+
+  /// Upload user profile image.
   static Future<String> uploadUserProfileImage(File imageFile) async {
     /// Handles the upload image operation.
     return await _uploadFile(imageFile, _userProfileUploadPreset);
   }
 
-  /// Upload settings-related images (help center, FAQ, ratings)
+  /// Upload settings-related images (help center, FAQ, ratings).
   static Future<String> uploadSettingsImage(File imageFile) async {
     /// Handles the upload image operation.
     return await _uploadFile(imageFile, _settingsUploadPreset);
   }
 
-  /// Upload recipe image and video
+  /// Upload recipe image and video.
   static Future<String> uploadRecipeImage(File imageFile) async {
     /// Handles the upload image operation.
     return await _uploadFile(imageFile, _recipeUploadPreset, resourceType: 'auto');
   }
 
-  /// Upload ingredient image
+  /// Upload ingredient image.
   static Future<String> uploadIngredientImage(File imageFile) async {
     /// Handles the upload image operation.
     return await _uploadFile(imageFile, _ingredientUploadPreset);
   }
 
-  /// Upload instruction image
+  /// Upload instruction image.
   static Future<String> uploadInstructionImage(File imageFile) async {
     /// Handles the upload image operation.
     return await _uploadFile(imageFile, _instructionUploadPreset);
   }
 
-  // For backward compatibility with existing code
+  // =========================================================================
+  // BACKWARD COMPATIBILITY
+  // =========================================================================
+
+  /// For backward compatibility with existing code.
   static Future<String> uploadSupportImage(File imageFile) async {
     /// Runs the upload settings image operation.
     return await uploadSettingsImage(imageFile);

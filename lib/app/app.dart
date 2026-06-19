@@ -7,9 +7,15 @@ import '../features/auth/domain/entities/user_entity.dart';
 import 'routers/app_router.dart';
 
 /// Defines behavior for app.
+/// The root widget of the application.
 class App extends StatelessWidget {
+  /// Whether the user has seen the onboarding flow.
   final bool seenOnboarding;
+
+  /// Whether the user is logged in.
   final bool isLoggedIn;
+
+  /// The authenticated user entity.
   final UserEntity? userEntity;
 
   /// Creates a app instance.

@@ -8,6 +8,10 @@ import '../../domain/usecases/get_explore_recipes_usecase.dart';
 import '../../domain/usecases/toggle_creator_follow_usecase.dart';
 import '../../domain/usecases/watch_explore_recipes_usecase.dart';
 import '../../../library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
+import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/usecases/get_meal_categories_usecase.dart';
+import '../../../recipe/domain/usecases/get_add_recipe_ingredient_categories_usecase.dart';
+import '../../../recipe/domain/usecases/get_add_recipe_setup_usecase.dart';
 
 enum ExploreSortOption {
   alphabetAZ,
@@ -26,20 +30,35 @@ enum ExploreCommentsFilter { all, under100, over100, between500And1000 }
 
 enum ExploreViewsFilter { all, under100, over100, between500And1000 }
 
+enum ExplorePreparationTimeFilter { all, under15, under30, under60, over60 }
+
 class ExploreViewModel extends ChangeNotifier {
   final GetExploreRecipesUseCase _getRecipesUseCase;
   final WatchExploreRecipesUseCase _watchRecipesUseCase;
+  final GetAddRecipeSetupUseCase _getRecipeSetupUseCase;
+  final GetAddRecipeIngredientCategoriesUseCase _getIngredientCategoriesUseCase;
+  final GetMealCategoriesUseCase _getMealCategoriesUseCase;
   final ToggleCreatorFollowUseCase _toggleCreatorFollowUseCase;
   final ToggleLibraryRecipeFavouriteUseCase _toggleFavouriteUseCase;
 
   List<ExploreRecipe> _recipes = const [];
+  List<ExploreRecipeCategoryOption> _recipeCategoryOptions = const [];
+  List<ExploreRecipeCategoryOption> _ingredientCategoryOptions = const [];
+  List<AddMealCategoryOption> _mealCategoryOptions = const [];
   StreamSubscription<List<ExploreRecipe>>? _recipesSubscription;
   ExploreRecipeTab _selectedTab = ExploreRecipeTab.all;
   Set<ExploreSortOption> _sortOptions = const {ExploreSortOption.alphabetAZ};
-  ExploreRatingFilter _ratingFilter = ExploreRatingFilter.all;
-  ExploreCommentsFilter _commentsFilter = ExploreCommentsFilter.all;
-  ExploreViewsFilter _viewsFilter = ExploreViewsFilter.all;
-  ExploreRecipeCategoryOption? _categoryFilter;
+  Set<ExploreRecipeCategoryOption> _recipeCategoryFilters = const {};
+  Set<ExploreRecipeCategoryOption> _ingredientCategoryFilters = const {};
+  Set<String> _mealCategoryFilters = const {};
+  Set<ExplorePreparationTimeFilter> _preparationTimeFilters = const {
+    ExplorePreparationTimeFilter.all,
+  };
+  Set<ExploreRatingFilter> _ratingFilters = const {ExploreRatingFilter.all};
+  Set<ExploreCommentsFilter> _commentsFilters = const {
+    ExploreCommentsFilter.all,
+  };
+  Set<ExploreViewsFilter> _viewsFilters = const {ExploreViewsFilter.all};
   String _query = '';
   bool _isLoading = true;
   bool _isDisposed = false;
@@ -48,23 +67,39 @@ class ExploreViewModel extends ChangeNotifier {
   ExploreViewModel({
     required GetExploreRecipesUseCase getRecipesUseCase,
     required WatchExploreRecipesUseCase watchRecipesUseCase,
+    required GetAddRecipeSetupUseCase getRecipeSetupUseCase,
+    required GetAddRecipeIngredientCategoriesUseCase
+        getIngredientCategoriesUseCase,
+    required GetMealCategoriesUseCase getMealCategoriesUseCase,
     required ToggleCreatorFollowUseCase toggleCreatorFollowUseCase,
     required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
   }) : _getRecipesUseCase = getRecipesUseCase,
        _watchRecipesUseCase = watchRecipesUseCase,
+       _getRecipeSetupUseCase = getRecipeSetupUseCase,
+       _getIngredientCategoriesUseCase = getIngredientCategoriesUseCase,
+       _getMealCategoriesUseCase = getMealCategoriesUseCase,
        _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
        _toggleFavouriteUseCase = toggleFavouriteUseCase {
     Future.microtask(loadRecipes);
+    Future.microtask(loadRecipeCategories);
+    Future.microtask(loadIngredientCategories);
+    Future.microtask(loadMealCategories);
     _watchRecipes();
   }
 
   List<ExploreRecipe> get recipes => _recipes;
   ExploreRecipeTab get selectedTab => _selectedTab;
   Set<ExploreSortOption> get sortOptions => _sortOptions;
-  ExploreRatingFilter get ratingFilter => _ratingFilter;
-  ExploreCommentsFilter get commentsFilter => _commentsFilter;
-  ExploreViewsFilter get viewsFilter => _viewsFilter;
-  ExploreRecipeCategoryOption? get categoryFilter => _categoryFilter;
+  Set<ExploreRecipeCategoryOption> get recipeCategoryFilters =>
+      _recipeCategoryFilters;
+  Set<ExploreRecipeCategoryOption> get ingredientCategoryFilters =>
+      _ingredientCategoryFilters;
+  Set<String> get mealCategoryFilters => _mealCategoryFilters;
+  Set<ExplorePreparationTimeFilter> get preparationTimeFilters =>
+      _preparationTimeFilters;
+  Set<ExploreRatingFilter> get ratingFilters => _ratingFilters;
+  Set<ExploreCommentsFilter> get commentsFilters => _commentsFilters;
+  Set<ExploreViewsFilter> get viewsFilters => _viewsFilters;
   String get query => _query;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -81,30 +116,57 @@ class ExploreViewModel extends ChangeNotifier {
     final normalizedQuery = _query.trim().toLowerCase();
     if (normalizedQuery.isNotEmpty) {
       results = results.where(
-        (recipe) =>
-            recipe.title.toLowerCase().contains(normalizedQuery) ||
-            recipe.otherNames.any(
-              (name) => name.toLowerCase().contains(normalizedQuery),
-            ) ||
-            recipe.author.toLowerCase().contains(normalizedQuery) ||
-            recipe.category.toLowerCase().contains(normalizedQuery) ||
-            recipe.description.toLowerCase().contains(normalizedQuery),
+        (recipe) => _searchScore(recipe, normalizedQuery) > 0.08,
       );
     }
 
     results = results.where(_matchesFilters);
-    final category = _categoryFilter;
-    if (category != null) {
-      results = results.where((recipe) {
-        final ids = category.isCustom
-            ? recipe.customCategoryIds
-            : recipe.categoryIds;
-        return ids.contains(category.id);
-      });
-    }
 
-    final sorted = results.toList()..sort(_compareRecipesForTab(tab));
+    final sorted = results.toList();
+    if (normalizedQuery.isNotEmpty) {
+      sorted.sort((first, second) {
+        final relevance = _searchScore(
+          second,
+          normalizedQuery,
+        ).compareTo(_searchScore(first, normalizedQuery));
+        return relevance != 0
+            ? relevance
+            : _compareRecipesForTab(tab)(first, second);
+      });
+    } else {
+      sorted.sort(_compareRecipesForTab(tab));
+    }
     return sorted;
+  }
+
+  double _searchScore(ExploreRecipe recipe, String query) {
+    final searchable = [
+      recipe.title,
+      ...recipe.otherNames,
+      recipe.author,
+      recipe.category,
+      recipe.description,
+      ...recipe.ingredientNames,
+      ...recipe.ingredients.map((ingredient) => ingredient.name),
+    ].join(' ').toLowerCase();
+    final queryTerms = query
+        .split(RegExp(r'\s+'))
+        .where((term) => term.length > 1)
+        .toSet();
+    final textScore = searchable.contains(query)
+        ? 1.0
+        : (queryTerms.isEmpty
+              ? 0.0
+              : queryTerms.where(searchable.contains).length /
+                    queryTerms.length);
+    final normalizedTags = recipe.tags.map((tag) => tag.toLowerCase()).toList();
+    final tagMatches = queryTerms.where(
+      (term) => normalizedTags.any(
+        (tag) => tag.contains(term) || term.contains(tag),
+      ),
+    ).length;
+    final tagScore = queryTerms.isEmpty ? 0.0 : tagMatches / queryTerms.length;
+    return (tagScore * 0.65) + (textScore * 0.35);
   }
 
   bool get shouldShowFollowingEmpty =>
@@ -133,34 +195,104 @@ class ExploreViewModel extends ChangeNotifier {
   }
 
   List<ExploreRecipeCategoryOption> get categoryOptions {
-    final options = <String, ExploreRecipeCategoryOption>{};
-    for (final recipe in _recipes) {
-      final names = recipe.category
-          .split(',')
-          .map((name) => name.trim())
-          .where((name) => name.isNotEmpty)
-          .toList();
-      for (var index = 0; index < recipe.categoryIds.length; index++) {
-        final id = recipe.categoryIds[index];
-        options['standard:$id'] = ExploreRecipeCategoryOption(
-          id: id,
-          name: index < names.length ? names[index] : id,
-          isCustom: false,
-        );
-      }
-      for (var index = 0; index < recipe.customCategoryIds.length; index++) {
-        final id = recipe.customCategoryIds[index];
-        final nameIndex = recipe.categoryIds.length + index;
-        options['custom:$id'] = ExploreRecipeCategoryOption(
-          id: id,
-          name: nameIndex < names.length ? names[nameIndex] : id,
-          isCustom: true,
-        );
-      }
-    }
-    final sorted = options.values.toList()
+    final sorted = _recipeCategoryOptions.toList()
       ..sort((first, second) => first.name.compareTo(second.name));
     return sorted;
+  }
+
+  List<ExploreCreatorSummary> get suggestedCreators {
+    final creators = <String, _SuggestedCreatorAccumulator>{};
+    for (final recipe in _recipes) {
+      if (recipe.isCreatedByCurrentUser ||
+          recipe.isFollowingAuthor ||
+          recipe.creatorUid.trim().isEmpty) {
+        continue;
+      }
+      final existing = creators[recipe.creatorUid];
+      creators[recipe.creatorUid] = _SuggestedCreatorAccumulator(
+        summary: ExploreCreatorSummary(
+          uid: recipe.creatorUid,
+          name: recipe.author == 'You' ? 'Creator' : recipe.author,
+          avatarPath: recipe.authorAvatarPath,
+          followerCount: recipe.authorFollowerCount,
+          isFollowing: false,
+        ),
+        score:
+            (existing?.score ?? 0) +
+            recipe.totalViews +
+            recipe.commentCount +
+            recipe.ratingCount,
+      );
+    }
+    final sorted = creators.values.toList()
+      ..sort((first, second) {
+        final scoreComparison = second.score.compareTo(first.score);
+        if (scoreComparison != 0) return scoreComparison;
+        return first.summary.name.compareTo(second.summary.name);
+      });
+    return sorted.map((creator) => creator.summary).toList(growable: false);
+  }
+
+  List<ExploreRecipeCategoryOption> get ingredientCategoryOptions {
+    final sorted = _ingredientCategoryOptions.toList()
+      ..sort((first, second) => first.name.compareTo(second.name));
+    return sorted;
+  }
+
+  List<String> get mealCategoryOptions {
+    final sorted = _mealCategoryOptions
+        .map((option) => option.name.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort((first, second) => first.compareTo(second));
+    return sorted;
+  }
+
+  Future<void> loadMealCategories() async {
+    final result = await _getMealCategoriesUseCase.execute();
+    if (_isDisposed) return;
+
+    result.ifRight((categories) {
+      _mealCategoryOptions = categories;
+      _notifyIfActive();
+    });
+  }
+
+  Future<void> loadRecipeCategories() async {
+    final result = await _getRecipeSetupUseCase.execute();
+    if (_isDisposed) return;
+
+    result.ifRight((setup) {
+      _recipeCategoryOptions = setup.categories
+          .map(
+            (category) => ExploreRecipeCategoryOption(
+              id: category.id,
+              name: category.name,
+              isCustom: false,
+            ),
+          )
+          .toList(growable: false);
+      _notifyIfActive();
+    });
+  }
+
+  Future<void> loadIngredientCategories() async {
+    final result = await _getIngredientCategoriesUseCase.execute();
+    if (_isDisposed) return;
+
+    result.ifRight((categories) {
+      _ingredientCategoryOptions = categories
+          .map(
+            (category) => ExploreRecipeCategoryOption(
+              id: category.id,
+              name: category.name,
+              isCustom: false,
+            ),
+          )
+          .toList(growable: false);
+      _notifyIfActive();
+    });
   }
 
   Future<void> loadRecipes() async {
@@ -220,24 +352,51 @@ class ExploreViewModel extends ChangeNotifier {
   }
 
   void updateFilters({
-    required ExploreRatingFilter rating,
-    required ExploreCommentsFilter comments,
-    required ExploreViewsFilter views,
+    required Set<ExploreRecipeCategoryOption> recipeCategories,
+    required Set<ExploreRecipeCategoryOption> ingredientCategories,
+    required Set<String> mealCategories,
+    required Set<ExplorePreparationTimeFilter> preparationTimes,
+    required Set<ExploreRatingFilter> ratings,
+    required Set<ExploreCommentsFilter> comments,
+    required Set<ExploreViewsFilter> views,
   }) {
-    if (_ratingFilter == rating &&
-        _commentsFilter == comments &&
-        _viewsFilter == views) {
+    final nextRecipeCategories = Set<ExploreRecipeCategoryOption>.unmodifiable(
+      recipeCategories,
+    );
+    final nextIngredientCategories =
+        Set<ExploreRecipeCategoryOption>.unmodifiable(ingredientCategories);
+    final nextMealCategories = Set<String>.unmodifiable(mealCategories);
+    final nextPreparationTimes = _normalizeSet(
+      preparationTimes,
+      ExplorePreparationTimeFilter.all,
+    );
+    final nextRatings = _normalizeSet(ratings, ExploreRatingFilter.all);
+    final nextComments = _normalizeSet(comments, ExploreCommentsFilter.all);
+    final nextViews = _normalizeSet(views, ExploreViewsFilter.all);
+    if (setEquals(_recipeCategoryFilters, nextRecipeCategories) &&
+        setEquals(_ingredientCategoryFilters, nextIngredientCategories) &&
+        setEquals(_mealCategoryFilters, nextMealCategories) &&
+        setEquals(_preparationTimeFilters, nextPreparationTimes) &&
+        setEquals(_ratingFilters, nextRatings) &&
+        setEquals(_commentsFilters, nextComments) &&
+        setEquals(_viewsFilters, nextViews)) {
       return;
     }
-    _ratingFilter = rating;
-    _commentsFilter = comments;
-    _viewsFilter = views;
+    _recipeCategoryFilters = nextRecipeCategories;
+    _ingredientCategoryFilters = nextIngredientCategories;
+    _mealCategoryFilters = nextMealCategories;
+    _preparationTimeFilters = nextPreparationTimes;
+    _ratingFilters = nextRatings;
+    _commentsFilters = nextComments;
+    _viewsFilters = nextViews;
     _notifyIfActive();
   }
 
-  void updateCategoryFilter(ExploreRecipeCategoryOption? option) {
-    _categoryFilter = option;
-    _notifyIfActive();
+  Set<T> _normalizeSet<T>(Set<T> values, T allValue) {
+    if (values.isEmpty || values.contains(allValue)) {
+      return Set<T>.unmodifiable({allValue});
+    }
+    return Set<T>.unmodifiable(values);
   }
 
   Future<bool> toggleCreatorFollow(String creatorUid) async {
@@ -301,7 +460,79 @@ class ExploreViewModel extends ChangeNotifier {
   }
 
   bool _matchesFilters(ExploreRecipe recipe) {
-    final ratingMatches = switch (_ratingFilter) {
+    final recipeCategoryMatches =
+        _recipeCategoryFilters.isEmpty ||
+        _recipeCategoryFilters.any((category) {
+          final ids = category.isCustom
+              ? recipe.customCategoryIds
+              : recipe.categoryIds;
+          return ids.contains(category.id);
+        });
+    final ingredientCategoryMatches =
+        _ingredientCategoryFilters.isEmpty ||
+        _ingredientCategoryFilters.any((category) {
+          return recipe.ingredients.any((ingredient) {
+            return ingredient.ingredientCategoryId == category.id ||
+                ingredient.ingredientCategoryName.toLowerCase() ==
+                    category.name.toLowerCase();
+          });
+        });
+    final mealCategoryMatches =
+        _mealCategoryFilters.isEmpty ||
+        _mealCategoryFilters.any((meal) => _recipeMatchesMeal(recipe, meal));
+    final preparationMatches =
+        _preparationTimeFilters.contains(ExplorePreparationTimeFilter.all) ||
+        _preparationTimeFilters.any(
+          (filter) => _matchesPreparationTime(recipe, filter),
+        );
+    final ratingMatches =
+        _ratingFilters.contains(ExploreRatingFilter.all) ||
+        _ratingFilters.any((filter) => _matchesRating(recipe, filter));
+    final commentsMatches =
+        _commentsFilters.contains(ExploreCommentsFilter.all) ||
+        _commentsFilters.any((filter) => _matchesComments(recipe, filter));
+    final viewsMatches =
+        _viewsFilters.contains(ExploreViewsFilter.all) ||
+        _viewsFilters.any((filter) => _matchesViews(recipe, filter));
+    return recipeCategoryMatches &&
+        ingredientCategoryMatches &&
+        mealCategoryMatches &&
+        preparationMatches &&
+        ratingMatches &&
+        commentsMatches &&
+        viewsMatches;
+  }
+
+  bool _recipeMatchesMeal(ExploreRecipe recipe, String meal) {
+    final normalizedMeal = meal.toLowerCase();
+    final searchable = [
+      recipe.title,
+      recipe.category,
+      ...recipe.tags,
+      ...recipe.otherNames,
+    ].join(' ').toLowerCase();
+    return searchable.contains(normalizedMeal);
+  }
+
+  bool _matchesPreparationTime(
+    ExploreRecipe recipe,
+    ExplorePreparationTimeFilter filter,
+  ) {
+    final minutes = int.tryParse(
+      RegExp(r'\d+').firstMatch(recipe.totalTime)?.group(0) ?? '',
+    );
+    if (minutes == null) return false;
+    return switch (filter) {
+      ExplorePreparationTimeFilter.all => true,
+      ExplorePreparationTimeFilter.under15 => minutes <= 15,
+      ExplorePreparationTimeFilter.under30 => minutes <= 30,
+      ExplorePreparationTimeFilter.under60 => minutes <= 60,
+      ExplorePreparationTimeFilter.over60 => minutes > 60,
+    };
+  }
+
+  bool _matchesRating(ExploreRecipe recipe, ExploreRatingFilter filter) {
+    return switch (filter) {
       ExploreRatingFilter.all => true,
       ExploreRatingFilter.oneToTwo => recipe.rating >= 1 && recipe.rating < 2,
       ExploreRatingFilter.twoToThree => recipe.rating >= 2 && recipe.rating < 3,
@@ -310,21 +541,26 @@ class ExploreViewModel extends ChangeNotifier {
       ExploreRatingFilter.fourToFive =>
         recipe.rating >= 4 && recipe.rating <= 5,
     };
-    final commentsMatches = switch (_commentsFilter) {
+  }
+
+  bool _matchesComments(ExploreRecipe recipe, ExploreCommentsFilter filter) {
+    return switch (filter) {
       ExploreCommentsFilter.all => true,
       ExploreCommentsFilter.under100 => recipe.commentCount < 100,
       ExploreCommentsFilter.over100 => recipe.commentCount > 100,
       ExploreCommentsFilter.between500And1000 =>
         recipe.commentCount >= 500 && recipe.commentCount <= 1000,
     };
-    final viewsMatches = switch (_viewsFilter) {
+  }
+
+  bool _matchesViews(ExploreRecipe recipe, ExploreViewsFilter filter) {
+    return switch (filter) {
       ExploreViewsFilter.all => true,
       ExploreViewsFilter.under100 => recipe.totalViews < 100,
       ExploreViewsFilter.over100 => recipe.totalViews > 100,
       ExploreViewsFilter.between500And1000 =>
         recipe.totalViews >= 500 && recipe.totalViews <= 1000,
     };
-    return ratingMatches && commentsMatches && viewsMatches;
   }
 
   int _compareRecipes(ExploreRecipe first, ExploreRecipe second) {
@@ -424,6 +660,8 @@ class ExploreViewModel extends ChangeNotifier {
       category: recipe.category,
       categoryIds: recipe.categoryIds,
       customCategoryIds: recipe.customCategoryIds,
+      tags: recipe.tags,
+      ingredientNames: recipe.ingredientNames,
       allergenInfo: recipe.allergenInfo,
       totalTime: recipe.totalTime,
       difficulty: recipe.difficulty,
@@ -450,4 +688,14 @@ class ExploreViewModel extends ChangeNotifier {
     _recipesSubscription?.cancel();
     super.dispose();
   }
+}
+
+class _SuggestedCreatorAccumulator {
+  final ExploreCreatorSummary summary;
+  final int score;
+
+  const _SuggestedCreatorAccumulator({
+    required this.summary,
+    required this.score,
+  });
 }

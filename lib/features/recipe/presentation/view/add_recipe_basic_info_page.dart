@@ -457,6 +457,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     );
   }
 
+  // Handle back action
   Future<void> _handleBack(
     BuildContext context,
     AddRecipeBasicInfoViewModel viewModel,
@@ -491,6 +492,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     final remainingSlots = 10 - _images.length - _existingImageUrls.length;
     if (remainingSlots <= 0) return;
 
+    // Select file
     final result = await fp.FilePicker.pickFiles(
       allowMultiple: true,
       type: fp.FileType.custom,
@@ -498,6 +500,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     );
     if (result == null || result.files.isEmpty) return;
 
+    // Store temporarily
     setState(() {
       _images.addAll(
         result.files
@@ -879,6 +882,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   }
 }
 
+/// Shows an AI-generated recipe image preview with a replace action.
 class _AiRecipeImagePreview extends StatelessWidget {
   final String imageBase64;
   final VoidCallback onReplace;

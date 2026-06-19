@@ -8,6 +8,7 @@ import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../view/add_recipe_instructions_page.dart';
 
+/// Editable instruction step field with optional image, description, reorder and remove control.
 class InputStepField extends StatelessWidget {
   final int index;
   final InstructionStepState step;
@@ -113,6 +114,7 @@ class InputStepField extends StatelessWidget {
   }
 }
 
+/// Instruction image picker box with local, remote, and empty states.
 class _InstructionImageBox extends StatelessWidget {
   final File? imageFile;
   final String? imageUrl;

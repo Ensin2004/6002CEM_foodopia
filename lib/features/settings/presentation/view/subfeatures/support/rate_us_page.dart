@@ -13,6 +13,7 @@ import '../../../../domain/usecases/support/rating/save_rating_usecase.dart';
 import '../../../viewmodel/support/rate_us_viewmodel.dart';
 
 /// Defines behavior for rate us page.
+/// Allows users to rate the app and provide feedback.
 class RateUsPage extends StatelessWidget {
   /// Creates a rate us page instance.
   const RateUsPage({super.key});
@@ -20,8 +21,10 @@ class RateUsPage extends StatelessWidget {
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    // Get the current user ID.
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
+    // Provide the view model to the widget tree.
     return ChangeNotifierProvider(
       create: (_) => RateUsViewModel(
         userId: userId,
@@ -34,14 +37,18 @@ class RateUsPage extends StatelessWidget {
   }
 }
 
+/// Internal view for the rate us page.
 class _RateUsPageView extends StatefulWidget {
+  /// Creates a new rate us page view instance.
   const _RateUsPageView();
 
   @override
   State<_RateUsPageView> createState() => _RateUsPageViewState();
 }
 
+/// State for the rate us page view.
 class _RateUsPageViewState extends State<_RateUsPageView> {
+  /// Controller for the comment text field.
   final TextEditingController _commentController = TextEditingController();
 
   @override
@@ -52,7 +59,10 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<RateUsViewModel>();
+
+    // Sync the comment controller with the view model.
     _syncCommentController(viewModel.comment);
 
     return Scaffold(
@@ -64,16 +74,17 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
       body: viewModel.isLoading
           ? const LoadingDialog()
           : SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
-                child: viewModel.hasSubmittedRating && !viewModel.isEditing
-                    ? _buildRatingView(context, viewModel)
-                    : _buildRatingForm(context, viewModel),
-              ),
-            ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
+          child: viewModel.hasSubmittedRating && !viewModel.isEditing
+              ? _buildRatingView(context, viewModel)
+              : _buildRatingForm(context, viewModel),
+        ),
+      ),
     );
   }
 
+  /// Builds the rating view for submitted ratings.
   Widget _buildRatingView(BuildContext context, RateUsViewModel viewModel) {
     final theme = Theme.of(context);
     final feedback = viewModel.comment.trim();
@@ -81,12 +92,15 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Intro card.
         _buildIntroCard(
           context,
           title: 'Thanks for your feedback',
           subtitle: 'Your rating helps us keep Foodopia useful and friendly.',
         ),
         const SizedBox(height: 18),
+
+        // Rating panel.
         _buildPanel(
           context: context,
           child: Column(
@@ -121,6 +135,8 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
           ),
         ),
         const SizedBox(height: 22),
+
+        // Action buttons.
         PrimaryButton(text: 'Modify', onPressed: viewModel.startEditing),
         const SizedBox(height: 12),
         SecondaryButton(
@@ -131,19 +147,23 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
     );
   }
 
+  /// Builds the rating form for new ratings.
   Widget _buildRatingForm(BuildContext context, RateUsViewModel viewModel) {
     final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Intro card.
         _buildIntroCard(
           context,
           title: 'How was your experience?',
           subtitle:
-              'Tap a star to rate us. Feedback is optional, but always welcome.',
+          'Tap a star to rate us. Feedback is optional, but always welcome.',
         ),
         const SizedBox(height: 18),
+
+        // Rating panel.
         _buildPanel(
           context: context,
           child: Column(
@@ -178,10 +198,14 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
           ),
         ),
         const SizedBox(height: 22),
+
+        // Error message.
         if (viewModel.errorMessage != null) ...[
           _buildErrorMessage(context, viewModel.errorMessage!),
           const SizedBox(height: 12),
         ],
+
+        // Submit button.
         PrimaryButton(
           text: viewModel.hasSubmittedRating ? 'Update' : 'Submit',
           isLoading: viewModel.isSaving,
@@ -189,6 +213,8 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
               ? null
               : () async => viewModel.saveRating(),
         ),
+
+        // Cancel button for editing.
         if (viewModel.hasSubmittedRating) ...[
           const SizedBox(height: 12),
           SecondaryButton(text: 'Cancel', onPressed: viewModel.cancelEditing),
@@ -197,11 +223,12 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
     );
   }
 
+  /// Builds the intro card.
   Widget _buildIntroCard(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-  }) {
+      BuildContext context, {
+        required String title,
+        required String subtitle,
+      }) {
     final theme = Theme.of(context);
 
     return Container(
@@ -235,6 +262,7 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
     );
   }
 
+  /// Builds a panel with card styling.
   Widget _buildPanel({required BuildContext context, required Widget child}) {
     final theme = Theme.of(context);
 
@@ -257,18 +285,20 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
     );
   }
 
+  /// Builds the star rating widget.
   Widget _buildStars(
-    BuildContext context, {
-    required int selectedStars,
-    required ValueChanged<int> onSelected,
-    bool isInteractive = true,
-  }) {
+      BuildContext context, {
+        required int selectedStars,
+        required ValueChanged<int> onSelected,
+        bool isInteractive = true,
+      }) {
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: 4,
       children: List.generate(5, (index) {
         final star = index + 1;
         final isFilled = star <= selectedStars;
+
         return IconButton(
           tooltip: '$star star${star == 1 ? '' : 's'}',
           icon: Icon(
@@ -282,6 +312,7 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
     );
   }
 
+  /// Builds an error message widget.
   Widget _buildErrorMessage(BuildContext context, String message) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -302,6 +333,7 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
     );
   }
 
+  /// Shows the delete confirmation dialog.
   void _showDeleteDialog(BuildContext context, RateUsViewModel viewModel) {
     showDialog(
       context: context,
@@ -327,9 +359,12 @@ class _RateUsPageViewState extends State<_RateUsPageView> {
     );
   }
 
+  /// Syncs the comment controller with the view model.
   void _syncCommentController(String comment) {
+    // Skip if already synced.
     if (_commentController.text == comment) return;
 
+    // Update the controller.
     _commentController.value = TextEditingValue(
       text: comment,
       selection: TextSelection.collapsed(offset: comment.length),

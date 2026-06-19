@@ -15,6 +15,8 @@ class ExploreRecipe {
   final String category;
   final List<String> categoryIds;
   final List<String> customCategoryIds;
+  final List<String> tags;
+  final List<String> ingredientNames;
   final String allergenInfo;
   final String totalTime;
   final String difficulty;
@@ -49,6 +51,8 @@ class ExploreRecipe {
     required this.category,
     this.categoryIds = const [],
     this.customCategoryIds = const [],
+    this.tags = const [],
+    this.ingredientNames = const [],
     required this.allergenInfo,
     required this.totalTime,
     required this.difficulty,
@@ -80,6 +84,10 @@ class ExploreIngredient {
   final double carbsGrams;
   final double proteinGrams;
   final double fatGrams;
+  final double fiberGrams;
+  final double waterGrams;
+  final List<ExploreNutrientAmount> vitamins;
+  final List<ExploreNutrientAmount> minerals;
   final String ingredientCategoryId;
   final String ingredientCategoryName;
 
@@ -93,6 +101,10 @@ class ExploreIngredient {
     this.carbsGrams = 0,
     this.proteinGrams = 0,
     this.fatGrams = 0,
+    this.fiberGrams = 0,
+    this.waterGrams = 0,
+    this.vitamins = const [],
+    this.minerals = const [],
     this.ingredientCategoryId = '',
     this.ingredientCategoryName = '',
   });
@@ -119,15 +131,39 @@ class ExploreInstructionStep {
 
 class ExploreNutrition {
   final int calories;
-  final int carbsGrams;
   final int proteinGrams;
+  final int carbsGrams;
   final int fatGrams;
+  final int fiberGrams;
+  final int waterGrams;
+  final List<ExploreNutrientAmount> vitamins;
+  final List<ExploreNutrientAmount> minerals;
 
   const ExploreNutrition({
     required this.calories,
-    required this.carbsGrams,
     required this.proteinGrams,
+    required this.carbsGrams,
     required this.fatGrams,
+    this.fiberGrams = 0,
+    this.waterGrams = 0,
+    this.vitamins = const [],
+    this.minerals = const [],
+  });
+}
+
+class ExploreNutrientAmount {
+  final String key;
+  final String label;
+  final double amount;
+  final String unit;
+  final double dailyValue;
+
+  const ExploreNutrientAmount({
+    required this.key,
+    required this.label,
+    required this.amount,
+    required this.unit,
+    required this.dailyValue,
   });
 }
 
@@ -228,6 +264,16 @@ class ExploreRecipeCategoryOption {
     required this.name,
     required this.isCustom,
   });
+
+  @override
+  bool operator ==(Object other) {
+    return other is ExploreRecipeCategoryOption &&
+        other.id == id &&
+        other.isCustom == isCustom;
+  }
+
+  @override
+  int get hashCode => Object.hash(id, isCustom);
 }
 
 class ExploreRecipeSummary {

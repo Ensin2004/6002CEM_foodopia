@@ -22,6 +22,7 @@ import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
+import '../../domain/usecases/get_add_recipe_ingredient_image_usecase.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
@@ -69,6 +70,7 @@ class AddRecipeIngredientsPage extends StatelessWidget {
             getIngredientUnitsUseCase: sl<GetAddRecipeIngredientUnitsUseCase>(),
             searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
             getFoodNutrientsUseCase: sl<GetAddRecipeFoodNutrientsUseCase>(),
+            getIngredientImageUseCase: sl<GetAddRecipeIngredientImageUseCase>(),
             saveIngredientsUseCase: sl<SaveAddRecipeIngredientsUseCase>(),
             getReviewUseCase: sl<GetAddRecipeReviewUseCase>(),
           ),
@@ -226,7 +228,6 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Progress Bar
               if (!widget.hideProgressBar)
                 const Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -345,6 +346,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     );
   }
 
+  // Handle back action
   Future<void> _handleBack(BuildContext context) async {
     if (!_hasUnsavedChanges()) {
       _leaveEditPage(context);
@@ -409,15 +411,21 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     if (selected == null) return;
     if (!mounted) return;
 
+    // Fetch nutrients from USDA and search image from Unsplash after selection.
     Map<String, dynamic>? nutrients;
-    if (!selected.isCustom && selected.usdaId != null) {
+    String? ingredientImageUrl;
+    if (selected.name.trim().isNotEmpty) {
       final rootNavigator = Navigator.of(context, rootNavigator: true);
       showDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (_) => const LoadingDialog(),
       );
-      nutrients = await viewModel.getFoodNutrients(selected.usdaId!);
+      final imageUrlFuture = viewModel.getIngredientImageUrl(selected.name);
+      if (!selected.isCustom && selected.usdaId != null) {
+        nutrients = await viewModel.getFoodNutrients(selected.usdaId!);
+      }
+      ingredientImageUrl = await imageUrlFuture;
       if (mounted) rootNavigator.pop();
     }
 
@@ -426,6 +434,9 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       row.nameController.text = selected.name;
       row.usdaId = selected.usdaId;
       row.usdaNutrients = selected.isCustom ? null : nutrients;
+      if (ingredientImageUrl != null) {
+        row.existingImageUrl = ingredientImageUrl;
+      }
       row.ingredientCategoryId = null;
       row.markAnalysisCurrent();
     });

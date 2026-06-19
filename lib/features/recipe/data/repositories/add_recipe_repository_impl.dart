@@ -4,6 +4,7 @@ import '../../../../core/error/failures.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_food_search_result.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_ingredient_data.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_review.dart';
@@ -39,6 +40,19 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
   }
 
   @override
+  Future<Either<Failure, List<AddRecipeIngredientCategory>>>
+  getIngredientCategories() async {
+    try {
+      final categories = await remoteDataSource.getActiveIngredientCategories();
+      return Right(categories);
+    } catch (_) {
+      return Left(
+        ServerFailure(message: 'Unable to load ingredient categories.'),
+      );
+    }
+  }
+
+  @override
   Future<Either<Failure, List<AddRecipeFoodSearchResult>>> searchFoods(
     String query,
   ) async {
@@ -59,6 +73,22 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
       return Right(nutrients);
     } catch (_) {
       return Left(ServerFailure(message: 'Unable to load USDA nutrients.'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, String?>> getIngredientImageUrl(
+    String ingredientName,
+  ) async {
+    try {
+      final imageUrl = await remoteDataSource.getIngredientImageUrl(
+        ingredientName,
+      );
+      return Right(imageUrl);
+    } catch (_) {
+      return Left(
+        ServerFailure(message: 'Unable to load Unsplash ingredient image.'),
+      );
     }
   }
 

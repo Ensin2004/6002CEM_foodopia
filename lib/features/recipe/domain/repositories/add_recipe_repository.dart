@@ -4,6 +4,7 @@ import '../../../../core/error/failures.dart';
 import '../entities/add_recipe_basic_info.dart';
 import '../entities/add_recipe_food_search_result.dart';
 import '../entities/add_recipe_ingredient.dart';
+import '../entities/add_recipe_ingredient_data.dart';
 import '../entities/add_recipe_ingredient_unit.dart';
 import '../entities/add_recipe_instruction.dart';
 import '../entities/add_recipe_review.dart';
@@ -15,6 +16,9 @@ abstract class AddRecipeRepository {
 
   Future<Either<Failure, List<AddRecipeIngredientUnit>>> getIngredientUnits();
 
+  Future<Either<Failure, List<AddRecipeIngredientCategory>>>
+  getIngredientCategories();
+
   Future<Either<Failure, List<AddRecipeFoodSearchResult>>> searchFoods(
     String query,
   );
@@ -22,6 +26,8 @@ abstract class AddRecipeRepository {
   Future<Either<Failure, Map<String, dynamic>?>> getFoodLabelNutrients(
     int fdcId,
   );
+
+  Future<Either<Failure, String?>> getIngredientImageUrl(String ingredientName);
 
   Future<Either<Failure, String>> saveBasicInfo(AddRecipeBasicInfo info);
 

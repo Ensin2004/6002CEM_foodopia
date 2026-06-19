@@ -9,9 +9,9 @@ import '../../../../../core/widgets/buttons/primary_button.dart';
 import '../../../domain/entities/add_recipe_food_search_result.dart';
 import '../../../domain/entities/add_recipe_option.dart';
 
-typedef SearchFoodsCallback =
-    Future<List<AddRecipeFoodSearchResult>> Function(String query);
+typedef SearchFoodsCallback = Future<List<AddRecipeFoodSearchResult>> Function(String query);
 
+/// Bottom sheet for selecting and searching categories or allergen info
 class RecipeOptionPickerSheet extends StatefulWidget {
   final String pickType;
   final List<AddRecipeOption> options;

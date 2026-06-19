@@ -9,6 +9,7 @@ import '../../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../../core/widgets/media/app_recipe_media.dart';
 
+/// Bottom sheet for viewing selected recipe media and removing individual items.
 class RecipeImageEditSheet extends StatelessWidget {
   final List<File> images;
   final List<String> existingImageUrls;
@@ -110,6 +111,7 @@ class RecipeImageEditSheet extends StatelessWidget {
   }
 }
 
+/// Displays one selected recipe media item with preview and remove control.
 class _SelectedMediaTile extends StatelessWidget {
   final File? imageFile;
   final String? imageUrl;
@@ -191,6 +193,7 @@ class _SelectedMediaTile extends StatelessWidget {
   }
 }
 
+/// Shows an individual media in a tile
 class _MediaTilePreview extends StatelessWidget {
   final File file;
 

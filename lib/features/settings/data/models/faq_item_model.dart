@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/faq_item.dart';
 
 /// Defines behavior for faq item model.
+/// Maps Firestore documents to FaqItem domain entities.
 class FaqItemModel extends FaqItem {
   /// Creates a faq item model instance.
   const FaqItemModel({
@@ -16,9 +17,11 @@ class FaqItemModel extends FaqItem {
     required super.createdAt,
   });
 
-  /// Creates a faq item model instance.
+  /// Creates a faq item model instance from a Firestore document.
   factory FaqItemModel.fromFirestore(DocumentSnapshot doc) {
+    // Extract data from the document.
     final data = doc.data() as Map<String, dynamic>;
+
     /// Handles the faq item model operation.
     return FaqItemModel(
       id: doc.id,
@@ -30,7 +33,7 @@ class FaqItemModel extends FaqItem {
     );
   }
 
-  /// Converts this instance into to json data.
+  /// Converts this instance into to json data for creating a new document.
   Map<String, dynamic> toJson() {
     return {
       'question': question,
@@ -41,18 +44,21 @@ class FaqItemModel extends FaqItem {
     };
   }
 
-  /// Converts this instance into to update json data.
+  /// Converts this instance into to update json data for updating an existing document.
   Map<String, dynamic> toUpdateJson() {
     final data = <String, dynamic>{
       'question': question,
       'answer': answer,
     };
+
+    // Only include image URLs if they are not null.
     if (questionImageUrl != null) {
       data['questionImageUrl'] = questionImageUrl;
     }
     if (answerImageUrl != null) {
       data['answerImageUrl'] = answerImageUrl;
     }
+
     return data;
   }
 }

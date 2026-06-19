@@ -36,15 +36,35 @@ class AddRecipeReview {
 
 class AddRecipeReviewNutrients {
   final String calories;
-  final String carbohydrates;
   final String proteins;
+  final String carbohydrates;
   final String fats;
+  final String fiber;
+  final String water;
+  final List<AddRecipeReviewMicronutrient> vitamins;
+  final List<AddRecipeReviewMicronutrient> minerals;
 
   const AddRecipeReviewNutrients({
     required this.calories,
-    required this.carbohydrates,
     required this.proteins,
+    required this.carbohydrates,
     required this.fats,
+    this.fiber = '-',
+    this.water = '-',
+    this.vitamins = const [],
+    this.minerals = const [],
+  });
+}
+
+class AddRecipeReviewMicronutrient {
+  final String label;
+  final String amount;
+  final String dailyValue;
+
+  const AddRecipeReviewMicronutrient({
+    required this.label,
+    required this.amount,
+    required this.dailyValue,
   });
 }
 

@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
+import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../domain/entities/user_home_dashboard.dart';
 
+/// List of meal sections for the user home page.
+/// Displays meals grouped by meal type with cards.
 class UserMealPlanList extends StatelessWidget {
+  /// List of meal sections to display.
   final List<UserHomeMealSection> sections;
 
+  /// Creates a new user meal plan list instance.
   const UserMealPlanList({super.key, required this.sections});
 
   @override
   Widget build(BuildContext context) {
+    // Show empty state if no sections.
     if (sections.isEmpty) {
       return Column(
         children: [
@@ -21,6 +27,7 @@ class UserMealPlanList extends StatelessWidget {
       );
     }
 
+    // Build sections with meal type tiles and meal cards.
     return Column(
       children: sections.map((section) {
         return Padding(
@@ -28,17 +35,20 @@ class UserMealPlanList extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Meal type tile.
               _MealTypeTile(section: section),
               const SizedBox(width: AppSpacing.sm),
+
+              // Meal cards column.
               Expanded(
                 child: Column(
                   children: section.meals
                       .map(
                         (meal) => Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                          child: _MealCard(meal: meal),
-                        ),
-                      )
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: _MealCard(meal: meal),
+                    ),
+                  )
                       .toList(),
                 ),
               ),
@@ -50,9 +60,13 @@ class UserMealPlanList extends StatelessWidget {
   }
 }
 
+/// Meal type tile widget.
+/// Displays the meal category icon, name, and count.
 class _MealTypeTile extends StatelessWidget {
+  /// The meal section data.
   final UserHomeMealSection section;
 
+  /// Creates a new meal type tile instance.
   const _MealTypeTile({required this.section});
 
   @override
@@ -69,8 +83,11 @@ class _MealTypeTile extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // Meal type icon.
           Icon(section.icon, color: context.colors.primary, size: 22),
           const SizedBox(height: AppSpacing.xs),
+
+          // Meal type name.
           Text(
             section.mealType,
             maxLines: 1,
@@ -80,6 +97,8 @@ class _MealTypeTile extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
+
+          // Meal count label.
           Text(
             section.countLabel,
             textAlign: TextAlign.center,
@@ -96,9 +115,13 @@ class _MealTypeTile extends StatelessWidget {
   }
 }
 
+/// Meal card widget.
+/// Displays a single meal with image, title, subtitle, and duration.
 class _MealCard extends StatelessWidget {
+  /// The meal data.
   final UserHomeMeal meal;
 
+  /// Creates a new meal card instance.
   const _MealCard({required this.meal});
 
   @override
@@ -113,21 +136,25 @@ class _MealCard extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Meal image.
           ClipRRect(
             borderRadius: BorderRadius.circular(7),
-            child: Image.asset(
-              meal.imagePath,
+            child: AppRemoteOrAssetImage(
+              imagePath: meal.imagePath,
               width: 62,
               height: 62,
               fit: BoxFit.cover,
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
+
+          // Meal details.
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Title.
                 Text(
                   meal.title,
                   maxLines: 2,
@@ -138,6 +165,8 @@ class _MealCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
+
+                // Subtitle badge.
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.xs,
@@ -156,6 +185,8 @@ class _MealCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
+
+                // Duration.
                 Text(
                   meal.duration,
                   style: context.text.labelSmall?.copyWith(
@@ -165,6 +196,8 @@ class _MealCard extends StatelessWidget {
               ],
             ),
           ),
+
+          // Chevron icon.
           const Icon(Icons.chevron_right, color: Colors.grey),
         ],
       ),

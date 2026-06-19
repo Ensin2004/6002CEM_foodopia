@@ -13,6 +13,7 @@ import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
+import '../../../meal_plan/domain/services/meal_calorie_guidance_service.dart';
 import '../../domain/entities/library_profile.dart';
 import '../../domain/entities/library_recipe.dart';
 import '../viewmodel/library_viewmodel.dart';
@@ -384,6 +385,12 @@ class _LibraryRecipeResults extends StatelessWidget {
                     recipe: recipe,
                     isHighlighted: recipe.id == focusedRecipeId,
                     disabled: disabled,
+                    calorieGuidance: mealPlanSelection == null
+                        ? null
+                        : MealCalorieGuidanceService().evaluate(
+                            budget: mealPlanSelection!.calorieBudget,
+                            mealCalories: recipe.nutrition.calories,
+                          ),
                     onComingSoonTap: onComingSoonTap,
                     onFavouriteTap: () => onFavouriteTap(recipe.id),
                     onImageLongPress: () =>

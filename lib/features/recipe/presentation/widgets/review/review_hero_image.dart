@@ -5,6 +5,7 @@ import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../../core/widgets/media/app_recipe_media.dart';
 
+/// Displays recipe review media.
 class ReviewHeroImage extends StatefulWidget {
   final List<String> media;
 
@@ -14,6 +15,7 @@ class ReviewHeroImage extends StatefulWidget {
   State<ReviewHeroImage> createState() => _ReviewHeroImageState();
 }
 
+/// Tracks the currently displayed review media item.
 class _ReviewHeroImageState extends State<ReviewHeroImage> {
   int _currentImageIndex = 0;
 

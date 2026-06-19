@@ -8,6 +8,7 @@ import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/buttons/primary_button.dart';
 import '../../../domain/entities/add_recipe_food_search_result.dart';
 
+/// Bottom sheet for selecting and searching ingredients
 class IngredientNamePickerSheet extends StatefulWidget {
   final String selectedName;
   final int? selectedUsdaId;
@@ -111,6 +112,7 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
     );
   }
 
+  // Results display based on status
   Widget _buildResults(BuildContext context, String query) {
     if (_isSearching) {
       return ListView(

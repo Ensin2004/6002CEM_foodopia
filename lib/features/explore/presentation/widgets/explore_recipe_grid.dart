@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../meal_plan/domain/entities/meal_calorie_guidance.dart';
+import '../../../meal_plan/domain/services/meal_calorie_guidance_service.dart';
 import '../../domain/entities/explore_recipe.dart';
 import 'explore_recipe_card.dart';
 
@@ -10,6 +12,7 @@ class ExploreRecipeGridView extends StatelessWidget {
   final ValueChanged<ExploreRecipe> onImageLongPress;
   final ValueChanged<ExploreRecipe> onRecipeTap;
   final Set<String> disabledRecipeIds;
+  final MealCalorieBudget? calorieBudget;
   final EdgeInsetsGeometry padding;
 
   const ExploreRecipeGridView({
@@ -20,6 +23,7 @@ class ExploreRecipeGridView extends StatelessWidget {
     required this.onImageLongPress,
     required this.onRecipeTap,
     this.disabledRecipeIds = const {},
+    this.calorieBudget,
     this.padding = const EdgeInsets.fromLTRB(12, 10, 12, 24),
   });
 
@@ -41,6 +45,7 @@ class ExploreRecipeGridView extends StatelessWidget {
           onFavouriteTap: onFavouriteTap,
           onImageLongPress: onImageLongPress,
           onRecipeTap: onRecipeTap,
+          calorieBudget: calorieBudget,
         );
       },
     );
@@ -54,6 +59,7 @@ class ExploreRecipeSliverGrid extends StatelessWidget {
   final ValueChanged<ExploreRecipe> onImageLongPress;
   final ValueChanged<ExploreRecipe> onRecipeTap;
   final Set<String> disabledRecipeIds;
+  final MealCalorieBudget? calorieBudget;
   final EdgeInsetsGeometry padding;
 
   const ExploreRecipeSliverGrid({
@@ -64,6 +70,7 @@ class ExploreRecipeSliverGrid extends StatelessWidget {
     required this.onImageLongPress,
     required this.onRecipeTap,
     this.disabledRecipeIds = const {},
+    this.calorieBudget,
     this.padding = const EdgeInsets.fromLTRB(16, 12, 16, 24),
   });
 
@@ -84,6 +91,7 @@ class ExploreRecipeSliverGrid extends StatelessWidget {
             onFavouriteTap: onFavouriteTap,
             onImageLongPress: onImageLongPress,
             onRecipeTap: onRecipeTap,
+            calorieBudget: calorieBudget,
           );
         },
       ),
@@ -98,6 +106,7 @@ class _ExploreRecipeGridItem extends StatelessWidget {
   final ValueChanged<ExploreRecipe> onImageLongPress;
   final ValueChanged<ExploreRecipe> onRecipeTap;
   final bool disabled;
+  final MealCalorieBudget? calorieBudget;
 
   const _ExploreRecipeGridItem({
     required this.recipe,
@@ -106,6 +115,7 @@ class _ExploreRecipeGridItem extends StatelessWidget {
     required this.onImageLongPress,
     required this.onRecipeTap,
     this.disabled = false,
+    this.calorieBudget,
   });
 
   @override
@@ -117,6 +127,12 @@ class _ExploreRecipeGridItem extends StatelessWidget {
       onImageLongPress: () => onImageLongPress(recipe),
       onTap: disabled ? null : () => onRecipeTap(recipe),
       disabled: disabled,
+      calorieGuidance: calorieBudget == null
+          ? null
+          : MealCalorieGuidanceService().evaluate(
+              budget: calorieBudget!,
+              mealCalories: recipe.nutrition.calories,
+            ),
     );
   }
 }

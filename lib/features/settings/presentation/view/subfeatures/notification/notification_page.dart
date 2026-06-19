@@ -1,1 +1,0 @@
-// Builds the notification screen.
