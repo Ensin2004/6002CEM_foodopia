@@ -134,7 +134,7 @@ class _IngredientsList extends StatelessWidget {
         const SizedBox(height: 10),
         // Render ingredient groups with category headers.
         ...ingredientGroups.expand(
-              (group) => <Widget>[
+          (group) => <Widget>[
             Padding(
               padding: const EdgeInsets.only(top: 6, bottom: 8),
               child: Text(
@@ -146,7 +146,7 @@ class _IngredientsList extends StatelessWidget {
               ),
             ),
             ...group.ingredients.map(
-                  (ingredient) => _IngredientListItem(
+              (ingredient) => _IngredientListItem(
                 ingredient: ingredient,
                 unitSystem: unitSystem,
               ),
@@ -241,7 +241,7 @@ class _InstructionsList extends StatelessWidget {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         step.title,
@@ -564,9 +564,9 @@ class _IngredientListItem extends StatelessWidget {
 /// Formats the ingredient amount based on the selected unit system.
 /// Converts between imperial and metric units as needed.
 String _formatIngredientAmount(
-    String amount,
-    ExploreRecipeUnitSystem unitSystem,
-    ) {
+  String amount,
+  ExploreRecipeUnitSystem unitSystem,
+) {
   if (unitSystem == ExploreRecipeUnitSystem.original) return amount;
 
   final trimmed = amount.trim();
@@ -725,8 +725,8 @@ class _CookingFraction {
 
 /// Groups ingredients by their category for organized display.
 List<_IngredientCategoryGroup> _groupIngredientsByCategory(
-    List<ExploreIngredient> ingredients,
-    ) {
+  List<ExploreIngredient> ingredients,
+) {
   final groups = <String, _IngredientCategoryGroup>{};
 
   // Categorize each ingredient.
@@ -741,7 +741,7 @@ List<_IngredientCategoryGroup> _groupIngredientsByCategory(
   // Sort ingredients within each group alphabetically.
   for (final group in groups.values) {
     group.ingredients.sort(
-          (first, second) =>
+      (first, second) =>
           first.name.toLowerCase().compareTo(second.name.toLowerCase()),
     );
   }
