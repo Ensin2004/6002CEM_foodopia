@@ -1,3 +1,5 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +18,8 @@ import '../widgets/statistics_line_chart.dart';
 import '../widgets/statistics_page_helpers.dart';
 
 /// Admin report comparing actual user growth with a simple forecast.
+// Handles AdminUsageForecastPage for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class AdminUsageForecastPage extends StatelessWidget {
   const AdminUsageForecastPage({super.key});
 
@@ -23,6 +27,8 @@ class AdminUsageForecastPage extends StatelessWidget {
   // Build the admin usage forecast page with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     // The ViewModel loads the history used by the forecast widgets.
     return ChangeNotifierProvider(
@@ -37,9 +43,13 @@ class AdminUsageForecastPage extends StatelessWidget {
 // This widget builds the main content for the admin usage forecast view.
 // It reads the ViewModel and chooses loading, error, or data content.
 // Smaller widgets below handle the individual visual sections.
+// Handles _AdminUsageForecastView for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _AdminUsageForecastView extends StatefulWidget {
   const _AdminUsageForecastView();
 
+  // Handles createState for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   State<_AdminUsageForecastView> createState() =>
       _AdminUsageForecastViewState();
@@ -48,11 +58,15 @@ class _AdminUsageForecastView extends StatefulWidget {
 // This state object manages the changing parts of the admin usage forecast view state.
 // It listens to user actions and rebuilds the affected widgets.
 // Controllers and other temporary UI values also belong here.
+// Handles _AdminUsageForecastViewState for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _AdminUsageForecastViewState extends State<_AdminUsageForecastView> {
   @override
   // Build the admin usage forecast view state with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminUsageForecastViewModel>();
 
@@ -66,6 +80,8 @@ class _AdminUsageForecastViewState extends State<_AdminUsageForecastView> {
     );
   }
 
+  // Handles _buildBody for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget _buildBody(AdminUsageForecastViewModel viewModel) {
     // Wait for enough monthly values before calculating a prediction.
     if (viewModel.isLoading && viewModel.statistics == null) {
@@ -112,6 +128,8 @@ class _AdminUsageForecastViewState extends State<_AdminUsageForecastView> {
               dateRange: statistics.dateRange,
               onTap: () => _pickDateRange(viewModel),
             ),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -122,6 +140,8 @@ class _AdminUsageForecastViewState extends State<_AdminUsageForecastView> {
                     value: statistics.totalUsers.toString(),
                   ),
                 ),
+                // Handles SizedBox for this part of the statistics page.
+                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: AdminStatisticSummaryTile(
@@ -134,10 +154,14 @@ class _AdminUsageForecastViewState extends State<_AdminUsageForecastView> {
                 ),
               ],
             ),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             _ForecastResultCard(prediction: prediction, confidence: confidence),
             const SizedBox(height: AppSpacing.lg),
             _ForecastChart(months: statistics.monthlyUsers),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             _ForecastBreakdown(
               months: statistics.monthlyUsers,
@@ -151,6 +175,8 @@ class _AdminUsageForecastViewState extends State<_AdminUsageForecastView> {
 
   // This helper prepares a value used by the visible report.
   // Keeping it outside build makes the widget tree easier to follow.
+  // Handles _confidenceLabel for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   String _confidenceLabel(List<AdminMonthlyUserStatistic> months) {
     final totalUsers = months.fold<int>(0, (sum, item) => sum + item.newUsers);
     if (totalUsers < 7) return 'Low confidence';
@@ -160,6 +186,8 @@ class _AdminUsageForecastViewState extends State<_AdminUsageForecastView> {
 
   // Open the calendar with the current range already selected.
   // Send confirmed dates to the ViewModel so it can reload the report.
+  // Handles _pickDateRange for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Future<void> _pickDateRange(AdminUsageForecastViewModel viewModel) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -185,10 +213,14 @@ class _AdminUsageForecastViewState extends State<_AdminUsageForecastView> {
 // This widget groups related information inside the forecast result card.
 // The card gives the section a clear visual boundary on the page.
 // Its parent supplies all values, labels, and interaction callbacks.
+// Handles _ForecastResultCard for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _ForecastResultCard extends StatelessWidget {
   final AdminMonthlyUserStatistic? prediction;
   final String confidence;
 
+  // Handles _ForecastResultCard for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _ForecastResultCard({
     required this.prediction,
     required this.confidence,
@@ -198,6 +230,8 @@ class _ForecastResultCard extends StatelessWidget {
   // Build the forecast result card with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMMM yyyy');
     final month = prediction == null
@@ -214,6 +248,8 @@ class _ForecastResultCard extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Handles _SoftIcon for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const _SoftIcon(icon: Icons.insights_outlined),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -230,6 +266,8 @@ class _ForecastResultCard extends StatelessWidget {
                     fontSize: 13,
                   ),
                 ),
+                // Handles SizedBox for this part of the statistics page.
+                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(height: 3),
                 Text(
                   '$value new users expected in $month',
@@ -243,6 +281,8 @@ class _ForecastResultCard extends StatelessWidget {
               ],
             ),
           ),
+          // Handles SizedBox for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.sm),
           Text(
             confidence,
@@ -264,6 +304,8 @@ class _ForecastResultCard extends StatelessWidget {
 // This widget turns the report values into the forecast chart.
 // It prepares labels and values before passing them to the shared chart.
 // Keeping chart setup here avoids mixing it with the main page layout.
+// Handles _ForecastChart for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _ForecastChart extends StatelessWidget {
   final List<AdminMonthlyUserStatistic> months;
 
@@ -273,6 +315,8 @@ class _ForecastChart extends StatelessWidget {
   // Build the forecast chart from the values supplied by the parent.
   // Labels, scale, and spacing are prepared before the chart is displayed.
   // This method only handles presentation and does not change report data.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMM yy');
     return _SectionCard(
@@ -310,16 +354,22 @@ class _ForecastChart extends StatelessWidget {
 // This widget displays the detailed forecast breakdown.
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
+// Handles _ForecastBreakdown for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _ForecastBreakdown extends StatelessWidget {
   final List<AdminMonthlyUserStatistic> months;
   final String confidence;
 
+  // Handles _ForecastBreakdown for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _ForecastBreakdown({required this.months, required this.confidence});
 
   @override
   // Build the visible rows for the forecast breakdown.
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMMM yyyy');
 
@@ -346,6 +396,8 @@ class _ForecastBreakdown extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Handles SizedBox for this part of the statistics page.
+                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -381,11 +433,15 @@ class _ForecastBreakdown extends StatelessWidget {
 // This widget represents one section card in the report.
 // It owns the header and the content that belongs to this group.
 // The expanded state decides whether the detailed rows are visible.
+// Handles _SectionCard for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
   final bool alignTitleLeft;
 
+  // Handles _SectionCard for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _SectionCard({
     required this.title,
     required this.child,
@@ -396,6 +452,8 @@ class _SectionCard extends StatelessWidget {
   // Build the visible rows for the section card.
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -420,6 +478,8 @@ class _SectionCard extends StatelessWidget {
               fontSize: 13,
             ),
           ),
+          // Handles SizedBox for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.lg),
           child,
         ],
@@ -431,6 +491,8 @@ class _SectionCard extends StatelessWidget {
 // This helper draws the reusable soft icon.
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
+// Handles _SoftIcon for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
@@ -440,6 +502,8 @@ class _SoftIcon extends StatelessWidget {
   // Build the visual layout for this soft icon.
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       width: 36,

@@ -1,3 +1,5 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -6,11 +8,15 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 
 /// One coloured section displayed by [StatisticsPieChart].
+// Handles StatisticsPieChartSegment for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class StatisticsPieChartSegment {
   final String label;
   final int value;
   final Color color;
 
+  // Handles StatisticsPieChartSegment for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const StatisticsPieChartSegment({
     required this.label,
     required this.value,
@@ -19,12 +25,16 @@ class StatisticsPieChartSegment {
 }
 
 /// Reusable pie chart with a value shown in the centre.
+// Handles StatisticsPieChart for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class StatisticsPieChart extends StatelessWidget {
   final List<StatisticsPieChartSegment> segments;
   final String centerTitle;
   final String centerValue;
   final double size;
 
+  // Handles StatisticsPieChart for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const StatisticsPieChart({
     super.key,
     required this.segments,
@@ -33,6 +43,8 @@ class StatisticsPieChart extends StatelessWidget {
     this.size = 220,
   });
 
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     // Zero-value sections are hidden because they have no visible angle.
@@ -74,6 +86,8 @@ class StatisticsPieChart extends StatelessWidget {
                       height: 1.05,
                     ),
                   ),
+                  // Handles SizedBox for this part of the statistics page.
+                  // This makes the purpose clearer when reading or updating the code.
                   const SizedBox(height: 3),
                   Text(
                     centerValue,
@@ -94,11 +108,15 @@ class StatisticsPieChart extends StatelessWidget {
   }
 }
 
+// Handles _StatisticsPieChartPainter for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _StatisticsPieChartPainter extends CustomPainter {
   final List<StatisticsPieChartSegment> segments;
 
   _StatisticsPieChartPainter({required this.segments});
 
+  // Handles paint for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   void paint(Canvas canvas, Size size) {
     // ACTUAL PIE CHART CANVAS DRAWING STARTS HERE.
@@ -139,6 +157,8 @@ class _StatisticsPieChartPainter extends CustomPainter {
     }
   }
 
+  // Handles _drawLeader for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   void _drawLeader({
     required Canvas canvas,
     required Size size,
@@ -189,6 +209,8 @@ class _StatisticsPieChartPainter extends CustomPainter {
     textPainter.paint(canvas, labelOffset);
   }
 
+  // Handles shouldRepaint for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   bool shouldRepaint(covariant _StatisticsPieChartPainter oldDelegate) {
     return oldDelegate.segments != segments;

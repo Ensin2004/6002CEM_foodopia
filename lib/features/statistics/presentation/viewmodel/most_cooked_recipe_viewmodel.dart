@@ -1,9 +1,13 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/most_cooked_recipe_statistics.dart';
 import '../../domain/usecases/get_most_cooked_recipe_statistics_usecase.dart';
 
+// Handles MostCookedRecipeViewModel for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class MostCookedRecipeViewModel extends ChangeNotifier {
   final GetMostCookedRecipeStatisticsUseCase _getStatisticsUseCase;
 
@@ -22,14 +26,20 @@ class MostCookedRecipeViewModel extends ChangeNotifier {
     Future.microtask(loadStatistics);
   }
 
+  // Handles statistics for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   MostCookedRecipeStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   DateTime? get startDate => _startDate;
+  // Handles endDate for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   DateTime? get endDate => _endDate;
   int? get expandedIndex => _expandedIndex;
   MostCookedRecipeSortOrder get sortOrder => _sortOrder;
 
+  // Handles sortedRecipes for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   List<MostCookedRecipeItem> get sortedRecipes {
     final items = [...?_statistics?.recipes];
     items.sort((left, right) {
@@ -39,10 +49,14 @@ class MostCookedRecipeViewModel extends ChangeNotifier {
     return items;
   }
 
+  // Handles chartRecipes for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   List<MostCookedRecipeItem> get chartRecipes => sortedRecipes.take(5).toList();
 
   List<MostCookedRecipeDay> get breakdownDays => _statistics?.days ?? const [];
 
+  // Handles loadStatistics for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Future<void> loadStatistics() async {
     _isLoading = _statistics == null;
     _errorMessage = null;
@@ -65,6 +79,8 @@ class MostCookedRecipeViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  // Handles setSortOrder for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   void setSortOrder(MostCookedRecipeSortOrder order) {
     if (_sortOrder == order) return;
     _sortOrder = order;
@@ -72,11 +88,15 @@ class MostCookedRecipeViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  // Handles toggleRecipe for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   void toggleRecipe(int index) {
     _expandedIndex = _expandedIndex == index ? null : index;
     _notifyIfActive();
   }
 
+  // Handles selectDateRange for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Future<void> selectDateRange({
     required DateTime startDate,
     required DateTime endDate,
@@ -86,10 +106,14 @@ class MostCookedRecipeViewModel extends ChangeNotifier {
     await loadStatistics();
   }
 
+  // Handles _notifyIfActive for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
+  // Handles dispose for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   void dispose() {
     _isDisposed = true;

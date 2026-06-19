@@ -1,9 +1,13 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/posted_meal_time_statistics.dart';
 import '../../domain/usecases/get_posted_meal_time_statistics_usecase.dart';
 
+// Handles PostedMealTimeViewModel for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class PostedMealTimeViewModel extends ChangeNotifier {
   final GetPostedMealTimeStatisticsUseCase _getStatisticsUseCase;
 
@@ -21,10 +25,14 @@ class PostedMealTimeViewModel extends ChangeNotifier {
     Future.microtask(loadStatistics);
   }
 
+  // Handles statistics for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   PostedMealTimeStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   DateTime? get startDate => _startDate;
+  // Handles endDate for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   DateTime? get endDate => _endDate;
   int? get expandedIndex => _expandedIndex;
 
@@ -50,11 +58,15 @@ class PostedMealTimeViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  // Handles toggleSegment for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   void toggleSegment(int index) {
     _expandedIndex = _expandedIndex == index ? null : index;
     _notifyIfActive();
   }
 
+  // Handles selectDateRange for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Future<void> selectDateRange({
     required DateTime startDate,
     required DateTime endDate,
@@ -64,10 +76,14 @@ class PostedMealTimeViewModel extends ChangeNotifier {
     await loadStatistics();
   }
 
+  // Handles _notifyIfActive for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
+  // Handles dispose for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   void dispose() {
     _isDisposed = true;

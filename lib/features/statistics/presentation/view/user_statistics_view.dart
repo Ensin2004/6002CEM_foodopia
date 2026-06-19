@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -12,11 +14,15 @@ import '../../domain/entities/statistics_dashboard.dart';
 import '../viewmodel/statistics_viewmodel.dart';
 
 /// User dashboard with summary cards and links to detailed statistics.
+// Handles UserStatisticsView for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class UserStatisticsView extends StatefulWidget {
   final bool isAdmin;
 
   const UserStatisticsView({super.key, required this.isAdmin});
 
+  // Handles createState for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   State<UserStatisticsView> createState() => _UserStatisticsViewState();
 }
@@ -24,15 +30,21 @@ class UserStatisticsView extends StatefulWidget {
 // This state object manages the changing parts of the user statistics view state.
 // It listens to user actions and rebuilds the affected widgets.
 // Controllers and other temporary UI values also belong here.
+// Handles _UserStatisticsViewState for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _UserStatisticsViewState extends State<UserStatisticsView> {
   late final PageController _heroController;
 
+  // Handles initState for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   void initState() {
     super.initState();
     _heroController = PageController();
   }
 
+  // Handles dispose for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   void dispose() {
     _heroController.dispose();
@@ -43,6 +55,8 @@ class _UserStatisticsViewState extends State<UserStatisticsView> {
   // Build the user statistics view state with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     // `watch` rebuilds this page whenever the ViewModel changes.
     final viewModel = context.watch<StatisticsViewModel>();
@@ -96,6 +110,8 @@ class _UserStatisticsViewState extends State<UserStatisticsView> {
                     selectedIndex: selectedHeroIndex,
                     onPageChanged: viewModel.selectHero,
                   ),
+                  // Handles SizedBox for this part of the statistics page.
+                  // This makes the purpose clearer when reading or updating the code.
                   const SizedBox(height: 18),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -105,6 +121,8 @@ class _UserStatisticsViewState extends State<UserStatisticsView> {
                       onChanged: viewModel.selectAudience,
                     ),
                   ),
+                  // Handles SizedBox for this part of the statistics page.
+                  // This makes the purpose clearer when reading or updating the code.
                   const SizedBox(height: AppSpacing.lg),
                   _StatisticsMenu(items: selectedMenuItems),
                 ],
@@ -120,12 +138,16 @@ class _UserStatisticsViewState extends State<UserStatisticsView> {
 // This widget controls the statistics hero pager used to move between report views.
 // The selected index comes from the parent or ViewModel.
 // User changes are sent back through the provided callback.
+// Handles _StatisticsHeroPager for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _StatisticsHeroPager extends StatelessWidget {
   final PageController controller;
   final List<StatisticsHeroSlide> slides;
   final int selectedIndex;
   final ValueChanged<int> onPageChanged;
 
+  // Handles _StatisticsHeroPager for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _StatisticsHeroPager({
     required this.controller,
     required this.slides,
@@ -137,6 +159,8 @@ class _StatisticsHeroPager extends StatelessWidget {
   // Build the statistics hero pager with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     // Adjust the card height for small screens and accessibility text.
     final width = MediaQuery.sizeOf(context).width;
@@ -161,6 +185,8 @@ class _StatisticsHeroPager extends StatelessWidget {
             },
           ),
         ),
+        // Handles SizedBox for this part of the statistics page.
+        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(height: AppSpacing.md),
         _PageDots(count: slides.length, selectedIndex: selectedIndex),
       ],
@@ -171,6 +197,8 @@ class _StatisticsHeroPager extends StatelessWidget {
 // This widget groups related information inside the statistics hero card.
 // The card gives the section a clear visual boundary on the page.
 // Its parent supplies all values, labels, and interaction callbacks.
+// Handles _StatisticsHeroCard for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _StatisticsHeroCard extends StatelessWidget {
   final StatisticsHeroSlide slide;
 
@@ -180,6 +208,8 @@ class _StatisticsHeroCard extends StatelessWidget {
   // Build the statistics hero card with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -210,6 +240,8 @@ class _StatisticsHeroCard extends StatelessWidget {
               fontSize: 10,
             ),
           ),
+          // Handles SizedBox for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: 8),
           Expanded(child: _buildContent(context)),
         ],
@@ -217,6 +249,8 @@ class _StatisticsHeroCard extends StatelessWidget {
     );
   }
 
+  // Handles _buildContent for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget _buildContent(BuildContext context) {
     // Each slide type has a different layout but uses the same slide data.
     switch (slide.type) {
@@ -233,6 +267,8 @@ class _StatisticsHeroCard extends StatelessWidget {
 // This helper is responsible for the overview slide part of the screen.
 // It keeps one focused piece of presentation logic outside the main layout.
 // The parent widget passes in the data that this helper needs.
+// Handles _OverviewSlide for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _OverviewSlide extends StatelessWidget {
   final StatisticsHeroSlide slide;
 
@@ -242,6 +278,8 @@ class _OverviewSlide extends StatelessWidget {
   // Build the overview slide with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final isCommunitySlide = slide.title.startsWith('Community');
     if (isCommunitySlide) {
@@ -269,6 +307,8 @@ class _OverviewSlide extends StatelessWidget {
                 .toList(),
           ),
         ),
+        // Handles SizedBox for this part of the statistics page.
+        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(height: 5),
         Expanded(
           child: Row(
@@ -294,6 +334,8 @@ class _OverviewSlide extends StatelessWidget {
 // This helper is responsible for the community overview slide part of the screen.
 // It keeps one focused piece of presentation logic outside the main layout.
 // The parent widget passes in the data that this helper needs.
+// Handles _CommunityOverviewSlide for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _CommunityOverviewSlide extends StatelessWidget {
   final StatisticsHeroSlide slide;
 
@@ -303,12 +345,16 @@ class _CommunityOverviewSlide extends StatelessWidget {
   // Build the community overview slide with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final metrics = slide.metrics.take(4).toList();
 
     return Column(
       children: [
         Expanded(child: _CommunityMetricRow(metrics: metrics.take(2).toList())),
+        // Handles SizedBox for this part of the statistics page.
+        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(height: AppSpacing.sm),
         Expanded(child: _CommunityMetricRow(metrics: metrics.skip(2).toList())),
       ],
@@ -319,6 +365,8 @@ class _CommunityOverviewSlide extends StatelessWidget {
 // This small widget draws one community metric row.
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
+// Handles _CommunityMetricRow for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _CommunityMetricRow extends StatelessWidget {
   final List<StatisticsMetric> metrics;
 
@@ -328,6 +376,8 @@ class _CommunityMetricRow extends StatelessWidget {
   // Build the visual layout for this community metric row.
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Row(
       children: metrics
@@ -351,6 +401,8 @@ class _CommunityMetricRow extends StatelessWidget {
 }
 
 final _emptyCommunityHeroSlides = [
+  // Handles StatisticsHeroSlide for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const StatisticsHeroSlide(
     title: 'Community Posts',
     type: StatisticsHeroSlideType.overview,
@@ -377,6 +429,8 @@ final _emptyCommunityHeroSlides = [
       ),
     ],
   ),
+  // Handles StatisticsHeroSlide for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const StatisticsHeroSlide(
     title: 'Community Engagement',
     type: StatisticsHeroSlideType.overview,
@@ -408,6 +462,8 @@ final _emptyCommunityHeroSlides = [
 // This helper is responsible for the app usage slide part of the screen.
 // It keeps one focused piece of presentation logic outside the main layout.
 // The parent widget passes in the data that this helper needs.
+// Handles _AppUsageSlide for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _AppUsageSlide extends StatelessWidget {
   final StatisticsHeroSlide slide;
 
@@ -417,6 +473,8 @@ class _AppUsageSlide extends StatelessWidget {
   // Build the app usage slide with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final days = slide.metrics.first;
     final planned = slide.metrics[1];
@@ -436,10 +494,14 @@ class _AppUsageSlide extends StatelessWidget {
             fontSize: 17,
           ),
         ),
+        // Handles SizedBox for this part of the statistics page.
+        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(height: 10),
         _UsageRow(metric: planned),
         const SizedBox(height: 6),
         _UsageRow(metric: unplanned),
+        // Handles Spacer for this part of the statistics page.
+        // This makes the purpose clearer when reading or updating the code.
         const Spacer(),
         if (progress != null) _ProgressSplit(progress: progress),
       ],
@@ -450,6 +512,8 @@ class _AppUsageSlide extends StatelessWidget {
 // This helper is responsible for the achievement slide part of the screen.
 // It keeps one focused piece of presentation logic outside the main layout.
 // The parent widget passes in the data that this helper needs.
+// Handles _AchievementSlide for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _AchievementSlide extends StatelessWidget {
   final StatisticsHeroSlide slide;
 
@@ -459,6 +523,8 @@ class _AchievementSlide extends StatelessWidget {
   // Build the achievement slide with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final metrics = slide.metrics;
 
@@ -472,6 +538,8 @@ class _AchievementSlide extends StatelessWidget {
                 .toList(),
           ),
         ),
+        // Handles SizedBox for this part of the statistics page.
+        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(height: AppSpacing.sm),
         Expanded(
           child: Row(
@@ -490,6 +558,8 @@ class _AchievementSlide extends StatelessWidget {
 // This small widget draws one achievement metric tile.
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
+// Handles _AchievementMetricTile for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _AchievementMetricTile extends StatelessWidget {
   final StatisticsMetric metric;
 
@@ -499,6 +569,8 @@ class _AchievementMetricTile extends StatelessWidget {
   // Build the visual layout for this achievement metric tile.
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Expanded(
       child: Padding(
@@ -519,6 +591,8 @@ class _AchievementMetricTile extends StatelessWidget {
 // This small widget draws one metric tile.
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
+// Handles _MetricTile for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _MetricTile extends StatelessWidget {
   final StatisticsMetric metric;
   final bool largeValue;
@@ -528,6 +602,8 @@ class _MetricTile extends StatelessWidget {
   final double? labelFontSize;
   final double? suffixFontSize;
 
+  // Handles _MetricTile for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _MetricTile({
     required this.metric,
     this.largeValue = false,
@@ -542,6 +618,8 @@ class _MetricTile extends StatelessWidget {
   // Build the visual layout for this metric tile.
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final toneColor = _toneColor(metric.tone);
     final resolvedValueColor =
@@ -573,6 +651,8 @@ class _MetricTile extends StatelessWidget {
             fontSize: resolvedValueFontSize,
             suffixFontSize: suffixFontSize,
           ),
+          // Handles SizedBox for this part of the statistics page.
+          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: 5),
           _MetricLabel(
             metric: metric,
@@ -588,12 +668,16 @@ class _MetricTile extends StatelessWidget {
 // This object keeps the values needed by the metric value together.
 // It is only used to prepare display data for this page.
 // No loading or database work happens inside this object.
+// Handles _MetricValue for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _MetricValue extends StatelessWidget {
   final StatisticsMetric metric;
   final Color color;
   final double fontSize;
   final double? suffixFontSize;
 
+  // Handles _MetricValue for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _MetricValue({
     required this.metric,
     required this.color,
@@ -605,6 +689,8 @@ class _MetricValue extends StatelessWidget {
   // Build the metric value with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Text.rich(
       TextSpan(
@@ -633,11 +719,15 @@ class _MetricValue extends StatelessWidget {
 // This object keeps the values needed by the metric label together.
 // It is only used to prepare display data for this page.
 // No loading or database work happens inside this object.
+// Handles _MetricLabel for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _MetricLabel extends StatelessWidget {
   final StatisticsMetric metric;
   final Color color;
   final double? fontSize;
 
+  // Handles _MetricLabel for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _MetricLabel({
     required this.metric,
     required this.color,
@@ -648,6 +738,8 @@ class _MetricLabel extends StatelessWidget {
   // Build the metric label with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Text(
       metric.label,
@@ -667,6 +759,8 @@ class _MetricLabel extends StatelessWidget {
 // This small widget draws one usage row.
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
+// Handles _UsageRow for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _UsageRow extends StatelessWidget {
   final StatisticsMetric metric;
 
@@ -676,6 +770,8 @@ class _UsageRow extends StatelessWidget {
   // Build the visual layout for this usage row.
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final color = _toneColor(metric.tone);
 
@@ -693,6 +789,8 @@ class _UsageRow extends StatelessWidget {
             ),
           ),
         ),
+        // Handles SizedBox for this part of the statistics page.
+        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(width: AppSpacing.sm),
         Text(
           metric.value,
@@ -711,6 +809,8 @@ class _UsageRow extends StatelessWidget {
 // This helper is responsible for the progress split part of the screen.
 // It keeps one focused piece of presentation logic outside the main layout.
 // The parent widget passes in the data that this helper needs.
+// Handles _ProgressSplit for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _ProgressSplit extends StatelessWidget {
   final StatisticsProgress progress;
 
@@ -720,6 +820,8 @@ class _ProgressSplit extends StatelessWidget {
   // Build the progress split with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Column(
       children: [
@@ -747,6 +849,8 @@ class _ProgressSplit extends StatelessWidget {
             ),
           ],
         ),
+        // Handles SizedBox for this part of the statistics page.
+        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(height: AppSpacing.xs),
         ClipRRect(
           borderRadius: BorderRadius.circular(100),
@@ -771,16 +875,22 @@ class _ProgressSplit extends StatelessWidget {
 // This widget controls the page dots used to move between report views.
 // The selected index comes from the parent or ViewModel.
 // User changes are sent back through the provided callback.
+// Handles _PageDots for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _PageDots extends StatelessWidget {
   final int count;
   final int selectedIndex;
 
+  // Handles _PageDots for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _PageDots({required this.count, required this.selectedIndex});
 
   @override
   // Build the page dots with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -804,6 +914,8 @@ class _PageDots extends StatelessWidget {
 // This helper is responsible for the statistics menu part of the screen.
 // It keeps one focused piece of presentation logic outside the main layout.
 // The parent widget passes in the data that this helper needs.
+// Handles _StatisticsMenu for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _StatisticsMenu extends StatelessWidget {
   final List<StatisticsMenuItem> items;
 
@@ -813,6 +925,8 @@ class _StatisticsMenu extends StatelessWidget {
   // Build the statistics menu with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Column(
       children: items
@@ -836,6 +950,8 @@ class _StatisticsMenu extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // Handles SizedBox for this part of the statistics page.
+                    // This makes the purpose clearer when reading or updating the code.
                     const SizedBox(width: AppSpacing.sm),
                     Icon(
                       Icons.chevron_right,
@@ -853,6 +969,8 @@ class _StatisticsMenu extends StatelessWidget {
 
   // Match the selected menu item with its destination page.
   // Navigation stays here so the menu layout remains simple.
+  // Handles _handleTap for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   void _handleTap(BuildContext context, StatisticsMenuItem item) {
     // Menu titles come from the dashboard data. Map each title to its page.
     if (item.title == 'Food Analytic') {
@@ -930,16 +1048,22 @@ class _StatisticsMenu extends StatelessWidget {
 // This widget shows the statistics error when report data is unavailable.
 // It explains the problem and gives the user a retry action.
 // The retry callback asks the ViewModel to load the report again.
+// Handles _StatisticsError for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _StatisticsError extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;
 
+  // Handles _StatisticsError for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const _StatisticsError({required this.message, required this.onRetry});
 
   @override
   // Build the statistics error with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
@@ -948,12 +1072,16 @@ class _StatisticsError extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset('assets/images/empty_page.png', height: 140),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             Text(
               message,
               textAlign: TextAlign.center,
               style: context.text.bodyMedium,
             ),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             TextButton(
               onPressed: onRetry,
@@ -971,6 +1099,8 @@ class _StatisticsError extends StatelessWidget {
   }
 }
 
+// Handles _toneColor for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 Color _toneColor(StatisticsMetricTone tone) {
   switch (tone) {
     case StatisticsMetricTone.positive:

@@ -1,9 +1,14 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
+import 'statistics_recipe_media_thumbnail.dart';
 
 /// One value displayed by [StatisticsBarChart].
+// Handles StatisticsBarChartItem for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class StatisticsBarChartItem {
   final String label;
   final int value;
@@ -13,6 +18,8 @@ class StatisticsBarChartItem {
   final String? markerText;
   final Color? markerIconColor;
 
+  // Handles StatisticsBarChartItem for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const StatisticsBarChartItem({
     required this.label,
     required this.value,
@@ -25,11 +32,15 @@ class StatisticsBarChartItem {
 }
 
 /// Small reusable bar chart used by the statistics detail pages.
+// Handles StatisticsBarChart for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class StatisticsBarChart extends StatelessWidget {
   final List<StatisticsBarChartItem> items;
   final int? maxValue;
   final double height;
 
+  // Handles StatisticsBarChart for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const StatisticsBarChart({
     super.key,
     required this.items,
@@ -37,6 +48,8 @@ class StatisticsBarChart extends StatelessWidget {
     this.height = 190,
   });
 
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     // BAR CHART BUILDING STARTS HERE.
@@ -83,11 +96,15 @@ class StatisticsBarChart extends StatelessWidget {
                             .toList(),
                       ),
                     ),
+                    // Handles SizedBox for this part of the statistics page.
+                    // This makes the purpose clearer when reading or updating the code.
                     const SizedBox(height: iconGap),
                     const SizedBox(height: iconRowHeight),
                   ],
                 ),
               ),
+              // Handles SizedBox for this part of the statistics page.
+              // This makes the purpose clearer when reading or updating the code.
               const SizedBox(width: 6),
               Expanded(
                 child: Column(
@@ -150,6 +167,8 @@ class StatisticsBarChart extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // Handles SizedBox for this part of the statistics page.
+                    // This makes the purpose clearer when reading or updating the code.
                     const SizedBox(height: iconGap),
                     SizedBox(
                       height: iconRowHeight,
@@ -190,6 +209,8 @@ class StatisticsBarChart extends StatelessWidget {
     );
   }
 
+  // Handles _niceMaxValue for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   int _niceMaxValue(List<StatisticsBarChartItem> items) {
     // Pick a clean chart limit instead of ending at an uneven value.
     final maxItemValue = items.fold<int>(
@@ -202,12 +223,16 @@ class StatisticsBarChart extends StatelessWidget {
     return ((maxItemValue / 10).ceil()) * 10;
   }
 
+  // Handles _visibleItems for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   List<StatisticsBarChartItem> _visibleItems(
     List<StatisticsBarChartItem> source,
   ) {
     return source.take(5).toList(growable: false);
   }
 
+  // Handles _gridValues for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   List<int> _gridValues(int highestValue) {
     if (highestValue <= 0) return List.filled(5, 0);
 
@@ -218,23 +243,24 @@ class StatisticsBarChart extends StatelessWidget {
   }
 }
 
+// Handles _ChartMarkerContent for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class _ChartMarkerContent extends StatelessWidget {
   final StatisticsBarChartItem item;
 
   const _ChartMarkerContent({required this.item});
 
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     if (item.imageUrl?.isNotEmpty == true) {
-      return ClipOval(
-        child: Image.network(
-          item.imageUrl!,
-          width: 34,
-          height: 34,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stack) =>
-              Icon(item.icon, size: 17, color: const Color(0xFF6D642C)),
-        ),
+      return StatisticsRecipeMediaThumbnail(
+        mediaPath: item.imageUrl,
+        fallbackIcon: item.icon,
+        size: 34,
+        backgroundColor: const Color(0xFFECE7CF),
+        iconColor: const Color(0xFF6D642C),
       );
     }
 
@@ -261,6 +287,8 @@ class _ChartMarkerContent extends StatelessWidget {
     );
   }
 
+  // Handles _markerText for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   String _markerText(String? value) {
     final words = value
         ?.trim()

@@ -1,3 +1,5 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,9 +8,13 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 
 /// Shared back button used by every statistics detail page.
+// Handles StatisticsBackButton for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class StatisticsBackButton extends StatelessWidget {
   const StatisticsBackButton({super.key});
 
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return IconButton(
@@ -20,16 +26,22 @@ class StatisticsBackButton extends StatelessWidget {
 }
 
 /// Common error layout with a retry action.
+// Handles StatisticsErrorState for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class StatisticsErrorState extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;
 
+  // Handles StatisticsErrorState for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const StatisticsErrorState({
     super.key,
     required this.message,
     required this.onRetry,
   });
 
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -39,12 +51,16 @@ class StatisticsErrorState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset('assets/images/empty_page.png', height: 140),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             Text(
               message,
               textAlign: TextAlign.center,
               style: context.text.bodyMedium,
             ),
+            // Handles SizedBox for this part of the statistics page.
+            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             TextButton(
               onPressed: onRetry,
@@ -63,16 +79,22 @@ class StatisticsErrorState extends StatelessWidget {
 }
 
 /// Displays the current date range and opens the date picker when tapped.
+// Handles StatisticsDateRangeBar for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 class StatisticsDateRangeBar extends StatelessWidget {
   final String dateRange;
   final VoidCallback onTap;
 
+  // Handles StatisticsDateRangeBar for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   const StatisticsDateRangeBar({
     super.key,
     required this.dateRange,
     required this.onTap,
   });
 
+  // Handles build for this part of the statistics page.
+  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -85,6 +107,8 @@ class StatisticsDateRangeBar extends StatelessWidget {
             fontSize: 11,
           ),
         ),
+        // Handles SizedBox for this part of the statistics page.
+        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: InkWell(
@@ -111,6 +135,8 @@ class StatisticsDateRangeBar extends StatelessWidget {
                       ),
                     ),
                   ),
+                  // Handles Icon for this part of the statistics page.
+                  // This makes the purpose clearer when reading or updating the code.
                   const Icon(Icons.calendar_month, size: 18),
                 ],
               ),
@@ -122,6 +148,8 @@ class StatisticsDateRangeBar extends StatelessWidget {
   }
 }
 
+// Handles pickStatisticsDateRange for this part of the statistics page.
+// This makes the purpose clearer when reading or updating the code.
 Future<void> pickStatisticsDateRange({
   required BuildContext context,
   required DateTime? startDate,
