@@ -125,18 +125,6 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
-  // Navigates to the add meal plan screen with default parameters.
-  void _openAddMealPlan() {
-    context.push(
-      AppRouter.addMealPlan,
-      extra: AddMealPlanArgs(
-        mealType: 'Breakfast',
-        mealCategoryId: 'breakfast',
-        selectedDate: DateTime.now(),
-      ),
-    );
-  }
-
   // Navigates to the recipe review screen for editing.
   void _openRecipeReview(ExploreRecipeDetailViewModel viewModel) {
     final recipeId = viewModel.recipe?.id;
@@ -155,10 +143,10 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
 
     final message = success
         ? viewModel.recipe?.isFavourite == true
-        ? 'Added to library favourites.'
-        : 'Removed from library favourites.'
+              ? 'Added to library favourites.'
+              : 'Removed from library favourites.'
         : viewModel.communityActionErrorMessage ??
-        'Unable to update favourites.';
+              'Unable to update favourites.';
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -168,8 +156,8 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   /// Opens a bottom sheet for selecting dates and meal categories to add the recipe to a meal plan.
   /// Handles loading states, user authentication, and error feedback.
   Future<void> _openMealPlanCalendar(
-      ExploreRecipeDetailViewModel viewModel,
-      ) async {
+    ExploreRecipeDetailViewModel viewModel,
+  ) async {
     var isShowingLoadingDialog = false;
     try {
       // Guards against null recipe or in-progress operations.
@@ -194,16 +182,16 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
 
       // Displays the calendar selection bottom sheet.
       final request =
-      await showModalBottomSheet<_RecipeCalendarMealPlanRequest>(
-        context: context,
-        isScrollControlled: true,
-        builder: (_) => _RecipeCalendarMealPlanSheet(
-          categories: viewModel.mealCategories.isEmpty
-              ? RecipeDetailMealPlanDefaults.categories
-              : viewModel.mealCategories,
-          initialServings: viewModel.recipe?.servings ?? 1,
-        ),
-      );
+          await showModalBottomSheet<_RecipeCalendarMealPlanRequest>(
+            context: context,
+            isScrollControlled: true,
+            builder: (_) => _RecipeCalendarMealPlanSheet(
+              categories: viewModel.mealCategories.isEmpty
+                  ? RecipeDetailMealPlanDefaults.categories
+                  : viewModel.mealCategories,
+              initialServings: viewModel.recipe?.servings ?? 1,
+            ),
+          );
       if (request == null || !mounted) return;
 
       // Shows a loading dialog while saving the meal plan.
@@ -227,8 +215,8 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       // Displays success or error feedback.
       final message = result.isSuccess
           ? result.savedCount == 1
-          ? 'Meal plan added.'
-          : '${result.savedCount} meal plans added.'
+                ? 'Meal plan added.'
+                : '${result.savedCount} meal plans added.'
           : result.errorMessage ?? 'Unable to add meal plan.';
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -250,8 +238,8 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   /// Handles selecting a recipe for a specific meal plan slot from a selection context.
   /// Checks for duplicates, asks for serving count, and navigates to the meal plan screen on success.
   Future<void> _selectForMealPlan(
-      ExploreRecipeDetailViewModel viewModel,
-      ) async {
+    ExploreRecipeDetailViewModel viewModel,
+  ) async {
     final selection = widget.mealPlanSelection;
     if (selection == null) return;
     // Prevents duplicate additions to the meal plan.
@@ -357,7 +345,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         widget.mealPlanSelection?.existingRecipeIds.contains(
           viewModel.recipe?.id ?? '',
         ) ??
-            false;
+        false;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -390,7 +378,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         tabController: _tabController,
         onTabSelected: _selectDetailTab,
         onComingSoonTap: _showComingSoonMessage,
-        onPlanMeal: _openAddMealPlan,
+        onPlanMeal: () => _openMealPlanCalendar(viewModel),
         showLibraryActions: widget.showLibraryActions,
         isPublished: widget.isPublished,
         onFavouriteTap: () => _toggleFavourite(viewModel),
@@ -401,23 +389,23 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       bottomNavigationBar: widget.mealPlanSelection == null
           ? null
           : SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: PrimaryButton(
-            text: alreadyAdded
-                ? 'Already Added'
-                : viewModel.isSavingMealPlan
-                ? 'Adding...'
-                : 'Select',
-            onPressed:
-            viewModel.recipe == null ||
-                viewModel.isSavingMealPlan ||
-                alreadyAdded
-                ? null
-                : () => _selectForMealPlan(viewModel),
-          ),
-        ),
-      ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: PrimaryButton(
+                  text: alreadyAdded
+                      ? 'Already Added'
+                      : viewModel.isSavingMealPlan
+                      ? 'Adding...'
+                      : 'Select',
+                  onPressed:
+                      viewModel.recipe == null ||
+                          viewModel.isSavingMealPlan ||
+                          alreadyAdded
+                      ? null
+                      : () => _selectForMealPlan(viewModel),
+                ),
+              ),
+            ),
     );
   }
 }
@@ -682,7 +670,7 @@ class _RecipeCalendarMealPlanSheetState
                   Expanded(
                     child: FilledButton(
                       onPressed:
-                      _selectedDates.isEmpty || _selectedCategoryIds.isEmpty
+                          _selectedDates.isEmpty || _selectedCategoryIds.isEmpty
                           ? null
                           : _submit,
                       child: const Text('Add meal'),
@@ -699,10 +687,10 @@ class _RecipeCalendarMealPlanSheetState
 
   // Selects a preferred initial category, defaulting to breakfast if available.
   static AddMealCategoryOption _preferredInitialCategory(
-      List<AddMealCategoryOption> categories,
-      ) {
+    List<AddMealCategoryOption> categories,
+  ) {
     return categories.firstWhere(
-          (category) => category.id.toLowerCase() == 'breakfast',
+      (category) => category.id.toLowerCase() == 'breakfast',
       orElse: () => categories.first,
     );
   }
