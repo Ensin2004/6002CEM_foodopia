@@ -7,12 +7,19 @@ import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../meal_plan/domain/entities/meal_calorie_guidance.dart';
 import '../../domain/entities/explore_recipe.dart';
 
+// Displays a single recipe card with image, metadata, author info, and action buttons
 class ExploreRecipeCard extends StatelessWidget {
+  // The recipe data entity containing all display information
   final ExploreRecipe recipe;
+  // Callback when the entire card is tapped (navigation)
   final VoidCallback? onTap;
+  // Callback when the comment/chat icon is tapped
   final VoidCallback onComingSoonTap;
+  // Callback when the favourite icon is tapped
   final VoidCallback onFavouriteTap;
+  // Callback when the image is long-pressed for additional options
   final VoidCallback? onImageLongPress;
+  // Flag to disable all interactions and apply visual dimming
   final bool disabled;
   final MealCalorieGuidance? calorieGuidance;
 
@@ -29,7 +36,9 @@ class ExploreRecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Retrieves text styles from the context theme extension
     final textTheme = context.text;
+    // Retrieves color scheme from the context theme extension
     final colors = context.colors;
 
     return Material(
@@ -38,9 +47,11 @@ class ExploreRecipeCard extends StatelessWidget {
       elevation: 3,
       shadowColor: Colors.black.withValues(alpha: 0.18),
       child: InkWell(
+        // Disables tap interaction when the card is in disabled state
         onTap: disabled ? null : onTap,
         borderRadius: BorderRadius.circular(8),
         child: Opacity(
+          // Reduces visual prominence when disabled
           opacity: disabled ? 0.48 : 1,
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -50,6 +61,7 @@ class ExploreRecipeCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Image section taking 5/8 of the card height
                 Expanded(
                   flex: 5,
                   child: Stack(
@@ -71,21 +83,23 @@ class ExploreRecipeCard extends StatelessWidget {
                           ),
                         ),
                       ),
+                      // Favourite button positioned in top-right corner
                       Positioned(
                         top: 6,
                         right: 6,
                         child: disabled
                             ? const _AlreadyAddedBadge()
                             : _ImageIconButton(
-                                icon: recipe.isFavourite
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: recipe.isFavourite
-                                    ? AppColors.favourite
-                                    : Colors.white,
-                                onTap: onFavouriteTap,
-                              ),
+                          icon: recipe.isFavourite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: recipe.isFavourite
+                              ? AppColors.favourite
+                              : Colors.white,
+                          onTap: onFavouriteTap,
+                        ),
                       ),
+                      // Views badge positioned in top-left corner
                       Positioned(
                         left: 8,
                         top: 8,
@@ -102,6 +116,7 @@ class ExploreRecipeCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                // Metadata section taking 3/8 of the card height
                 Expanded(
                   flex: 3,
                   child: Padding(
@@ -109,6 +124,7 @@ class ExploreRecipeCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Title row with rating display
                         SizedBox(
                           height: 20,
                           child: Row(
@@ -150,6 +166,7 @@ class ExploreRecipeCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 5),
+                        // Description line with ellipsis for overflow
                         SizedBox(
                           height: 18,
                           child: Text(
@@ -160,6 +177,7 @@ class ExploreRecipeCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 5),
+                        // Author info row with avatar, name, date, and comment count
                         SizedBox(
                           height: 34,
                           child: Row(
@@ -203,6 +221,7 @@ class ExploreRecipeCard extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                              // Comment count with chat bubble icon
                               _CountWithIcon(
                                 icon: Icons.chat_bubble,
                                 label: _compactCount(recipe.commentCount),
@@ -223,6 +242,7 @@ class ExploreRecipeCard extends StatelessWidget {
     );
   }
 
+  // Formats a number into compact notation (e.g., 1.2k, 10k)
   String _compactCount(int value) {
     if (value >= 1000) {
       final compact = value / 1000;
@@ -232,6 +252,7 @@ class ExploreRecipeCard extends StatelessWidget {
   }
 }
 
+// Displays an "Added" badge indicating the recipe is already in the collection
 /// Calorie guidance badge for explore recipe cards.
 class _ExploreCalorieBadge extends StatelessWidget {
   /// Guidance details for the recipe.
@@ -292,13 +313,16 @@ class _AlreadyAddedBadge extends StatelessWidget {
   }
 }
 
+// Renders the author's avatar image or a fallback person icon
 class _ExploreAuthorAvatar extends StatelessWidget {
+  // Path to the author's avatar image asset or URL
   final String imagePath;
 
   const _ExploreAuthorAvatar({required this.imagePath});
 
   @override
   Widget build(BuildContext context) {
+    // Checks if the image path contains any visible characters
     final hasImage = imagePath.trim().isNotEmpty;
 
     return CircleAvatar(
@@ -306,20 +330,24 @@ class _ExploreAuthorAvatar extends StatelessWidget {
       backgroundColor: Colors.white,
       child: hasImage
           ? ClipOval(
-              child: AppRemoteOrAssetImage(
-                imagePath: imagePath,
-                width: 32,
-                height: 32,
-              ),
-            )
+        child: AppRemoteOrAssetImage(
+          imagePath: imagePath,
+          width: 32,
+          height: 32,
+        ),
+      )
           : const Icon(Icons.person, color: AppColors.primary, size: 20),
     );
   }
 }
 
+// Circular icon button with semi-transparent background overlay
 class _ImageIconButton extends StatelessWidget {
+  // The icon to display (favorite or favorite_border)
   final IconData icon;
+  // Color of the icon
   final Color color;
+  // Callback when the button is tapped
   final VoidCallback onTap;
 
   const _ImageIconButton({
@@ -346,7 +374,9 @@ class _ImageIconButton extends StatelessWidget {
   }
 }
 
+// Displays the view count with an eye icon in a rounded badge
 class _ViewsBadge extends StatelessWidget {
+  // Total view count to display
   final int count;
 
   const _ViewsBadge({required this.count});
@@ -381,9 +411,13 @@ class _ViewsBadge extends StatelessWidget {
   }
 }
 
+// Displays a count with an icon and handles tap interactions
 class _CountWithIcon extends StatelessWidget {
+  // The icon to display next to the count
   final IconData icon;
+  // The formatted count label text
   final String label;
+  // Callback when the count/icon area is tapped
   final VoidCallback onTap;
 
   const _CountWithIcon({
@@ -421,6 +455,7 @@ class _CountWithIcon extends StatelessWidget {
   }
 }
 
+// Formats a numeric value into a compact string with 'k' suffix for thousands
 String _compactCount(int value) {
   if (value >= 1000) {
     final compact = value / 1000;

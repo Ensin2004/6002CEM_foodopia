@@ -1,5 +1,7 @@
 part of 'explore_recipe_detail_page.dart';
 
+/// Tab widget that displays the recipe details including description,
+/// other names, category, allergen info, and the ingredients/instructions sections.
 class _RecipeTab extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
@@ -24,10 +26,12 @@ class _RecipeTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Recipe description section.
         Text('About This Recipe', style: textTheme.titleMedium),
         const SizedBox(height: 6),
         Text(recipe.description, style: textTheme.bodyMedium),
         const SizedBox(height: 14),
+        // Other names section.
         Text('Other Names', style: textTheme.titleMedium),
         const SizedBox(height: 6),
         Text(
@@ -35,10 +39,12 @@ class _RecipeTab extends StatelessWidget {
           style: textTheme.bodyMedium,
         ),
         const SizedBox(height: 14),
+        // Category section.
         Text('Category', style: textTheme.titleMedium),
         const SizedBox(height: 6),
         Text(recipe.category, style: textTheme.bodyMedium),
         const SizedBox(height: 14),
+        // Allergen info section with warning icon.
         Row(
           children: [
             Text('Allergen Info', style: textTheme.titleMedium),
@@ -49,6 +55,7 @@ class _RecipeTab extends StatelessWidget {
         const SizedBox(height: 6),
         Text(recipe.allergenInfo, style: textTheme.bodyMedium),
         const SizedBox(height: 14),
+        // Segmented control for switching between ingredients and instructions.
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -64,6 +71,7 @@ class _RecipeTab extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
+        // Render the appropriate content based on the selected method tab.
         if (viewModel.selectedMethodTab == ExploreRecipeMethodTab.ingredients)
           _IngredientsList(
             recipe: recipe,
@@ -80,6 +88,8 @@ class _RecipeTab extends StatelessWidget {
   }
 }
 
+/// Widget that displays the ingredients list with category grouping,
+/// unit system selection, and meal plan button.
 class _IngredientsList extends StatelessWidget {
   final ExploreRecipe recipe;
   final ExploreRecipeUnitSystem unitSystem;
@@ -101,11 +111,13 @@ class _IngredientsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = context.text;
     final colors = context.colors;
+    // Group ingredients by their category for organized display.
     final ingredientGroups = _groupIngredientsByCategory(recipe.ingredients);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Header row with title and unit system dropdown.
         Row(
           children: [
             Expanded(
@@ -120,8 +132,9 @@ class _IngredientsList extends StatelessWidget {
         ),
         Text('${recipe.ingredients.length} items', style: textTheme.bodyMedium),
         const SizedBox(height: 10),
+        // Render ingredient groups with category headers.
         ...ingredientGroups.expand(
-          (group) => <Widget>[
+              (group) => <Widget>[
             Padding(
               padding: const EdgeInsets.only(top: 6, bottom: 8),
               child: Text(
@@ -133,7 +146,7 @@ class _IngredientsList extends StatelessWidget {
               ),
             ),
             ...group.ingredients.map(
-              (ingredient) => _IngredientListItem(
+                  (ingredient) => _IngredientListItem(
                 ingredient: ingredient,
                 unitSystem: unitSystem,
               ),
@@ -159,6 +172,8 @@ class _IngredientsList extends StatelessWidget {
   }
 }
 
+/// Widget that displays the step-by-step cooking instructions
+/// with timeline markers and step thumbnails.
 class _InstructionsList extends StatelessWidget {
   final ExploreRecipe recipe;
 
@@ -177,6 +192,7 @@ class _InstructionsList extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Section title.
               Text(
                 section.title,
                 style: textTheme.titleMedium?.copyWith(
@@ -185,6 +201,7 @@ class _InstructionsList extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
+              // Render each step with timeline marker.
               ...section.steps.asMap().entries.map((entry) {
                 final stepIndex = entry.key;
                 final step = entry.value;
@@ -197,8 +214,10 @@ class _InstructionsList extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Vertical timeline dot and line.
                         _InstructionTimelineMarker(showLine: !isLast),
                         const SizedBox(width: 12),
+                        // Step content card with thumbnail and text.
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.all(10),
@@ -222,7 +241,7 @@ class _InstructionsList extends StatelessWidget {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         step.title,
@@ -253,6 +272,8 @@ class _InstructionsList extends StatelessWidget {
   }
 }
 
+/// Timeline marker widget with a circle and optional dotted line
+/// connecting to the next step.
 /// Calorie guidance box for existing recipe planning.
 class _ExploreCalorieGuidanceBox extends StatelessWidget {
   /// Guidance details for the selected recipe.
@@ -320,6 +341,7 @@ class _InstructionTimelineMarker extends StatelessWidget {
   }
 }
 
+/// Custom painter that draws a dotted vertical line for the timeline.
 class _DottedTimelineLine extends StatelessWidget {
   const _DottedTimelineLine();
 
@@ -332,6 +354,7 @@ class _DottedTimelineLine extends StatelessWidget {
   }
 }
 
+/// Painter implementation for the dotted timeline line.
 class _DottedTimelineLinePainter extends CustomPainter {
   final Color color;
 
@@ -360,6 +383,8 @@ class _DottedTimelineLinePainter extends CustomPainter {
   }
 }
 
+/// Thumbnail widget for recipe images that shows a full-screen
+/// image dialog when tapped.
 class _RecipeDetailThumbnail extends StatelessWidget {
   final String imagePath;
   final double width;
@@ -388,6 +413,7 @@ class _RecipeDetailThumbnail extends StatelessWidget {
   }
 }
 
+/// Dropdown widget for selecting the unit system (Original, Metric, Imperial).
 class _UnitSystemDropdown extends StatelessWidget {
   final ExploreRecipeUnitSystem selectedUnitSystem;
   final ValueChanged<ExploreRecipeUnitSystem> onChanged;
@@ -439,6 +465,7 @@ class _UnitSystemDropdown extends StatelessWidget {
     );
   }
 
+  /// Returns the display label for each unit system option.
   String _unitSystemLabel(ExploreRecipeUnitSystem system) {
     return switch (system) {
       ExploreRecipeUnitSystem.original => 'Original',
@@ -448,6 +475,7 @@ class _UnitSystemDropdown extends StatelessWidget {
   }
 }
 
+/// Individual ingredient list item with image, name, calories, and amount.
 class _IngredientListItem extends StatelessWidget {
   final ExploreIngredient ingredient;
   final ExploreRecipeUnitSystem unitSystem;
@@ -479,6 +507,7 @@ class _IngredientListItem extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Ingredient thumbnail.
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: _RecipeDetailThumbnail(
@@ -489,6 +518,7 @@ class _IngredientListItem extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
+          // Ingredient name and calories.
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,6 +534,7 @@ class _IngredientListItem extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
+          // Amount badge with unit conversion.
           SizedBox(
             width: 112,
             child: Container(
@@ -530,10 +561,12 @@ class _IngredientListItem extends StatelessWidget {
   }
 }
 
+/// Formats the ingredient amount based on the selected unit system.
+/// Converts between imperial and metric units as needed.
 String _formatIngredientAmount(
-  String amount,
-  ExploreRecipeUnitSystem unitSystem,
-) {
+    String amount,
+    ExploreRecipeUnitSystem unitSystem,
+    ) {
   if (unitSystem == ExploreRecipeUnitSystem.original) return amount;
 
   final trimmed = amount.trim();
@@ -554,6 +587,7 @@ String _formatIngredientAmount(
   return converted ?? amount;
 }
 
+/// Converts imperial units to metric units.
 String? _toMetric(double value, String unit) {
   final normalized = _normalizeUnit(unit);
   switch (normalized) {
@@ -587,6 +621,7 @@ String? _toMetric(double value, String unit) {
   }
 }
 
+/// Converts metric units to imperial units.
 String? _toImperial(double value, String unit) {
   final normalized = _normalizeUnit(unit);
   switch (normalized) {
@@ -618,10 +653,12 @@ String? _toImperial(double value, String unit) {
   }
 }
 
+/// Normalizes unit strings by lowercasing and trimming.
 String _normalizeUnit(String unit) {
   return unit.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 
+/// Formats a unit amount with appropriate decimal precision.
 String _formatUnitAmount(double value) {
   final rounded = value.roundToDouble();
   if ((value - rounded).abs() < 0.05) return rounded.toInt().toString();
@@ -629,6 +666,7 @@ String _formatUnitAmount(double value) {
   return value.toStringAsFixed(2);
 }
 
+/// Formats a cup measurement with proper fraction symbols.
 String _formatCupAmount(double value) {
   final whole = value.floor();
   final remainder = value - whole;
@@ -642,6 +680,7 @@ String _formatCupAmount(double value) {
     _CookingFraction(1, ''),
   ];
 
+  // Find the closest fraction approximation.
   var closest = fractions.first;
   var smallestDistance = (remainder - closest.value).abs();
   for (final fraction in fractions.skip(1)) {
@@ -653,11 +692,13 @@ String _formatCupAmount(double value) {
   }
 
   var roundedWhole = whole;
+  // Handle rounding up when the fraction equals one.
   if (closest.value == 1) {
     roundedWhole += 1;
     closest = fractions.first;
   }
 
+  // Ensure a fraction is shown for values between 0 and 1.
   if (roundedWhole == 0 && closest.value == 0 && value > 0) {
     closest = fractions[1];
   }
@@ -667,12 +708,14 @@ String _formatCupAmount(double value) {
   return '$roundedWhole ${closest.label}';
 }
 
+/// Formats a cup measurement with proper pluralization.
 String _formatCupLabel(double value) {
   final amount = _formatCupAmount(value);
   final isSingular = amount == '1' || !amount.contains(RegExp(r'[0-9]'));
   return '$amount ${isSingular ? 'cup' : 'cups'}';
 }
 
+/// Helper class for cooking fraction values and their display labels.
 class _CookingFraction {
   final double value;
   final String label;
@@ -680,11 +723,13 @@ class _CookingFraction {
   const _CookingFraction(this.value, this.label);
 }
 
+/// Groups ingredients by their category for organized display.
 List<_IngredientCategoryGroup> _groupIngredientsByCategory(
-  List<ExploreIngredient> ingredients,
-) {
+    List<ExploreIngredient> ingredients,
+    ) {
   final groups = <String, _IngredientCategoryGroup>{};
 
+  // Categorize each ingredient.
   for (final ingredient in ingredients) {
     final name = ingredient.ingredientCategoryName.trim().isEmpty
         ? 'Uncategorized'
@@ -693,9 +738,10 @@ List<_IngredientCategoryGroup> _groupIngredientsByCategory(
     groups[name]!.ingredients.add(ingredient);
   }
 
+  // Sort ingredients within each group alphabetically.
   for (final group in groups.values) {
     group.ingredients.sort(
-      (first, second) =>
+          (first, second) =>
           first.name.toLowerCase().compareTo(second.name.toLowerCase()),
     );
   }
@@ -703,6 +749,7 @@ List<_IngredientCategoryGroup> _groupIngredientsByCategory(
   return groups.values.toList();
 }
 
+/// Internal class for grouping ingredients by category.
 class _IngredientCategoryGroup {
   final String name;
   final List<ExploreIngredient> ingredients;

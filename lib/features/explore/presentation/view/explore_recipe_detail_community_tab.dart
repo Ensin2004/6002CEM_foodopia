@@ -1,5 +1,7 @@
 part of 'explore_recipe_detail_page.dart';
 
+/// Displays the community section of the recipe detail page, including author information,
+/// related recipes, ratings, and comments with nested reply functionality.
 class _CommunityTab extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
@@ -16,11 +18,13 @@ class _CommunityTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = context.text;
+    // Limits related recipes to a maximum of 4 for display.
     final relatedRecipes = recipe.relatedRecipes.take(4).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        /// Author profile section with avatar, bio, and follow/unfollow button.
         Row(
           children: [
             Container(
@@ -52,42 +56,44 @@ class _CommunityTab extends StatelessWidget {
                 ],
               ),
             ),
+            // Follow/unfollow button only shown for other users' recipes.
             if (!recipe.isCreatedByCurrentUser) ...[
               const SizedBox(width: 10),
               SizedBox(
                 height: 36,
                 child: recipe.isFollowingAuthor
                     ? FilledButton.icon(
-                        onPressed: () => viewModel.toggleCreatorFollow(),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: context.colors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        icon: const Icon(Icons.check, size: 16),
-                        label: const Text('Following'),
-                      )
+                  onPressed: () => viewModel.toggleCreatorFollow(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: context.colors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: const Icon(Icons.check, size: 16),
+                  label: const Text('Following'),
+                )
                     : OutlinedButton(
-                        onPressed: () => viewModel.toggleCreatorFollow(),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: context.colors.primary,
-                          side: BorderSide(color: context.colors.primary),
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text('Follow'),
-                      ),
+                  onPressed: () => viewModel.toggleCreatorFollow(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: context.colors.primary,
+                    side: BorderSide(color: context.colors.primary),
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Follow'),
+                ),
               ),
             ],
           ],
         ),
         const SizedBox(height: 24),
+        /// Related recipes section with navigation to creator detail page.
         Row(
           children: [
             Text('More Recipes', style: textTheme.titleMedium),
@@ -112,6 +118,7 @@ class _CommunityTab extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
+        // Displays related recipe cards in a horizontal row.
         if (relatedRecipes.isEmpty)
           Text(
             'No recent recipes from this creator yet.',
@@ -122,6 +129,7 @@ class _CommunityTab extends StatelessWidget {
             height: 102,
             child: LayoutBuilder(
               builder: (context, constraints) {
+                // Calculates equal width for each recipe card.
                 final itemWidth = (constraints.maxWidth - 30) / 4;
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,6 +151,7 @@ class _CommunityTab extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 18),
+        /// Segmented control for switching between Ratings and Comments tabs.
         AppPillSegmentedControl(
           labels: const ['Ratings', 'Comments'],
           selectedIndex: ExploreCommunityTab.values.indexOf(
@@ -152,6 +161,7 @@ class _CommunityTab extends StatelessWidget {
               viewModel.selectCommunityTab(ExploreCommunityTab.values[index]),
         ),
         const SizedBox(height: 24),
+        // Conditionally renders the ratings panel or comments panel based on selection.
         if (viewModel.selectedCommunityTab == ExploreCommunityTab.ratings)
           _RatingsPanel(
             viewModel: viewModel,
@@ -184,11 +194,12 @@ class _CommunityTab extends StatelessWidget {
     );
   }
 
+  /// Submits a rating and displays a snackbar with the result.
   Future<void> _submitRating(
-    BuildContext context,
-    ExploreRecipeDetailViewModel viewModel,
-    int rating,
-  ) async {
+      BuildContext context,
+      ExploreRecipeDetailViewModel viewModel,
+      int rating,
+      ) async {
     final success = await viewModel.submitRating(rating.toDouble());
     if (!context.mounted) return;
 
@@ -200,17 +211,18 @@ class _CommunityTab extends StatelessWidget {
             success
                 ? 'Rating submitted.'
                 : viewModel.communityActionErrorMessage ??
-                      'Unable to submit rating.',
+                'Unable to submit rating.',
           ),
         ),
       );
   }
 
+  /// Submits a comment and displays a snackbar with the result.
   Future<void> _submitComment(
-    BuildContext context,
-    ExploreRecipeDetailViewModel viewModel,
-    String content,
-  ) async {
+      BuildContext context,
+      ExploreRecipeDetailViewModel viewModel,
+      String content,
+      ) async {
     final success = await viewModel.addComment(content);
     if (!context.mounted) return;
 
@@ -222,13 +234,14 @@ class _CommunityTab extends StatelessWidget {
             success
                 ? 'Comment posted.'
                 : viewModel.communityActionErrorMessage ??
-                      'Unable to post comment.',
+                'Unable to post comment.',
           ),
         ),
       );
   }
 }
 
+/// Card widget displaying a related recipe with circular thumbnail and title.
 class _RelatedRecipeCard extends StatelessWidget {
   final ExploreRecipeSummary item;
 
@@ -241,6 +254,7 @@ class _RelatedRecipeCard extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: () {
+        // Navigates to the selected related recipe detail page.
         context.push(
           AppRouter.exploreRecipeDetail,
           extra: ExploreRecipeDetailArgs(recipeId: item.id),
@@ -287,6 +301,7 @@ class _RelatedRecipeCard extends StatelessWidget {
   }
 }
 
+/// Container widget with border, shadow, and background for community sections.
 class _CommunitySectionCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -316,6 +331,7 @@ class _CommunitySectionCard extends StatelessWidget {
   }
 }
 
+/// Panel displaying rating statistics, breakdown, and the rate recipe card.
 class _RatingsPanel extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
@@ -340,6 +356,7 @@ class _RatingsPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        /// Rating summary card with average rating, stars, and breakdown bars.
         _CommunitySectionCard(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -382,6 +399,7 @@ class _RatingsPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
+              // Rating breakdown bars showing distribution of each star level.
               Expanded(
                 child: Column(
                   children: recipe.community.ratingBreakdown.map((row) {
@@ -435,6 +453,7 @@ class _RatingsPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
+        /// Rate recipe card with star selection and submit button.
         _RateRecipeCard(
           isSubmitting: isSubmitting,
           canRate: canRate,
@@ -442,6 +461,7 @@ class _RatingsPanel extends StatelessWidget {
           onRatingSelected: onRatingSelected,
         ),
         const SizedBox(height: 14),
+        /// View ratings card with filter controls and review list.
         _ViewRatingsCard(
           reviews: viewModel.visibleReviews,
           starFilter: viewModel.ratingStarFilter,
@@ -453,6 +473,7 @@ class _RatingsPanel extends StatelessWidget {
   }
 }
 
+/// Card for rating a recipe with interactive star selection.
 class _RateRecipeCard extends StatefulWidget {
   final bool isSubmitting;
   final bool canRate;
@@ -486,8 +507,8 @@ class _RateRecipeCardState extends State<_RateRecipeCard> {
           Text(
             widget.canRate
                 ? widget.hasRated
-                      ? 'You already rated this recipe'
-                      : 'Tap a star to rate'
+                ? 'You already rated this recipe'
+                : 'Tap a star to rate'
                 : 'You cannot rate your own recipe',
             style: textTheme.bodySmall,
           ),
@@ -499,6 +520,7 @@ class _RateRecipeCardState extends State<_RateRecipeCard> {
           else
             Column(
               children: [
+                // Five interactive stars for rating selection.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: List.generate(5, (index) {
@@ -528,9 +550,9 @@ class _RateRecipeCardState extends State<_RateRecipeCard> {
                           : () => widget.onRatingSelected(_selectedRating),
                       style: widget.hasRated
                           ? FilledButton.styleFrom(
-                              disabledBackgroundColor: AppColors.border,
-                              disabledForegroundColor: AppColors.textSecondary,
-                            )
+                        disabledBackgroundColor: AppColors.border,
+                        disabledForegroundColor: AppColors.textSecondary,
+                      )
                           : null,
                       child: Text(widget.hasRated ? 'Rated' : 'Submit Rating'),
                     ),
@@ -544,13 +566,14 @@ class _RateRecipeCardState extends State<_RateRecipeCard> {
   }
 }
 
+/// Card displaying ratings with filter controls and review tiles.
 class _ViewRatingsCard extends StatelessWidget {
   final List<ExploreReview> reviews;
   final ExploreRatingStarFilter starFilter;
   final ExploreCommunityDateFilter dateFilter;
   final void Function({
-    required ExploreRatingStarFilter star,
-    required ExploreCommunityDateFilter date,
+  required ExploreRatingStarFilter star,
+  required ExploreCommunityDateFilter date,
   })
   onFiltersChanged;
 
@@ -573,17 +596,18 @@ class _ViewRatingsCard extends StatelessWidget {
             children: [
               Text('View Ratings', style: textTheme.titleMedium),
               const Spacer(),
+              // Dropdown menu for filtering by star rating or date.
               _CompactPopupDropdown(
                 label: _ratingsDropdownLabel(starFilter, dateFilter),
                 items: [
                   ...ExploreRatingStarFilter.values.map(
-                    (filter) => _CompactPopupItem(
+                        (filter) => _CompactPopupItem(
                       value: 'star:${filter.name}',
                       label: _ratingStarLabel(filter),
                     ),
                   ),
                   ...ExploreCommunityDateFilter.values.map(
-                    (filter) => _CompactPopupItem(
+                        (filter) => _CompactPopupItem(
                       value: 'date:${filter.name}',
                       label: _dateFilterLabel(filter),
                     ),
@@ -592,12 +616,12 @@ class _ViewRatingsCard extends StatelessWidget {
                 onSelected: (value) {
                   if (value.startsWith('star:')) {
                     final filter = ExploreRatingStarFilter.values.firstWhere(
-                      (item) => item.name == value.substring(5),
+                          (item) => item.name == value.substring(5),
                     );
                     onFiltersChanged(star: filter, date: dateFilter);
                   } else if (value.startsWith('date:')) {
                     final filter = ExploreCommunityDateFilter.values.firstWhere(
-                      (item) => item.name == value.substring(5),
+                          (item) => item.name == value.substring(5),
                     );
                     onFiltersChanged(star: starFilter, date: filter);
                   }
@@ -612,6 +636,7 @@ class _ViewRatingsCard extends StatelessWidget {
               child: Text('No ratings yet', style: textTheme.bodySmall),
             )
           else
+          // Lists all visible reviews.
             ...reviews.map((review) => _ReviewTile(review: review)),
         ],
       ),
@@ -647,9 +672,9 @@ class _ViewRatingsCard extends StatelessWidget {
   }
 
   static String _ratingsDropdownLabel(
-    ExploreRatingStarFilter star,
-    ExploreCommunityDateFilter date,
-  ) {
+      ExploreRatingStarFilter star,
+      ExploreCommunityDateFilter date,
+      ) {
     if (star == ExploreRatingStarFilter.all &&
         date == ExploreCommunityDateFilter.all) {
       return 'All';
@@ -663,6 +688,7 @@ class _ViewRatingsCard extends StatelessWidget {
   }
 }
 
+/// Tile displaying a single review with avatar, author, time, and rating stars.
 class _ReviewTile extends StatelessWidget {
   final ExploreReview review;
 
@@ -711,6 +737,7 @@ class _ReviewTile extends StatelessWidget {
   }
 }
 
+/// Data class for compact popup menu items.
 class _CompactPopupItem {
   final String value;
   final String label;
@@ -718,6 +745,7 @@ class _CompactPopupItem {
   const _CompactPopupItem({required this.value, required this.label});
 }
 
+/// Compact dropdown button with custom styling for filter menus.
 class _CompactPopupDropdown extends StatelessWidget {
   final String label;
   final List<_CompactPopupItem> items;
@@ -773,6 +801,7 @@ class _CompactPopupDropdown extends StatelessWidget {
   }
 }
 
+/// Dropdown filter specifically for comment date sorting.
 class _CommentFilterDropdown extends StatelessWidget {
   final String label;
   final List<_CompactPopupItem> items;
@@ -831,6 +860,7 @@ class _CommentFilterDropdown extends StatelessWidget {
   }
 }
 
+/// Empty state widget displayed when no comments exist.
 class _CommentsEmptyState extends StatelessWidget {
   const _CommentsEmptyState();
 
@@ -867,6 +897,7 @@ class _CommentsEmptyState extends StatelessWidget {
   }
 }
 
+/// Displays a row of star icons for rating visualization.
 class _RatingStars extends StatelessWidget {
   final double size;
   final double rating;
@@ -892,6 +923,7 @@ class _RatingStars extends StatelessWidget {
   }
 }
 
+/// Panel displaying comments with sorting filter, input field, and nested reply threads.
 class ExploreCommentsPanel extends StatefulWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
@@ -927,6 +959,7 @@ class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
     super.dispose();
   }
 
+  /// Submits the comment and clears the input field.
   void _submitComment() {
     final content = _commentController.text.trim();
     if (content.isEmpty || widget.isSubmitting) return;
@@ -972,6 +1005,7 @@ class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
                 ),
               ),
               const SizedBox(width: 12),
+              // Date filter dropdown for comments.
               _CommentFilterDropdown(
                 label: _commentDateLabel(widget.viewModel.commentDateFilter),
                 items: ExploreCommunityDateFilter.values.map((filter) {
@@ -982,7 +1016,7 @@ class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
                 }).toList(),
                 onSelected: (value) {
                   final filter = ExploreCommunityDateFilter.values.firstWhere(
-                    (item) => item.name == value,
+                        (item) => item.name == value,
                   );
                   widget.viewModel.updateCommentDateFilter(filter);
                 },
@@ -1006,6 +1040,7 @@ class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
               }).toList(),
             ),
           const SizedBox(height: 10),
+          // Comment input text field with send button.
           TextField(
             controller: _commentController,
             minLines: 1,
@@ -1070,6 +1105,7 @@ class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
   }
 }
 
+/// Tile displaying a single comment with reply functionality and nested replies.
 class _CommentTile extends StatefulWidget {
   final ExploreComment comment;
   final bool isSubmitting;
@@ -1101,6 +1137,7 @@ class _CommentTileState extends State<_CommentTile> {
     super.dispose();
   }
 
+  /// Submits a reply and closes the reply input on success.
   Future<void> _submitReply() async {
     final content = _replyController.text.trim();
     if (content.isEmpty || widget.isSubmitting) return;
@@ -1161,6 +1198,7 @@ class _CommentTileState extends State<_CommentTile> {
   }
 }
 
+/// Row displaying comment content with avatar, author, timestamp, and action buttons.
 class _CommentBodyRow extends StatelessWidget {
   final String avatarPath;
   final String author;
@@ -1267,6 +1305,7 @@ class _CommentBodyRow extends StatelessWidget {
   }
 }
 
+/// Pill-shaped date label with subtle styling.
 class _DatePill extends StatelessWidget {
   final String label;
 
@@ -1294,6 +1333,7 @@ class _DatePill extends StatelessWidget {
   }
 }
 
+/// Heart-shaped like button with like count and toggle functionality.
 class _HeartLikeButton extends StatelessWidget {
   final int likes;
   final bool isLiked;
@@ -1339,6 +1379,7 @@ class _HeartLikeButton extends StatelessWidget {
   }
 }
 
+/// Timeline display for nested replies with visual branch lines.
 class _RepliesTimeline extends StatelessWidget {
   final List<ExploreCommentReply> replies;
   final bool isSubmitting;
@@ -1375,6 +1416,7 @@ class _RepliesTimeline extends StatelessWidget {
   }
 }
 
+/// Visual branch connector for nested reply threads.
 class _ReplyBranch extends StatelessWidget {
   final Widget child;
   final bool isLast;
@@ -1401,6 +1443,7 @@ class _ReplyBranch extends StatelessWidget {
   }
 }
 
+/// Custom painter for drawing reply branch lines.
 class _ReplyBranchPainter extends CustomPainter {
   final Color color;
   final bool isLast;
@@ -1417,6 +1460,7 @@ class _ReplyBranchPainter extends CustomPainter {
     const branchY = 18.0;
     final x = size.width * 0.45;
 
+    // Draws vertical line and horizontal connector.
     canvas.drawLine(
       Offset(x, 0),
       Offset(x, isLast ? branchY : size.height),
@@ -1431,6 +1475,7 @@ class _ReplyBranchPainter extends CustomPainter {
   }
 }
 
+/// Tile displaying a single reply with nested reply support.
 class _ReplyTile extends StatefulWidget {
   final ExploreCommentReply reply;
   final bool isSubmitting;
@@ -1458,6 +1503,7 @@ class _ReplyTileState extends State<_ReplyTile> {
     super.dispose();
   }
 
+  /// Submits a nested reply and closes the input on success.
   Future<void> _submitReply() async {
     final content = _replyController.text.trim();
     if (content.isEmpty || widget.isSubmitting) return;
@@ -1520,6 +1566,7 @@ class _ReplyTileState extends State<_ReplyTile> {
   }
 }
 
+/// Input field for writing replies to comments or replies.
 class _ReplyInputField extends StatelessWidget {
   final TextEditingController controller;
   final bool enabled;
@@ -1569,6 +1616,7 @@ class _ReplyInputField extends StatelessWidget {
   }
 }
 
+/// Avatar widget with fallback to person icon when image is unavailable.
 class _RecipeDetailAvatar extends StatelessWidget {
   final String imagePath;
   final double radius;
@@ -1591,14 +1639,13 @@ class _RecipeDetailAvatar extends StatelessWidget {
       backgroundColor: Colors.white,
       child: hasImage
           ? ClipOval(
-              child: AppRemoteOrAssetImage(
-                imagePath: imagePath,
-                width: imageSize,
-                height: imageSize,
-              ),
-            )
+        child: AppRemoteOrAssetImage(
+          imagePath: imagePath,
+          width: imageSize,
+          height: imageSize,
+        ),
+      )
           : Icon(Icons.person, color: AppColors.primary, size: iconSize),
     );
   }
 }
-

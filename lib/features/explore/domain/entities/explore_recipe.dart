@@ -1,5 +1,7 @@
+// Enumeration of available tabs for filtering recipe lists in the explore view.
 enum ExploreRecipeTab { all, popular, recent, following }
 
+// Core domain entity representing a complete recipe with all details.
 class ExploreRecipe {
   final String id;
   final String creatorUid;
@@ -74,6 +76,7 @@ class ExploreRecipe {
   });
 }
 
+// Represents an ingredient with nutritional information and metadata.
 class ExploreIngredient {
   final String name;
   final String amount;
@@ -110,6 +113,7 @@ class ExploreIngredient {
   });
 }
 
+// Groups instruction steps under a titled section.
 class ExploreInstructionSection {
   final String title;
   final List<ExploreInstructionStep> steps;
@@ -117,6 +121,7 @@ class ExploreInstructionSection {
   const ExploreInstructionSection({required this.title, required this.steps});
 }
 
+// A single step within an instruction section.
 class ExploreInstructionStep {
   final String title;
   final String description;
@@ -129,6 +134,7 @@ class ExploreInstructionStep {
   });
 }
 
+// Aggregated nutritional data for a complete recipe.
 class ExploreNutrition {
   final int calories;
   final int proteinGrams;
@@ -151,6 +157,7 @@ class ExploreNutrition {
   });
 }
 
+// Represents a single nutrient with amount, unit, and daily value reference.
 class ExploreNutrientAmount {
   final String key;
   final String label;
@@ -167,6 +174,7 @@ class ExploreNutrientAmount {
   });
 }
 
+// Community interaction data for a recipe including ratings, reviews, and comments.
 class ExploreCommunity {
   final String authorBio;
   final List<ExploreRatingBreakdown> ratingBreakdown;
@@ -181,6 +189,7 @@ class ExploreCommunity {
   });
 }
 
+// Breakdown of ratings by star count (1-5).
 class ExploreRatingBreakdown {
   final int stars;
   final int count;
@@ -188,6 +197,7 @@ class ExploreRatingBreakdown {
   const ExploreRatingBreakdown({required this.stars, required this.count});
 }
 
+// A review left by a user with rating and timestamp.
 class ExploreReview {
   final String author;
   final String avatarPath;
@@ -204,6 +214,7 @@ class ExploreReview {
   });
 }
 
+// A comment on a recipe with nested replies and like information.
 class ExploreComment {
   final String id;
   final String author;
@@ -228,6 +239,7 @@ class ExploreComment {
   });
 }
 
+// A reply to a comment or another reply with nested replies.
 class ExploreCommentReply {
   final String id;
   final String documentPath;
@@ -254,6 +266,7 @@ class ExploreCommentReply {
   });
 }
 
+// Represents a recipe category option with custom flag for user-defined categories.
 class ExploreRecipeCategoryOption {
   final String id;
   final String name;
@@ -276,6 +289,7 @@ class ExploreRecipeCategoryOption {
   int get hashCode => Object.hash(id, isCustom);
 }
 
+// Compact recipe summary for list views and related recipes.
 class ExploreRecipeSummary {
   final String id;
   final String title;
@@ -288,6 +302,7 @@ class ExploreRecipeSummary {
   });
 }
 
+// Summary of a creator's profile for follower lists.
 class ExploreCreatorSummary {
   final String uid;
   final String name;
@@ -304,6 +319,7 @@ class ExploreCreatorSummary {
   });
 }
 
+// Detailed creator profile including bio, stats, and recipe list.
 class ExploreCreatorDetail {
   final ExploreCreatorSummary summary;
   final String bio;
