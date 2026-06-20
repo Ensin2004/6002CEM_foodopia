@@ -131,6 +131,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
   String? _requestedRecipeId;
   String? _initialFormSignature;
   bool _didSaveChanges = false;
+  bool _didRequestAiIngredientImages = false;
 
   @override
   void initState() {
@@ -179,6 +180,14 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     final existingReview = viewModel.existingReview;
     if (existingReview != null && _seededRecipeId != existingReview.recipeId) {
       _seedFromReview(viewModel);
+    }
+
+    if (widget.initialAiRecipe != null && !_didRequestAiIngredientImages) {
+      _didRequestAiIngredientImages = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _fetchMissingIngredientImages(viewModel);
+      });
     }
 
     _initialFormSignature ??= _formSignature();
@@ -377,6 +386,31 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     final image = await _pickImageFile();
     if (image == null) return;
     setState(() => row.imageFile = image);
+  }
+
+  Future<void> _fetchMissingIngredientImages(
+    AddRecipeIngredientsViewModel viewModel,
+  ) async {
+    for (final row in List<IngredientRowState>.of(_rows)) {
+      final ingredientName = row.nameController.text.trim();
+      if (ingredientName.isEmpty ||
+          row.imageFile != null ||
+          row.existingImageUrl != null) {
+        continue;
+      }
+
+      final imageUrl = await viewModel.getIngredientImageUrl(ingredientName);
+      if (!mounted || imageUrl == null) continue;
+
+      final currentName = row.nameController.text.trim();
+      if (currentName != ingredientName ||
+          row.imageFile != null ||
+          row.existingImageUrl != null) {
+        continue;
+      }
+
+      setState(() => row.existingImageUrl = imageUrl);
+    }
   }
 
   Future<File?> _pickImageFile() async {
