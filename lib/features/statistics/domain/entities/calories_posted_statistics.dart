@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 
 // Handles CaloriesPostedStatistics for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class CaloriesPostedStatistics {
   final String dateRange;
   final int totalPost;
@@ -14,7 +13,6 @@ class CaloriesPostedStatistics {
   final List<CaloriesPostedDay> dailyPosts;
 
   // Handles CaloriesPostedStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const CaloriesPostedStatistics({
     required this.dateRange,
     required this.totalPost,
@@ -27,7 +25,6 @@ class CaloriesPostedStatistics {
 }
 
 // Handles CaloriesPostedDay for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class CaloriesPostedDay {
   final DateTime date;
   final String weekdayLabel;
@@ -39,7 +36,6 @@ class CaloriesPostedDay {
   final List<CaloriesPostedItem> posts;
 
   // Handles CaloriesPostedDay for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const CaloriesPostedDay({
     required this.date,
     required this.weekdayLabel,
@@ -53,7 +49,6 @@ class CaloriesPostedDay {
 }
 
 // Handles CaloriesPostedItem for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class CaloriesPostedItem {
   final String recipeName;
   final int caloriesKcal;
@@ -64,7 +59,6 @@ class CaloriesPostedItem {
   final String? imageUrl;
 
   // Handles CaloriesPostedItem for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const CaloriesPostedItem({
     required this.recipeName,
     required this.caloriesKcal,

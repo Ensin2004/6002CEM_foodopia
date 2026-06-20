@@ -8,7 +8,6 @@ import '../../domain/entities/recipe_performance_statistics.dart';
 import '../../domain/usecases/get_admin_post_analytic_statistics_usecase.dart';
 
 // Handles AdminPostAnalyticViewModel for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminPostAnalyticViewModel extends ChangeNotifier {
   final GetAdminPostAnalyticStatisticsUseCase _getStatisticsUseCase;
 
@@ -29,20 +28,17 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles statistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   AdminPostAnalyticStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   DateTime? get startDate => _startDate;
   // Handles endDate for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   DateTime? get endDate => _endDate;
   int get selectedSectionIndex => _selectedSectionIndex;
   String? get selectedRecipeId => _selectedRecipeId;
   AdminStatisticsSortOrder get sortOrder => _sortOrder;
 
   // Handles selectedRecipe for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   RecipePerformanceItem? get selectedRecipe {
     final statistics = _statistics?.recipePerformance;
     final selectedId = _selectedRecipeId;
@@ -54,7 +50,6 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles selectedSection for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   AdminAnalyticSection? get selectedSection {
     final sections = _statistics?.sections;
     if (sections == null || sections.isEmpty) return null;
@@ -64,7 +59,6 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles loadStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<void> loadStatistics() async {
     _isLoading = _statistics == null;
     _errorMessage = null;
@@ -95,7 +89,6 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles selectSection for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void selectSection(int index) {
     if (_selectedSectionIndex == index) return;
     _selectedSectionIndex = index;
@@ -104,7 +97,6 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles setSortOrder for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void setSortOrder(AdminStatisticsSortOrder order) {
     if (_sortOrder == order) return;
     _sortOrder = order;
@@ -112,7 +104,6 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles selectRecipe for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void selectRecipe(String recipeId) {
     if (_selectedRecipeId == recipeId) return;
     _selectedRecipeId = recipeId;
@@ -120,7 +111,6 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles selectDateRange for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<void> selectDateRange({
     required DateTime startDate,
     required DateTime endDate,
@@ -131,13 +121,11 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles _notifyIfActive for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
   // Handles dispose for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   void dispose() {
     _isDisposed = true;

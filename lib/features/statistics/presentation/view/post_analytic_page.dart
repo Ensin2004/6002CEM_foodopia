@@ -22,7 +22,6 @@ import '../widgets/statistics_recipe_media_thumbnail.dart';
 
 /// Compares ratings for posts and ratings grouped by category.
 // Handles PostAnalyticPage for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class PostAnalyticPage extends StatelessWidget {
   const PostAnalyticPage({super.key});
 
@@ -31,7 +30,6 @@ class PostAnalyticPage extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     // The ViewModel controls the two report pages, sorting, and open rows.
     return ChangeNotifierProvider(
@@ -47,12 +45,10 @@ class PostAnalyticPage extends StatelessWidget {
 // It reads the ViewModel and chooses loading, error, or data content.
 // Smaller widgets below handle the individual visual sections.
 // Handles _PostAnalyticView for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _PostAnalyticView extends StatefulWidget {
   const _PostAnalyticView();
 
   // Handles createState for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   State<_PostAnalyticView> createState() => _PostAnalyticViewState();
 }
@@ -61,14 +57,12 @@ class _PostAnalyticView extends StatefulWidget {
 // It listens to user actions and rebuilds the affected widgets.
 // Controllers and other temporary UI values also belong here.
 // Handles _PostAnalyticViewState for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _PostAnalyticViewState extends State<_PostAnalyticView> {
   @override
   // Build the post analytic view state with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final viewModel = context.watch<PostAnalyticViewModel>();
 
@@ -83,7 +77,6 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
   }
 
   // Handles _buildBody for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget _buildBody(BuildContext context, PostAnalyticViewModel viewModel) {
     // Do not build rating charts until the report has loaded.
     if (viewModel.isLoading && viewModel.statistics == null) {
@@ -127,7 +120,6 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
               ),
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -139,7 +131,6 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: _SummaryTile(
@@ -151,7 +142,6 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
               ],
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             // Switch between individual posts and category totals.
             _PageTabs(
@@ -159,7 +149,6 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
               onSelected: (index) => _goToPage(index, viewModel),
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             // Horizontal swipes provide another way to change report pages.
             GestureDetector(
@@ -181,7 +170,6 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
                     ),
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.sm),
             _PageDots(count: 2, selectedIndex: viewModel.selectedPageIndex),
           ],
@@ -193,7 +181,6 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
   // Convert the swipe or tap into a valid page index.
   // Store the index so tabs, content, and page dots stay matched.
   // Handles _goToPage for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void _goToPage(int index, PostAnalyticViewModel viewModel) {
     viewModel.selectPage(index);
   }
@@ -201,7 +188,6 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
   // Convert the swipe or tap into a valid page index.
   // Store the index so tabs, content, and page dots stay matched.
   // Handles _handleSwipe for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void _handleSwipe(DragEndDetails details, PostAnalyticViewModel viewModel) {
     final velocity = details.primaryVelocity ?? 0;
     if (velocity.abs() < 220) return;
@@ -218,14 +204,12 @@ class _PostAnalyticViewState extends State<_PostAnalyticView> {
 // It creates the page-level state before showing the screen content.
 // Keeping setup here makes the visible layout easier to read.
 // Handles _RatedPostPage for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _RatedPostPage extends StatelessWidget {
   final List<PostRatingItem> posts;
   final PostAnalyticSortOrder sortOrder;
   final ValueChanged<PostAnalyticSortOrder> onSortChanged;
 
   // Handles _RatedPostPage for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _RatedPostPage({
     required this.posts,
     required this.sortOrder,
@@ -237,7 +221,6 @@ class _RatedPostPage extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return _ChartShell(
       title: 'All Rated Post',
@@ -266,7 +249,6 @@ class _RatedPostPage extends StatelessWidget {
 // It creates the page-level state before showing the screen content.
 // Keeping setup here makes the visible layout easier to read.
 // Handles _CategoryRatingPage for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _CategoryRatingPage extends StatelessWidget {
   final List<PostRatingCategory> categories;
   final PostAnalyticSortOrder sortOrder;
@@ -275,7 +257,6 @@ class _CategoryRatingPage extends StatelessWidget {
   final ValueChanged<int> onToggle;
 
   // Handles _CategoryRatingPage for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _CategoryRatingPage({
     required this.categories,
     required this.sortOrder,
@@ -289,7 +270,6 @@ class _CategoryRatingPage extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return _ChartShell(
       title: 'Most Rating For Each Category',
@@ -320,14 +300,12 @@ class _CategoryRatingPage extends StatelessWidget {
 // It prepares labels and values before passing them to the shared chart.
 // Keeping chart setup here avoids mixing it with the main page layout.
 // Handles _ChartShell for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _ChartShell extends StatelessWidget {
   final String title;
   final List<StatisticsBarChartItem> chartItems;
   final Widget child;
 
   // Handles _ChartShell for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _ChartShell({
     required this.title,
     required this.chartItems,
@@ -339,7 +317,6 @@ class _ChartShell extends StatelessWidget {
   // Labels, scale, and spacing are prepared before the chart is displayed.
   // This method only handles presentation and does not change report data.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final chartWidth = (MediaQuery.sizeOf(context).width - 52).clamp(
       288.0,
@@ -371,7 +348,6 @@ class _ChartShell extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.lg),
           Center(
             child: SizedBox(
@@ -389,7 +365,6 @@ class _ChartShell extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.lg),
           child,
         ],
@@ -402,7 +377,6 @@ class _ChartShell extends StatelessWidget {
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
 // Handles _PostList for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _PostList extends StatelessWidget {
   final String title;
   final List<PostRatingItem> posts;
@@ -410,7 +384,6 @@ class _PostList extends StatelessWidget {
   final ValueChanged<PostAnalyticSortOrder> onSortChanged;
 
   // Handles _PostList for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _PostList({
     required this.title,
     required this.posts,
@@ -423,7 +396,6 @@ class _PostList extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -439,7 +411,6 @@ class _PostList extends StatelessWidget {
             onSortChanged: onSortChanged,
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.md),
           ...posts.map((post) => _PostRow(post: post, showView: true)),
         ],
@@ -452,7 +423,6 @@ class _PostList extends StatelessWidget {
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
 // Handles _CategoryList for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _CategoryList extends StatelessWidget {
   final List<PostRatingCategory> categories;
   final PostAnalyticSortOrder sortOrder;
@@ -461,7 +431,6 @@ class _CategoryList extends StatelessWidget {
   final ValueChanged<int> onToggle;
 
   // Handles _CategoryList for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _CategoryList({
     required this.categories,
     required this.sortOrder,
@@ -475,7 +444,6 @@ class _CategoryList extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -491,7 +459,6 @@ class _CategoryList extends StatelessWidget {
             onSortChanged: onSortChanged,
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.md),
           ...List.generate(categories.length, (index) {
             final category = categories[index];
@@ -511,14 +478,12 @@ class _CategoryList extends StatelessWidget {
 // It owns the header and the content that belongs to this group.
 // The expanded state decides whether the detailed rows are visible.
 // Handles _CategorySection for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _CategorySection extends StatelessWidget {
   final PostRatingCategory category;
   final bool isExpanded;
   final VoidCallback onTap;
 
   // Handles _CategorySection for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _CategorySection({
     required this.category,
     required this.isExpanded,
@@ -530,7 +495,6 @@ class _CategorySection extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Column(
       children: [
@@ -542,7 +506,6 @@ class _CategorySection extends StatelessWidget {
               children: [
                 _FoodIcon(icon: category.icon, label: category.name),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -560,7 +523,6 @@ class _CategorySection extends StatelessWidget {
                         children: [
                           _Stars(rating: category.averageRating),
                           // Handles SizedBox for this part of the statistics page.
-                          // This makes the purpose clearer when reading or updating the code.
                           const SizedBox(width: AppSpacing.sm),
                           _RatingPill(rating: category.averageRating),
                         ],
@@ -577,7 +539,6 @@ class _CategorySection extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Icon(
                   isExpanded
@@ -601,13 +562,11 @@ class _CategorySection extends StatelessWidget {
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
 // Handles _PostRow for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _PostRow extends StatelessWidget {
   final PostRatingItem post;
   final bool showView;
 
   // Handles _PostRow for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _PostRow({required this.post, required this.showView});
 
   @override
@@ -615,7 +574,6 @@ class _PostRow extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -623,7 +581,6 @@ class _PostRow extends StatelessWidget {
         children: [
           _FoodIcon(icon: post.icon, imageUrl: post.imageUrl),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -643,7 +600,6 @@ class _PostRow extends StatelessWidget {
                   children: [
                     _Stars(rating: post.rating),
                     // Handles SizedBox for this part of the statistics page.
-                    // This makes the purpose clearer when reading or updating the code.
                     const SizedBox(width: AppSpacing.sm),
                     _RatingPill(rating: post.rating),
                   ],
@@ -661,7 +617,6 @@ class _PostRow extends StatelessWidget {
           ),
           if (showView && (post.id ?? '').isNotEmpty) ...[
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(width: AppSpacing.md),
             InkWell(
               borderRadius: BorderRadius.circular(4),
@@ -683,7 +638,6 @@ class _PostRow extends StatelessWidget {
                       ),
                     ),
                     // Handles Icon for this part of the statistics page.
-                    // This makes the purpose clearer when reading or updating the code.
                     const Icon(Icons.chevron_right, size: 18),
                   ],
                 ),
@@ -700,14 +654,12 @@ class _PostRow extends StatelessWidget {
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
 // Handles _ListHeader for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _ListHeader extends StatelessWidget {
   final String title;
   final PostAnalyticSortOrder sortOrder;
   final ValueChanged<PostAnalyticSortOrder> onSortChanged;
 
   // Handles _ListHeader for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _ListHeader({
     required this.title,
     required this.sortOrder,
@@ -719,7 +671,6 @@ class _ListHeader extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -761,7 +712,6 @@ class _ListHeader extends StatelessWidget {
                 style: context.text.bodySmall?.copyWith(fontSize: 9),
               ),
               // Handles SizedBox for this part of the statistics page.
-              // This makes the purpose clearer when reading or updating the code.
               const SizedBox(width: 2),
               const Icon(Icons.tune, size: 17),
             ],
@@ -776,7 +726,6 @@ class _ListHeader extends StatelessWidget {
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
 // Handles _Stars for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _Stars extends StatelessWidget {
   final double rating;
 
@@ -787,7 +736,6 @@ class _Stars extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Row(
       children: List.generate(5, (index) {
@@ -806,7 +754,6 @@ class _Stars extends StatelessWidget {
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
 // Handles _RatingPill for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _RatingPill extends StatelessWidget {
   final double rating;
 
@@ -817,7 +764,6 @@ class _RatingPill extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
@@ -842,7 +788,6 @@ class _RatingPill extends StatelessWidget {
 // It keeps one focused piece of presentation logic outside the main layout.
 // The parent widget passes in the data that this helper needs.
 // Handles DateRangeBar for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class DateRangeBar extends StatelessWidget {
   final String dateRange;
 
@@ -853,7 +798,6 @@ class DateRangeBar extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -866,7 +810,6 @@ class DateRangeBar extends StatelessWidget {
           ),
         ),
         // Handles SizedBox for this part of the statistics page.
-        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Container(
@@ -887,7 +830,6 @@ class DateRangeBar extends StatelessWidget {
                   ),
                 ),
                 // Handles Icon for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const Icon(Icons.calendar_month, size: 18),
               ],
             ),
@@ -902,14 +844,12 @@ class DateRangeBar extends StatelessWidget {
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
 // Handles _SummaryTile for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
 
   // Handles _SummaryTile for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _SummaryTile({
     required this.icon,
     required this.title,
@@ -921,7 +861,6 @@ class _SummaryTile extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -935,7 +874,6 @@ class _SummaryTile extends StatelessWidget {
         children: [
           _SoftIcon(icon: icon),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -964,13 +902,11 @@ class _SummaryTile extends StatelessWidget {
 // The selected index comes from the parent or ViewModel.
 // User changes are sent back through the provided callback.
 // Handles _PageDots for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _PageDots extends StatelessWidget {
   final int count;
   final int selectedIndex;
 
   // Handles _PageDots for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _PageDots({required this.count, required this.selectedIndex});
 
   @override
@@ -978,7 +914,6 @@ class _PageDots extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -1003,13 +938,11 @@ class _PageDots extends StatelessWidget {
 // The selected index comes from the parent or ViewModel.
 // User changes are sent back through the provided callback.
 // Handles _PageTabs for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _PageTabs extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
   // Handles _PageTabs for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _PageTabs({required this.selectedIndex, required this.onSelected});
 
   @override
@@ -1017,7 +950,6 @@ class _PageTabs extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return AppPillSegmentedControl(
       labels: const ['Rated Post', 'Category'],
@@ -1031,14 +963,12 @@ class _PageTabs extends StatelessWidget {
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
 // Handles _FoodIcon for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
   final String? imageUrl;
   final String? label;
 
   // Handles _FoodIcon for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _FoodIcon({required this.icon, this.imageUrl, this.label});
 
   @override
@@ -1046,7 +976,6 @@ class _FoodIcon extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       width: 36,
@@ -1062,7 +991,6 @@ class _FoodIcon extends StatelessWidget {
   }
 
   // Handles _buildContent for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget _buildContent(BuildContext context) {
     if (imageUrl?.isNotEmpty == true) {
       return StatisticsRecipeMediaThumbnail(
@@ -1097,7 +1025,6 @@ class _FoodIcon extends StatelessWidget {
   // This helper prepares a value used by the visible report.
   // Keeping it outside build makes the widget tree easier to follow.
   // Handles _circleText for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   String _circleText(String? value) {
     final words = value
         ?.trim()
@@ -1119,7 +1046,6 @@ class _FoodIcon extends StatelessWidget {
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
 // Handles _SoftIcon for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
@@ -1130,7 +1056,6 @@ class _SoftIcon extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       width: 36,

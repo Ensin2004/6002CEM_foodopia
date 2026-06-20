@@ -7,7 +7,6 @@ import '../../../../core/widgets/media/app_recipe_media.dart';
 
 /// Circular, non-interactive recipe media used throughout statistics views.
 // Handles StatisticsRecipeMediaThumbnail for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsRecipeMediaThumbnail extends StatelessWidget {
   final String? mediaPath;
   final IconData fallbackIcon;
@@ -17,7 +16,6 @@ class StatisticsRecipeMediaThumbnail extends StatelessWidget {
   final Color? borderColor;
 
   // Handles StatisticsRecipeMediaThumbnail for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsRecipeMediaThumbnail({
     super.key,
     required this.mediaPath,
@@ -29,7 +27,6 @@ class StatisticsRecipeMediaThumbnail extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     final path = mediaPath?.trim() ?? '';

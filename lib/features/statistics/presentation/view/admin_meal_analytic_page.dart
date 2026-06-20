@@ -15,7 +15,6 @@ import '../widgets/statistics_page_helpers.dart';
 
 /// Admin report for meal-plan activity across the whole system.
 // Handles AdminMealAnalyticPage for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminMealAnalyticPage extends StatelessWidget {
   const AdminMealAnalyticPage({super.key});
 
@@ -24,7 +23,6 @@ class AdminMealAnalyticPage extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     // The ViewModel owns the date range, selected section, and sort order.
     return ChangeNotifierProvider(
@@ -40,12 +38,10 @@ class AdminMealAnalyticPage extends StatelessWidget {
 // It reads the ViewModel and chooses loading, error, or data content.
 // Smaller widgets below handle the individual visual sections.
 // Handles _AdminMealAnalyticView for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _AdminMealAnalyticView extends StatefulWidget {
   const _AdminMealAnalyticView();
 
   // Handles createState for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   State<_AdminMealAnalyticView> createState() => _AdminMealAnalyticViewState();
 }
@@ -54,13 +50,11 @@ class _AdminMealAnalyticView extends StatefulWidget {
 // It listens to user actions and rebuilds the affected widgets.
 // Controllers and other temporary UI values also belong here.
 // Handles _AdminMealAnalyticViewState for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _AdminMealAnalyticViewState extends State<_AdminMealAnalyticView> {
   late final PageController _sectionController;
   final DateFormat _summaryDateFormatter = DateFormat('MMM d, yyyy');
 
   // Handles initState for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   void initState() {
     super.initState();
@@ -68,7 +62,6 @@ class _AdminMealAnalyticViewState extends State<_AdminMealAnalyticView> {
   }
 
   // Handles dispose for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   void dispose() {
     _sectionController.dispose();
@@ -80,7 +73,6 @@ class _AdminMealAnalyticViewState extends State<_AdminMealAnalyticView> {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminMealAnalyticViewModel>();
 
@@ -95,7 +87,6 @@ class _AdminMealAnalyticViewState extends State<_AdminMealAnalyticView> {
   }
 
   // Handles _buildBody for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget _buildBody(AdminMealAnalyticViewModel viewModel) {
     // Wait for system-wide meal data before building charts.
     if (viewModel.isLoading && viewModel.statistics == null) {
@@ -131,7 +122,6 @@ class _AdminMealAnalyticViewState extends State<_AdminMealAnalyticView> {
               onTap: () => _pickDateRange(viewModel),
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -144,7 +134,6 @@ class _AdminMealAnalyticViewState extends State<_AdminMealAnalyticView> {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: AdminStatisticSummaryTile(
@@ -157,7 +146,6 @@ class _AdminMealAnalyticViewState extends State<_AdminMealAnalyticView> {
               ],
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             // ADMIN MEAL LINE-CHART UI CALL STARTS HERE.
             // The shared card converts dailyPlans into line-chart points.
@@ -169,7 +157,6 @@ class _AdminMealAnalyticViewState extends State<_AdminMealAnalyticView> {
               values: statistics.dailyPlans,
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             // Swipe or tap tabs to move through the different meal reports.
             // ADMIN MEAL SECTION UI CALL STARTS HERE.
@@ -195,7 +182,6 @@ class _AdminMealAnalyticViewState extends State<_AdminMealAnalyticView> {
   // Open the calendar with the current range already selected.
   // Send confirmed dates to the ViewModel so it can reload the report.
   // Handles _pickDateRange for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<void> _pickDateRange(AdminMealAnalyticViewModel viewModel) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

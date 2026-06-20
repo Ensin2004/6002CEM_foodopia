@@ -21,7 +21,6 @@ import '../../domain/entities/statistics_dashboard.dart';
 // This keeps fixed menu/dashboard data that does not need Firestore, such as
 // the list of report pages and sample fallback statistics.
 // Handles StatisticsLocalDataSource for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsLocalDataSource {
   Future<StatisticsDashboardModel> getUserStatistics() async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
@@ -115,7 +114,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getAdminStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<StatisticsDashboardModel> getAdminStatistics() async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
 
@@ -216,7 +214,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getMealPlannedTime for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<MealPlannedTimeStatistics> getMealPlannedTime({
     DateTime? startDate,
     DateTime? endDate,
@@ -306,7 +303,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getFoodAnalytic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<FoodAnalyticStatistics> getFoodAnalytic({
     DateTime? startDate,
     DateTime? endDate,
@@ -465,7 +461,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getCaloriesIntake for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<CaloriesIntakeStatistics> getCaloriesIntake({
     DateTime? startDate,
     DateTime? endDate,
@@ -623,7 +618,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getDifficultyMeals for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<DifficultyMealStatistics> getDifficultyMeals({
     DateTime? startDate,
     DateTime? endDate,
@@ -754,7 +748,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getMealPlanMethods for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<MealPlanMethodStatistics> getMealPlanMethods({
     DateTime? startDate,
     DateTime? endDate,
@@ -859,7 +852,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getPostAnalytic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<PostAnalyticStatistics> getPostAnalytic({
     DateTime? startDate,
     DateTime? endDate,
@@ -1005,7 +997,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getCaloriesPosted for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<CaloriesPostedStatistics> getCaloriesPosted({
     DateTime? startDate,
     DateTime? endDate,
@@ -1165,7 +1156,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getPostedMealTime for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<PostedMealTimeStatistics> getPostedMealTime({
     DateTime? startDate,
     DateTime? endDate,
@@ -1255,7 +1245,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getMostCookedRecipes for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<MostCookedRecipeStatistics> getMostCookedRecipes({
     DateTime? startDate,
     DateTime? endDate,
@@ -1373,7 +1362,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getPostDifficulty for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<PostDifficultyStatistics> getPostDifficulty({
     DateTime? startDate,
     DateTime? endDate,
@@ -1476,7 +1464,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getAdminMealAnalytic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<AdminMealAnalyticStatistics> getAdminMealAnalytic({
     DateTime? startDate,
     DateTime? endDate,
@@ -1495,7 +1482,6 @@ class StatisticsLocalDataSource {
       ),
       sections: [
         // Handles AdminAnalyticSection for this part of the statistics page.
-        // This makes the purpose clearer when reading or updating the code.
         const AdminAnalyticSection(
           title: 'Most Planned Meal',
           summaryTitle: 'Total Planned',
@@ -1686,7 +1672,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getAdminPostAnalytic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<AdminPostAnalyticStatistics> getAdminPostAnalytic({
     DateTime? startDate,
     DateTime? endDate,
@@ -1705,7 +1690,6 @@ class StatisticsLocalDataSource {
       ),
       sections: [
         // Handles AdminAnalyticSection for this part of the statistics page.
-        // This makes the purpose clearer when reading or updating the code.
         const AdminAnalyticSection(
           title: 'Most Rating For All Posted',
           summaryTitle: 'Total Post',
@@ -1882,7 +1866,6 @@ class StatisticsLocalDataSource {
   }
 
   // Handles getAdminDietaryPreference for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<AdminDietaryPreferenceStatistics> getAdminDietaryPreference({
     DateTime? startDate,
     DateTime? endDate,
@@ -1941,14 +1924,12 @@ class StatisticsLocalDataSource {
   }
 
   // Handles _formatRange for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   String _formatRange(DateTime start, DateTime end) {
     final formatter = DateFormat('MMM d, yyyy');
     return '${formatter.format(start)} - ${formatter.format(end)}';
   }
 
   // Handles _buildDailyStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   List<AdminDailyStatistic> _buildDailyStatistics({
     required DateTime start,
     required DateTime end,

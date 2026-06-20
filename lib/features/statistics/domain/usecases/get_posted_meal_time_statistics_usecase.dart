@@ -7,14 +7,12 @@ import '../entities/posted_meal_time_statistics.dart';
 import '../repositories/statistics_repository.dart';
 
 // Handles GetPostedMealTimeStatisticsUseCase for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class GetPostedMealTimeStatisticsUseCase {
   final StatisticsRepository _repository;
 
   const GetPostedMealTimeStatisticsUseCase(this._repository);
 
   // Handles execute for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<Either<Failure, PostedMealTimeStatistics>> execute({
     DateTime? startDate,
     DateTime? endDate,

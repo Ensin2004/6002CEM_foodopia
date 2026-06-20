@@ -20,7 +20,6 @@ import '../widgets/statistics_line_chart.dart';
 
 /// Shows daily nutrient intake and optional prediction insights.
 // Handles CaloriesIntakePage for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class CaloriesIntakePage extends StatelessWidget {
   final bool showInsight;
 
@@ -31,7 +30,6 @@ class CaloriesIntakePage extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     // The same page is reused for normal intake and insight mode.
     return ChangeNotifierProvider(
@@ -47,14 +45,12 @@ class CaloriesIntakePage extends StatelessWidget {
 // It reads the ViewModel and chooses loading, error, or data content.
 // Smaller widgets below handle the individual visual sections.
 // Handles _CaloriesIntakeView for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _CaloriesIntakeView extends StatefulWidget {
   final bool showInsight;
 
   const _CaloriesIntakeView({required this.showInsight});
 
   // Handles createState for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   State<_CaloriesIntakeView> createState() => _CaloriesIntakeViewState();
 }
@@ -63,7 +59,6 @@ class _CaloriesIntakeView extends StatefulWidget {
 // It listens to user actions and rebuilds the affected widgets.
 // Controllers and other temporary UI values also belong here.
 // Handles _CaloriesIntakeViewState for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
   int _selectedChart = 0;
 
@@ -72,7 +67,6 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final viewModel = context.watch<CaloriesIntakeViewModel>();
 
@@ -87,7 +81,6 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
   }
 
   // Handles _buildBody for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget _buildBody(BuildContext context, CaloriesIntakeViewModel viewModel) {
     // Show the report only when its daily nutrient data is ready.
     if (viewModel.isLoading && viewModel.statistics == null) {
@@ -128,7 +121,6 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
               ),
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -140,7 +132,6 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: _SummaryTile(
@@ -152,7 +143,6 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
               ],
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             // Insight mode adds prediction content to the normal report.
             if (widget.showInsight) ...[
@@ -160,7 +150,6 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
                 prediction: _predictionForSelectedMetric(statistics, viewModel),
               ),
               // Handles SizedBox for this part of the statistics page.
-              // This makes the purpose clearer when reading or updating the code.
               const SizedBox(height: AppSpacing.lg),
             ],
             _CaloriesMetricPager(
@@ -178,7 +167,6 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
   }
 
   // Handles _averageTitle for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   String get _averageTitle {
     switch (_selectedChart) {
       case 1:
@@ -195,7 +183,6 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
   // Calculate one average value from all visible daily records.
   // Empty data returns a safe zero instead of dividing by zero.
   // Handles _averageValue for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   String _averageValue(
     CaloriesIntakeStatistics statistics,
     CaloriesIntakeViewModel viewModel,
@@ -215,7 +202,6 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
   // Calculate one average value from all visible daily records.
   // Empty data returns a safe zero instead of dividing by zero.
   // Handles _averageInt for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   int _averageInt(
     List<CaloriesDailyIntake> days,
     int Function(CaloriesDailyIntake day) valueForDay,
@@ -284,7 +270,6 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
   // Estimate the next value from the recent direction of the data.
   // This display forecast does not update any stored statistics.
   // Handles _predictNext for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   int _predictNext(List<int> values) {
     if (values.isEmpty) return 0;
     if (values.length == 1) return values.first;
@@ -301,14 +286,12 @@ class _CaloriesIntakeViewState extends State<_CaloriesIntakeView> {
 // It is only used to prepare display data for this page.
 // No loading or database work happens inside this object.
 // Handles _PredictionMetric for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _PredictionMetric {
   final String title;
   final String unit;
   final int Function(CaloriesDailyIntake day) value;
 
   // Handles _PredictionMetric for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _PredictionMetric({
     required this.title,
     required this.unit,
@@ -320,7 +303,6 @@ class _PredictionMetric {
 // It is only used to prepare display data for this page.
 // No loading or database work happens inside this object.
 // Handles _NutrientPrediction for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _NutrientPrediction {
   final String title;
   final int value;
@@ -328,7 +310,6 @@ class _NutrientPrediction {
   final String confidence;
 
   // Handles _NutrientPrediction for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _NutrientPrediction({
     required this.title,
     required this.value,
@@ -341,7 +322,6 @@ class _NutrientPrediction {
 // It keeps one focused piece of presentation logic outside the main layout.
 // The parent widget passes in the data that this helper needs.
 // Handles _NutrientInsightNote for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _NutrientInsightNote extends StatelessWidget {
   final _NutrientPrediction prediction;
 
@@ -352,7 +332,6 @@ class _NutrientInsightNote extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -364,7 +343,6 @@ class _NutrientInsightNote extends StatelessWidget {
       child: Row(
         children: [
           // Handles _SoftIcon for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const _SoftIcon(icon: Icons.trending_up),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -379,7 +357,6 @@ class _NutrientInsightNote extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.sm),
           Text(
             prediction.confidence,
@@ -402,7 +379,6 @@ class _NutrientInsightNote extends StatelessWidget {
 // It keeps one focused piece of presentation logic outside the main layout.
 // The parent widget passes in the data that this helper needs.
 // Handles DateRangeBar for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class DateRangeBar extends StatelessWidget {
   final String dateRange;
 
@@ -413,7 +389,6 @@ class DateRangeBar extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -426,7 +401,6 @@ class DateRangeBar extends StatelessWidget {
           ),
         ),
         // Handles SizedBox for this part of the statistics page.
-        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Container(
@@ -451,7 +425,6 @@ class DateRangeBar extends StatelessWidget {
                   ),
                 ),
                 // Handles Icon for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const Icon(Icons.calendar_month, size: 18),
               ],
             ),
@@ -466,14 +439,12 @@ class DateRangeBar extends StatelessWidget {
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
 // Handles _SummaryTile for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
 
   // Handles _SummaryTile for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _SummaryTile({
     required this.icon,
     required this.title,
@@ -485,7 +456,6 @@ class _SummaryTile extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -499,7 +469,6 @@ class _SummaryTile extends StatelessWidget {
         children: [
           _SoftIcon(icon: icon),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -517,7 +486,6 @@ class _SummaryTile extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(height: 2),
                 Text(
                   value,
@@ -540,7 +508,6 @@ class _SummaryTile extends StatelessWidget {
 // It prepares labels and values before passing them to the shared chart.
 // Keeping chart setup here avoids mixing it with the main page layout.
 // Handles _CaloriesChartMetric for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _CaloriesChartMetric {
   final String title;
   final String breakdownTitle;
@@ -550,7 +517,6 @@ class _CaloriesChartMetric {
   final bool allowUnitChange;
 
   // Handles _CaloriesChartMetric for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _CaloriesChartMetric({
     required this.title,
     required this.breakdownTitle,
@@ -565,7 +531,6 @@ class _CaloriesChartMetric {
 // The selected index comes from the parent or ViewModel.
 // User changes are sent back through the provided callback.
 // Handles _CaloriesMetricPager for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _CaloriesMetricPager extends StatelessWidget {
   final CaloriesIntakeStatistics statistics;
   final CaloriesIntakeViewModel viewModel;
@@ -573,7 +538,6 @@ class _CaloriesMetricPager extends StatelessWidget {
   final ValueChanged<int> onChartChanged;
 
   // Handles _CaloriesMetricPager for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _CaloriesMetricPager({
     required this.statistics,
     required this.viewModel,
@@ -582,7 +546,6 @@ class _CaloriesMetricPager extends StatelessWidget {
   });
 
   // Handles _metrics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   List<_CaloriesChartMetric> get _metrics => [
     _CaloriesChartMetric(
       title: 'Calories Intake Vs Day',
@@ -593,7 +556,6 @@ class _CaloriesMetricPager extends StatelessWidget {
       allowUnitChange: true,
     ),
     // Handles _CaloriesChartMetric for this part of the statistics page.
-    // This makes the purpose clearer when reading or updating the code.
     const _CaloriesChartMetric(
       title: 'Carbohydrate Intake Vs Day',
       breakdownTitle: 'Carbohydrate Breakdown',
@@ -602,7 +564,6 @@ class _CaloriesMetricPager extends StatelessWidget {
       valueForMeal: _carbohydrateForMeal,
     ),
     // Handles _CaloriesChartMetric for this part of the statistics page.
-    // This makes the purpose clearer when reading or updating the code.
     const _CaloriesChartMetric(
       title: 'Protein Intake Vs Day',
       breakdownTitle: 'Protein Breakdown',
@@ -611,7 +572,6 @@ class _CaloriesMetricPager extends StatelessWidget {
       valueForMeal: _proteinForMeal,
     ),
     // Handles _CaloriesChartMetric for this part of the statistics page.
-    // This makes the purpose clearer when reading or updating the code.
     const _CaloriesChartMetric(
       title: 'Fat Intake Vs Day',
       breakdownTitle: 'Fat Breakdown',
@@ -622,37 +582,31 @@ class _CaloriesMetricPager extends StatelessWidget {
   ];
 
   // Handles _carbohydrateForDay for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   static int _carbohydrateForDay(CaloriesDailyIntake day) {
     return day.totalCarbohydrateGram;
   }
 
   // Handles _proteinForDay for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   static int _proteinForDay(CaloriesDailyIntake day) {
     return day.totalProteinGram;
   }
 
   // Handles _fatForDay for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   static int _fatForDay(CaloriesDailyIntake day) {
     return day.totalFatGram;
   }
 
   // Handles _carbohydrateForMeal for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   static int _carbohydrateForMeal(CaloriesMealItem meal) {
     return meal.carbohydrateGram;
   }
 
   // Handles _proteinForMeal for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   static int _proteinForMeal(CaloriesMealItem meal) {
     return meal.proteinGram;
   }
 
   // Handles _fatForMeal for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   static int _fatForMeal(CaloriesMealItem meal) {
     return meal.fatGram;
   }
@@ -662,7 +616,6 @@ class _CaloriesMetricPager extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final metrics = _metrics;
     final metric = metrics[selectedChart];
@@ -671,7 +624,6 @@ class _CaloriesMetricPager extends StatelessWidget {
       children: [
         _MetricTabs(selectedIndex: selectedChart, onSelected: onChartChanged),
         // Handles SizedBox for this part of the statistics page.
-        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(height: AppSpacing.md),
         GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -680,7 +632,6 @@ class _CaloriesMetricPager extends StatelessWidget {
             children: [
               _CaloriesChartCard(statistics: statistics, metric: metric),
               // Handles SizedBox for this part of the statistics page.
-              // This makes the purpose clearer when reading or updating the code.
               const SizedBox(height: AppSpacing.lg),
               _CaloriesBreakdown(
                 dailyIntakes: statistics.dailyIntakes,
@@ -693,7 +644,6 @@ class _CaloriesMetricPager extends StatelessWidget {
           ),
         ),
         // Handles SizedBox for this part of the statistics page.
-        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(height: AppSpacing.sm),
         _MetricDots(count: metrics.length, selectedIndex: selectedChart),
       ],
@@ -703,7 +653,6 @@ class _CaloriesMetricPager extends StatelessWidget {
   // Convert the swipe or tap into a valid page index.
   // Store the index so tabs, content, and page dots stay matched.
   // Handles _handleSwipe for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void _handleSwipe(
     DragEndDetails details,
     List<_CaloriesChartMetric> metrics,
@@ -721,13 +670,11 @@ class _CaloriesMetricPager extends StatelessWidget {
 // The selected index comes from the parent or ViewModel.
 // User changes are sent back through the provided callback.
 // Handles _MetricTabs for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _MetricTabs extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
   // Handles _MetricTabs for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _MetricTabs({required this.selectedIndex, required this.onSelected});
 
   @override
@@ -735,7 +682,6 @@ class _MetricTabs extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     const labels = ['Calories', 'Carbohydrate', 'Protein', 'Fat'];
     return AppPillSegmentedControl(
@@ -750,13 +696,11 @@ class _MetricTabs extends StatelessWidget {
 // The selected index comes from the parent or ViewModel.
 // User changes are sent back through the provided callback.
 // Handles _MetricDots for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _MetricDots extends StatelessWidget {
   final int count;
   final int selectedIndex;
 
   // Handles _MetricDots for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _MetricDots({required this.count, required this.selectedIndex});
 
   @override
@@ -764,7 +708,6 @@ class _MetricDots extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -789,13 +732,11 @@ class _MetricDots extends StatelessWidget {
 // It prepares labels and values before passing them to the shared chart.
 // Keeping chart setup here avoids mixing it with the main page layout.
 // Handles _CaloriesChartCard for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _CaloriesChartCard extends StatelessWidget {
   final CaloriesIntakeStatistics statistics;
   final _CaloriesChartMetric metric;
 
   // Handles _CaloriesChartCard for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _CaloriesChartCard({required this.statistics, required this.metric});
 
   @override
@@ -803,7 +744,6 @@ class _CaloriesChartCard extends StatelessWidget {
   // Labels, scale, and spacing are prepared before the chart is displayed.
   // This method only handles presentation and does not change report data.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMM d');
 
@@ -832,7 +772,6 @@ class _CaloriesChartCard extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.lg),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -866,7 +805,6 @@ class _CaloriesChartCard extends StatelessWidget {
             },
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.xs),
           Text(
             metric.unit,
@@ -888,7 +826,6 @@ class _CaloriesChartCard extends StatelessWidget {
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
 // Handles _CaloriesBreakdown for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _CaloriesBreakdown extends StatelessWidget {
   final List<CaloriesDailyIntake> dailyIntakes;
   final int? expandedIndex;
@@ -897,7 +834,6 @@ class _CaloriesBreakdown extends StatelessWidget {
   final ValueChanged<int> onToggle;
 
   // Handles _CaloriesBreakdown for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _CaloriesBreakdown({
     required this.dailyIntakes,
     required this.expandedIndex,
@@ -911,7 +847,6 @@ class _CaloriesBreakdown extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -951,7 +886,6 @@ class _CaloriesBreakdown extends StatelessWidget {
             ],
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.md),
           Container(
             decoration: BoxDecoration(
@@ -983,13 +917,11 @@ class _CaloriesBreakdown extends StatelessWidget {
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
 // Handles _UnitButton for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _UnitButton extends StatelessWidget {
   final CaloriesDisplayUnit displayUnit;
   final ValueChanged<CaloriesDisplayUnit> onUnitChanged;
 
   // Handles _UnitButton for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _UnitButton({required this.displayUnit, required this.onUnitChanged});
 
   @override
@@ -997,7 +929,6 @@ class _UnitButton extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return PopupMenuButton<CaloriesDisplayUnit>(
       tooltip: 'Unit',
@@ -1019,7 +950,6 @@ class _UnitButton extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: 3),
           const Icon(Icons.tune, size: 17),
         ],
@@ -1032,7 +962,6 @@ class _UnitButton extends StatelessWidget {
 // It owns the header and the content that belongs to this group.
 // The expanded state decides whether the detailed rows are visible.
 // Handles _DailyCaloriesSection for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _DailyCaloriesSection extends StatelessWidget {
   final CaloriesDailyIntake day;
   final bool isExpanded;
@@ -1042,7 +971,6 @@ class _DailyCaloriesSection extends StatelessWidget {
   final int Function(CaloriesMealItem meal) valueForMeal;
 
   // Handles _DailyCaloriesSection for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _DailyCaloriesSection({
     required this.day,
     required this.isExpanded,
@@ -1057,7 +985,6 @@ class _DailyCaloriesSection extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final dateText = DateFormat('MMM d, yyyy').format(day.date);
 
@@ -1074,7 +1001,6 @@ class _DailyCaloriesSection extends StatelessWidget {
             child: Row(
               children: [
                 // Handles _SoftIcon for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const _SoftIcon(icon: Icons.event_available),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
@@ -1104,7 +1030,6 @@ class _DailyCaloriesSection extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   day.totalPlannedMeal.toString(),
@@ -1115,7 +1040,6 @@ class _DailyCaloriesSection extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Icon(
                   isExpanded
@@ -1146,14 +1070,12 @@ class _DailyCaloriesSection extends StatelessWidget {
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
 // Handles _CaloriesMealRow for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _CaloriesMealRow extends StatelessWidget {
   final CaloriesMealItem meal;
   final String unitLabel;
   final int Function(CaloriesMealItem meal) valueForMeal;
 
   // Handles _CaloriesMealRow for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _CaloriesMealRow({
     required this.meal,
     required this.unitLabel,
@@ -1165,7 +1087,6 @@ class _CaloriesMealRow extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFFF7F7F7),
@@ -1177,7 +1098,6 @@ class _CaloriesMealRow extends StatelessWidget {
         children: [
           _FoodIcon(icon: meal.icon, imageUrl: meal.imageUrl),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
@@ -1192,7 +1112,6 @@ class _CaloriesMealRow extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.sm),
           Text(
             '${valueForMeal(meal)} $unitLabel',
@@ -1214,13 +1133,11 @@ class _CaloriesMealRow extends StatelessWidget {
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
 // Handles _FoodIcon for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
   final String? imageUrl;
 
   // Handles _FoodIcon for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _FoodIcon({required this.icon, this.imageUrl});
 
   @override
@@ -1228,7 +1145,6 @@ class _FoodIcon extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return StatisticsRecipeMediaThumbnail(
       mediaPath: imageUrl,
@@ -1245,7 +1161,6 @@ class _FoodIcon extends StatelessWidget {
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
 // Handles _SoftIcon for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
@@ -1256,7 +1171,6 @@ class _SoftIcon extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       width: 36,
@@ -1275,13 +1189,11 @@ class _SoftIcon extends StatelessWidget {
 // It explains the problem and gives the user a retry action.
 // The retry callback asks the ViewModel to load the report again.
 // Handles _CaloriesError for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _CaloriesError extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;
 
   // Handles _CaloriesError for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _CaloriesError({required this.message, required this.onRetry});
 
   @override
@@ -1289,7 +1201,6 @@ class _CaloriesError extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
@@ -1299,7 +1210,6 @@ class _CaloriesError extends StatelessWidget {
           children: [
             Image.asset('assets/images/empty_page.png', height: 140),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             Text(
               message,
@@ -1307,7 +1217,6 @@ class _CaloriesError extends StatelessWidget {
               style: context.text.bodyMedium,
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             TextButton(
               onPressed: onRetry,

@@ -7,7 +7,6 @@ import '../../domain/entities/recipe_performance_statistics.dart';
 import '../../domain/usecases/get_recipe_performance_statistics_usecase.dart';
 
 // Handles RecipePerformanceViewModel for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class RecipePerformanceViewModel extends ChangeNotifier {
   final GetRecipePerformanceStatisticsUseCase _getStatisticsUseCase;
 
@@ -24,14 +23,12 @@ class RecipePerformanceViewModel extends ChangeNotifier {
   }
 
   // Handles statistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   RecipePerformanceStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get selectedRecipeId => _selectedRecipeId;
 
   // Handles selectedRecipe for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   RecipePerformanceItem? get selectedRecipe {
     final statistics = _statistics;
     final selectedId = _selectedRecipeId;
@@ -43,7 +40,6 @@ class RecipePerformanceViewModel extends ChangeNotifier {
   }
 
   // Handles loadStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<void> loadStatistics() async {
     _isLoading = _statistics == null;
     _errorMessage = null;
@@ -68,7 +64,6 @@ class RecipePerformanceViewModel extends ChangeNotifier {
   }
 
   // Handles selectRecipe for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void selectRecipe(String recipeId) {
     if (_selectedRecipeId == recipeId) return;
     _selectedRecipeId = recipeId;
@@ -76,13 +71,11 @@ class RecipePerformanceViewModel extends ChangeNotifier {
   }
 
   // Handles _notifyIfActive for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
   // Handles dispose for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   void dispose() {
     _isDisposed = true;

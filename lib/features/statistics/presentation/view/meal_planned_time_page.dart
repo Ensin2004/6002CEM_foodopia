@@ -19,7 +19,6 @@ import '../widgets/statistics_pie_chart.dart';
 
 /// Breaks planned meals into breakfast, lunch, and dinner groups.
 // Handles MealPlannedTimePage for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class MealPlannedTimePage extends StatelessWidget {
   const MealPlannedTimePage({super.key});
 
@@ -28,7 +27,6 @@ class MealPlannedTimePage extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     // The ViewModel controls date filtering and the open meal-time group.
     return ChangeNotifierProvider(
@@ -44,7 +42,6 @@ class MealPlannedTimePage extends StatelessWidget {
 // It reads the ViewModel and chooses loading, error, or data content.
 // Smaller widgets below handle the individual visual sections.
 // Handles _MealPlannedTimeView for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _MealPlannedTimeView extends StatelessWidget {
   const _MealPlannedTimeView();
 
@@ -53,7 +50,6 @@ class _MealPlannedTimeView extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final viewModel = context.watch<MealPlannedTimeViewModel>();
 
@@ -68,7 +64,6 @@ class _MealPlannedTimeView extends StatelessWidget {
   }
 
   // Handles _buildBody for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget _buildBody(BuildContext context, MealPlannedTimeViewModel viewModel) {
     // Wait for data before reading totals for the pie chart.
     if (viewModel.isLoading && viewModel.statistics == null) {
@@ -109,7 +104,6 @@ class _MealPlannedTimeView extends StatelessWidget {
               ),
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -121,7 +115,6 @@ class _MealPlannedTimeView extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: _SummaryTile(
@@ -133,7 +126,6 @@ class _MealPlannedTimeView extends StatelessWidget {
               ],
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             _MealPlannedCard(statistics: statistics),
             const SizedBox(height: AppSpacing.lg),
@@ -154,7 +146,6 @@ class _MealPlannedTimeView extends StatelessWidget {
 // It keeps one focused piece of presentation logic outside the main layout.
 // The parent widget passes in the data that this helper needs.
 // Handles DateRangeBar for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class DateRangeBar extends StatelessWidget {
   final String dateRange;
 
@@ -165,7 +156,6 @@ class DateRangeBar extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -178,7 +168,6 @@ class DateRangeBar extends StatelessWidget {
           ),
         ),
         // Handles SizedBox for this part of the statistics page.
-        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Container(
@@ -203,7 +192,6 @@ class DateRangeBar extends StatelessWidget {
                   ),
                 ),
                 // Handles Icon for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const Icon(Icons.calendar_month, size: 18),
               ],
             ),
@@ -218,14 +206,12 @@ class DateRangeBar extends StatelessWidget {
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
 // Handles _SummaryTile for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
 
   // Handles _SummaryTile for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _SummaryTile({
     required this.icon,
     required this.title,
@@ -237,7 +223,6 @@ class _SummaryTile extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -258,7 +243,6 @@ class _SummaryTile extends StatelessWidget {
         children: [
           _SoftIcon(icon: icon),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -276,7 +260,6 @@ class _SummaryTile extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(height: 2),
                 Text(
                   value,
@@ -299,7 +282,6 @@ class _SummaryTile extends StatelessWidget {
 // The card gives the section a clear visual boundary on the page.
 // Its parent supplies all values, labels, and interaction callbacks.
 // Handles _MealPlannedCard for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _MealPlannedCard extends StatelessWidget {
   final MealPlannedTimeStatistics statistics;
 
@@ -310,7 +292,6 @@ class _MealPlannedCard extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final chartSize = MediaQuery.sizeOf(context).width < 360 ? 238.0 : 260.0;
 
@@ -337,7 +318,6 @@ class _MealPlannedCard extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.md),
           // MEAL-PLANNED-TIME PIE-CHART UI CALL STARTS HERE.
           // Breakfast, lunch, and dinner totals become pie segments.
@@ -368,14 +348,12 @@ class _MealPlannedCard extends StatelessWidget {
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
 // Handles _MealBreakdown for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _MealBreakdown extends StatelessWidget {
   final List<MealPlannedTimeSegment> segments;
   final int? expandedIndex;
   final ValueChanged<int> onToggle;
 
   // Handles _MealBreakdown for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _MealBreakdown({
     required this.segments,
     required this.expandedIndex,
@@ -387,7 +365,6 @@ class _MealBreakdown extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -413,7 +390,6 @@ class _MealBreakdown extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.md),
           Container(
             decoration: BoxDecoration(
@@ -443,7 +419,6 @@ class _MealBreakdown extends StatelessWidget {
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
 // Handles _BreakdownSection for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _BreakdownSection extends StatelessWidget {
   final MealPlannedTimeSegment segment;
   final bool isExpanded;
@@ -451,7 +426,6 @@ class _BreakdownSection extends StatelessWidget {
   final VoidCallback onTap;
 
   // Handles _BreakdownSection for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _BreakdownSection({
     required this.segment,
     required this.isExpanded,
@@ -464,7 +438,6 @@ class _BreakdownSection extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Column(
       children: [
@@ -480,7 +453,6 @@ class _BreakdownSection extends StatelessWidget {
               children: [
                 _SoftIcon(icon: segment.icon),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -509,7 +481,6 @@ class _BreakdownSection extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   segment.totalTaken.toString(),
@@ -520,7 +491,6 @@ class _BreakdownSection extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Icon(
                   isExpanded
@@ -545,7 +515,6 @@ class _BreakdownSection extends StatelessWidget {
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
 // Handles _MealItemRow for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _MealItemRow extends StatelessWidget {
   final MealPlannedItem meal;
 
@@ -556,7 +525,6 @@ class _MealItemRow extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final plannedDate = DateFormat('MMM d, yyyy').format(meal.plannedDate);
 
@@ -570,7 +538,6 @@ class _MealItemRow extends StatelessWidget {
         children: [
           _FoodIcon(icon: meal.icon, imageUrl: meal.imageUrl),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -600,7 +567,6 @@ class _MealItemRow extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.sm),
           Text(
             meal.amount.toString(),
@@ -620,13 +586,11 @@ class _MealItemRow extends StatelessWidget {
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
 // Handles _FoodIcon for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _FoodIcon extends StatelessWidget {
   final IconData icon;
   final String? imageUrl;
 
   // Handles _FoodIcon for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _FoodIcon({required this.icon, this.imageUrl});
 
   @override
@@ -634,7 +598,6 @@ class _FoodIcon extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return StatisticsRecipeMediaThumbnail(
       mediaPath: imageUrl,
@@ -651,7 +614,6 @@ class _FoodIcon extends StatelessWidget {
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
 // Handles _SoftIcon for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
@@ -662,7 +624,6 @@ class _SoftIcon extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       width: 36,
@@ -681,13 +642,11 @@ class _SoftIcon extends StatelessWidget {
 // It explains the problem and gives the user a retry action.
 // The retry callback asks the ViewModel to load the report again.
 // Handles _MealTimeError for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _MealTimeError extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;
 
   // Handles _MealTimeError for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _MealTimeError({required this.message, required this.onRetry});
 
   @override
@@ -695,7 +654,6 @@ class _MealTimeError extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
@@ -705,7 +663,6 @@ class _MealTimeError extends StatelessWidget {
           children: [
             Image.asset('assets/images/empty_page.png', height: 140),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             Text(
               message,
@@ -713,7 +670,6 @@ class _MealTimeError extends StatelessWidget {
               style: context.text.bodyMedium,
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             TextButton(
               onPressed: onRetry,

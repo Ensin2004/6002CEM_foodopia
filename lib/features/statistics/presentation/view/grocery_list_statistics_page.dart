@@ -18,7 +18,6 @@ import '../widgets/statistics_page_helpers.dart';
 
 /// Compares grocery-list activity across months.
 // Handles GroceryListStatisticsPage for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class GroceryListStatisticsPage extends StatelessWidget {
   const GroceryListStatisticsPage({super.key});
 
@@ -27,7 +26,6 @@ class GroceryListStatisticsPage extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     // The ViewModel reloads the report and tracks the expanded month.
     return ChangeNotifierProvider(
@@ -43,7 +41,6 @@ class GroceryListStatisticsPage extends StatelessWidget {
 // It reads the ViewModel and chooses loading, error, or data content.
 // Smaller widgets below handle the individual visual sections.
 // Handles _GroceryListStatisticsView for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _GroceryListStatisticsView extends StatelessWidget {
   const _GroceryListStatisticsView();
 
@@ -52,7 +49,6 @@ class _GroceryListStatisticsView extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final viewModel = context.watch<GroceryListStatisticsViewModel>();
 
@@ -67,7 +63,6 @@ class _GroceryListStatisticsView extends StatelessWidget {
   }
 
   // Handles _buildBody for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget _buildBody(
     BuildContext context,
     GroceryListStatisticsViewModel viewModel,
@@ -114,7 +109,6 @@ class _GroceryListStatisticsView extends StatelessWidget {
               ),
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -126,7 +120,6 @@ class _GroceryListStatisticsView extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: _SummaryTile(
@@ -138,7 +131,6 @@ class _GroceryListStatisticsView extends StatelessWidget {
               ],
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             _GroceryListChart(months: statistics.months),
             const SizedBox(height: AppSpacing.lg),
@@ -159,7 +151,6 @@ class _GroceryListStatisticsView extends StatelessWidget {
 // It prepares labels and values before passing them to the shared chart.
 // Keeping chart setup here avoids mixing it with the main page layout.
 // Handles _GroceryListChart for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _GroceryListChart extends StatelessWidget {
   final List<GroceryListMonthStatistic> months;
 
@@ -170,7 +161,6 @@ class _GroceryListChart extends StatelessWidget {
   // Labels, scale, and spacing are prepared before the chart is displayed.
   // This method only handles presentation and does not change report data.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return _SectionCard(
       title: 'Grocery List By Month',
@@ -207,14 +197,12 @@ class _GroceryListChart extends StatelessWidget {
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
 // Handles _GroceryListBreakdown for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _GroceryListBreakdown extends StatelessWidget {
   final List<GroceryListMonthStatistic> months;
   final int? expandedIndex;
   final ValueChanged<int> onToggle;
 
   // Handles _GroceryListBreakdown for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _GroceryListBreakdown({
     required this.months,
     required this.expandedIndex,
@@ -226,7 +214,6 @@ class _GroceryListBreakdown extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return _SectionCard(
       title: 'Grocery List Breakdown',
@@ -256,7 +243,6 @@ class _GroceryListBreakdown extends StatelessWidget {
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
 // Handles _GroceryListMonthSection for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _GroceryListMonthSection extends StatelessWidget {
   final GroceryListMonthStatistic month;
   final bool isExpanded;
@@ -264,7 +250,6 @@ class _GroceryListMonthSection extends StatelessWidget {
   final VoidCallback onTap;
 
   // Handles _GroceryListMonthSection for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _GroceryListMonthSection({
     required this.month,
     required this.isExpanded,
@@ -277,7 +262,6 @@ class _GroceryListMonthSection extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Column(
       children: [
@@ -292,7 +276,6 @@ class _GroceryListMonthSection extends StatelessWidget {
             child: Row(
               children: [
                 // Handles _SoftIcon for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const _SoftIcon(icon: Icons.calendar_month),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
@@ -308,7 +291,6 @@ class _GroceryListMonthSection extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   month.totalLists.toString(),
@@ -319,7 +301,6 @@ class _GroceryListMonthSection extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Icon(
                   isExpanded
@@ -347,7 +328,6 @@ class _GroceryListMonthSection extends StatelessWidget {
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
 // Handles _GroceryListItemRow for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _GroceryListItemRow extends StatelessWidget {
   final GroceryListStatisticItem? item;
 
@@ -360,7 +340,6 @@ class _GroceryListItemRow extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final list = item;
     return Container(
@@ -372,7 +351,6 @@ class _GroceryListItemRow extends StatelessWidget {
       child: Row(
         children: [
           // Handles _TinyIcon for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const _TinyIcon(icon: Icons.shopping_basket_outlined),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -388,7 +366,6 @@ class _GroceryListItemRow extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.sm),
           Text(
             list?.duration ?? '-',
@@ -410,14 +387,12 @@ class _GroceryListItemRow extends StatelessWidget {
 // It owns the header and the content that belongs to this group.
 // The expanded state decides whether the detailed rows are visible.
 // Handles _SectionCard for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
   final bool alignTitleLeft;
 
   // Handles _SectionCard for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _SectionCard({
     required this.title,
     required this.child,
@@ -429,7 +404,6 @@ class _SectionCard extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -455,7 +429,6 @@ class _SectionCard extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.lg),
           child,
         ],
@@ -468,14 +441,12 @@ class _SectionCard extends StatelessWidget {
 // It keeps repeated row styling consistent across the whole report.
 // The values come from the parent section and are not loaded here.
 // Handles _SummaryTile for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _SummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
 
   // Handles _SummaryTile for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _SummaryTile({
     required this.icon,
     required this.title,
@@ -487,7 +458,6 @@ class _SummaryTile extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       height: 68,
@@ -501,7 +471,6 @@ class _SummaryTile extends StatelessWidget {
         children: [
           _SoftIcon(icon: icon),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -519,7 +488,6 @@ class _SummaryTile extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(height: 2),
                 Text(
                   value,
@@ -544,7 +512,6 @@ class _SummaryTile extends StatelessWidget {
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
 // Handles _SoftIcon for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _SoftIcon extends StatelessWidget {
   final IconData icon;
 
@@ -555,7 +522,6 @@ class _SoftIcon extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       width: 36,
@@ -574,7 +540,6 @@ class _SoftIcon extends StatelessWidget {
 // It handles the small visual rules in one place.
 // This keeps the larger report widgets easier to scan.
 // Handles _TinyIcon for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _TinyIcon extends StatelessWidget {
   final IconData icon;
 
@@ -585,7 +550,6 @@ class _TinyIcon extends StatelessWidget {
   // The widget uses only the values passed through its constructor.
   // It stays stateless so the parent remains the source of truth.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       width: 32,

@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 
 // Handles CaloriesDisplayUnit for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 enum CaloriesDisplayUnit { kcal, cal }
 
 class CaloriesIntakeStatistics {
@@ -13,7 +12,6 @@ class CaloriesIntakeStatistics {
   final List<CaloriesDailyIntake> dailyIntakes;
 
   // Handles CaloriesIntakeStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const CaloriesIntakeStatistics({
     required this.dateRange,
     required this.totalMeal,
@@ -23,7 +21,6 @@ class CaloriesIntakeStatistics {
 }
 
 // Handles CaloriesDailyIntake for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class CaloriesDailyIntake {
   final DateTime date;
   final String weekdayLabel;
@@ -35,7 +32,6 @@ class CaloriesDailyIntake {
   final List<CaloriesMealItem> meals;
 
   // Handles CaloriesDailyIntake for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const CaloriesDailyIntake({
     required this.date,
     required this.weekdayLabel,
@@ -49,7 +45,6 @@ class CaloriesDailyIntake {
 }
 
 // Handles CaloriesMealItem for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class CaloriesMealItem {
   final String name;
   final int caloriesKcal;
@@ -60,7 +55,6 @@ class CaloriesMealItem {
   final String? imageUrl;
 
   // Handles CaloriesMealItem for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const CaloriesMealItem({
     required this.name,
     required this.caloriesKcal,

@@ -7,14 +7,12 @@ import '../entities/cooking_time_statistics.dart';
 import '../repositories/statistics_repository.dart';
 
 // Handles GetCookingTimeStatisticsUseCase for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class GetCookingTimeStatisticsUseCase {
   final StatisticsRepository _repository;
 
   const GetCookingTimeStatisticsUseCase(this._repository);
 
   // Handles execute for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<Either<Failure, CookingTimeStatistics>> execute({
     DateTime? startDate,
     DateTime? endDate,

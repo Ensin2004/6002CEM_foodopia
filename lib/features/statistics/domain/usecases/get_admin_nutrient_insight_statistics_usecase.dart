@@ -7,14 +7,12 @@ import '../entities/calories_intake_statistics.dart';
 import '../repositories/statistics_repository.dart';
 
 // Handles GetAdminNutrientInsightStatisticsUseCase for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class GetAdminNutrientInsightStatisticsUseCase {
   final StatisticsRepository _repository;
 
   const GetAdminNutrientInsightStatisticsUseCase(this._repository);
 
   // Handles execute for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<Either<Failure, CaloriesIntakeStatistics>> execute({
     DateTime? startDate,
     DateTime? endDate,

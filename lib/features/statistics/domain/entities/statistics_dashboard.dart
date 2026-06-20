@@ -3,7 +3,6 @@
 // Domain entity for the main statistics dashboard.
 // It only stores the data that the page needs to show hero cards and menus.
 // Handles StatisticsDashboard for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsDashboard {
   final List<StatisticsHeroSlide> heroSlides;
   final List<StatisticsHeroSlide> communityHeroSlides;
@@ -11,7 +10,6 @@ class StatisticsDashboard {
   final List<StatisticsMenuItem> communityMenuItems;
 
   // Handles StatisticsDashboard for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsDashboard({
     required this.heroSlides,
     this.communityHeroSlides = const [],
@@ -22,7 +20,6 @@ class StatisticsDashboard {
 
 // One slide/card in the top statistics carousel.
 // Handles StatisticsHeroSlide for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsHeroSlide {
   final String title;
   final StatisticsHeroSlideType type;
@@ -30,7 +27,6 @@ class StatisticsHeroSlide {
   final StatisticsProgress? progress;
 
   // Handles StatisticsHeroSlide for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsHeroSlide({
     required this.title,
     required this.type,
@@ -40,7 +36,6 @@ class StatisticsHeroSlide {
 }
 
 // Handles StatisticsHeroSlideType for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 enum StatisticsHeroSlideType { overview, appUsage, achievement }
 
 // One small number shown inside a statistics card, like total meals or top food.
@@ -52,7 +47,6 @@ class StatisticsMetric {
   final bool isWide;
 
   // Handles StatisticsMetric for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsMetric({
     required this.label,
     required this.value,
@@ -63,7 +57,6 @@ class StatisticsMetric {
 }
 
 // Handles StatisticsMetricTone for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 enum StatisticsMetricTone { positive, negative, neutral }
 
 // Holds percentage values for progress-style statistics.
@@ -72,7 +65,6 @@ class StatisticsProgress {
   final double negativePercent;
 
   // Handles StatisticsProgress for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsProgress({
     required this.positivePercent,
     required this.negativePercent,
@@ -81,7 +73,6 @@ class StatisticsProgress {
 
 // One menu option that opens a detailed statistics report page.
 // Handles StatisticsMenuItem for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsMenuItem {
   final String title;
 

@@ -7,7 +7,6 @@ import '../../domain/entities/admin_statistics.dart';
 import '../../domain/usecases/get_admin_usage_forecast_statistics_usecase.dart';
 
 // Handles AdminUsageForecastViewModel for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminUsageForecastViewModel extends ChangeNotifier {
   final GetAdminUsageForecastStatisticsUseCase _getStatisticsUseCase;
 
@@ -25,13 +24,11 @@ class AdminUsageForecastViewModel extends ChangeNotifier {
   }
 
   // Handles statistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   AdminUserUsageStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   DateTime? get startDate => _startDate;
   // Handles endDate for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   DateTime? get endDate => _endDate;
 
   Future<void> loadStatistics() async {
@@ -53,7 +50,6 @@ class AdminUsageForecastViewModel extends ChangeNotifier {
   }
 
   // Handles selectDateRange for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<void> selectDateRange({
     required DateTime startDate,
     required DateTime endDate,
@@ -64,13 +60,11 @@ class AdminUsageForecastViewModel extends ChangeNotifier {
   }
 
   // Handles _notifyIfActive for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
   // Handles dispose for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   void dispose() {
     _isDisposed = true;

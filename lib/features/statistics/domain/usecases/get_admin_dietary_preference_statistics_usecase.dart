@@ -7,14 +7,12 @@ import '../entities/admin_statistics.dart';
 import '../repositories/statistics_repository.dart';
 
 // Handles GetAdminDietaryPreferenceStatisticsUseCase for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class GetAdminDietaryPreferenceStatisticsUseCase {
   final StatisticsRepository _repository;
 
   const GetAdminDietaryPreferenceStatisticsUseCase(this._repository);
 
   // Handles execute for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<Either<Failure, AdminDietaryPreferenceStatistics>> execute({
     DateTime? startDate,
     DateTime? endDate,

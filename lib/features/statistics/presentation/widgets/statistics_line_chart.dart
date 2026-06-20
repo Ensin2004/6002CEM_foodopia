@@ -9,19 +9,16 @@ import '../../../../core/theme/theme_extension.dart';
 
 /// One labelled point displayed by [StatisticsLineChart].
 // Handles StatisticsLineChartPoint for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsLineChartPoint {
   final String label;
   final int value;
 
   // Handles StatisticsLineChartPoint for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsLineChartPoint({required this.label, required this.value});
 }
 
 /// Reusable line chart drawn with a custom canvas painter.
 // Handles StatisticsLineChart for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsLineChart extends StatelessWidget {
   final List<StatisticsLineChartPoint> points;
   final int? maxValue;
@@ -29,7 +26,6 @@ class StatisticsLineChart extends StatelessWidget {
   final Color color;
 
   // Handles StatisticsLineChart for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsLineChart({
     super.key,
     required this.points,
@@ -39,7 +35,6 @@ class StatisticsLineChart extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     // Use a rounded maximum so the chart grid has simple labels.
@@ -74,7 +69,6 @@ class StatisticsLineChart extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: 8),
                 Expanded(
                   // LINE CHART DRAWING SETUP STARTS HERE.
@@ -93,7 +87,6 @@ class StatisticsLineChart extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: 8),
           Row(
             children: [
@@ -128,7 +121,6 @@ class StatisticsLineChart extends StatelessWidget {
   }
 
   // Handles _niceMaxValue for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   int _niceMaxValue(List<StatisticsLineChartPoint> points) {
     final maxPointValue = points.fold<int>(
       0,
@@ -144,7 +136,6 @@ class StatisticsLineChart extends StatelessWidget {
   }
 
   // Handles _gridValues for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   List<int> _gridValues(int highestValue) {
     return List.generate(5, (index) {
       if (index == 4) return 0;
@@ -154,7 +145,6 @@ class StatisticsLineChart extends StatelessWidget {
 }
 
 // Handles _StatisticsLineChartPainter for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _StatisticsLineChartPainter extends CustomPainter {
   final List<StatisticsLineChartPoint> points;
   final int maxValue;
@@ -169,7 +159,6 @@ class _StatisticsLineChartPainter extends CustomPainter {
   });
 
   // Handles paint for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   void paint(Canvas canvas, Size size) {
     // ACTUAL LINE CHART CANVAS DRAWING STARTS HERE.
@@ -227,7 +216,6 @@ class _StatisticsLineChartPainter extends CustomPainter {
   }
 
   // Handles _smoothPath for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Path _smoothPath(List<Offset> points) {
     final path = Path()..moveTo(points.first.dx, points.first.dy);
     for (var index = 0; index < points.length - 1; index++) {
@@ -247,7 +235,6 @@ class _StatisticsLineChartPainter extends CustomPainter {
   }
 
   // Handles shouldRepaint for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   bool shouldRepaint(covariant _StatisticsLineChartPainter oldDelegate) {
     return oldDelegate.points != points ||

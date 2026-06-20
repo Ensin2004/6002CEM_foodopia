@@ -1,7 +1,6 @@
 // These notes explain the statistics page code in simple words.
 // Only comments were added here; the code behaviour stays the same.
 // Handles GroceryListStatistics for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class GroceryListStatistics {
   final String dateRange;
   final int totalGroceryLists;
@@ -9,7 +8,6 @@ class GroceryListStatistics {
   final List<GroceryListMonthStatistic> months;
 
   // Handles GroceryListStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const GroceryListStatistics({
     required this.dateRange,
     required this.totalGroceryLists,
@@ -19,7 +17,6 @@ class GroceryListStatistics {
 }
 
 // Handles GroceryListMonthStatistic for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class GroceryListMonthStatistic {
   final DateTime month;
   final String label;
@@ -27,7 +24,6 @@ class GroceryListMonthStatistic {
   final List<GroceryListStatisticItem> lists;
 
   // Handles GroceryListMonthStatistic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const GroceryListMonthStatistic({
     required this.month,
     required this.label,
@@ -37,14 +33,12 @@ class GroceryListMonthStatistic {
 }
 
 // Handles GroceryListStatisticItem for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class GroceryListStatisticItem {
   final String name;
   final String duration;
   final DateTime createdAt;
 
   // Handles GroceryListStatisticItem for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const GroceryListStatisticItem({
     required this.name,
     required this.duration,

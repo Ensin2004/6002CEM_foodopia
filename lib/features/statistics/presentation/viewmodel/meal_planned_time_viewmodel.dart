@@ -7,7 +7,6 @@ import '../../domain/entities/meal_planned_time_statistics.dart';
 import '../../domain/usecases/get_meal_planned_time_statistics_usecase.dart';
 
 // Handles MealPlannedTimeViewModel for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class MealPlannedTimeViewModel extends ChangeNotifier {
   final GetMealPlannedTimeStatisticsUseCase _getStatisticsUseCase;
 
@@ -26,13 +25,11 @@ class MealPlannedTimeViewModel extends ChangeNotifier {
   }
 
   // Handles statistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   MealPlannedTimeStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   DateTime? get startDate => _startDate;
   // Handles endDate for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   DateTime? get endDate => _endDate;
   int? get expandedIndex => _expandedIndex;
 
@@ -59,14 +56,12 @@ class MealPlannedTimeViewModel extends ChangeNotifier {
   }
 
   // Handles toggleBreakdown for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void toggleBreakdown(int index) {
     _expandedIndex = _expandedIndex == index ? null : index;
     _notifyIfActive();
   }
 
   // Handles selectDateRange for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<void> selectDateRange({
     required DateTime startDate,
     required DateTime endDate,
@@ -77,13 +72,11 @@ class MealPlannedTimeViewModel extends ChangeNotifier {
   }
 
   // Handles _notifyIfActive for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
   // Handles dispose for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   void dispose() {
     _isDisposed = true;

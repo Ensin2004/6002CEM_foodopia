@@ -15,13 +15,11 @@ import 'statistics_pie_chart.dart';
 
 /// Date-range control shared by the smaller admin reports.
 // Handles AdminStatisticDateRangeBar for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminStatisticDateRangeBar extends StatelessWidget {
   final String dateRange;
   final VoidCallback? onTap;
 
   // Handles AdminStatisticDateRangeBar for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminStatisticDateRangeBar({
     super.key,
     required this.dateRange,
@@ -29,7 +27,6 @@ class AdminStatisticDateRangeBar extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -43,7 +40,6 @@ class AdminStatisticDateRangeBar extends StatelessWidget {
           ),
         ),
         // Handles SizedBox for this part of the statistics page.
-        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: InkWell(
@@ -68,7 +64,6 @@ class AdminStatisticDateRangeBar extends StatelessWidget {
                     ),
                   ),
                   // Handles Icon for this part of the statistics page.
-                  // This makes the purpose clearer when reading or updating the code.
                   const Icon(Icons.calendar_month, size: 18),
                 ],
               ),
@@ -82,14 +77,12 @@ class AdminStatisticDateRangeBar extends StatelessWidget {
 
 /// Compact tile for one important admin total.
 // Handles AdminStatisticSummaryTile for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminStatisticSummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
 
   // Handles AdminStatisticSummaryTile for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminStatisticSummaryTile({
     super.key,
     required this.icon,
@@ -98,7 +91,6 @@ class AdminStatisticSummaryTile extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -113,7 +105,6 @@ class AdminStatisticSummaryTile extends StatelessWidget {
         children: [
           AdminStatisticSoftIcon(icon: icon),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -131,7 +122,6 @@ class AdminStatisticSummaryTile extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(height: 2),
                 Text(
                   value,
@@ -154,13 +144,11 @@ class AdminStatisticSummaryTile extends StatelessWidget {
 
 /// Places a daily line chart inside the standard admin card style.
 // Handles AdminLineChartCard for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminLineChartCard extends StatelessWidget {
   final String title;
   final List<AdminDailyStatistic> values;
 
   // Handles AdminLineChartCard for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminLineChartCard({
     super.key,
     required this.title,
@@ -168,7 +156,6 @@ class AdminLineChartCard extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMM d');
@@ -194,7 +181,6 @@ class AdminLineChartCard extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.lg),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -237,7 +223,6 @@ class AdminLineChartCard extends StatelessWidget {
 
 /// Lets the admin move between related report sections.
 // Handles AdminAnalyticSectionPager for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminAnalyticSectionPager extends StatelessWidget {
   final PageController controller;
   final List<AdminAnalyticSection> sections;
@@ -248,7 +233,6 @@ class AdminAnalyticSectionPager extends StatelessWidget {
   final Widget? Function(AdminAnalyticSection section)? customSectionBuilder;
 
   // Handles AdminAnalyticSectionPager for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminAnalyticSectionPager({
     super.key,
     required this.controller,
@@ -261,7 +245,6 @@ class AdminAnalyticSectionPager extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     final pageHeight = MediaQuery.sizeOf(context).width < 360 ? 820.0 : 780.0;
@@ -281,7 +264,6 @@ class AdminAnalyticSectionPager extends StatelessWidget {
           },
         ),
         // Handles SizedBox for this part of the statistics page.
-        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(height: AppSpacing.md),
         SizedBox(
           height: pageHeight,
@@ -310,7 +292,6 @@ class AdminAnalyticSectionPager extends StatelessWidget {
           ),
         ),
         // Handles SizedBox for this part of the statistics page.
-        // This makes the purpose clearer when reading or updating the code.
         const SizedBox(height: AppSpacing.md),
         AdminPageDots(count: sections.length, selectedIndex: selectedIndex),
       ],
@@ -319,14 +300,12 @@ class AdminAnalyticSectionPager extends StatelessWidget {
 }
 
 // Handles _AdminSectionTabs for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _AdminSectionTabs extends StatelessWidget {
   final List<AdminAnalyticSection> sections;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
   // Handles _AdminSectionTabs for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _AdminSectionTabs({
     required this.sections,
     required this.selectedIndex,
@@ -334,7 +313,6 @@ class _AdminSectionTabs extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
@@ -356,7 +334,6 @@ class _AdminSectionTabs extends StatelessWidget {
   }
 
   // Handles _shortTabLabel for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   String _shortTabLabel(String title) {
     switch (title) {
       case 'Most Planned Meal':
@@ -384,14 +361,12 @@ class _AdminSectionTabs extends StatelessWidget {
 
 /// Standard layout for a summary, chart, and ranked breakdown.
 // Handles AdminAnalyticSectionCard for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminAnalyticSectionCard extends StatelessWidget {
   final AdminAnalyticSection section;
   final AdminStatisticsSortOrder sortOrder;
   final ValueChanged<AdminStatisticsSortOrder> onSortChanged;
 
   // Handles AdminAnalyticSectionCard for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminAnalyticSectionCard({
     super.key,
     required this.section,
@@ -400,7 +375,6 @@ class AdminAnalyticSectionCard extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     // Use pie charts for parts of a whole and bars for ranked values.
@@ -436,7 +410,6 @@ class AdminAnalyticSectionCard extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -448,7 +421,6 @@ class AdminAnalyticSectionCard extends StatelessWidget {
                 ),
               ),
               // Handles SizedBox for this part of the statistics page.
-              // This makes the purpose clearer when reading or updating the code.
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: AdminStatisticSummaryTile(
@@ -460,7 +432,6 @@ class AdminAnalyticSectionCard extends StatelessWidget {
             ],
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.lg),
           _SectionChart(section: section, chartWidth: chartWidth),
           const SizedBox(height: AppSpacing.lg),
@@ -477,13 +448,11 @@ class AdminAnalyticSectionCard extends StatelessWidget {
 }
 
 // Handles _SectionChart for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _SectionChart extends StatelessWidget {
   final AdminAnalyticSection section;
   final double chartWidth;
 
   // Handles _SectionChart for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _SectionChart({required this.section, required this.chartWidth});
 
   @override
@@ -556,7 +525,6 @@ class _SectionChart extends StatelessWidget {
 
 /// Ranked values that can sort and open extra detail rows.
 // Handles AdminRankedStatisticList for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminRankedStatisticList extends StatefulWidget {
   final String title;
   final List<AdminRankedStatistic> items;
@@ -564,7 +532,6 @@ class AdminRankedStatisticList extends StatefulWidget {
   final ValueChanged<AdminStatisticsSortOrder>? onSortChanged;
 
   // Handles AdminRankedStatisticList for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminRankedStatisticList({
     super.key,
     required this.title,
@@ -574,19 +541,16 @@ class AdminRankedStatisticList extends StatefulWidget {
   });
 
   // Handles createState for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   State<AdminRankedStatisticList> createState() =>
       _AdminRankedStatisticListState();
 }
 
 // Handles _AdminRankedStatisticListState for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _AdminRankedStatisticListState extends State<AdminRankedStatisticList> {
   int? _expandedIndex;
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -642,7 +606,6 @@ class _AdminRankedStatisticListState extends State<AdminRankedStatisticList> {
                         style: context.text.bodySmall?.copyWith(fontSize: 9),
                       ),
                       // Handles SizedBox for this part of the statistics page.
-                      // This makes the purpose clearer when reading or updating the code.
                       const SizedBox(width: 2),
                       const Icon(Icons.tune, size: 17),
                     ],
@@ -651,14 +614,12 @@ class _AdminRankedStatisticListState extends State<AdminRankedStatisticList> {
             ],
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.md),
           ...List.generate(widget.items.length, (index) {
             final item = widget.items[index];
             final isExpanded = _expandedIndex == index;
             // Only one ranked item stays open at a time.
             // Handles toggleExpanded for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             void toggleExpanded() {
               setState(() {
                 _expandedIndex = isExpanded ? null : index;
@@ -686,7 +647,6 @@ class _AdminRankedStatisticListState extends State<AdminRankedStatisticList> {
 }
 
 // Handles AdminPreferencePieCard for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminPreferencePieCard extends StatelessWidget {
   final String title;
   final String centerTitle;
@@ -694,7 +654,6 @@ class AdminPreferencePieCard extends StatelessWidget {
   final List<AdminRankedStatistic> preferences;
 
   // Handles AdminPreferencePieCard for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminPreferencePieCard({
     super.key,
     this.title = 'Dietary Preference',
@@ -704,7 +663,6 @@ class AdminPreferencePieCard extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     final chartSize = MediaQuery.sizeOf(context).width < 360 ? 238.0 : 260.0;
@@ -732,7 +690,6 @@ class AdminPreferencePieCard extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.md),
           // PIE CHART CALL STARTS HERE.
           // Gender and dietary-preference pages call this card. This line sends
@@ -761,13 +718,11 @@ class AdminPreferencePieCard extends StatelessWidget {
 }
 
 // Handles AdminPageDots for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminPageDots extends StatelessWidget {
   final int count;
   final int selectedIndex;
 
   // Handles AdminPageDots for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminPageDots({
     super.key,
     required this.count,
@@ -775,7 +730,6 @@ class AdminPageDots extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -798,14 +752,12 @@ class AdminPageDots extends StatelessWidget {
 }
 
 // Handles AdminStatisticSoftIcon for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminStatisticSoftIcon extends StatelessWidget {
   final IconData icon;
 
   const AdminStatisticSoftIcon({super.key, required this.icon});
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -822,14 +774,12 @@ class AdminStatisticSoftIcon extends StatelessWidget {
 }
 
 // Handles _RankedRow for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _RankedRow extends StatelessWidget {
   final AdminRankedStatistic item;
   final bool isExpanded;
   final VoidCallback onTap;
 
   // Handles _RankedRow for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _RankedRow({
     required this.item,
     required this.isExpanded,
@@ -837,7 +787,6 @@ class _RankedRow extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -861,7 +810,6 @@ class _RankedRow extends StatelessWidget {
                   child: _RankedMarker(item: item),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -882,7 +830,6 @@ class _RankedRow extends StatelessWidget {
                             ),
                           ),
                           // Handles SizedBox for this part of the statistics page.
-                          // This makes the purpose clearer when reading or updating the code.
                           const SizedBox(width: AppSpacing.sm),
                           Text(
                             item.value.toString(),
@@ -895,7 +842,6 @@ class _RankedRow extends StatelessWidget {
                         ],
                       ),
                       // Handles SizedBox for this part of the statistics page.
-                      // This makes the purpose clearer when reading or updating the code.
                       const SizedBox(height: 5),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(100),
@@ -910,7 +856,6 @@ class _RankedRow extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   '${(item.percent * 100).round()}%',
@@ -922,7 +867,6 @@ class _RankedRow extends StatelessWidget {
                 ),
                 if (item.details.isNotEmpty) ...[
                   // Handles SizedBox for this part of the statistics page.
-                  // This makes the purpose clearer when reading or updating the code.
                   const SizedBox(width: AppSpacing.xs),
                   Icon(
                     isExpanded
@@ -944,14 +888,12 @@ class _RankedRow extends StatelessWidget {
 }
 
 // Handles _RankedMarker for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _RankedMarker extends StatelessWidget {
   final AdminRankedStatistic item;
 
   const _RankedMarker({required this.item});
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     final imageUrl = item.imageUrl?.trim() ?? '';
@@ -988,7 +930,6 @@ class _RankedMarker extends StatelessWidget {
   }
 
   // Handles _markerText for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   String _markerText(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return '';
@@ -998,7 +939,6 @@ class _RankedMarker extends StatelessWidget {
 }
 
 // Handles _DifficultyRankedRow for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _DifficultyRankedRow extends StatelessWidget {
   final AdminRankedStatistic item;
   final bool isExpanded;
@@ -1006,7 +946,6 @@ class _DifficultyRankedRow extends StatelessWidget {
   final VoidCallback onTap;
 
   // Handles _DifficultyRankedRow for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _DifficultyRankedRow({
     required this.item,
     required this.isExpanded,
@@ -1015,7 +954,6 @@ class _DifficultyRankedRow extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     final level = _difficultyLevelFromLabel(item.label);
@@ -1032,7 +970,6 @@ class _DifficultyRankedRow extends StatelessWidget {
             child: Row(
               children: [
                 // Handles AdminStatisticSoftIcon for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const AdminStatisticSoftIcon(icon: Icons.star_border),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
@@ -1041,7 +978,6 @@ class _DifficultyRankedRow extends StatelessWidget {
                     children: [
                       _DifficultyStars(count: level),
                       // Handles SizedBox for this part of the statistics page.
-                      // This makes the purpose clearer when reading or updating the code.
                       const SizedBox(height: 2),
                       Text(
                         '$level Star Difficulty',
@@ -1056,7 +992,6 @@ class _DifficultyRankedRow extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   item.value.toString(),
@@ -1067,7 +1002,6 @@ class _DifficultyRankedRow extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Icon(
                   isExpanded
@@ -1089,14 +1023,12 @@ class _DifficultyRankedRow extends StatelessWidget {
 }
 
 // Handles _DifficultyStars for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _DifficultyStars extends StatelessWidget {
   final int count;
 
   const _DifficultyStars({required this.count});
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -1114,7 +1046,6 @@ class _DifficultyStars extends StatelessWidget {
 }
 
 // Handles _difficultyLevelFromLabel for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 int _difficultyLevelFromLabel(String label) {
   final match = RegExp(r'\d+').firstMatch(label);
   final level = int.tryParse(match?.group(0) ?? '') ?? 0;
@@ -1122,14 +1053,12 @@ int _difficultyLevelFromLabel(String label) {
 }
 
 // Handles _RankedDetailRow for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _RankedDetailRow extends StatelessWidget {
   final AdminRankedStatisticDetail detail;
 
   const _RankedDetailRow({required this.detail});
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1142,7 +1071,6 @@ class _RankedDetailRow extends StatelessWidget {
         children: [
           _DetailMarker(detail: detail),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -1173,7 +1101,6 @@ class _RankedDetailRow extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.sm),
           Text(
             detail.quantity.toString(),
@@ -1190,14 +1117,12 @@ class _RankedDetailRow extends StatelessWidget {
 }
 
 // Handles _DetailMarker for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _DetailMarker extends StatelessWidget {
   final AdminRankedStatisticDetail detail;
 
   const _DetailMarker({required this.detail});
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     return StatisticsRecipeMediaThumbnail(

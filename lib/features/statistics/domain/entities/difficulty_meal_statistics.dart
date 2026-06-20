@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 
 // Handles DifficultyMealStatistics for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class DifficultyMealStatistics {
   final String dateRange;
   final int totalPost;
@@ -11,7 +10,6 @@ class DifficultyMealStatistics {
   final List<DifficultyMealGroup> groups;
 
   // Handles DifficultyMealStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const DifficultyMealStatistics({
     required this.dateRange,
     required this.totalPost,
@@ -21,7 +19,6 @@ class DifficultyMealStatistics {
 }
 
 // Handles DifficultyMealGroup for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class DifficultyMealGroup {
   final int difficulty;
   final int recipeCount;
@@ -29,7 +26,6 @@ class DifficultyMealGroup {
   final List<DifficultyMealItem> meals;
 
   // Handles DifficultyMealGroup for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const DifficultyMealGroup({
     required this.difficulty,
     required this.recipeCount,
@@ -39,7 +35,6 @@ class DifficultyMealGroup {
 }
 
 // Handles DifficultyMealItem for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class DifficultyMealItem {
   final String name;
   final DateTime date;
@@ -48,7 +43,6 @@ class DifficultyMealItem {
   final String? imageUrl;
 
   // Handles DifficultyMealItem for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const DifficultyMealItem({
     required this.name,
     required this.date,
