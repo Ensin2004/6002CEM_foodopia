@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'recipe_performance_statistics.dart';
 
 // Handles AdminStatisticsSortOrder for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 enum AdminStatisticsSortOrder { ascending, descending }
 
 class AdminDailyStatistic {
@@ -13,7 +12,6 @@ class AdminDailyStatistic {
   final int value;
 
   // Handles AdminDailyStatistic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminDailyStatistic({required this.date, required this.value});
 }
 
@@ -28,7 +26,6 @@ class AdminRankedStatistic {
   final List<AdminRankedStatisticDetail> details;
 
   // Handles AdminRankedStatistic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminRankedStatistic({
     required this.label,
     required this.value,
@@ -42,7 +39,6 @@ class AdminRankedStatistic {
 }
 
 // Handles AdminRankedStatisticDetail for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminRankedStatisticDetail {
   final String title;
   final String? subtitle;
@@ -51,7 +47,6 @@ class AdminRankedStatisticDetail {
   final String? imageUrl;
 
   // Handles AdminRankedStatisticDetail for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminRankedStatisticDetail({
     required this.title,
     this.subtitle,
@@ -62,7 +57,6 @@ class AdminRankedStatisticDetail {
 }
 
 // Handles AdminAnalyticSection for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminAnalyticSection {
   final String title;
   final String summaryTitle;
@@ -72,7 +66,6 @@ class AdminAnalyticSection {
   final List<AdminRankedStatistic> items;
 
   // Handles AdminAnalyticSection for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminAnalyticSection({
     required this.title,
     required this.summaryTitle,
@@ -83,7 +76,6 @@ class AdminAnalyticSection {
   });
 
   // Handles sorted for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   AdminAnalyticSection sorted(AdminStatisticsSortOrder order) {
     final sortedItems = [...items]
       ..sort(
@@ -104,14 +96,12 @@ class AdminAnalyticSection {
 }
 
 // Handles AdminMealAnalyticStatistics for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminMealAnalyticStatistics {
   final String dateRange;
   final List<AdminDailyStatistic> dailyPlans;
   final List<AdminAnalyticSection> sections;
 
   // Handles AdminMealAnalyticStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminMealAnalyticStatistics({
     required this.dateRange,
     required this.dailyPlans,
@@ -119,7 +109,6 @@ class AdminMealAnalyticStatistics {
   });
 
   // Handles topDay for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   AdminDailyStatistic get topDay {
     final sortedDays = [...dailyPlans]
       ..sort((left, right) => right.value.compareTo(left.value));
@@ -127,7 +116,6 @@ class AdminMealAnalyticStatistics {
   }
 
   // Handles leastDay for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   AdminDailyStatistic get leastDay {
     final sortedDays = [...dailyPlans]
       ..sort((left, right) => left.value.compareTo(right.value));
@@ -136,7 +124,6 @@ class AdminMealAnalyticStatistics {
 }
 
 // Handles AdminPostAnalyticStatistics for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminPostAnalyticStatistics {
   final String dateRange;
   final List<AdminDailyStatistic> dailyPosts;
@@ -144,7 +131,6 @@ class AdminPostAnalyticStatistics {
   final RecipePerformanceStatistics? recipePerformance;
 
   // Handles AdminPostAnalyticStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminPostAnalyticStatistics({
     required this.dateRange,
     required this.dailyPosts,
@@ -153,7 +139,6 @@ class AdminPostAnalyticStatistics {
   });
 
   // Handles topDay for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   AdminDailyStatistic get topDay {
     final sortedDays = [...dailyPosts]
       ..sort((left, right) => right.value.compareTo(left.value));
@@ -161,7 +146,6 @@ class AdminPostAnalyticStatistics {
   }
 
   // Handles leastDay for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   AdminDailyStatistic get leastDay {
     final sortedDays = [...dailyPosts]
       ..sort((left, right) => left.value.compareTo(right.value));
@@ -170,7 +154,6 @@ class AdminPostAnalyticStatistics {
 }
 
 // Handles AdminDietaryPreferenceStatistics for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminDietaryPreferenceStatistics {
   final String dateRange;
   final int totalUsers;
@@ -178,7 +161,6 @@ class AdminDietaryPreferenceStatistics {
   final List<AdminRankedStatistic> preferences;
 
   // Handles AdminDietaryPreferenceStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminDietaryPreferenceStatistics({
     required this.dateRange,
     required this.totalUsers,
@@ -188,7 +170,6 @@ class AdminDietaryPreferenceStatistics {
 }
 
 // Handles AdminGenderStatistics for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminGenderStatistics {
   final String dateRange;
   final int totalUsers;
@@ -196,7 +177,6 @@ class AdminGenderStatistics {
   final List<AdminRankedStatistic> genders;
 
   // Handles AdminGenderStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminGenderStatistics({
     required this.dateRange,
     required this.totalUsers,
@@ -206,7 +186,6 @@ class AdminGenderStatistics {
 }
 
 // Handles AdminUserUsageStatistics for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminUserUsageStatistics {
   final String dateRange;
   final int totalUsers;
@@ -214,7 +193,6 @@ class AdminUserUsageStatistics {
   final List<AdminMonthlyUserStatistic> monthlyUsers;
 
   // Handles AdminUserUsageStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminUserUsageStatistics({
     required this.dateRange,
     required this.totalUsers,
@@ -224,7 +202,6 @@ class AdminUserUsageStatistics {
 }
 
 // Handles AdminHubRatingStatistics for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminHubRatingStatistics {
   final String dateRange;
   final int totalRatings;
@@ -232,7 +209,6 @@ class AdminHubRatingStatistics {
   final List<AdminMonthlyRatingStatistic> monthlyRatings;
 
   // Handles AdminHubRatingStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminHubRatingStatistics({
     required this.dateRange,
     required this.totalRatings,
@@ -242,14 +218,12 @@ class AdminHubRatingStatistics {
 }
 
 // Handles AdminMonthlyUserStatistic for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminMonthlyUserStatistic {
   final DateTime month;
   final int newUsers;
   final bool isPrediction;
 
   // Handles AdminMonthlyUserStatistic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminMonthlyUserStatistic({
     required this.month,
     required this.newUsers,
@@ -258,14 +232,12 @@ class AdminMonthlyUserStatistic {
 }
 
 // Handles AdminMonthlyRatingStatistic for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminMonthlyRatingStatistic {
   final DateTime month;
   final int ratingCount;
   final double averageRating;
 
   // Handles AdminMonthlyRatingStatistic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const AdminMonthlyRatingStatistic({
     required this.month,
     required this.ratingCount,

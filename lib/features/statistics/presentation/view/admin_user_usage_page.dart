@@ -19,7 +19,6 @@ import '../widgets/statistics_page_helpers.dart';
 
 /// Admin report showing new-user growth over time.
 // Handles AdminUserUsagePage for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class AdminUserUsagePage extends StatelessWidget {
   const AdminUserUsagePage({super.key});
 
@@ -28,7 +27,6 @@ class AdminUserUsagePage extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     // The ViewModel loads monthly usage values for the selected date range.
     return ChangeNotifierProvider(
@@ -44,12 +42,10 @@ class AdminUserUsagePage extends StatelessWidget {
 // It reads the ViewModel and chooses loading, error, or data content.
 // Smaller widgets below handle the individual visual sections.
 // Handles _AdminUserUsageView for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _AdminUserUsageView extends StatefulWidget {
   const _AdminUserUsageView();
 
   // Handles createState for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   State<_AdminUserUsageView> createState() => _AdminUserUsageViewState();
 }
@@ -58,14 +54,12 @@ class _AdminUserUsageView extends StatefulWidget {
 // It listens to user actions and rebuilds the affected widgets.
 // Controllers and other temporary UI values also belong here.
 // Handles _AdminUserUsageViewState for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _AdminUserUsageViewState extends State<_AdminUserUsageView> {
   @override
   // Build the admin user usage view state with the latest available state.
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminUserUsageViewModel>();
 
@@ -80,7 +74,6 @@ class _AdminUserUsageViewState extends State<_AdminUserUsageView> {
   }
 
   // Handles _buildBody for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget _buildBody(AdminUserUsageViewModel viewModel) {
     // Wait for monthly values before drawing the growth line.
     if (viewModel.isLoading && viewModel.statistics == null) {
@@ -116,7 +109,6 @@ class _AdminUserUsageViewState extends State<_AdminUserUsageView> {
               onTap: () => _pickDateRange(viewModel),
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -128,7 +120,6 @@ class _AdminUserUsageViewState extends State<_AdminUserUsageView> {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: AdminStatisticSummaryTile(
@@ -140,7 +131,6 @@ class _AdminUserUsageViewState extends State<_AdminUserUsageView> {
               ],
             ),
             // Handles SizedBox for this part of the statistics page.
-            // This makes the purpose clearer when reading or updating the code.
             const SizedBox(height: AppSpacing.lg),
             _MonthlyUserChart(months: statistics.monthlyUsers),
             const SizedBox(height: AppSpacing.lg),
@@ -154,7 +144,6 @@ class _AdminUserUsageViewState extends State<_AdminUserUsageView> {
   // Open the calendar with the current range already selected.
   // Send confirmed dates to the ViewModel so it can reload the report.
   // Handles _pickDateRange for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<void> _pickDateRange(AdminUserUsageViewModel viewModel) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -181,7 +170,6 @@ class _AdminUserUsageViewState extends State<_AdminUserUsageView> {
 // It prepares labels and values before passing them to the shared chart.
 // Keeping chart setup here avoids mixing it with the main page layout.
 // Handles _MonthlyUserChart for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _MonthlyUserChart extends StatelessWidget {
   final List<AdminMonthlyUserStatistic> months;
 
@@ -192,7 +180,6 @@ class _MonthlyUserChart extends StatelessWidget {
   // Labels, scale, and spacing are prepared before the chart is displayed.
   // This method only handles presentation and does not change report data.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMM yy');
     return _SectionCard(
@@ -229,7 +216,6 @@ class _MonthlyUserChart extends StatelessWidget {
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
 // Handles _MonthlyUserBreakdown for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _MonthlyUserBreakdown extends StatelessWidget {
   final List<AdminMonthlyUserStatistic> months;
 
@@ -240,7 +226,6 @@ class _MonthlyUserBreakdown extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMMM yyyy');
     final totalUsers = months.fold<int>(
@@ -286,14 +271,12 @@ class _MonthlyUserBreakdown extends StatelessWidget {
 // It owns the header and the content that belongs to this group.
 // The expanded state decides whether the detailed rows are visible.
 // Handles _SectionCard for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
   final bool alignTitleLeft;
 
   // Handles _SectionCard for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _SectionCard({
     required this.title,
     required this.child,
@@ -305,7 +288,6 @@ class _SectionCard extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -331,7 +313,6 @@ class _SectionCard extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: AppSpacing.lg),
           child,
         ],
@@ -344,7 +325,6 @@ class _SectionCard extends StatelessWidget {
 // It converts each data item into a readable row for the user.
 // Expand and sort actions are connected here when the section needs them.
 // Handles _BreakdownRow for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _BreakdownRow extends StatelessWidget {
   final String label;
   final int newUsers;
@@ -352,7 +332,6 @@ class _BreakdownRow extends StatelessWidget {
   final int percent;
 
   // Handles _BreakdownRow for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const _BreakdownRow({
     required this.label,
     required this.newUsers,
@@ -365,7 +344,6 @@ class _BreakdownRow extends StatelessWidget {
   // Each model item becomes one reusable row or expandable group.
   // Callbacks send taps back to the ViewModel or parent widget.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
@@ -384,7 +362,6 @@ class _BreakdownRow extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(width: AppSpacing.md),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -398,7 +375,6 @@ class _BreakdownRow extends StatelessWidget {
                 ),
               ),
               // Handles SizedBox for this part of the statistics page.
-              // This makes the purpose clearer when reading or updating the code.
               const SizedBox(height: 2),
               Text(
                 '$runningTotal total - $percent%',

@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 
 // Handles MealPlannedTimeStatistics for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class MealPlannedTimeStatistics {
   final String dateRange;
   final int totalDays;
@@ -11,7 +10,6 @@ class MealPlannedTimeStatistics {
   final List<MealPlannedTimeSegment> segments;
 
   // Handles MealPlannedTimeStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const MealPlannedTimeStatistics({
     required this.dateRange,
     required this.totalDays,
@@ -21,7 +19,6 @@ class MealPlannedTimeStatistics {
 }
 
 // Handles MealPlannedTimeSegment for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class MealPlannedTimeSegment {
   final String title;
   final int totalTaken;
@@ -30,7 +27,6 @@ class MealPlannedTimeSegment {
   final List<MealPlannedItem> meals;
 
   // Handles MealPlannedTimeSegment for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const MealPlannedTimeSegment({
     required this.title,
     required this.totalTaken,
@@ -41,7 +37,6 @@ class MealPlannedTimeSegment {
 }
 
 // Handles MealPlannedItem for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class MealPlannedItem {
   final String name;
   final int amount;
@@ -50,7 +45,6 @@ class MealPlannedItem {
   final String? imageUrl;
 
   // Handles MealPlannedItem for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const MealPlannedItem({
     required this.name,
     required this.amount,

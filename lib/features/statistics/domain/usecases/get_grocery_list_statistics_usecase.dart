@@ -7,14 +7,12 @@ import '../entities/grocery_list_statistics.dart';
 import '../repositories/statistics_repository.dart';
 
 // Handles GetGroceryListStatisticsUseCase for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class GetGroceryListStatisticsUseCase {
   final StatisticsRepository _repository;
 
   const GetGroceryListStatisticsUseCase(this._repository);
 
   // Handles execute for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<Either<Failure, GroceryListStatistics>> execute({
     DateTime? startDate,
     DateTime? endDate,

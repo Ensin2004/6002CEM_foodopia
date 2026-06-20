@@ -7,7 +7,6 @@ import '../../domain/entities/post_analytic_statistics.dart';
 import '../../domain/usecases/get_post_analytic_statistics_usecase.dart';
 
 // Handles PostAnalyticViewModel for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class PostAnalyticViewModel extends ChangeNotifier {
   final GetPostAnalyticStatisticsUseCase _getStatisticsUseCase;
 
@@ -28,26 +27,22 @@ class PostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles statistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   PostAnalyticStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   DateTime? get startDate => _startDate;
   // Handles endDate for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   DateTime? get endDate => _endDate;
   int get selectedPageIndex => _selectedPageIndex;
   int? get expandedCategoryIndex => _expandedCategoryIndex;
   PostAnalyticSortOrder get sortOrder => _sortOrder;
 
   // Handles secondarySummaryTitle for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   String get secondarySummaryTitle {
     return _selectedPageIndex == 0 ? 'Average' : 'Highest Rating';
   }
 
   // Handles secondarySummaryValue for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   String get secondarySummaryValue {
     final statistics = _statistics;
     if (statistics == null) return '0';
@@ -64,7 +59,6 @@ class PostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles sortedPosts for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   List<PostRatingItem> get sortedPosts => _sortPosts(_statistics?.posts ?? []);
 
   List<PostRatingCategory> get sortedCategories {
@@ -85,7 +79,6 @@ class PostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles loadStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<void> loadStatistics() async {
     _isLoading = _statistics == null;
     _errorMessage = null;
@@ -109,7 +102,6 @@ class PostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles selectPage for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void selectPage(int index) {
     if (_selectedPageIndex == index) return;
     _selectedPageIndex = index;
@@ -118,7 +110,6 @@ class PostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles setSortOrder for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void setSortOrder(PostAnalyticSortOrder order) {
     if (_sortOrder == order) return;
     _sortOrder = order;
@@ -126,14 +117,12 @@ class PostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles toggleCategory for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void toggleCategory(int index) {
     _expandedCategoryIndex = _expandedCategoryIndex == index ? null : index;
     _notifyIfActive();
   }
 
   // Handles _sortPosts for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   List<PostRatingItem> _sortPosts(List<PostRatingItem> posts) {
     final sorted = [...posts];
     sorted.sort((left, right) {
@@ -152,7 +141,6 @@ class PostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles selectDateRange for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<void> selectDateRange({
     required DateTime startDate,
     required DateTime endDate,
@@ -163,13 +151,11 @@ class PostAnalyticViewModel extends ChangeNotifier {
   }
 
   // Handles _notifyIfActive for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
   // Handles dispose for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   void dispose() {
     _isDisposed = true;

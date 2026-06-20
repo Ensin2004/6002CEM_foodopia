@@ -7,14 +7,12 @@ import '../entities/admin_statistics.dart';
 import '../repositories/statistics_repository.dart';
 
 // Handles GetAdminPostAnalyticStatisticsUseCase for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class GetAdminPostAnalyticStatisticsUseCase {
   final StatisticsRepository _repository;
 
   const GetAdminPostAnalyticStatisticsUseCase(this._repository);
 
   // Handles execute for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Future<Either<Failure, AdminPostAnalyticStatistics>> execute({
     DateTime? startDate,
     DateTime? endDate,

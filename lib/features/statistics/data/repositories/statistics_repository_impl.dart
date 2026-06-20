@@ -27,20 +27,17 @@ import '../models/statistics_dashboard_model.dart';
 // It decides whether each report comes from local fixed data or Firestore data,
 // and converts any error into a Failure that the UI can understand.
 // Handles StatisticsRepositoryImpl for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsRepositoryImpl implements StatisticsRepository {
   final StatisticsLocalDataSource localDataSource;
   final StatisticsRemoteDataSource remoteDataSource;
 
   // Handles StatisticsRepositoryImpl for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsRepositoryImpl({
     required this.localDataSource,
     required this.remoteDataSource,
   });
 
   // Handles getUserStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, StatisticsDashboard>> getUserStatistics() async {
     try {
@@ -65,7 +62,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getAdminStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, StatisticsDashboard>> getAdminStatistics() async {
     try {
@@ -88,7 +84,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getMealPlannedTime for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, MealPlannedTimeStatistics>> getMealPlannedTime({
     DateTime? startDate,
@@ -107,7 +102,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getCookingTime for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, CookingTimeStatistics>> getCookingTime({
     DateTime? startDate,
@@ -126,7 +120,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getGroceryLists for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, GroceryListStatistics>> getGroceryLists({
     DateTime? startDate,
@@ -145,7 +138,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getFoodAnalytic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, FoodAnalyticStatistics>> getFoodAnalytic({
     DateTime? startDate,
@@ -164,7 +156,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getCaloriesIntake for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, CaloriesIntakeStatistics>> getCaloriesIntake({
     DateTime? startDate,
@@ -183,7 +174,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getDifficultyMeals for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, DifficultyMealStatistics>> getDifficultyMeals({
     DateTime? startDate,
@@ -202,7 +192,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getMealPlanMethods for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, MealPlanMethodStatistics>> getMealPlanMethods({
     DateTime? startDate,
@@ -221,7 +210,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getPostAnalytic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, PostAnalyticStatistics>> getPostAnalytic({
     DateTime? startDate,
@@ -240,7 +228,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getCaloriesPosted for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, CaloriesPostedStatistics>> getCaloriesPosted({
     DateTime? startDate,
@@ -259,7 +246,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getPostedMealTime for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, PostedMealTimeStatistics>> getPostedMealTime({
     DateTime? startDate,
@@ -290,7 +276,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getMostCookedRecipes for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, MostCookedRecipeStatistics>> getMostCookedRecipes({
     DateTime? startDate,
@@ -309,7 +294,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getPostDifficulty for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, PostDifficultyStatistics>> getPostDifficulty({
     DateTime? startDate,
@@ -328,7 +312,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getAdminMealAnalytic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, AdminMealAnalyticStatistics>> getAdminMealAnalytic({
     DateTime? startDate,
@@ -347,7 +330,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getAdminPostAnalytic for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, AdminPostAnalyticStatistics>> getAdminPostAnalytic({
     DateTime? startDate,
@@ -381,7 +363,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getAdminGender for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, AdminGenderStatistics>> getAdminGender({
     DateTime? startDate,
@@ -400,7 +381,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getAdminUserUsage for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, AdminUserUsageStatistics>> getAdminUserUsage({
     DateTime? startDate,
@@ -419,7 +399,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getAdminUsageForecast for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, AdminUserUsageStatistics>> getAdminUsageForecast({
     DateTime? startDate,
@@ -438,7 +417,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getAdminNutrientInsight for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, CaloriesIntakeStatistics>> getAdminNutrientInsight({
     DateTime? startDate,
@@ -457,7 +435,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   // Handles getAdminHubRating for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Future<Either<Failure, AdminHubRatingStatistics>> getAdminHubRating({
     DateTime? startDate,

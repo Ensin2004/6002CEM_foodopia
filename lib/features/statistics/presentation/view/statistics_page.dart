@@ -16,13 +16,11 @@ import 'user_statistics_view.dart';
 /// This page creates the shared dashboard ViewModel, then chooses the user or
 /// admin layout based on [isAdmin].
 // Handles StatisticsPage for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsPage extends StatelessWidget {
   final bool isAdmin;
   final bool showAppBar;
 
   // Handles StatisticsPage for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsPage({
     super.key,
     required this.isAdmin,
@@ -34,7 +32,6 @@ class StatisticsPage extends StatelessWidget {
   // This method arranges the section widgets in the order seen on screen.
   // User interaction is forwarded through callbacks instead of stored here.
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Widget build(BuildContext context) {
     // Keep the ViewModel above both layouts so every dashboard widget can read
     // the same loading state, data, and selected tab.

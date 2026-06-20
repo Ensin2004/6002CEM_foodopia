@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 
 // Handles PostAnalyticSortOrder for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 enum PostAnalyticSortOrder {
   highestRating,
   lowestRating,
@@ -12,7 +11,6 @@ enum PostAnalyticSortOrder {
 }
 
 // Handles PostAnalyticStatistics for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class PostAnalyticStatistics {
   final String dateRange;
   final int totalPost;
@@ -21,7 +19,6 @@ class PostAnalyticStatistics {
   final List<PostRatingCategory> categories;
 
   // Handles PostAnalyticStatistics for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const PostAnalyticStatistics({
     required this.dateRange,
     required this.totalPost,
@@ -32,7 +29,6 @@ class PostAnalyticStatistics {
 }
 
 // Handles PostRatingItem for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class PostRatingItem {
   final String? id;
   final String name;
@@ -42,7 +38,6 @@ class PostRatingItem {
   final String? imageUrl;
 
   // Handles PostRatingItem for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const PostRatingItem({
     this.id,
     required this.name,
@@ -54,7 +49,6 @@ class PostRatingItem {
 }
 
 // Handles PostRatingCategory for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class PostRatingCategory {
   final String name;
   final double averageRating;
@@ -63,7 +57,6 @@ class PostRatingCategory {
   final List<PostRatingItem> dishes;
 
   // Handles PostRatingCategory for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const PostRatingCategory({
     required this.name,
     required this.averageRating,

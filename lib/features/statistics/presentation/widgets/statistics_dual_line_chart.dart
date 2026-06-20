@@ -9,14 +9,12 @@ import '../../../../core/theme/theme_extension.dart';
 
 /// One x-axis point with two values to compare.
 // Handles StatisticsDualLinePoint for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsDualLinePoint {
   final String label;
   final int firstValue;
   final int secondValue;
 
   // Handles StatisticsDualLinePoint for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsDualLinePoint({
     required this.label,
     required this.firstValue,
@@ -26,14 +24,12 @@ class StatisticsDualLinePoint {
 
 /// One named line used by the multi-line chart.
 // Handles StatisticsLineChartSeries for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsLineChartSeries {
   final String label;
   final Color color;
   final List<int> values;
 
   // Handles StatisticsLineChartSeries for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsLineChartSeries({
     required this.label,
     required this.color,
@@ -43,14 +39,12 @@ class StatisticsLineChartSeries {
 
 /// Draws several data lines on the same chart for comparison.
 // Handles StatisticsMultiLineChart for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsMultiLineChart extends StatelessWidget {
   final List<String> labels;
   final List<StatisticsLineChartSeries> series;
   final double height;
 
   // Handles StatisticsMultiLineChart for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsMultiLineChart({
     super.key,
     required this.labels,
@@ -59,7 +53,6 @@ class StatisticsMultiLineChart extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     final maxValue = _niceMaxValue(series);
@@ -93,7 +86,6 @@ class StatisticsMultiLineChart extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: 8),
                 Expanded(
                   child: CustomPaint(
@@ -110,7 +102,6 @@ class StatisticsMultiLineChart extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: 8),
           Row(
             children: [
@@ -144,7 +135,6 @@ class StatisticsMultiLineChart extends StatelessWidget {
   }
 
   // Handles _niceMaxValue for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   int _niceMaxValue(List<StatisticsLineChartSeries> series) {
     final maxPointValue = series.fold<int>(0, (max, item) {
       final seriesMax = item.values.fold<int>(
@@ -161,7 +151,6 @@ class StatisticsMultiLineChart extends StatelessWidget {
   }
 
   // Handles _gridValues for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   List<int> _gridValues(int highestValue) {
     final step = (highestValue / 4).round();
     return List.generate(5, (index) => highestValue - (step * index));
@@ -170,7 +159,6 @@ class StatisticsMultiLineChart extends StatelessWidget {
 
 /// Convenience chart for comparing exactly two related values.
 // Handles StatisticsDualLineChart for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsDualLineChart extends StatelessWidget {
   final List<StatisticsDualLinePoint> points;
   final Color firstColor;
@@ -178,7 +166,6 @@ class StatisticsDualLineChart extends StatelessWidget {
   final double height;
 
   // Handles StatisticsDualLineChart for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   const StatisticsDualLineChart({
     super.key,
     required this.points,
@@ -188,7 +175,6 @@ class StatisticsDualLineChart extends StatelessWidget {
   });
 
   // Handles build for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   Widget build(BuildContext context) {
     final maxValue = _niceMaxValue(points);
@@ -222,7 +208,6 @@ class StatisticsDualLineChart extends StatelessWidget {
                   ),
                 ),
                 // Handles SizedBox for this part of the statistics page.
-                // This makes the purpose clearer when reading or updating the code.
                 const SizedBox(width: 8),
                 Expanded(
                   child: CustomPaint(
@@ -240,7 +225,6 @@ class StatisticsDualLineChart extends StatelessWidget {
             ),
           ),
           // Handles SizedBox for this part of the statistics page.
-          // This makes the purpose clearer when reading or updating the code.
           const SizedBox(height: 8),
           Row(
             children: [
@@ -275,7 +259,6 @@ class StatisticsDualLineChart extends StatelessWidget {
   }
 
   // Handles _niceMaxValue for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   int _niceMaxValue(List<StatisticsDualLinePoint> points) {
     final maxPointValue = points.fold<int>(
       0,
@@ -290,7 +273,6 @@ class StatisticsDualLineChart extends StatelessWidget {
   }
 
   // Handles _gridValues for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   List<int> _gridValues(int highestValue) {
     final step = (highestValue / 4).round();
     return List.generate(5, (index) => highestValue - (step * index));
@@ -298,7 +280,6 @@ class StatisticsDualLineChart extends StatelessWidget {
 }
 
 // Handles _StatisticsMultiLineChartPainter for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _StatisticsMultiLineChartPainter extends CustomPainter {
   final List<String> labels;
   final List<StatisticsLineChartSeries> series;
@@ -313,7 +294,6 @@ class _StatisticsMultiLineChartPainter extends CustomPainter {
   });
 
   // Handles paint for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   void paint(Canvas canvas, Size size) {
     if (labels.isEmpty || series.isEmpty || maxValue <= 0) return;
@@ -338,7 +318,6 @@ class _StatisticsMultiLineChartPainter extends CustomPainter {
   }
 
   // Handles _drawSeries for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void _drawSeries({
     required Canvas canvas,
     required Size size,
@@ -373,7 +352,6 @@ class _StatisticsMultiLineChartPainter extends CustomPainter {
   }
 
   // Handles _smoothPath for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Path _smoothPath(List<Offset> points) {
     final path = Path()..moveTo(points.first.dx, points.first.dy);
     for (var index = 0; index < points.length - 1; index++) {
@@ -393,7 +371,6 @@ class _StatisticsMultiLineChartPainter extends CustomPainter {
   }
 
   // Handles shouldRepaint for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   bool shouldRepaint(covariant _StatisticsMultiLineChartPainter oldDelegate) {
     return oldDelegate.labels != labels ||
@@ -403,7 +380,6 @@ class _StatisticsMultiLineChartPainter extends CustomPainter {
 }
 
 // Handles _StatisticsDualLineChartPainter for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class _StatisticsDualLineChartPainter extends CustomPainter {
   final List<StatisticsDualLinePoint> points;
   final int maxValue;
@@ -420,7 +396,6 @@ class _StatisticsDualLineChartPainter extends CustomPainter {
   });
 
   // Handles paint for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty || maxValue <= 0) return;
@@ -449,7 +424,6 @@ class _StatisticsDualLineChartPainter extends CustomPainter {
   }
 
   // Handles _drawSeries for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void _drawSeries({
     required Canvas canvas,
     required Size size,
@@ -482,7 +456,6 @@ class _StatisticsDualLineChartPainter extends CustomPainter {
   }
 
   // Handles _smoothPath for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   Path _smoothPath(List<Offset> points) {
     final path = Path()..moveTo(points.first.dx, points.first.dy);
     for (var index = 0; index < points.length - 1; index++) {
@@ -502,7 +475,6 @@ class _StatisticsDualLineChartPainter extends CustomPainter {
   }
 
   // Handles shouldRepaint for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   bool shouldRepaint(covariant _StatisticsDualLineChartPainter oldDelegate) {
     return oldDelegate.points != points ||

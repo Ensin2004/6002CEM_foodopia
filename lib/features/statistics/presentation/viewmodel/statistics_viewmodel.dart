@@ -10,7 +10,6 @@ import '../../domain/usecases/get_statistics_dashboard_usecase.dart';
 // It loads dashboard data through the use case, stores loading/error state,
 // and tells the screen to rebuild when the selected tab or hero card changes.
 // Handles StatisticsViewModel for this part of the statistics page.
-// This makes the purpose clearer when reading or updating the code.
 class StatisticsViewModel extends ChangeNotifier {
   final GetStatisticsDashboardUseCase _getDashboardUseCase;
   final bool isAdmin;
@@ -30,13 +29,11 @@ class StatisticsViewModel extends ChangeNotifier {
   }
 
   // Handles dashboard for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   StatisticsDashboard? get dashboard => _dashboard;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   int get selectedAudienceIndex => _selectedAudienceIndex;
   // Handles selectedHeroIndex for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   int get selectedHeroIndex => _selectedHeroIndex;
 
   Future<void> loadStatistics() async {
@@ -61,7 +58,6 @@ class StatisticsViewModel extends ChangeNotifier {
   }
 
   // Handles selectAudience for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void selectAudience(int index) {
     // Switches between personal and community/admin sections on the screen.
     if (_selectedAudienceIndex == index) return;
@@ -71,7 +67,6 @@ class StatisticsViewModel extends ChangeNotifier {
   }
 
   // Handles selectHero for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void selectHero(int index) {
     // Updates which top statistics card is currently selected.
     if (_selectedHeroIndex == index) return;
@@ -80,13 +75,11 @@ class StatisticsViewModel extends ChangeNotifier {
   }
 
   // Handles _notifyIfActive for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
   // Handles dispose for this part of the statistics page.
-  // This makes the purpose clearer when reading or updating the code.
   @override
   void dispose() {
     _isDisposed = true;
