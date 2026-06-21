@@ -41,10 +41,10 @@ class _NutritionTabState extends State<_NutritionTab> {
     // Sums all macro nutrients for percentage calculations.
     final totalMacroGrams =
         displayNutrition.proteinGrams +
-            displayNutrition.carbsGrams +
-            displayNutrition.fatGrams +
-            displayNutrition.fiberGrams +
-            displayNutrition.waterGrams;
+        displayNutrition.carbsGrams +
+        displayNutrition.fatGrams +
+        displayNutrition.fiberGrams +
+        displayNutrition.waterGrams;
     // Combines vitamins and minerals into a single list.
     final micronutrients = [
       ...displayNutrition.vitamins,
@@ -89,6 +89,8 @@ class _NutritionTabState extends State<_NutritionTab> {
                             carbs: displayNutrition.carbsGrams,
                             protein: displayNutrition.proteinGrams,
                             fat: displayNutrition.fatGrams,
+                            fiber: displayNutrition.fiberGrams,
+                            water: displayNutrition.waterGrams,
                           ),
                         ),
                         Column(
@@ -147,6 +149,7 @@ class _NutritionTabState extends State<_NutritionTab> {
             ],
           ),
         ),
+
         /// Micronutrient panel shown only when micronutrients exist.
         if (micronutrients.isNotEmpty) ...[
           const SizedBox(height: 16),
@@ -160,6 +163,7 @@ class _NutritionTabState extends State<_NutritionTab> {
           ),
         ],
         const SizedBox(height: 16),
+
         /// Ingredient breakdown panel with paginated nutrient views.
         _NutritionPanel(
           child: Column(
@@ -186,9 +190,9 @@ class _NutritionTabState extends State<_NutritionTab> {
 
   /// Displays a dialog with all micronutrients in a grid layout.
   void _showMicronutrientsDialog(
-      BuildContext context,
-      List<ExploreNutrientAmount> nutrients,
-      ) {
+    BuildContext context,
+    List<ExploreNutrientAmount> nutrients,
+  ) {
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -246,9 +250,9 @@ class _NutritionTabState extends State<_NutritionTab> {
 
   /// Scales nutrition values proportionally to the selected serving count.
   static ExploreNutrition _nutritionForServings(
-      ExploreRecipe recipe,
-      int selectedServings,
-      ) {
+    ExploreRecipe recipe,
+    int selectedServings,
+  ) {
     final servings = _baseServings(recipe);
     final factor = selectedServings / servings;
     return ExploreNutrition(
@@ -265,19 +269,19 @@ class _NutritionTabState extends State<_NutritionTab> {
 
   /// Scales a list of nutrients by a given factor.
   static List<ExploreNutrientAmount> _nutrientsForFactor(
-      List<ExploreNutrientAmount> nutrients,
-      double factor,
-      ) {
+    List<ExploreNutrientAmount> nutrients,
+    double factor,
+  ) {
     return nutrients
         .map(
           (nutrient) => ExploreNutrientAmount(
-        key: nutrient.key,
-        label: nutrient.label,
-        amount: nutrient.amount * factor,
-        unit: nutrient.unit,
-        dailyValue: nutrient.dailyValue,
-      ),
-    )
+            key: nutrient.key,
+            label: nutrient.label,
+            amount: nutrient.amount * factor,
+            unit: nutrient.unit,
+            dailyValue: nutrient.dailyValue,
+          ),
+        )
         .toList(growable: false);
   }
 }
@@ -349,23 +353,22 @@ class _IngredientMacroPagerState extends State<_IngredientMacroPager> {
         totalValue: widget.totalNutrition.waterGrams.toDouble(),
       ),
       // Adds micronutrient pages for nutrients with positive amounts.
-      ...[
-        ...widget.totalNutrition.vitamins,
-        ...widget.totalNutrition.minerals,
-      ].where((nutrient) => nutrient.amount > 0).map(
+      ...[...widget.totalNutrition.vitamins, ...widget.totalNutrition.minerals]
+          .where((nutrient) => nutrient.amount > 0)
+          .map(
             (nutrient) => _IngredientNutrientPageSpec.micro(
-          nutrient: nutrient,
-          color: _MicronutrientCard._colorForNutrient(nutrient.key),
-        ),
-      ),
+              nutrient: nutrient,
+              color: _MicronutrientCard._colorForNutrient(nutrient.key),
+            ),
+          ),
     ];
     // Filters out pages where no ingredient contributes to that nutrient.
     return pages
         .where(
           (page) => widget.ingredients.any(
             (ingredient) => page.valueForIngredient(ingredient) > 0,
-      ),
-    )
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -447,8 +450,8 @@ class _IngredientMacroPagerState extends State<_IngredientMacroPager> {
     final visibleCount = page == null
         ? 0
         : widget.ingredients
-        .where((ingredient) => page.valueForIngredient(ingredient) > 0)
-        .length;
+              .where((ingredient) => page.valueForIngredient(ingredient) > 0)
+              .length;
     if (visibleCount == 0) return 116;
     return 190;
   }
@@ -495,10 +498,7 @@ class _ServingStepper extends StatelessWidget {
               ),
             ),
           ),
-          _ServingStepperButton(
-            icon: Icons.add_rounded,
-            onPressed: onIncrease,
-          ),
+          _ServingStepperButton(icon: Icons.add_rounded, onPressed: onIncrease),
         ],
       ),
     );
@@ -510,10 +510,7 @@ class _ServingStepperButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
 
-  const _ServingStepperButton({
-    required this.icon,
-    required this.onPressed,
-  });
+  const _ServingStepperButton({required this.icon, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -651,7 +648,7 @@ class _IngredientNutrientBreakdownPage extends StatelessWidget {
           Text('No ingredients yet.', style: context.text.bodySmall)
         else
           ...visibleIngredients.map(
-                (ingredient) => _IngredientNutrientBreakdownRow(
+            (ingredient) => _IngredientNutrientBreakdownRow(
               page: page,
               ingredient: ingredient,
               baseServings: baseServings,
@@ -664,9 +661,9 @@ class _IngredientNutrientBreakdownPage extends StatelessWidget {
 
   /// Shows a dialog with the complete list of contributing ingredients.
   void _showAllIngredients(
-      BuildContext context,
-      List<ExploreIngredient> visibleIngredients,
-      ) {
+    BuildContext context,
+    List<ExploreIngredient> visibleIngredients,
+  ) {
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -708,12 +705,12 @@ class _IngredientNutrientBreakdownPage extends StatelessWidget {
                       children: visibleIngredients
                           .map(
                             (ingredient) => _IngredientNutrientBreakdownRow(
-                          page: page,
-                          ingredient: ingredient,
-                          baseServings: baseServings,
-                          selectedServings: selectedServings,
-                        ),
-                      )
+                              page: page,
+                              ingredient: ingredient,
+                              baseServings: baseServings,
+                              selectedServings: selectedServings,
+                            ),
+                          )
                           .toList(growable: false),
                     ),
                   ),
@@ -782,10 +779,7 @@ class _MicronutrientSummary extends StatelessWidget {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        '$calories',
-                        style: context.text.headlineSmall,
-                      ),
+                      Text('$calories', style: context.text.headlineSmall),
                       Text('kcal', style: context.text.bodySmall),
                     ],
                   ),
@@ -802,12 +796,12 @@ class _MicronutrientSummary extends StatelessWidget {
                   children: nutrients
                       .map(
                         (nutrient) => _NutrientPercentRow(
-                      nutrient: nutrient,
-                      color: _MicronutrientCard._colorForNutrient(
-                        nutrient.key,
-                      ),
-                    ),
-                  )
+                          nutrient: nutrient,
+                          color: _MicronutrientCard._colorForNutrient(
+                            nutrient.key,
+                          ),
+                        ),
+                      )
                       .toList(growable: false),
                 ),
               ),
@@ -827,10 +821,7 @@ class _NutrientPercentRow extends StatelessWidget {
   final ExploreNutrientAmount nutrient;
   final Color color;
 
-  const _NutrientPercentRow({
-    required this.nutrient,
-    required this.color,
-  });
+  const _NutrientPercentRow({required this.nutrient, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1216,23 +1207,37 @@ class _MacroRow extends StatelessWidget {
   }
 }
 
-/// Custom painter for the macronutrient ring chart showing carb/protein/fat distribution.
+/// Custom painter for the macronutrient ring chart.
 class _MacroRingPainter extends CustomPainter {
   final int carbs;
   final int protein;
   final int fat;
+  final int fiber;
+  final int water;
 
   const _MacroRingPainter({
     required this.carbs,
     required this.protein,
     required this.fat,
+    required this.fiber,
+    required this.water,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final strokeWidth = 12.0;
     final rect = Offset.zero & size;
-    final total = (carbs + protein + fat).toDouble();
+    final segments = [
+      _MacroRingSegment(value: carbs, color: AppColors.primary),
+      _MacroRingSegment(value: protein, color: AppColors.error),
+      _MacroRingSegment(value: fat, color: AppColors.secondary),
+      _MacroRingSegment(value: fiber, color: Colors.green),
+      _MacroRingSegment(value: water, color: Colors.lightBlue),
+    ].where((segment) => segment.value > 0).toList(growable: false);
+    final total = segments.fold<double>(
+      0,
+      (sum, segment) => sum + segment.value,
+    );
     final backgroundPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
@@ -1242,8 +1247,8 @@ class _MacroRingPainter extends CustomPainter {
     // Draws the background ring.
     canvas.drawArc(
       rect.deflate(strokeWidth / 2),
-      -1.5708,
-      6.2832,
+      -math.pi / 2,
+      math.pi * 2,
       false,
       backgroundPaint,
     );
@@ -1254,22 +1259,18 @@ class _MacroRingPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
-    var startAngle = -1.5708;
-    const gapAngle = 0.08;
-    final segments = [
-      _MacroRingSegment(value: carbs, color: AppColors.primary),
-      _MacroRingSegment(value: protein, color: AppColors.error),
-      _MacroRingSegment(value: fat, color: AppColors.secondary),
-    ];
+    var startAngle = -math.pi / 2;
+    final gapAngle = segments.length <= 1 ? 0.0 : 0.04;
 
-    // Draws each macro segment with a small gap between them.
+    // Draws each macro segment, keeping very small positive slices visible.
     for (final segment in segments) {
-      final sweep = (segment.value / total) * 6.2832;
+      final sweep = (segment.value / total) * math.pi * 2;
+      final segmentGap = sweep <= gapAngle * 2 ? 0.0 : gapAngle;
       segmentPaint.color = segment.color;
       canvas.drawArc(
         rect.deflate(strokeWidth / 2),
         startAngle,
-        (sweep - gapAngle).clamp(0.0, 6.2832).toDouble(),
+        math.max(0.0, sweep - segmentGap),
         false,
         segmentPaint,
       );
@@ -1281,7 +1282,9 @@ class _MacroRingPainter extends CustomPainter {
   bool shouldRepaint(covariant _MacroRingPainter oldDelegate) {
     return oldDelegate.carbs != carbs ||
         oldDelegate.protein != protein ||
-        oldDelegate.fat != fat;
+        oldDelegate.fat != fat ||
+        oldDelegate.fiber != fiber ||
+        oldDelegate.water != water;
   }
 }
 
@@ -1306,14 +1309,14 @@ class _MicronutrientRingPainter extends CustomPainter {
     // Builds segments from nutrients with positive daily value.
     final segments = nutrients
         .map((nutrient) {
-      if (nutrient.dailyValue <= 0) return null;
-      final value = nutrient.amount / nutrient.dailyValue * 100;
-      if (value <= 0) return null;
-      return _MicronutrientRingSegment(
-        value: value,
-        color: _MicronutrientCard._colorForNutrient(nutrient.key),
-      );
-    })
+          if (nutrient.dailyValue <= 0) return null;
+          final value = nutrient.amount / nutrient.dailyValue * 100;
+          if (value <= 0) return null;
+          return _MicronutrientRingSegment(
+            value: value,
+            color: _MicronutrientCard._colorForNutrient(nutrient.key),
+          );
+        })
         .whereType<_MicronutrientRingSegment>()
         .toList(growable: false);
     final total = segments.fold<double>(0, (sum, item) => sum + item.value);
@@ -1371,8 +1374,5 @@ class _MicronutrientRingSegment {
   final double value;
   final Color color;
 
-  const _MicronutrientRingSegment({
-    required this.value,
-    required this.color,
-  });
+  const _MicronutrientRingSegment({required this.value, required this.color});
 }
