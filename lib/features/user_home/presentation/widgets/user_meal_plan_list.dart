@@ -34,12 +34,19 @@ class UserMealPlanList extends StatelessWidget {
   Widget build(BuildContext context) {
     // Show empty state if no sections.
     if (sections.isEmpty) {
-      return Column(
-        children: [
-          Image.asset('assets/images/empty_page.png', height: 120),
-          const SizedBox(height: AppSpacing.sm),
-          Text('No meals planned yet', style: context.text.bodyMedium),
-        ],
+      return SizedBox(
+        width: double.infinity,
+        child: Column(
+          children: [
+            Image.asset('assets/images/empty_page.png', height: 120),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'No meals planned yet',
+              textAlign: TextAlign.center,
+              style: context.text.bodyMedium,
+            ),
+          ],
+        ),
       );
     }
 
