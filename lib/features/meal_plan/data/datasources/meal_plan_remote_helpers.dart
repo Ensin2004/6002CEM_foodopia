@@ -167,81 +167,76 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
   ) async {
     // Map to deduplicate items by key.
     final itemsByKey = <String, _GroceryItemDraft>{};
+    final categoryNameById = <String, String>{};
 
     // Process each meal plan.
     for (final mealDoc in mealDocs) {
       final meal = mealDoc.data();
       final recipeId = meal['recipeId']?.toString() ?? '';
 
-      // Try to get AI-generated recipe context.
+      // Prefer saved recipe ingredients because Explore displays those records.
+      final recipeIngredientSource = await _recipeIngredientSourceForMeal(
+        mealDoc,
+        meal,
+        recipeId,
+      );
+      if (recipeIngredientSource != null) {
+        final recipeServings =
+            _intValue(recipeIngredientSource.recipeData?['servings']) ??
+            _intValue(recipeIngredientSource.recipeData?['servingSize']);
+        final servingScale = _mealServingScale(meal, recipeServings);
+        await _resolveIngredientCategoryNamesFor(
+          recipeIngredientSource.ingredientDocs.map((doc) => doc.data()),
+          categoryNameById,
+        );
+
+        for (final ingredientDoc in recipeIngredientSource.ingredientDocs) {
+          final ingredient = ingredientDoc.data();
+          final unit = await _resolveIngredientUnitName(
+            unitId: ingredient['unitId']?.toString() ?? '',
+            customUnitId: ingredient['customUnitId']?.toString() ?? '',
+          );
+
+          _mergeGroceryItem(
+            itemsByKey,
+            _itemFromRecipeIngredient(
+              mealDoc.id,
+              recipeIngredientSource.recipeId,
+              ingredient,
+              unit,
+              categoryNameById,
+              servingScale,
+            ),
+          );
+        }
+        continue;
+      }
+
+      // Fall back to AI context only when no saved recipe ingredients exist.
       final aiContext = await mealDoc.reference
           .collection('ai_context')
           .doc('context')
           .get();
+      if (!aiContext.exists) continue;
 
-      if (aiContext.exists) {
-        // Extract ingredients from AI context.
-        final generated = aiContext.data()?['generatedRecipe'];
-        final generatedIngredients = generated is Map<String, dynamic>
-            ? generated['ingredients']
-            : null;
-        _mergeGroceryItems(
-          itemsByKey,
-          _itemsFromAiIngredients(
-            mealDoc.id,
-            recipeId,
-            generatedIngredients,
-            _mealServingScale(meal, null),
-          ),
-        );
-        continue;
-      }
-
-      // Skip if no recipe ID.
-      if (recipeId.isEmpty) continue;
-
-      // Fetch recipe document.
-      final recipeDoc = await firestore
-          .collection('recipes')
-          .doc(recipeId)
-          .get();
-      final recipeData = recipeDoc.data();
-
-      // Calculate serving scale.
-      final recipeServings =
-          _intValue(recipeData?['servings']) ??
-          _intValue(recipeData?['servingSize']);
-      final servingScale = _mealServingScale(meal, recipeServings);
-
-      // Fetch ingredients from recipe.
-      final ingredients = await firestore
-          .collection('recipes')
-          .doc(recipeId)
-          .collection('ingredients')
-          .get();
-
-      // Process each ingredient.
-      for (final ingredientDoc in ingredients.docs) {
-        final ingredient = ingredientDoc.data();
-
-        // Resolve unit name.
-        final unit = await _resolveIngredientUnitName(
-          unitId: ingredient['unitId']?.toString() ?? '',
-          customUnitId: ingredient['customUnitId']?.toString() ?? '',
-        );
-
-        // Add item to the map.
-        _mergeGroceryItem(
-          itemsByKey,
-          _itemFromRecipeIngredient(
-            mealDoc.id,
-            recipeId,
-            ingredient,
-            unit,
-            servingScale,
-          ),
-        );
-      }
+      final generated = aiContext.data()?['generatedRecipe'];
+      final generatedIngredients = generated is Map<String, dynamic>
+          ? generated['ingredients']
+          : null;
+      await _resolveIngredientCategoryNamesFor(
+        generatedIngredients,
+        categoryNameById,
+      );
+      _mergeGroceryItems(
+        itemsByKey,
+        _itemsFromAiIngredients(
+          mealDoc.id,
+          recipeId,
+          generatedIngredients,
+          categoryNameById,
+          _mealServingScale(meal, null),
+        ),
+      );
     }
 
     // Return sorted items by name.
@@ -250,11 +245,63 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
     );
   }
 
+  /// Finds the saved recipe ingredient documents that match a meal plan.
+  Future<_RecipeIngredientSource?> _recipeIngredientSourceForMeal(
+    QueryDocumentSnapshot<Map<String, dynamic>> mealDoc,
+    Map<String, dynamic> meal,
+    String recipeId,
+  ) async {
+    if (recipeId.isNotEmpty) {
+      final direct = await _recipeIngredientSource(recipeId);
+      if (direct != null) return direct;
+    }
+
+    final generated = await _generatedRecipeFromPlan(mealDoc);
+    final title = generated?['title']?.toString().trim() ?? '';
+    final userId = meal['uid']?.toString().trim() ?? '';
+    if (title.isEmpty || userId.isEmpty) return null;
+
+    final matches = await firestore
+        .collection('recipes')
+        .where('creatorUid', isEqualTo: userId)
+        .where('name', isEqualTo: title)
+        .limit(5)
+        .get();
+
+    for (final doc in matches.docs) {
+      final source = await _recipeIngredientSource(doc.id);
+      if (source != null) return source;
+    }
+    return null;
+  }
+
+  /// Loads ingredient documents for a recipe when they are available.
+  Future<_RecipeIngredientSource?> _recipeIngredientSource(
+    String recipeId,
+  ) async {
+    final trimmedRecipeId = recipeId.trim();
+    if (trimmedRecipeId.isEmpty) return null;
+
+    final recipeRef = firestore.collection('recipes').doc(trimmedRecipeId);
+    final recipeDoc = await recipeRef.get();
+    if (!recipeDoc.exists) return null;
+
+    final ingredients = await recipeRef.collection('ingredients').get();
+    if (ingredients.docs.isEmpty) return null;
+
+    return _RecipeIngredientSource(
+      recipeId: recipeDoc.id,
+      recipeData: recipeDoc.data(),
+      ingredientDocs: ingredients.docs,
+    );
+  }
+
   /// Creates grocery item drafts from AI ingredient data.
   Iterable<_GroceryItemDraft> _itemsFromAiIngredients(
     String mealPlanId,
     String recipeId,
     Object? ingredients,
+    Map<String, String> categoryNameById,
     double servingScale,
   ) {
     // Return empty if ingredients is not an iterable.
@@ -263,12 +310,18 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
     // Map each ingredient to a draft item.
     return ingredients.whereType<Map>().map((item) {
       final categoryId = _ingredientCategoryIdFrom(item) ?? '';
+      final categoryName = _categoryNameFromIngredientData(
+        item,
+        categoryId,
+        categoryNameById,
+      );
       return _GroceryItemDraft(
         ingredientName: item['name']?.toString() ?? 'Ingredient',
         ingredientCategoryId: categoryId,
-        categoryName:
-            item['categoryName']?.toString().trim() ??
-            _categoryNameForIngredient(item['name']?.toString() ?? ''),
+        categoryName: categoryName.isNotEmpty
+            ? categoryName
+            : _categoryNameForIngredient(item['name']?.toString() ?? ''),
+        imagePath: '',
         amount: _doubleValue(item['amount']) * servingScale,
         unit: item['unit']?.toString() ?? '',
         relatedMealPlanIds: [mealPlanId],
@@ -284,15 +337,22 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
     String recipeId,
     Map<String, dynamic> ingredient,
     String unit,
+    Map<String, String> categoryNameById,
     double servingScale,
   ) {
     final categoryId = _ingredientCategoryIdFrom(ingredient) ?? '';
+    final categoryName = _categoryNameFromIngredientData(
+      ingredient,
+      categoryId,
+      categoryNameById,
+    );
     return _GroceryItemDraft(
       ingredientName: ingredient['name']?.toString() ?? 'Ingredient',
       ingredientCategoryId: categoryId,
-      categoryName:
-          ingredient['categoryName']?.toString().trim() ??
-          _categoryNameForIngredient(ingredient['name']?.toString() ?? ''),
+      categoryName: categoryName.isNotEmpty
+          ? categoryName
+          : _categoryNameForIngredient(ingredient['name']?.toString() ?? ''),
+      imagePath: ingredient['image']?.toString().trim() ?? '',
       amount: _doubleValue(ingredient['amount']) * servingScale,
       unit: unit,
       relatedMealPlanIds: [mealPlanId],
@@ -577,6 +637,9 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
     final values = [
       data['ingredientCategoryId'],
       data['ingredient_categories_id'],
+      data['ingredient_category_id'],
+      data['ingredientCategoriesId'],
+      data['ingredientCategory'],
       data['categoryId'],
     ];
     for (final value in values) {
@@ -584,6 +647,55 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
       if (text.isNotEmpty) return text;
     }
     return null;
+  }
+
+  /// Resolves all ingredient category IDs in a collection of raw ingredient maps.
+  Future<void> _resolveIngredientCategoryNamesFor(
+    Object? ingredients,
+    Map<String, String> target,
+  ) async {
+    if (ingredients is! Iterable) return;
+
+    final ids = ingredients
+        .whereType<Map>()
+        .map(_ingredientCategoryIdFrom)
+        .whereType<String>()
+        .where((id) => id.isNotEmpty && !target.containsKey(id))
+        .toSet();
+    if (ids.isEmpty) return;
+
+    final entries = await Future.wait(
+      ids.map((id) async {
+        final doc = await firestore
+            .collection('app_config')
+            .doc('ingredient_categories')
+            .collection('items')
+            .doc(id)
+            .get();
+        final data = doc.data();
+        final name = data?['name']?.toString().trim() ?? '';
+        return name.isEmpty ? null : MapEntry(id, name);
+      }),
+    );
+    target.addEntries(entries.whereType<MapEntry<String, String>>());
+  }
+
+  /// Reads a persisted category name or resolves one from the category ID map.
+  String _categoryNameFromIngredientData(
+    Map<dynamic, dynamic> data,
+    String categoryId,
+    Map<String, String> categoryNameById,
+  ) {
+    final values = [
+      data['categoryName'],
+      data['ingredientCategoryName'],
+      data['ingredient_category_name'],
+    ];
+    for (final value in values) {
+      final text = value?.toString().trim() ?? '';
+      if (text.isNotEmpty) return text;
+    }
+    return categoryNameById[categoryId] ?? '';
   }
 
   /// Generates a category name based on ingredient name keywords.
@@ -1069,6 +1181,7 @@ class _GroceryItemDraft {
   final String ingredientName;
   final String ingredientCategoryId;
   final String categoryName;
+  final String imagePath;
   final double amount;
   final String unit;
   final List<String> relatedMealPlanIds;
@@ -1079,6 +1192,7 @@ class _GroceryItemDraft {
     required this.ingredientName,
     required this.ingredientCategoryId,
     required this.categoryName,
+    this.imagePath = '',
     required this.amount,
     required this.unit,
     required this.relatedMealPlanIds,
@@ -1092,6 +1206,7 @@ class _GroceryItemDraft {
       ingredientName: ingredientName,
       ingredientCategoryId: ingredientCategoryId,
       categoryName: categoryName.isNotEmpty ? categoryName : other.categoryName,
+      imagePath: imagePath.isNotEmpty ? imagePath : other.imagePath,
       amount: amount + other.amount,
       unit: unit,
       relatedMealPlanIds: {
@@ -1113,6 +1228,7 @@ class _GroceryItemRecord {
   final String name;
   final String categoryId;
   final String categoryName;
+  final String imagePath;
   final double amount;
   final String unit;
   final List<String> relatedMealPlanIds;
@@ -1123,6 +1239,7 @@ class _GroceryItemRecord {
     required this.name,
     required this.categoryId,
     required this.categoryName,
+    this.imagePath = '',
     required this.amount,
     required this.unit,
     required this.relatedMealPlanIds,
@@ -1155,6 +1272,7 @@ class _GroceryItemRecord {
           categoryNames[categoryId] ??
           data['categoryName']?.toString() ??
           _fallbackCategoryName(name),
+      imagePath: data['image']?.toString() ?? '',
       amount: data['amount'] is num ? (data['amount'] as num).toDouble() : 0,
       unit: data['unit']?.toString() ?? '',
       relatedMealPlanIds: _stringListFromValue(
@@ -1173,6 +1291,7 @@ class _GroceryItemRecord {
       categoryName: categoryName,
       quantityLabel: _displayQuantity(amount, unit),
       emoji: _displayEmoji(name),
+      imagePath: imagePath,
       bought: bought,
     );
   }
@@ -1254,6 +1373,19 @@ class _GroceryItemRecord {
     }
     return 'Uncategorized';
   }
+}
+
+/// Saved recipe ingredients that should drive grocery category grouping.
+class _RecipeIngredientSource {
+  final String recipeId;
+  final Map<String, dynamic>? recipeData;
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> ingredientDocs;
+
+  const _RecipeIngredientSource({
+    required this.recipeId,
+    required this.recipeData,
+    required this.ingredientDocs,
+  });
 }
 
 /// Snapshot of a meal plan with key details.

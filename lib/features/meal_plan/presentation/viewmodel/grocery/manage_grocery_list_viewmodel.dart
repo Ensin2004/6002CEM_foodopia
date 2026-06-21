@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../../../core/extensions/either_extensions.dart';
@@ -256,7 +258,9 @@ class ManageGroceryListViewModel extends ChangeNotifier {
     required String name,
     required String amountText,
     required String unit,
-    required String categoryName,
+    String unitId = '',
+    String customUnit = '',
+    File? imageFile,
     List<String> relatedMealPlanIds = const [],
   }) async {
     // Validate the name.
@@ -287,7 +291,9 @@ class ManageGroceryListViewModel extends ChangeNotifier {
         name: trimmedName,
         amount: amount ?? 0,
         unit: unit,
-        categoryName: categoryName,
+        unitId: unitId,
+        customUnit: customUnit,
+        imageFile: imageFile,
         relatedMealPlanIds: relatedMealPlanIds,
       ),
     );

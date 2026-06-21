@@ -767,6 +767,57 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     return _selectedRecipeIds.contains(recipeId);
   }
 
+  /// Replaces the selected AI recipe id with the saved library recipe id.
+  void linkSelectedRecipeToSavedRecipe(String savedRecipeId) {
+    final currentPlan = _plan;
+    final selectedId = _selectedRecipeIds.isEmpty
+        ? ''
+        : _selectedRecipeIds.first;
+    final trimmedSavedId = savedRecipeId.trim();
+    if (currentPlan == null || selectedId.isEmpty || trimmedSavedId.isEmpty) {
+      return;
+    }
+
+    AddMealAiRecipe replaceIfSelected(AddMealAiRecipe recipe) {
+      if (recipe.id != selectedId) return recipe;
+      return AddMealAiRecipe(
+        id: trimmedSavedId,
+        title: recipe.title,
+        durationLabel: recipe.durationLabel,
+        difficultyLabel: recipe.difficultyLabel,
+        servingLabel: recipe.servingLabel,
+        imagePath: recipe.imagePath,
+        imageBase64: recipe.imageBase64,
+        description: recipe.description,
+        reasons: recipe.reasons,
+        ingredients: recipe.ingredients,
+        instructions: recipe.instructions,
+        calories: recipe.calories,
+        carbohydrates: recipe.carbohydrates,
+        fat: recipe.fat,
+        protein: recipe.protein,
+        imagePrompt: recipe.imagePrompt,
+        categoryName: recipe.categoryName,
+      );
+    }
+
+    _plan = AddMealAiPlan(
+      planningDate: currentPlan.planningDate,
+      mealType: currentPlan.mealType,
+      weather: currentPlan.weather,
+      preferences: currentPlan.preferences,
+      ingredientsToInclude: currentPlan.ingredientsToInclude,
+      ingredientsToAvoid: currentPlan.ingredientsToAvoid,
+      dishPreferences: currentPlan.dishPreferences,
+      topMatches: currentPlan.topMatches.map(replaceIfSelected).toList(),
+      aiIdeas: currentPlan.aiIdeas.map(replaceIfSelected).toList(),
+    );
+    _selectedRecipeIds
+      ..clear()
+      ..add(trimmedSavedId);
+    _notifyIfActive();
+  }
+
   // =========================================================================
   // RECIPE DRAFT
   // =========================================================================

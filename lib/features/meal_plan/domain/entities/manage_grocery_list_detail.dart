@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// Detailed information for managing a grocery list.
 /// Contains all data needed for the grocery list management screen.
 class ManageGroceryListDetail {
@@ -104,6 +106,9 @@ class ManageGroceryItem {
   /// Emoji icon for the item.
   final String emoji;
 
+  /// Optional ingredient image path.
+  final String imagePath;
+
   /// Whether the item has been bought.
   final bool bought;
 
@@ -115,6 +120,7 @@ class ManageGroceryItem {
     required this.categoryName,
     required this.quantityLabel,
     required this.emoji,
+    this.imagePath = '',
     this.bought = false,
   });
 }
@@ -182,8 +188,14 @@ class AddGroceryItemRequest {
   /// Unit of measurement for the quantity.
   final String unit;
 
-  /// Category name for the item.
-  final String categoryName;
+  /// ID of the selected configured unit.
+  final String unitId;
+
+  /// Custom unit text when no configured unit is selected.
+  final String customUnit;
+
+  /// Optional ingredient image file.
+  final File? imageFile;
 
   /// List of meal plan IDs associated with this item.
   final List<String> relatedMealPlanIds;
@@ -194,7 +206,9 @@ class AddGroceryItemRequest {
     required this.name,
     required this.amount,
     required this.unit,
-    required this.categoryName,
+    this.unitId = '',
+    this.customUnit = '',
+    this.imageFile,
     this.relatedMealPlanIds = const [],
   });
 }

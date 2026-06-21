@@ -515,18 +515,22 @@ mixin _MealPlanRemoteGroceryDataSource
     // Create a reference for the new item.
     final itemRef = listRef.collection('items').doc();
 
-    // Use provided category or default to 'Uncategorized'.
-    final category = request.categoryName.trim().isEmpty
-        ? 'Uncategorized'
-        : request.categoryName.trim();
+    final category = await _analyzeManualGroceryIngredient(request);
+    final imageUrl = request.imageFile == null
+        ? ''
+        : await CloudinaryService.uploadIngredientImage(request.imageFile!);
 
-    // Manual items keep category names so no app config entry is required.
     await itemRef.set({
       'ingredientName': trimmedName,
-      'ingredientCategoryId': '',
-      'categoryName': category,
+      'ingredientCategoryId': category.id,
+      'ingredient_categories_id': category.id,
+      'categoryName': category.name,
       'amount': request.amount < 0 ? 0 : request.amount,
       'unit': request.unit.trim(),
+      'unitId': request.unitId.trim(),
+      'customUnitId': '',
+      'customUnit': request.customUnit.trim(),
+      'image': imageUrl,
       'relatedMealPlanIds': request.relatedMealPlanIds,
       'relatedRecipeIds': const <String>[],
       'isBought': false,
@@ -536,6 +540,72 @@ mixin _MealPlanRemoteGroceryDataSource
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<AddRecipeIngredientCategory> _analyzeManualGroceryIngredient(
+    AddGroceryItemRequest request,
+  ) async {
+    final categories = await _activeIngredientCategories();
+    if (categories.isEmpty) {
+      return const AddRecipeIngredientCategory(id: '', name: 'Uncategorized');
+    }
+
+    final fallback = _fallbackIngredientCategory(categories);
+    try {
+      final analysis = await ingredientAiDataSource.analyzeIngredients(
+        ingredients: [
+          AddRecipeIngredientDataInput(
+            index: 0,
+            name: request.name,
+            amount: request.amount,
+            unit: request.customUnit.trim().isNotEmpty
+                ? request.customUnit.trim()
+                : request.unit.trim(),
+          ),
+        ],
+        categories: categories,
+      );
+      final categoryId = analysis.isEmpty
+          ? ''
+          : analysis.first.ingredientCategoryId.trim();
+      return categories.firstWhere(
+        (category) => category.id == categoryId,
+        orElse: () => fallback,
+      );
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  Future<List<AddRecipeIngredientCategory>>
+  _activeIngredientCategories() async {
+    final snapshot = await firestore
+        .collection('app_config')
+        .doc('ingredient_categories')
+        .collection('items')
+        .get();
+
+    return snapshot.docs
+        .map((doc) {
+          final data = doc.data();
+          final isActive = data['isActive'] is bool
+              ? data['isActive'] as bool
+              : true;
+          final name = data['name']?.toString().trim() ?? '';
+          if (!isActive || name.isEmpty) return null;
+          return AddRecipeIngredientCategory(id: doc.id, name: name);
+        })
+        .whereType<AddRecipeIngredientCategory>()
+        .toList();
+  }
+
+  AddRecipeIngredientCategory _fallbackIngredientCategory(
+    List<AddRecipeIngredientCategory> categories,
+  ) {
+    for (final category in categories) {
+      if (category.name.trim().toLowerCase() == 'others') return category;
+    }
+    return categories.first;
   }
 
   /// Deletes an item from a grocery list.
@@ -707,6 +777,7 @@ mixin _MealPlanRemoteGroceryDataSource
       name: draft.ingredientName,
       categoryId: draft.ingredientCategoryId,
       categoryName: categoryName,
+      imagePath: draft.imagePath,
       amount: draft.amount,
       unit: draft.unit,
       relatedMealPlanIds: draft.relatedMealPlanIds,
