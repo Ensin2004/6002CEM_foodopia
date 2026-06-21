@@ -152,13 +152,13 @@ class _WeeklyGroceriesCard extends StatelessWidget {
           final viewModel = context.read<MealPlanViewModel>();
 
           // Navigate to manage grocery list.
-          final result = await context.push(
+          await context.push(
             AppRouter.manageGroceryList,
             extra: ManageGroceryListArgs(listId: list.id),
           );
 
-          // Reload dashboard if changes were saved.
-          if (result == true && context.mounted) {
+          // Reload after returning so date/status edits are reflected.
+          if (context.mounted) {
             await viewModel.loadDashboard();
           }
         },
@@ -427,13 +427,13 @@ class _GroceryListCard extends StatelessWidget {
             final viewModel = context.read<MealPlanViewModel>();
 
             // Navigate to manage grocery list.
-            final result = await context.push(
+            await context.push(
               AppRouter.manageGroceryList,
               extra: ManageGroceryListArgs(listId: list.id),
             );
 
-            // Reload dashboard if changes were saved.
-            if (result == true && context.mounted) {
+            // Reload after returning so date/status edits are reflected.
+            if (context.mounted) {
               await viewModel.loadDashboard();
             }
           },

@@ -486,13 +486,26 @@ class _GroceryItemRow extends StatelessWidget {
             ),
             onPressed: viewModel.isSaving
                 ? null
-                : () => context.read<ManageGroceryListViewModel>().deleteItem(
-                    item.id,
-                  ),
+                : () => _deleteIngredient(context),
             icon: const Icon(Icons.delete_outline, size: 18),
           ),
         ],
       ),
     );
+  }
+
+  /// Deletes the ingredient while showing the shared loading dialog.
+  Future<void> _deleteIngredient(BuildContext context) async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const LoadingDialog(message: 'Removing ingredient...'),
+    );
+
+    final viewModel = context.read<ManageGroceryListViewModel>();
+    await viewModel.deleteItem(item.id);
+
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
   }
 }
