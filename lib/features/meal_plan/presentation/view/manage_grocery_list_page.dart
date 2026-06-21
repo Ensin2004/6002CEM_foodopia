@@ -74,21 +74,29 @@ class _ManageGroceryListView extends StatelessWidget {
     // Get the detail.
     final detail = viewModel.detail;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: CustomAppBar(
-        title: 'Manage Grocery List',
-        leading: IconButton(
-          onPressed: () => context.pop(viewModel.hasSavedChanges),
-          icon: const Icon(Icons.chevron_left),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        context.pop(viewModel.hasSavedChanges);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: CustomAppBar(
+          title: 'Manage Grocery List',
+          leading: IconButton(
+            onPressed: () => context.pop(viewModel.hasSavedChanges),
+            icon: const Icon(Icons.chevron_left),
+          ),
         ),
+        body: detail == null
+            ? _ErrorState(
+                message:
+                    viewModel.errorMessage ?? 'Unable to load grocery list',
+                onRetry: viewModel.loadDetail,
+              )
+            : _ManageContent(detail: detail),
       ),
-      body: detail == null
-          ? _ErrorState(
-              message: viewModel.errorMessage ?? 'Unable to load grocery list',
-              onRetry: viewModel.loadDetail,
-            )
-          : _ManageContent(detail: detail),
     );
   }
 }

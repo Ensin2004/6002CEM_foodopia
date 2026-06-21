@@ -361,7 +361,6 @@ mixin _MealPlanRemoteGroceryDataSource
               final endDate = _timestampDate(data['endDate']) ?? startDate;
 
               // Determine list type.
-              final status = data['status']?.toString();
               final type = data['type']?.toString() == 'weekly'
                   ? GroceryListType.weekly
                   : GroceryListType.custom;
@@ -376,7 +375,7 @@ mixin _MealPlanRemoteGroceryDataSource
                 itemCount: computed.length,
                 startDate: startDate,
                 endDate: endDate,
-                status: status == 'past' || endDate.isBefore(today)
+                status: endDate.isBefore(today)
                     ? GroceryListStatus.past
                     : GroceryListStatus.active,
                 type: type,
@@ -548,12 +547,20 @@ mixin _MealPlanRemoteGroceryDataSource
     final listRef = firestore.collection('grocery_lists').doc(listId);
     final itemRef = listRef.collection('items').doc(itemId);
 
-    // Verify the item exists.
+    // Manual items are stored as documents and can be deleted directly.
+    // Generated recipe items may not have a document yet, so exclusion is
+    // stored as list-specific item state instead of changing the recipe.
     final itemDoc = await itemRef.get();
-    if (!itemDoc.exists) throw StateError('Grocery item not found.');
+    if (itemDoc.exists && itemDoc.data()?['isManual'] == true) {
+      await itemRef.delete();
+      return;
+    }
 
-    // Delete the item.
-    await itemRef.delete();
+    await itemRef.set({
+      'isExcluded': true,
+      'isManual': false,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   /// Updates the details of a grocery list.
@@ -629,15 +636,25 @@ mixin _MealPlanRemoteGroceryDataSource
     };
 
     final generatedRecords = await Future.wait(
-      generated.map((item) async {
-        final id = _groceryItemDocId(item);
-        final state = stateById[id] ?? const <String, dynamic>{};
-        return _groceryRecordFromDraft(
-          id: id,
-          draft: item,
-          bought: state['isBought'] == true || state['bought'] == true,
-        );
-      }),
+      generated
+          .map((item) {
+            final id = _groceryItemDocId(item);
+            final state = stateById[id] ?? const <String, dynamic>{};
+            if (state['isExcluded'] == true) return null;
+            return (id: id, item: item, state: state);
+          })
+          .whereType<
+            ({String id, _GroceryItemDraft item, Map<String, dynamic> state})
+          >()
+          .map((entry) async {
+            return _groceryRecordFromDraft(
+              id: entry.id,
+              draft: entry.item,
+              bought:
+                  entry.state['isBought'] == true ||
+                  entry.state['bought'] == true,
+            );
+          }),
     );
 
     final manualRecords = itemStateSnapshot.docs

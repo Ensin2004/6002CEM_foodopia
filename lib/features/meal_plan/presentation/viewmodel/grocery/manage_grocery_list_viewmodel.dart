@@ -332,6 +332,7 @@ class ManageGroceryListViewModel extends ChangeNotifier {
 
     // Reload the detail if deleted successfully.
     if (result.isRight()) {
+      _hasSavedChanges = true;
       await loadDetail();
     }
   }
@@ -443,6 +444,7 @@ class ManageGroceryListViewModel extends ChangeNotifier {
 
     // Reload the detail if saved successfully.
     if (saved) {
+      _hasSavedChanges = true;
       await loadDetail();
     }
 

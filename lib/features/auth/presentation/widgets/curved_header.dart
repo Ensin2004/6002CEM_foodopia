@@ -43,7 +43,7 @@ class CurvedHeader extends StatelessWidget {
     this.onTrailingPressed,
     this.leadingText,
     this.trailingText,
-    this.logoPath = 'assets/images/logo.png',
+    this.logoPath = 'assets/images/foodopia_logo.png',
     this.logoSize = 80,
     this.curveColor,
     this.backgroundColor,
@@ -68,9 +68,7 @@ class CurvedHeader extends StatelessWidget {
             backgroundColor: backgroundColor,
             curveColor: curveColor,
           ),
-          child: Container(
-            height: MediaQuery.of(context).size.height * 0.25,
-          ),
+          child: Container(height: MediaQuery.of(context).size.height * 0.25),
         ),
 
         // Centered circular logo.
@@ -84,10 +82,7 @@ class CurvedHeader extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: backgroundColor,
-                border: Border.all(
-                  color: curveColor,
-                  width: 3,
-                ),
+                border: Border.all(color: curveColor, width: 3),
               ),
               child: Image.asset(
                 logoPath,
@@ -102,7 +97,7 @@ class CurvedHeader extends StatelessWidget {
                     width: logoSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: curveColor.withOpacity(0.2),
+                      color: curveColor.withValues(alpha: 0.2),
                     ),
                     child: Icon(
                       Icons.restaurant,
@@ -130,7 +125,7 @@ class CurvedHeader extends StatelessWidget {
                 if (leadingButton != null)
                   leadingButton!
                 else if (onLeadingPressed != null && leadingText != null)
-                /// Creates a text button instance.
+                  /// Creates a text button instance.
                   TextButton(
                     onPressed: onLeadingPressed,
                     child: Text(
@@ -142,14 +137,14 @@ class CurvedHeader extends StatelessWidget {
                     ),
                   )
                 else
-                /// Creates a sized box instance.
+                  /// Creates a sized box instance.
                   const SizedBox(width: 48),
 
                 // Trailing widget.
                 if (trailingButton != null)
                   trailingButton!
                 else if (onTrailingPressed != null && trailingText != null)
-                /// Creates a text button instance.
+                  /// Creates a text button instance.
                   TextButton(
                     onPressed: onTrailingPressed,
                     child: Text(
@@ -161,7 +156,7 @@ class CurvedHeader extends StatelessWidget {
                     ),
                   )
                 else
-                /// Creates a sized box instance.
+                  /// Creates a sized box instance.
                   const SizedBox(width: 48),
               ],
             ),
