@@ -4,6 +4,7 @@ import '../../../../../core/extensions/either_extensions.dart';
 import '../../../domain/entities/manage_grocery_list_detail.dart';
 import '../../../domain/usecases/add_grocery_item_usecase.dart';
 import '../../../domain/usecases/delete_grocery_item_usecase.dart';
+import '../../../domain/usecases/delete_grocery_list_usecase.dart';
 import '../../../domain/usecases/get_manage_grocery_list_detail_usecase.dart';
 import '../../../domain/usecases/update_grocery_item_bought_usecase.dart';
 import '../../../domain/usecases/update_grocery_list_usecase.dart';
@@ -35,6 +36,9 @@ class ManageGroceryListViewModel extends ChangeNotifier {
 
   /// Use case for deleting a grocery item.
   final DeleteGroceryItemUseCase _deleteGroceryItemUseCase;
+
+  /// Use case for deleting a grocery list.
+  final DeleteGroceryListUseCase _deleteGroceryListUseCase;
 
   /// Use case for updating item bought status.
   final UpdateGroceryItemBoughtUseCase _updateItemBoughtUseCase;
@@ -92,11 +96,13 @@ class ManageGroceryListViewModel extends ChangeNotifier {
     required GetManageGroceryListDetailUseCase getDetailUseCase,
     required AddGroceryItemUseCase addGroceryItemUseCase,
     required DeleteGroceryItemUseCase deleteGroceryItemUseCase,
+    required DeleteGroceryListUseCase deleteGroceryListUseCase,
     required UpdateGroceryItemBoughtUseCase updateItemBoughtUseCase,
     required UpdateGroceryListUseCase updateGroceryListUseCase,
   }) : _getDetailUseCase = getDetailUseCase,
        _addGroceryItemUseCase = addGroceryItemUseCase,
        _deleteGroceryItemUseCase = deleteGroceryItemUseCase,
+       _deleteGroceryListUseCase = deleteGroceryListUseCase,
        _updateItemBoughtUseCase = updateItemBoughtUseCase,
        _updateGroceryListUseCase = updateGroceryListUseCase {
     // Load the detail asynchronously after construction.
@@ -449,6 +455,25 @@ class ManageGroceryListViewModel extends ChangeNotifier {
     }
 
     return saved;
+  }
+
+  /// Deletes the current grocery list.
+  Future<bool> deleteList() async {
+    _isSaving = true;
+    _actionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await _deleteGroceryListUseCase.execute(listId);
+
+    if (_isDisposed) return false;
+
+    var deleted = false;
+    result.ifRight((_) => deleted = true);
+    result.ifLeft((failure) => _actionErrorMessage = failure.message);
+
+    _isSaving = false;
+    _notifyIfActive();
+    return deleted;
   }
 
   // =========================================================================

@@ -170,6 +170,8 @@ class _GenerateAiMealView extends StatelessWidget {
       appBar: CustomAppBar(
         title: viewModel.currentStep == 4
             ? 'Add to Meal Plan'
+            : isInspirationFlow
+            ? 'Inspiration'
             : 'Generate with AI',
         leading: IconButton(
           onPressed: () {

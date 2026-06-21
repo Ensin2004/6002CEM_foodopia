@@ -104,6 +104,9 @@ abstract class MealPlanRepository {
     required String itemId,
   });
 
+  /// Deletes a grocery list.
+  Future<Either<Failure, void>> deleteGroceryList(String listId);
+
   /// Updates the bought status of a grocery item.
   Future<Either<Failure, void>> updateGroceryItemBought({
     required String listId,

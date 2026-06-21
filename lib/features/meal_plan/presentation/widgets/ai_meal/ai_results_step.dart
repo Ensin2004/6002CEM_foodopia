@@ -14,6 +14,7 @@ class _AiResultsStep extends StatelessWidget {
   Widget build(BuildContext context) {
     // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
+    final isInspirationFlow = viewModel.sourceRequest != null;
 
     return Column(
       children: [
@@ -36,24 +37,26 @@ class _AiResultsStep extends StatelessWidget {
                 iconColor: AppColors.secondary,
                 icon: Icons.tips_and_updates_outlined,
               ),
-              const SizedBox(height: AppSpacing.md),
+              if (!isInspirationFlow) ...[
+                const SizedBox(height: AppSpacing.md),
 
-              // Filter pills.
-              Row(
-                children: [
-                  _Pill(icon: Icons.wb_sunny_outlined, label: plan.mealType),
-                  const SizedBox(width: AppSpacing.sm),
-                  _Pill(
-                    icon: Icons.calendar_today_outlined,
-                    label: DateFormat('d MMM yyyy').format(plan.planningDate),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  _Pill(
-                    icon: Icons.people_outline,
-                    label: viewModel.selectedServingSize,
-                  ),
-                ],
-              ),
+                // Filter pills.
+                Row(
+                  children: [
+                    _Pill(icon: Icons.wb_sunny_outlined, label: plan.mealType),
+                    const SizedBox(width: AppSpacing.sm),
+                    _Pill(
+                      icon: Icons.calendar_today_outlined,
+                      label: DateFormat('d MMM yyyy').format(plan.planningDate),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    _Pill(
+                      icon: Icons.people_outline,
+                      label: viewModel.selectedServingSize,
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

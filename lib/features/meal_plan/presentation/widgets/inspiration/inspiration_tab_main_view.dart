@@ -70,7 +70,7 @@ class InspirationTabMainView extends StatelessWidget {
 
     // Get preferences and weather.
     final preferences = viewModel.effectivePreferences;
-    final weather = dashboard.weather;
+    final weather = _selectedWeatherForDisplay(viewModel, dashboard.weather);
 
     return ExcludeSemantics(
       child: ListView(
@@ -295,6 +295,25 @@ class InspirationTabMainView extends StatelessWidget {
       targetCalories: preferences?.targetCalories,
       calorieUnit: preferences?.calorieUnit ?? 'kcal',
       targetEnabled: preferences?.calorieTargetEnabled ?? false,
+    );
+  }
+
+  /// Builds weather display data from the selected dropdown category.
+  MealPlanWeather _selectedWeatherForDisplay(
+    MealPlanViewModel viewModel,
+    MealPlanWeather? dashboardWeather,
+  ) {
+    final category = viewModel.selectedWeatherCategory;
+    final fallbackTemp = switch (category.id) {
+      'hot' => 34,
+      'cool' => 21,
+      _ => dashboardWeather?.currentTemp ?? 28,
+    };
+
+    return MealPlanWeather(
+      currentTemp: fallbackTemp,
+      condition: category.label,
+      summary: category.description,
     );
   }
 }

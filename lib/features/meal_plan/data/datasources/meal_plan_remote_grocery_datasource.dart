@@ -563,6 +563,32 @@ mixin _MealPlanRemoteGroceryDataSource
     }, SetOptions(merge: true));
   }
 
+  /// Deletes a grocery list and its saved item state.
+  Future<void> deleteGroceryList(String listId) async {
+    final listRef = firestore.collection('grocery_lists').doc(listId);
+    final listDoc = await listRef.get();
+    if (!listDoc.exists) throw StateError('Grocery list not found.');
+
+    await _deleteGroceryListItems(listRef);
+    await listRef.delete();
+  }
+
+  /// Deletes item documents below a grocery list in safe batches.
+  Future<void> _deleteGroceryListItems(
+    DocumentReference<Map<String, dynamic>> listRef,
+  ) async {
+    while (true) {
+      final snapshot = await listRef.collection('items').limit(450).get();
+      if (snapshot.docs.isEmpty) return;
+
+      final batch = firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+  }
+
   /// Updates the details of a grocery list.
   /// Synchronizes items with the current meal plans for the date range.
   Future<void> updateGroceryList({

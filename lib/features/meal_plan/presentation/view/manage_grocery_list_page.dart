@@ -17,6 +17,7 @@ import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../domain/entities/manage_grocery_list_detail.dart';
 import '../../domain/usecases/add_grocery_item_usecase.dart';
 import '../../domain/usecases/delete_grocery_item_usecase.dart';
+import '../../domain/usecases/delete_grocery_list_usecase.dart';
 import '../../domain/usecases/get_manage_grocery_list_detail_usecase.dart';
 import '../../domain/usecases/update_grocery_item_bought_usecase.dart';
 import '../../domain/usecases/update_grocery_list_usecase.dart';
@@ -47,6 +48,7 @@ class ManageGroceryListPage extends StatelessWidget {
         getDetailUseCase: sl<GetManageGroceryListDetailUseCase>(),
         addGroceryItemUseCase: sl<AddGroceryItemUseCase>(),
         deleteGroceryItemUseCase: sl<DeleteGroceryItemUseCase>(),
+        deleteGroceryListUseCase: sl<DeleteGroceryListUseCase>(),
         updateItemBoughtUseCase: sl<UpdateGroceryItemBoughtUseCase>(),
         updateGroceryListUseCase: sl<UpdateGroceryListUseCase>(),
       ),
@@ -89,6 +91,15 @@ class _ManageGroceryListView extends StatelessWidget {
             onPressed: () => context.pop(viewModel.hasSavedChanges),
             icon: const Icon(Icons.chevron_left),
           ),
+          actions: [
+            IconButton(
+              tooltip: 'Delete grocery list',
+              onPressed: viewModel.isSaving || detail == null
+                  ? null
+                  : () => _confirmDeleteList(context, detail),
+              icon: const Icon(Icons.delete_outline, color: AppColors.error),
+            ),
+          ],
         ),
         body: detail == null
             ? _ErrorState(
@@ -100,6 +111,62 @@ class _ManageGroceryListView extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Confirms and deletes the current grocery list.
+Future<void> _confirmDeleteList(
+  BuildContext context,
+  ManageGroceryListDetail detail,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text('Delete grocery list?', style: context.text.titleMedium),
+      content: Text(
+        'Delete "${detail.title}"? This will remove this grocery list and its shopping items.',
+        style: context.text.bodyMedium,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true || !context.mounted) return;
+
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const LoadingDialog(message: 'Deleting grocery list...'),
+  );
+
+  final viewModel = context.read<ManageGroceryListViewModel>();
+  final deleted = await viewModel.deleteList();
+
+  if (!context.mounted) return;
+  Navigator.of(context, rootNavigator: true).pop();
+
+  if (deleted) {
+    context.pop(true);
+    return;
+  }
+
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(
+          viewModel.actionErrorMessage ?? 'Unable to delete grocery list.',
+        ),
+      ),
+    );
 }
 
 /// Main content widget for the manage grocery list page.
