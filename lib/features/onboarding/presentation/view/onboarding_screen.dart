@@ -43,13 +43,18 @@ class _OnboardingView extends StatefulWidget {
 
 /// Defines behavior for onboarding view state.
 class _OnboardingViewState extends State<_OnboardingView> {
+  /// Page controller for the onboarding carousel.
   final _pageController = PageController();
+
+  /// Timer for auto-playing the carousel.
   Timer? _autoPlayTimer;
 
   /// Initializes state before the first widget build.
   @override
   void initState() {
     super.initState();
+
+    // Start auto-play after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _startAutoPlay();
@@ -60,17 +65,22 @@ class _OnboardingViewState extends State<_OnboardingView> {
   /// Releases resources before widget removal.
   @override
   void dispose() {
+    // Cancel the auto-play timer.
     _autoPlayTimer?.cancel();
+
+    // Dispose the page controller.
     _pageController.dispose();
+
     super.dispose();
   }
 
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final vm = context.watch<OnboardingViewModel>();
 
-    // Handle successful navigation events
+    // Handle successful navigation events.
     final navigationEvent = vm.navigationEvent;
     if (navigationEvent != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -78,7 +88,7 @@ class _OnboardingViewState extends State<_OnboardingView> {
       });
     }
 
-    // Handle error messages
+    // Handle error messages.
     final errorMessage = vm.errorMessage;
     if (errorMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -92,6 +102,7 @@ class _OnboardingViewState extends State<_OnboardingView> {
       body: SafeArea(
         child: Column(
           children: [
+            // Header with app name and skip button.
             _buildHeader(context, vm),
 
             /// Creates a expanded instance.
@@ -108,6 +119,7 @@ class _OnboardingViewState extends State<_OnboardingView> {
                   return AnimatedBuilder(
                     animation: _pageController,
                     builder: (context, child) {
+                      // Calculate page offset for animation.
                       double pageOffset = 0.0;
 
                       if (_pageController.hasClients &&
@@ -127,6 +139,7 @@ class _OnboardingViewState extends State<_OnboardingView> {
               ),
             ),
 
+            // Page indicator dots.
             _buildIndicator(context, vm),
 
             /// Creates a padding instance.
@@ -175,15 +188,16 @@ class _OnboardingViewState extends State<_OnboardingView> {
           /// Creates a text instance.
           Text("Foodopia", style: context.text.titleLarge),
 
+          // Show loading indicator or skip button.
           if (vm.isLoading)
-            /// Creates a sized box instance.
+          /// Creates a sized box instance.
             const SizedBox(
               width: 20,
               height: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           else
-            /// Creates a text button instance.
+          /// Creates a text button instance.
             TextButton(
               onPressed: () => _handleSkip(context, vm),
               style: TextButton.styleFrom(
@@ -259,9 +273,13 @@ class _OnboardingViewState extends State<_OnboardingView> {
 
   /// Handles the animate to next page operation.
   void _animateToNextPage() {
+    // Return if page controller is not ready.
     if (!_pageController.hasClients) return;
 
+    // Get the view model.
     final vm = context.read<OnboardingViewModel>();
+
+    // Animate to the next page.
     _pageController.animateToPage(
       vm.nextPageIndex,
       duration: const Duration(milliseconds: 600),
@@ -271,7 +289,10 @@ class _OnboardingViewState extends State<_OnboardingView> {
 
   /// Handles the start auto play operation.
   void _startAutoPlay() {
+    // Cancel any existing timer.
     _autoPlayTimer?.cancel();
+
+    // Start a new timer for auto-play.
     _autoPlayTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       _animateToNextPage();
     });

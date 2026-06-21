@@ -6,6 +6,7 @@ import '../../../../app/navigation/navigation_events.dart';
 import '../../../../app/routers/app_router.dart';
 import '../../../../app/routers/router_args.dart';
 import '../../../../core/widgets/buttons/app_floating_action_button.dart';
+import '../../../admin_home/domain/entities/admin_home_dashboard.dart';
 import '../../../admin_home/presentation/view/admin_home_page.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../admin_manage/presentation/view/admin_manage_page.dart';
@@ -15,20 +16,34 @@ import '../../../user_setup/domain/usecases/get_user_setup_status_usecase.dart';
 import '../viewmodel/main_viewmodel.dart';
 import '../widgets/main_app_bar.dart';
 
-// Import pages (to be implemented in their own features)
+// Import pages.
 import '../../../explore/presentation/view/explore_page.dart';
 import '../../../meal_plan/presentation/view/meal_plan_page.dart';
 import '../../../library/presentation/view/library_page.dart';
 import '../../../statistics/presentation/view/statistics_page.dart';
 
 /// Defines behavior for main page.
+/// The main container page with bottom navigation bar.
 class MainPage extends StatelessWidget {
+  /// The authenticated user.
   final UserEntity user;
+
+  /// The user's role.
   final String role;
+
+  /// Initial tab index.
   final int initialIndex;
+
+  /// ID of the recipe to focus on.
   final String? focusedRecipeId;
+
+  /// Whether the focused recipe is published.
   final bool? focusedRecipeIsPublished;
+
+  /// Token for refreshing the library.
   final String? libraryRefreshToken;
+
+  /// Initial tab index for the meal plan.
   final int initialMealPlanTabIndex;
 
   /// Creates a main page instance.
@@ -66,9 +81,16 @@ class MainPage extends StatelessWidget {
 
 /// Defines behavior for main page view.
 class _MainPageView extends StatefulWidget {
+  /// Initial tab index.
   final int initialIndex;
+
+  /// ID of the recipe to focus on.
   final String? focusedRecipeId;
+
+  /// Whether the focused recipe is published.
   final bool? focusedRecipeIsPublished;
+
+  /// Token for refreshing the library.
   final String? libraryRefreshToken;
 
   /// Handles the main page view operation.
@@ -83,15 +105,23 @@ class _MainPageView extends StatefulWidget {
   State<_MainPageView> createState() => _MainPageViewState();
 }
 
+/// State for the main page view.
 class _MainPageViewState extends State<_MainPageView> {
+  /// ID of the recipe to focus on.
   String? _focusedRecipeId;
+
+  /// Whether the focused recipe is published.
   bool? _focusedRecipeIsPublished;
 
   @override
   void initState() {
     super.initState();
+
+    // Set focused recipe data.
     _focusedRecipeId = widget.focusedRecipeId;
     _focusedRecipeIsPublished = widget.focusedRecipeIsPublished;
+
+    // Apply initial tab after first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _applyRouteTab();
       _checkUserSetup();
@@ -101,11 +131,15 @@ class _MainPageViewState extends State<_MainPageView> {
   @override
   void didUpdateWidget(covariant _MainPageView oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // Check if focus or refresh changed.
     final focusChanged =
         oldWidget.focusedRecipeId != widget.focusedRecipeId ||
         oldWidget.focusedRecipeIsPublished != widget.focusedRecipeIsPublished;
     final refreshChanged =
         oldWidget.libraryRefreshToken != widget.libraryRefreshToken;
+
+    // Update and apply if changed.
     if (oldWidget.initialIndex != widget.initialIndex ||
         focusChanged ||
         refreshChanged) {
@@ -115,14 +149,23 @@ class _MainPageViewState extends State<_MainPageView> {
     }
   }
 
+  /// Applies the route tab.
   void _applyRouteTab() {
     if (!mounted) return;
+
+    // Get the view model.
     final viewModel = context.read<MainViewModel>();
+
+    // Return if already on the correct tab.
     if (viewModel.selectedIndex == widget.initialIndex) return;
+
+    // Navigate to the tab.
     viewModel.onTabTapped(widget.initialIndex);
   }
 
+  /// Handles bottom navigation tap.
   void _handleBottomNavTap(MainViewModel viewModel, int index) {
+    // Clear focused recipe if navigating away from library.
     if (index != 4 && _focusedRecipeId != null) {
       setState(() {
         _focusedRecipeId = null;
@@ -130,20 +173,29 @@ class _MainPageViewState extends State<_MainPageView> {
       });
     }
 
+    // Navigate to the tab.
     viewModel.onTabTapped(index);
   }
 
+  /// Checks if user setup is completed.
   Future<void> _checkUserSetup() async {
+    // Get the view model.
     final viewModel = context.read<MainViewModel>();
+
+    // Skip for admin users.
     if (viewModel.isAdmin) {
       return;
     }
 
+    // Check setup status.
     final result = await sl<GetUserSetupStatusUseCase>().execute(
       viewModel.user.uid,
     );
+
+    // Get completion status.
     final completed = result.fold((_) => true, (value) => value);
 
+    // Navigate to setup if not completed.
     if (!mounted) return;
     if (!completed) {
       context.go(
@@ -157,10 +209,16 @@ class _MainPageViewState extends State<_MainPageView> {
   /// Builds the widget tree for this component.
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<MainViewModel>();
+
+    // Get admin status.
     final isAdmin = viewModel.isAdmin;
+
+    // Get navigation event.
     final navigationEvent = viewModel.navigationEvent;
 
+    // Handle navigation event.
     if (navigationEvent != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _handleNavigation(context, navigationEvent, viewModel);
@@ -185,13 +243,20 @@ class _MainPageViewState extends State<_MainPageView> {
     );
   }
 
+  // =========================================================================
+  // BODY
+  // =========================================================================
+
   /// Handles the build body operation.
   Widget _buildBody(BuildContext context, MainViewModel viewModel) {
+    // Get admin status.
     final isAdmin = viewModel.isAdmin;
+
+    // Get current index.
     final currentIndex = viewModel.selectedIndex;
 
     if (!isAdmin) {
-      // User pages
+      // User pages.
       switch (currentIndex) {
         case 0:
           return HomePage(
@@ -223,10 +288,22 @@ class _MainPageViewState extends State<_MainPageView> {
           );
       }
     } else {
-      // Admin pages
+      // Admin pages.
       switch (currentIndex) {
         case 0:
-          return AdminHomePage(adminName: viewModel.user.name ?? 'Admin');
+          return AdminHomePage(
+            adminName: viewModel.user.name ?? 'Admin',
+            onQuickAccessTap: (item) =>
+                _handleAdminQuickAccess(context, item, viewModel),
+            onViewAllPendingReviews: () => context.push(
+              AppRouter.helpCenter,
+              extra: const HelpCenterArgs(isAdmin: true),
+            ),
+            onViewAllFeedback: () => context.push(
+              AppRouter.rateUs,
+              extra: const RateUsArgs(isAdmin: true),
+            ),
+          );
         case 1:
           return const AdminManagePage();
         case 2:
@@ -237,6 +314,32 @@ class _MainPageViewState extends State<_MainPageView> {
     }
   }
 
+  /// Handles admin home quick access shortcuts.
+  void _handleAdminQuickAccess(
+    BuildContext context,
+    AdminQuickAccessItem item,
+    MainViewModel viewModel,
+  ) {
+    switch (item.title) {
+      case 'Manage Content':
+        viewModel.onTabTapped(1);
+        break;
+      case 'View Stats':
+        viewModel.onTabTapped(2);
+        break;
+      case 'Manage Feedback':
+        context.push(AppRouter.rateUs, extra: const RateUsArgs(isAdmin: true));
+        break;
+      case 'Settings':
+        context.push(
+          AppRouter.settings,
+          extra: SettingsArgs(user: viewModel.user),
+        );
+        break;
+    }
+  }
+
+  /// Handles user home quick link taps.
   void _handleUserHomeQuickLink(
     BuildContext context,
     UserHomeQuickLinkTarget target,
@@ -273,11 +376,16 @@ class _MainPageViewState extends State<_MainPageView> {
     }
   }
 
+  // =========================================================================
+  // BOTTOM NAVIGATION BAR
+  // =========================================================================
+
   /// Handles the build bottom navigation bar operation.
   Widget _buildBottomNavigationBar(
     BuildContext context,
     MainViewModel viewModel,
   ) {
+    // Get admin status.
     final isAdmin = viewModel.isAdmin;
 
     /// Handles the material operation.
@@ -293,6 +401,7 @@ class _MainPageViewState extends State<_MainPageView> {
         type: BottomNavigationBarType.fixed,
         items: isAdmin
             ? const [
+                // Admin items.
                 /// Creates a bottom navigation bar item instance.
                 BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
 
@@ -309,6 +418,7 @@ class _MainPageViewState extends State<_MainPageView> {
                 ),
               ]
             : const [
+                // User items.
                 /// Creates a bottom navigation bar item instance.
                 BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
 
@@ -340,6 +450,10 @@ class _MainPageViewState extends State<_MainPageView> {
     );
   }
 
+  // =========================================================================
+  // FLOATING ACTION BUTTON
+  // =========================================================================
+
   /// Handles the build floating action button operation.
   Widget _buildFloatingActionButton(BuildContext context) {
     /// Handles the floating action button operation.
@@ -351,7 +465,11 @@ class _MainPageViewState extends State<_MainPageView> {
     );
   }
 
-  // Navigation methods
+  // =========================================================================
+  // NAVIGATION
+  // =========================================================================
+
+  /// Handles navigation events.
   void _handleNavigation(
     BuildContext context,
     MainNavigationEvent event,
@@ -359,7 +477,7 @@ class _MainPageViewState extends State<_MainPageView> {
   ) {
     switch (event) {
       case MainNavigationEvent.goToSettings:
-        // Pass the user from MainViewModel to SettingsPage
+        // Navigate to settings.
         context
             .push(AppRouter.settings, extra: SettingsArgs(user: viewModel.user))
             .then((_) {

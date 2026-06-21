@@ -5,11 +5,21 @@ import 'package:flutter/material.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 
 /// Defines behavior for main app bar.
+/// Custom app bar with profile avatar, title, and action buttons.
 class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
+  /// Whether the user is an admin.
   final bool isAdmin;
+
+  /// URL of the user's profile image.
   final String? profileImageUrl;
+
+  /// Callback when settings is tapped.
   final VoidCallback onSettingsTap;
+
+  /// Callback when statistics is tapped.
   final VoidCallback? onStatisticsTap;
+
+  /// Callback when notifications is tapped.
   final VoidCallback? onNotificationsTap;
 
   /// Creates a main app bar instance.
@@ -40,6 +50,10 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
+  // =========================================================================
+  // TITLE
+  // =========================================================================
+
   /// Handles the build title operation.
   Widget _buildTitle(BuildContext context) {
     /// Handles the row operation.
@@ -47,7 +61,8 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
       children: [
         /// Creates a sized box instance.
         const SizedBox(width: 12),
-        // Profile picture that navigates to settings
+
+        // Profile picture that navigates to settings.
         GestureDetector(
           onTap: onSettingsTap,
           child: CircleAvatar(
@@ -58,10 +73,10 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                 : null,
             child: profileImageUrl == null
                 ? Icon(
-                    Icons.person,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 18,
-                  )
+              Icons.person,
+              color: Theme.of(context).colorScheme.primary,
+              size: 18,
+            )
                 : null,
           ),
         ),
@@ -83,8 +98,13 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
+  // =========================================================================
+  // ACTIONS
+  // =========================================================================
+
   /// Handles the build actions operation.
   List<Widget> _buildActions(BuildContext context) {
+    // Admin has only notifications.
     if (isAdmin) {
       return [
         _UnreadNotificationButton(
@@ -95,7 +115,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
       ];
     }
 
-    // User has statistics and notifications
+    // User has statistics and notifications.
     return [
       /// Creates a icon button instance.
       IconButton(
@@ -119,11 +139,22 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(56);
 }
 
+// =========================================================================
+// UNREAD NOTIFICATION BUTTON
+// =========================================================================
+
+/// Notification button with unread indicator.
 class _UnreadNotificationButton extends StatelessWidget {
+  /// Whether the user is an admin.
   final bool isAdmin;
+
+  /// Color of the icon.
   final Color color;
+
+  /// Callback when the button is pressed.
   final VoidCallback? onPressed;
 
+  /// Creates a new unread notification button instance.
   const _UnreadNotificationButton({
     required this.isAdmin,
     required this.color,
@@ -132,7 +163,10 @@ class _UnreadNotificationButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the current user ID.
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    // Show simple button if no user.
     if (uid.isEmpty) {
       return IconButton(
         icon: const Icon(Icons.notifications),
@@ -142,6 +176,7 @@ class _UnreadNotificationButton extends StatelessWidget {
       );
     }
 
+    // Stream of unread notifications.
     final unreadStream = FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -152,13 +187,26 @@ class _UnreadNotificationButton extends StatelessWidget {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: unreadStream,
       builder: (context, snapshot) {
+        // Check if there are any unread notifications.
         final hasUnread = (snapshot.data?.docs ?? const []).any((doc) {
+          // Get the notification type.
           final type = doc.data()['type']?.toString();
-          const adminTypes = {'newUser', 'systemRating'};
+
+          // Admin notification types.
+          const adminTypes = {
+            'newUser',
+            'systemRating',
+            'newHelpTicket',
+            'newCategory',
+          };
+
+          // Filter based on user role.
           return isAdmin
               ? adminTypes.contains(type)
               : !adminTypes.contains(type);
         });
+
+        // Return button with unread indicator.
         return IconButton(
           color: color,
           onPressed: onPressed,

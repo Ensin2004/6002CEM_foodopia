@@ -1,9 +1,12 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/difficulty_meal_statistics.dart';
 import '../../domain/usecases/get_difficulty_meal_statistics_usecase.dart';
 
+// Handles DifficultyMealViewModel for this part of the statistics page.
 class DifficultyMealViewModel extends ChangeNotifier {
   final GetDifficultyMealStatisticsUseCase _getStatisticsUseCase;
 
@@ -21,10 +24,12 @@ class DifficultyMealViewModel extends ChangeNotifier {
     Future.microtask(loadStatistics);
   }
 
+  // Handles statistics for this part of the statistics page.
   DifficultyMealStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   DateTime? get startDate => _startDate;
+  // Handles endDate for this part of the statistics page.
   DateTime? get endDate => _endDate;
   int? get expandedDifficulty => _expandedDifficulty;
 
@@ -50,11 +55,13 @@ class DifficultyMealViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  // Handles toggleDifficulty for this part of the statistics page.
   void toggleDifficulty(int difficulty) {
     _expandedDifficulty = _expandedDifficulty == difficulty ? null : difficulty;
     _notifyIfActive();
   }
 
+  // Handles selectDateRange for this part of the statistics page.
   Future<void> selectDateRange({
     required DateTime startDate,
     required DateTime endDate,
@@ -64,10 +71,12 @@ class DifficultyMealViewModel extends ChangeNotifier {
     await loadStatistics();
   }
 
+  // Handles _notifyIfActive for this part of the statistics page.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
+  // Handles dispose for this part of the statistics page.
   @override
   void dispose() {
     _isDisposed = true;

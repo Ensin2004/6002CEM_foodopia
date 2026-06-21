@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:foodopia/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -14,13 +15,21 @@ import '../widgets/user_setup_choice_chip.dart';
 import '../widgets/user_setup_scaffold.dart';
 import '../widgets/user_setup_search_field.dart';
 
+// =============================================================================
+// PAGE WIDGETS
+// =============================================================================
+
+/// Page for selecting diet preferences during user setup.
 class UserSetupDietPage extends StatelessWidget {
+  /// Arguments passed to the page.
   final UserSetupArgs args;
 
+  /// Creates a new diet page instance.
   const UserSetupDietPage({super.key, required this.args});
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model with diet options.
     return _UserSetupProvider(
       args: args,
       optionCategoryIds: const ['meal_preferences'],
@@ -29,13 +38,17 @@ class UserSetupDietPage extends StatelessWidget {
   }
 }
 
+/// Page for selecting allergies during user setup.
 class UserSetupAllergiesPage extends StatelessWidget {
+  /// Arguments passed to the page.
   final UserSetupArgs args;
 
+  /// Creates a new allergies page instance.
   const UserSetupAllergiesPage({super.key, required this.args});
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model with allergy options.
     return _UserSetupProvider(
       args: args,
       optionCategoryIds: const ['allergies'],
@@ -44,13 +57,17 @@ class UserSetupAllergiesPage extends StatelessWidget {
   }
 }
 
+/// Page for selecting dislikes during user setup.
 class UserSetupDislikesPage extends StatelessWidget {
+  /// Arguments passed to the page.
   final UserSetupArgs args;
 
+  /// Creates a new dislikes page instance.
   const UserSetupDislikesPage({super.key, required this.args});
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model with dislike options.
     return _UserSetupProvider(
       args: args,
       optionCategoryIds: const ['dislikes'],
@@ -59,13 +76,17 @@ class UserSetupDislikesPage extends StatelessWidget {
   }
 }
 
+/// Page for setting calorie targets during user setup.
 class UserSetupCaloriesPage extends StatelessWidget {
+  /// Arguments passed to the page.
   final UserSetupArgs args;
 
+  /// Creates a new calories page instance.
   const UserSetupCaloriesPage({super.key, required this.args});
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model.
     return _UserSetupProvider(
       args: args,
       child: _CaloriesView(args: args),
@@ -73,13 +94,17 @@ class UserSetupCaloriesPage extends StatelessWidget {
   }
 }
 
+/// Page for configuring notifications during user setup.
 class UserSetupNotificationPage extends StatelessWidget {
+  /// Arguments passed to the page.
   final UserSetupArgs args;
 
+  /// Creates a new notification page instance.
   const UserSetupNotificationPage({super.key, required this.args});
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model.
     return _UserSetupProvider(
       args: args,
       child: _NotificationView(args: args),
@@ -87,11 +112,23 @@ class UserSetupNotificationPage extends StatelessWidget {
   }
 }
 
+// =============================================================================
+// PROVIDER WRAPPER
+// =============================================================================
+
+/// Provider wrapper for user setup pages.
+/// Creates and provides the view model with dependencies.
 class _UserSetupProvider extends StatelessWidget {
+  /// Arguments passed to the page.
   final UserSetupArgs args;
+
+  /// Category IDs for loading admin options.
   final List<String> optionCategoryIds;
+
+  /// Child widget.
   final Widget child;
 
+  /// Creates a new user setup provider instance.
   const _UserSetupProvider({
     required this.args,
     this.optionCategoryIds = const [],
@@ -115,19 +152,32 @@ class _UserSetupProvider extends StatelessWidget {
   }
 }
 
+// =============================================================================
+// DIET VIEW
+// =============================================================================
+
+/// View for the diet selection page.
 class _DietView extends StatelessWidget {
+  /// Arguments passed to the page.
   final UserSetupArgs args;
 
+  /// Creates a new diet view instance.
   const _DietView({required this.args});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<UserSetupViewModel>();
+
+    // Handle navigation events.
     _handleNavigation(context, viewModel, args);
 
-    if (viewModel.isLoading) return const LoadingDialog();
+    // Show loading state.
+    if (viewModel.isLoading) return const _UserSetupPageLoading();
 
+    // Get diet options.
     final options = viewModel.dietOptions;
+
     return UserSetupScaffold(
       step: 1,
       title: 'Pick your diet',
@@ -157,16 +207,25 @@ class _DietView extends StatelessWidget {
   }
 }
 
+// =============================================================================
+// ALLERGIES VIEW
+// =============================================================================
+
+/// View for the allergies selection page.
 class _AllergiesView extends StatefulWidget {
+  /// Arguments passed to the page.
   final UserSetupArgs args;
 
+  /// Creates a new allergies view instance.
   const _AllergiesView({required this.args});
 
   @override
   State<_AllergiesView> createState() => _AllergiesViewState();
 }
 
+/// State for the allergies view.
 class _AllergiesViewState extends State<_AllergiesView> {
+  /// Controller for the search field.
   final _searchController = TextEditingController();
 
   @override
@@ -177,10 +236,14 @@ class _AllergiesViewState extends State<_AllergiesView> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<UserSetupViewModel>();
+
+    // Handle navigation events.
     _handleNavigation(context, viewModel, widget.args);
 
-    if (viewModel.isLoading) return const LoadingDialog();
+    // Show loading state.
+    if (viewModel.isLoading) return const _UserSetupPageLoading();
 
     return UserSetupScaffold(
       step: 2,
@@ -196,6 +259,7 @@ class _AllergiesViewState extends State<_AllergiesView> {
           : () => context.go(AppRouter.setupDiet, extra: widget.args),
       child: Column(
         children: [
+          // Search field.
           UserSetupSearchField(
             controller: _searchController,
             hintText: 'Search allergies ...',
@@ -207,6 +271,8 @@ class _AllergiesViewState extends State<_AllergiesView> {
             },
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Options sections.
           Expanded(
             child: _SearchableOptionSections(
               defaultOptions: viewModel.allergyOptions,
@@ -226,16 +292,25 @@ class _AllergiesViewState extends State<_AllergiesView> {
   }
 }
 
+// =============================================================================
+// DISLIKES VIEW
+// =============================================================================
+
+/// View for the dislikes selection page.
 class _DislikesView extends StatefulWidget {
+  /// Arguments passed to the page.
   final UserSetupArgs args;
 
+  /// Creates a new dislikes view instance.
   const _DislikesView({required this.args});
 
   @override
   State<_DislikesView> createState() => _DislikesViewState();
 }
 
+/// State for the dislikes view.
 class _DislikesViewState extends State<_DislikesView> {
+  /// Controller for the search field.
   final _searchController = TextEditingController();
 
   @override
@@ -246,10 +321,14 @@ class _DislikesViewState extends State<_DislikesView> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<UserSetupViewModel>();
+
+    // Handle navigation events.
     _handleNavigation(context, viewModel, widget.args);
 
-    if (viewModel.isLoading) return const LoadingDialog();
+    // Show loading state.
+    if (viewModel.isLoading) return const _UserSetupPageLoading();
 
     return UserSetupScaffold(
       step: 3,
@@ -265,6 +344,7 @@ class _DislikesViewState extends State<_DislikesView> {
           : () => context.go(AppRouter.setupAllergies, extra: widget.args),
       child: Column(
         children: [
+          // Search field.
           UserSetupSearchField(
             controller: _searchController,
             hintText: 'Search dislikes ...',
@@ -276,6 +356,8 @@ class _DislikesViewState extends State<_DislikesView> {
             },
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Options sections.
           Expanded(
             child: _SearchableOptionSections(
               defaultOptions: viewModel.dislikeOptions,
@@ -295,16 +377,25 @@ class _DislikesViewState extends State<_DislikesView> {
   }
 }
 
+// =============================================================================
+// CALORIES VIEW
+// =============================================================================
+
+/// View for the calorie target setup page.
 class _CaloriesView extends StatefulWidget {
+  /// Arguments passed to the page.
   final UserSetupArgs args;
 
+  /// Creates a new calories view instance.
   const _CaloriesView({required this.args});
 
   @override
   State<_CaloriesView> createState() => _CaloriesViewState();
 }
 
+/// State for the calories view.
 class _CaloriesViewState extends State<_CaloriesView> {
+  /// Controller for the calorie input field.
   late final TextEditingController _calorieController;
 
   @override
@@ -321,11 +412,16 @@ class _CaloriesViewState extends State<_CaloriesView> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<UserSetupViewModel>();
+
+    // Handle navigation events.
     _handleNavigation(context, viewModel, widget.args);
 
-    if (viewModel.isLoading) return const LoadingDialog();
+    // Show loading state.
+    if (viewModel.isLoading) return const _UserSetupPageLoading();
 
+    // Set initial calorie value.
     final target = viewModel.preferences.targetCalories;
     if (_calorieController.text.isEmpty && target != null) {
       _calorieController.text = target.toString();
@@ -345,6 +441,7 @@ class _CaloriesViewState extends State<_CaloriesView> {
           : () => context.go(AppRouter.setupDislikes, extra: widget.args),
       child: ListView(
         children: [
+          // Skip target switch.
           _SetupSwitchTile(
             title: 'No target',
             subtitle: 'Skip daily calorie targeting for now',
@@ -355,6 +452,8 @@ class _CaloriesViewState extends State<_CaloriesView> {
             },
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Calorie input field.
           TextField(
             controller: _calorieController,
             enabled: viewModel.preferences.calorieTargetEnabled,
@@ -369,6 +468,8 @@ class _CaloriesViewState extends State<_CaloriesView> {
             },
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Calorie unit selection.
           Wrap(
             spacing: 10,
             children: [
@@ -384,6 +485,8 @@ class _CaloriesViewState extends State<_CaloriesView> {
               ),
             ],
           ),
+
+          // Error message.
           if (viewModel.errorMessage != null) ...[
             const SizedBox(height: AppSpacing.md),
             Text(
@@ -397,17 +500,28 @@ class _CaloriesViewState extends State<_CaloriesView> {
   }
 }
 
+// =============================================================================
+// NOTIFICATION VIEW
+// =============================================================================
+
+/// View for the notification setup page.
 class _NotificationView extends StatelessWidget {
+  /// Arguments passed to the page.
   final UserSetupArgs args;
 
+  /// Creates a new notification view instance.
   const _NotificationView({required this.args});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<UserSetupViewModel>();
+
+    // Handle navigation events.
     _handleNavigation(context, viewModel, args);
 
-    if (viewModel.isLoading) return const LoadingDialog();
+    // Show loading state.
+    if (viewModel.isLoading) return const _UserSetupPageLoading();
 
     return UserSetupScaffold(
       step: 5,
@@ -418,6 +532,7 @@ class _NotificationView extends StatelessWidget {
       onBack: () => context.go(AppRouter.setupCalories, extra: args),
       child: ListView(
         children: [
+          // Master notification switch.
           _SetupSwitchTile(
             title: 'Enable notifications',
             subtitle: 'Turn off to close all notification pop-ups',
@@ -427,6 +542,8 @@ class _NotificationView extends StatelessWidget {
             },
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // Notification toggles.
           for (final item in viewModel.notificationPreferences)
             _NotificationToggle(
               title: item.title,
@@ -436,6 +553,8 @@ class _NotificationView extends StatelessWidget {
               onChanged: (value) =>
                   viewModel.toggleNotificationValue(item.id, value),
             ),
+
+          // New Comment Notification toggle.
           _NotificationToggle(
             title: 'New Comment Notification',
             subtitle: 'Receive a notification when your recipe has comment',
@@ -446,6 +565,8 @@ class _NotificationView extends StatelessWidget {
               value,
             ),
           ),
+
+          // New Recipe Notification toggle.
           _NotificationToggle(
             title: 'New Recipe Notification',
             subtitle: 'Receive a notification when followed creator posts',
@@ -456,6 +577,8 @@ class _NotificationView extends StatelessWidget {
               value,
             ),
           ),
+
+          // New Reply Notification toggle.
           _NotificationToggle(
             title: 'New Reply Notification',
             subtitle: 'Receive a notification when someone replies you',
@@ -464,6 +587,8 @@ class _NotificationView extends StatelessWidget {
             onChanged: (value) =>
                 viewModel.setNotificationValue('new_reply_notification', value),
           ),
+
+          // Plan Reminder Notification toggle.
           _NotificationToggle(
             title: 'Plan Reminder',
             subtitle: 'Get a reminder when you forget to plan your meal',
@@ -474,6 +599,8 @@ class _NotificationView extends StatelessWidget {
               value,
             ),
           ),
+
+          // Error message.
           if (viewModel.errorMessage != null) ...[
             const SizedBox(height: AppSpacing.md),
             Text(
@@ -487,13 +614,28 @@ class _NotificationView extends StatelessWidget {
   }
 }
 
+// =============================================================================
+// REUSABLE WIDGETS
+// =============================================================================
+
+/// Notification toggle list tile.
 class _NotificationToggle extends StatelessWidget {
+  /// Title of the notification.
   final String title;
+
+  /// Subtitle description.
   final String subtitle;
+
+  /// Whether the toggle is active.
   final bool value;
+
+  /// Whether the toggle is enabled.
   final bool enabled;
+
+  /// Callback when the toggle changes.
   final ValueChanged<bool> onChanged;
 
+  /// Creates a new notification toggle instance.
   const _NotificationToggle({
     required this.title,
     required this.subtitle,
@@ -514,12 +656,35 @@ class _NotificationToggle extends StatelessWidget {
   }
 }
 
+/// Loading state for user setup pages.
+class _UserSetupPageLoading extends StatelessWidget {
+  /// Creates a new user setup page loading instance.
+  const _UserSetupPageLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: LoadingDialog(message: "Loading...", inline: true),
+    );
+  }
+}
+
+/// Switch tile with custom styling.
 class _SetupSwitchTile extends StatelessWidget {
+  /// Title text.
   final String title;
+
+  /// Subtitle text.
   final String subtitle;
+
+  /// Switch value.
   final bool value;
+
+  /// Callback when switch changes.
   final ValueChanged<bool> onChanged;
 
+  /// Creates a new setup switch tile instance.
   const _SetupSwitchTile({
     required this.title,
     required this.subtitle,
@@ -554,17 +719,36 @@ class _SetupSwitchTile extends StatelessWidget {
   }
 }
 
+/// Searchable option sections with default and search results.
 class _SearchableOptionSections extends StatelessWidget {
+  /// Default options from admin configuration.
   final List<UserSetupOption> defaultOptions;
+
+  /// Search results.
   final List<UserSetupOption> searchOptions;
+
+  /// Whether search is in progress.
   final bool isSearching;
+
+  /// Current search query.
   final String searchQuery;
+
+  /// Empty state text for defaults.
   final String emptyDefaultText;
+
+  /// Empty state text for search results.
   final String emptySearchText;
+
+  /// Set of selected values.
   final Set<String> selectedValues;
+
+  /// Callback when an option is selected.
   final ValueChanged<String> onSelected;
+
+  /// Callback to clear all selections.
   final VoidCallback? onClearAll;
 
+  /// Creates a new searchable option sections instance.
   const _SearchableOptionSections({
     required this.defaultOptions,
     required this.searchOptions,
@@ -581,6 +765,7 @@ class _SearchableOptionSections extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: [
+        // Default options section.
         _OptionSection(
           title: 'Default options',
           options: defaultOptions,
@@ -589,10 +774,14 @@ class _SearchableOptionSections extends StatelessWidget {
           onSelected: onSelected,
           onClearAll: onClearAll,
         ),
+
+        // Search results section.
         if (searchQuery.trim().length >= 2) ...[
           const SizedBox(height: AppSpacing.lg),
           Text('Search results', style: context.text.titleMedium),
           const SizedBox(height: AppSpacing.sm),
+
+          // Show loading or results.
           if (isSearching)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
@@ -611,15 +800,30 @@ class _SearchableOptionSections extends StatelessWidget {
   }
 }
 
+/// Option section with title and chips.
 class _OptionSection extends StatelessWidget {
+  /// Section title.
   final String title;
+
+  /// List of options.
   final List<UserSetupOption> options;
+
+  /// Empty state text.
   final String emptyText;
+
+  /// Set of selected values.
   final Set<String> selectedValues;
+
+  /// Callback when an option is selected.
   final ValueChanged<String> onSelected;
+
+  /// Callback to clear all selections.
   final VoidCallback? onClearAll;
+
+  /// Whether to display in full width mode.
   final bool fullWidth;
 
+  /// Creates a new option section instance.
   const _OptionSection({
     required this.title,
     required this.options,
@@ -643,6 +847,8 @@ class _OptionSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
+
+        // Options wrapper.
         _OptionWrap(
           options: options,
           emptyText: emptyText,
@@ -655,13 +861,24 @@ class _OptionSection extends StatelessWidget {
   }
 }
 
+/// Wrapper for option chips.
 class _OptionWrap extends StatelessWidget {
+  /// List of options.
   final List<UserSetupOption> options;
+
+  /// Empty state text.
   final String emptyText;
+
+  /// Set of selected values.
   final Set<String> selectedValues;
+
+  /// Callback when an option is selected.
   final ValueChanged<String> onSelected;
+
+  /// Whether to display in full width mode.
   final bool fullWidth;
 
+  /// Creates a new option wrap instance.
   const _OptionWrap({
     required this.options,
     required this.emptyText,
@@ -672,6 +889,7 @@ class _OptionWrap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Show empty state.
     if (options.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
@@ -679,6 +897,7 @@ class _OptionWrap extends StatelessWidget {
       );
     }
 
+    // Full width list mode.
     if (fullWidth) {
       return ListView.separated(
         shrinkWrap: true,
@@ -696,6 +915,7 @@ class _OptionWrap extends StatelessWidget {
       );
     }
 
+    // Wrap layout for chips.
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -711,14 +931,23 @@ class _OptionWrap extends StatelessWidget {
   }
 }
 
+// =============================================================================
+// NAVIGATION HELPER
+// =============================================================================
+
+/// Handles navigation events from the view model.
 void _handleNavigation(
-  BuildContext context,
-  UserSetupViewModel viewModel,
-  UserSetupArgs args,
-) {
+    BuildContext context,
+    UserSetupViewModel viewModel,
+    UserSetupArgs args,
+    ) {
+  // Get the navigation event.
   final event = viewModel.navigationEvent;
+
+  // Return if no event.
   if (event == null) return;
 
+  // Execute navigation after the frame.
   WidgetsBinding.instance.addPostFrameCallback((_) {
     switch (event) {
       case UserSetupNavigationEvent.goToAllergies:

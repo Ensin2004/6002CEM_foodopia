@@ -6,6 +6,7 @@ import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/buttons/primary_button.dart';
 import '../../../domain/entities/add_recipe_ingredient_unit.dart';
 
+/// Bottom sheet for selecting and searching ingredient units
 class IngredientUnitPickerSheet extends StatefulWidget {
   final List<AddRecipeIngredientUnit> units;
   final String selectedUnitId;

@@ -1,3 +1,6 @@
+// Domain entity for one notification setting.
+// The enabled value tells the app whether this notification type should be
+// allowed for the current user.
 class NotificationPreference {
   final String id;
   final String title;

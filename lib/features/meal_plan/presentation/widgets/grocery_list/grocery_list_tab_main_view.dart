@@ -12,21 +12,31 @@ import '../../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
 
+/// Main view for the Grocery List tab in the meal plan page.
+/// Displays weekly and custom grocery lists with search and filtering.
 class GroceryListTabMainView extends StatelessWidget {
+  /// List of grocery list summaries.
   final List<GroceryListSummary> lists;
 
+  /// Creates a new grocery list tab main view instance.
   const GroceryListTabMainView({super.key, required this.lists});
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<MealPlanViewModel>();
+
+    // Get filtered lists.
     final weeklyLists = viewModel.filteredWeeklyHistory;
     final customLists = viewModel.filteredCustomGroceryLists;
+
+    // Check if active tab is selected.
     final isActiveTab =
         viewModel.selectedGroceryListTab == GroceryListTabFilter.active;
 
     return Stack(
       children: [
+        // Main content with refresh indicator.
         RefreshIndicator(
           onRefresh: viewModel.loadDashboard,
           child: ListView(
@@ -37,6 +47,7 @@ class GroceryListTabMainView extends StatelessWidget {
               104,
             ),
             children: [
+              // Tab selector.
               AppPillSegmentedControl(
                 labels: const ['Active', 'Past'],
                 selectedIndex:
@@ -52,10 +63,16 @@ class GroceryListTabMainView extends StatelessWidget {
                     ),
               ),
               const SizedBox(height: AppSpacing.md),
+
+              // Search row.
               const _GrocerySearchRow(),
               const SizedBox(height: AppSpacing.md),
+
+              // Tip box.
               const _GroceryTipBox(),
               const SizedBox(height: AppSpacing.md),
+
+              // Weekly lists section.
               if (weeklyLists.isNotEmpty) ...[
                 _SectionHeader(
                   title: isActiveTab ? 'Weekly Groceries' : 'Weekly History',
@@ -68,6 +85,8 @@ class GroceryListTabMainView extends StatelessWidget {
                   ),
                 ),
               ],
+
+              // Custom lists section.
               if (customLists.isNotEmpty) ...[
                 const _SectionHeader(title: 'Custom Lists'),
                 const SizedBox(height: AppSpacing.sm),
@@ -78,11 +97,15 @@ class GroceryListTabMainView extends StatelessWidget {
                   ),
                 ),
               ],
+
+              // Empty state.
               if (weeklyLists.isEmpty && customLists.isEmpty)
                 const _EmptyGroceryLists(),
             ],
           ),
         ),
+
+        // Add button.
         const Positioned(
           right: AppSpacing.md,
           bottom: AppSpacing.lg,
@@ -93,9 +116,12 @@ class GroceryListTabMainView extends StatelessWidget {
   }
 }
 
+/// Section header widget.
 class _SectionHeader extends StatelessWidget {
+  /// Title of the section.
   final String title;
 
+  /// Creates a new section header instance.
   const _SectionHeader({required this.title});
 
   @override
@@ -107,9 +133,12 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+/// Weekly groceries card widget.
 class _WeeklyGroceriesCard extends StatelessWidget {
+  /// The grocery list summary.
   final GroceryListSummary list;
 
+  /// Creates a new weekly groceries card instance.
   const _WeeklyGroceriesCard({required this.list});
 
   @override
@@ -118,10 +147,21 @@ class _WeeklyGroceriesCard extends StatelessWidget {
       color: const Color(0xFFF0FAF2),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        onTap: () => context.push(
-          AppRouter.manageGroceryList,
-          extra: ManageGroceryListArgs(listId: list.id),
-        ),
+        onTap: () async {
+          // Get the view model.
+          final viewModel = context.read<MealPlanViewModel>();
+
+          // Navigate to manage grocery list.
+          await context.push(
+            AppRouter.manageGroceryList,
+            extra: ManageGroceryListArgs(listId: list.id),
+          );
+
+          // Reload after returning so date/status edits are reflected.
+          if (context.mounted) {
+            await viewModel.loadDashboard();
+          }
+        },
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: AppSpacing.cardPadding,
@@ -131,6 +171,7 @@ class _WeeklyGroceriesCard extends StatelessWidget {
           ),
           child: Row(
             children: [
+              // Icon container.
               Container(
                 width: 58,
                 height: 58,
@@ -145,6 +186,8 @@ class _WeeklyGroceriesCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
+
+              // List details.
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,19 +252,25 @@ class _WeeklyGroceriesCard extends StatelessWidget {
   }
 }
 
+/// Grocery search row widget.
 class _GrocerySearchRow extends StatefulWidget {
+  /// Creates a new grocery search row instance.
   const _GrocerySearchRow();
 
   @override
   State<_GrocerySearchRow> createState() => _GrocerySearchRowState();
 }
 
+/// State for the grocery search row.
 class _GrocerySearchRowState extends State<_GrocerySearchRow> {
+  /// Text controller for the search input.
   late final TextEditingController _controller;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize with the current search query.
     _controller = TextEditingController(
       text: context.read<MealPlanViewModel>().grocerySearchQuery,
     );
@@ -235,7 +284,10 @@ class _GrocerySearchRowState extends State<_GrocerySearchRow> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final query = context.watch<MealPlanViewModel>().grocerySearchQuery;
+
+    // Sync controller with view model.
     if (_controller.text != query) {
       _controller.value = TextEditingValue(
         text: query,
@@ -243,62 +295,38 @@ class _GrocerySearchRowState extends State<_GrocerySearchRow> {
       );
     }
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
-          tooltip: 'Active lists',
-          visualDensity: VisualDensity.compact,
-          onPressed: () => context
-              .read<MealPlanViewModel>()
-              .selectGroceryListTab(GroceryListTabFilter.active),
-          icon: const Icon(Icons.tune, color: AppColors.textPrimary, size: 22),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        IconButton(
-          tooltip: 'Past lists',
-          visualDensity: VisualDensity.compact,
-          onPressed: () => context
-              .read<MealPlanViewModel>()
-              .selectGroceryListTab(GroceryListTabFilter.past),
-          icon: const Icon(
-            Icons.filter_alt,
-            color: AppColors.textPrimary,
-            size: 22,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            onChanged: context
-                .read<MealPlanViewModel>()
-                .updateGrocerySearchQuery,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: 'Search name, category, date...',
-              prefixIcon: Icon(
-                Icons.search,
-                color: AppColors.textSecondary.withValues(alpha: 0.45),
-              ),
-              suffixIcon: query.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: 'Clear search',
-                      onPressed: context
-                          .read<MealPlanViewModel>()
-                          .clearGrocerySearchQuery,
-                      icon: const Icon(Icons.close, size: 18),
-                    ),
-              filled: true,
-              fillColor: const Color(0xFFF8F8F8),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: 0,
-              ),
+        // Search field.
+        TextField(
+          controller: _controller,
+          onChanged: context.read<MealPlanViewModel>().updateGrocerySearchQuery,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            hintText: 'Search name, category, date...',
+            prefixIcon: Icon(
+              Icons.search,
+              color: AppColors.textSecondary.withValues(alpha: 0.45),
+            ),
+            suffixIcon: query.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: context
+                        .read<MealPlanViewModel>()
+                        .clearGrocerySearchQuery,
+                    icon: const Icon(Icons.close, size: 18),
+                  ),
+            filled: true,
+            fillColor: const Color(0xFFF8F8F8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: 0,
             ),
           ),
         ),
@@ -307,17 +335,21 @@ class _GrocerySearchRowState extends State<_GrocerySearchRow> {
   }
 }
 
+/// Formats a date range for display.
 String _formatDateRange(DateTime start, DateTime end) {
   final startText = DateFormat('d MMM').format(start);
   final endText = DateFormat('d MMM yyyy').format(end);
   return '$startText - $endText';
 }
 
+/// Returns a human-readable week start label.
 String _weekStartLabel(String value) {
   return value.toLowerCase() == 'sunday' ? 'Sunday' : 'Monday';
 }
 
+/// Grocery tip box widget.
 class _GroceryTipBox extends StatelessWidget {
+  /// Creates a new grocery tip box instance.
   const _GroceryTipBox();
 
   @override
@@ -365,9 +397,12 @@ class _GroceryTipBox extends StatelessWidget {
   }
 }
 
+/// Grocery list card widget.
 class _GroceryListCard extends StatelessWidget {
+  /// The grocery list summary.
   final GroceryListSummary list;
 
+  /// Creates a new grocery list card instance.
   const _GroceryListCard({required this.list});
 
   @override
@@ -387,10 +422,21 @@ class _GroceryListCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          onTap: () => context.push(
-            AppRouter.manageGroceryList,
-            extra: ManageGroceryListArgs(listId: list.id),
-          ),
+          onTap: () async {
+            // Get the view model.
+            final viewModel = context.read<MealPlanViewModel>();
+
+            // Navigate to manage grocery list.
+            await context.push(
+              AppRouter.manageGroceryList,
+              extra: ManageGroceryListArgs(listId: list.id),
+            );
+
+            // Reload after returning so date/status edits are reflected.
+            if (context.mounted) {
+              await viewModel.loadDashboard();
+            }
+          },
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: AppSpacing.cardPadding,
@@ -400,6 +446,7 @@ class _GroceryListCard extends StatelessWidget {
             ),
             child: Row(
               children: [
+                // Icon container.
                 Container(
                   width: 58,
                   height: 58,
@@ -414,6 +461,8 @@ class _GroceryListCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
+
+                // List details.
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,6 +507,8 @@ class _GroceryListCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 6),
+
+                      // Category icons.
                       Row(
                         children: [
                           const Spacer(),
@@ -489,6 +540,7 @@ class _GroceryListCard extends StatelessWidget {
     );
   }
 
+  /// Formats a date range for display.
   String _formatDateRange(DateTime start, DateTime end) {
     final startText = DateFormat('d MMM').format(start);
     final endText = DateFormat('d MMM yyyy').format(end);
@@ -496,7 +548,9 @@ class _GroceryListCard extends StatelessWidget {
   }
 }
 
+/// Default badge widget.
 class _DefaultBadge extends StatelessWidget {
+  /// Creates a new default badge instance.
   const _DefaultBadge();
 
   @override
@@ -519,9 +573,12 @@ class _DefaultBadge extends StatelessWidget {
   }
 }
 
+/// Category icon widget.
 class _CategoryIcon extends StatelessWidget {
+  /// Category name.
   final String category;
 
+  /// Creates a new category icon instance.
   const _CategoryIcon({required this.category});
 
   @override
@@ -529,6 +586,7 @@ class _CategoryIcon extends StatelessWidget {
     return Icon(_iconForCategory(category), size: 16, color: AppColors.primary);
   }
 
+  /// Returns an icon for a category.
   IconData _iconForCategory(String category) {
     final normalized = category.toLowerCase();
     if (normalized.contains('meat')) return Icons.set_meal_outlined;
@@ -540,9 +598,12 @@ class _CategoryIcon extends StatelessWidget {
   }
 }
 
+/// Extra badge widget.
 class _ExtraBadge extends StatelessWidget {
+  /// Number of extra categories.
   final int count;
 
+  /// Creates a new extra badge instance.
   const _ExtraBadge({required this.count});
 
   @override
@@ -565,7 +626,9 @@ class _ExtraBadge extends StatelessWidget {
   }
 }
 
+/// Add grocery list button widget.
 class _AddGroceryListButton extends StatelessWidget {
+  /// Creates a new add grocery list button instance.
   const _AddGroceryListButton();
 
   @override
@@ -574,11 +637,16 @@ class _AddGroceryListButton extends StatelessWidget {
       height: 54,
       child: ElevatedButton.icon(
         onPressed: () async {
+          // Get the view model.
           final viewModel = context.read<MealPlanViewModel>();
+
+          // Navigate to add grocery list.
           final result = await context.push(
             AppRouter.addGroceryList,
             extra: AddGroceryListArgs(userId: viewModel.userId),
           );
+
+          // Reload dashboard if a list was created.
           if (result != null && context.mounted) {
             await context.read<MealPlanViewModel>().loadDashboard();
           }
@@ -603,7 +671,9 @@ class _AddGroceryListButton extends StatelessWidget {
   }
 }
 
+/// Empty grocery lists state widget.
 class _EmptyGroceryLists extends StatelessWidget {
+  /// Creates a new empty grocery lists instance.
   const _EmptyGroceryLists();
 
   @override

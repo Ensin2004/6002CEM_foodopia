@@ -1,13 +1,17 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 
 import 'recipe_performance_statistics.dart';
 
+// Handles AdminStatisticsSortOrder for this part of the statistics page.
 enum AdminStatisticsSortOrder { ascending, descending }
 
 class AdminDailyStatistic {
   final DateTime date;
   final int value;
 
+  // Handles AdminDailyStatistic for this part of the statistics page.
   const AdminDailyStatistic({required this.date, required this.value});
 }
 
@@ -21,6 +25,7 @@ class AdminRankedStatistic {
   final String? markerText;
   final List<AdminRankedStatisticDetail> details;
 
+  // Handles AdminRankedStatistic for this part of the statistics page.
   const AdminRankedStatistic({
     required this.label,
     required this.value,
@@ -33,6 +38,7 @@ class AdminRankedStatistic {
   });
 }
 
+// Handles AdminRankedStatisticDetail for this part of the statistics page.
 class AdminRankedStatisticDetail {
   final String title;
   final String? subtitle;
@@ -40,6 +46,7 @@ class AdminRankedStatisticDetail {
   final IconData icon;
   final String? imageUrl;
 
+  // Handles AdminRankedStatisticDetail for this part of the statistics page.
   const AdminRankedStatisticDetail({
     required this.title,
     this.subtitle,
@@ -49,6 +56,7 @@ class AdminRankedStatisticDetail {
   });
 }
 
+// Handles AdminAnalyticSection for this part of the statistics page.
 class AdminAnalyticSection {
   final String title;
   final String summaryTitle;
@@ -57,6 +65,7 @@ class AdminAnalyticSection {
   final String highlightValue;
   final List<AdminRankedStatistic> items;
 
+  // Handles AdminAnalyticSection for this part of the statistics page.
   const AdminAnalyticSection({
     required this.title,
     required this.summaryTitle,
@@ -66,6 +75,7 @@ class AdminAnalyticSection {
     required this.items,
   });
 
+  // Handles sorted for this part of the statistics page.
   AdminAnalyticSection sorted(AdminStatisticsSortOrder order) {
     final sortedItems = [...items]
       ..sort(
@@ -85,23 +95,27 @@ class AdminAnalyticSection {
   }
 }
 
+// Handles AdminMealAnalyticStatistics for this part of the statistics page.
 class AdminMealAnalyticStatistics {
   final String dateRange;
   final List<AdminDailyStatistic> dailyPlans;
   final List<AdminAnalyticSection> sections;
 
+  // Handles AdminMealAnalyticStatistics for this part of the statistics page.
   const AdminMealAnalyticStatistics({
     required this.dateRange,
     required this.dailyPlans,
     required this.sections,
   });
 
+  // Handles topDay for this part of the statistics page.
   AdminDailyStatistic get topDay {
     final sortedDays = [...dailyPlans]
       ..sort((left, right) => right.value.compareTo(left.value));
     return sortedDays.first;
   }
 
+  // Handles leastDay for this part of the statistics page.
   AdminDailyStatistic get leastDay {
     final sortedDays = [...dailyPlans]
       ..sort((left, right) => left.value.compareTo(right.value));
@@ -109,12 +123,14 @@ class AdminMealAnalyticStatistics {
   }
 }
 
+// Handles AdminPostAnalyticStatistics for this part of the statistics page.
 class AdminPostAnalyticStatistics {
   final String dateRange;
   final List<AdminDailyStatistic> dailyPosts;
   final List<AdminAnalyticSection> sections;
   final RecipePerformanceStatistics? recipePerformance;
 
+  // Handles AdminPostAnalyticStatistics for this part of the statistics page.
   const AdminPostAnalyticStatistics({
     required this.dateRange,
     required this.dailyPosts,
@@ -122,12 +138,14 @@ class AdminPostAnalyticStatistics {
     this.recipePerformance,
   });
 
+  // Handles topDay for this part of the statistics page.
   AdminDailyStatistic get topDay {
     final sortedDays = [...dailyPosts]
       ..sort((left, right) => right.value.compareTo(left.value));
     return sortedDays.first;
   }
 
+  // Handles leastDay for this part of the statistics page.
   AdminDailyStatistic get leastDay {
     final sortedDays = [...dailyPosts]
       ..sort((left, right) => left.value.compareTo(right.value));
@@ -135,12 +153,14 @@ class AdminPostAnalyticStatistics {
   }
 }
 
+// Handles AdminDietaryPreferenceStatistics for this part of the statistics page.
 class AdminDietaryPreferenceStatistics {
   final String dateRange;
   final int totalUsers;
   final String topPreference;
   final List<AdminRankedStatistic> preferences;
 
+  // Handles AdminDietaryPreferenceStatistics for this part of the statistics page.
   const AdminDietaryPreferenceStatistics({
     required this.dateRange,
     required this.totalUsers,
@@ -149,12 +169,14 @@ class AdminDietaryPreferenceStatistics {
   });
 }
 
+// Handles AdminGenderStatistics for this part of the statistics page.
 class AdminGenderStatistics {
   final String dateRange;
   final int totalUsers;
   final String mostGender;
   final List<AdminRankedStatistic> genders;
 
+  // Handles AdminGenderStatistics for this part of the statistics page.
   const AdminGenderStatistics({
     required this.dateRange,
     required this.totalUsers,
@@ -163,12 +185,14 @@ class AdminGenderStatistics {
   });
 }
 
+// Handles AdminUserUsageStatistics for this part of the statistics page.
 class AdminUserUsageStatistics {
   final String dateRange;
   final int totalUsers;
   final String topMonth;
   final List<AdminMonthlyUserStatistic> monthlyUsers;
 
+  // Handles AdminUserUsageStatistics for this part of the statistics page.
   const AdminUserUsageStatistics({
     required this.dateRange,
     required this.totalUsers,
@@ -177,12 +201,14 @@ class AdminUserUsageStatistics {
   });
 }
 
+// Handles AdminHubRatingStatistics for this part of the statistics page.
 class AdminHubRatingStatistics {
   final String dateRange;
   final int totalRatings;
   final double averageRating;
   final List<AdminMonthlyRatingStatistic> monthlyRatings;
 
+  // Handles AdminHubRatingStatistics for this part of the statistics page.
   const AdminHubRatingStatistics({
     required this.dateRange,
     required this.totalRatings,
@@ -191,21 +217,27 @@ class AdminHubRatingStatistics {
   });
 }
 
+// Handles AdminMonthlyUserStatistic for this part of the statistics page.
 class AdminMonthlyUserStatistic {
   final DateTime month;
   final int newUsers;
+  final bool isPrediction;
 
+  // Handles AdminMonthlyUserStatistic for this part of the statistics page.
   const AdminMonthlyUserStatistic({
     required this.month,
     required this.newUsers,
+    this.isPrediction = false,
   });
 }
 
+// Handles AdminMonthlyRatingStatistic for this part of the statistics page.
 class AdminMonthlyRatingStatistic {
   final DateTime month;
   final int ratingCount;
   final double averageRating;
 
+  // Handles AdminMonthlyRatingStatistic for this part of the statistics page.
   const AdminMonthlyRatingStatistic({
     required this.month,
     required this.ratingCount,

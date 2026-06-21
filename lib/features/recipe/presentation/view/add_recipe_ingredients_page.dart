@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
+import 'package:foodopia/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/ingredients/input_ingredient_field.dart';
 import 'package:provider/provider.dart';
@@ -21,6 +22,7 @@ import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
+import '../../domain/usecases/get_add_recipe_ingredient_image_usecase.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
@@ -68,6 +70,7 @@ class AddRecipeIngredientsPage extends StatelessWidget {
             getIngredientUnitsUseCase: sl<GetAddRecipeIngredientUnitsUseCase>(),
             searchFoodsUseCase: sl<SearchAddRecipeFoodsUseCase>(),
             getFoodNutrientsUseCase: sl<GetAddRecipeFoodNutrientsUseCase>(),
+            getIngredientImageUseCase: sl<GetAddRecipeIngredientImageUseCase>(),
             saveIngredientsUseCase: sl<SaveAddRecipeIngredientsUseCase>(),
             getReviewUseCase: sl<GetAddRecipeReviewUseCase>(),
           ),
@@ -128,6 +131,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
   String? _requestedRecipeId;
   String? _initialFormSignature;
   bool _didSaveChanges = false;
+  bool _didRequestAiIngredientImages = false;
 
   @override
   void initState() {
@@ -157,7 +161,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
         : AppSpacing.lg;
 
     if (viewModel.isLoadingUnits) {
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     if (widget.initialAiRecipe == null &&
@@ -170,12 +174,20 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
           widget.recipeId,
         );
       });
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     final existingReview = viewModel.existingReview;
     if (existingReview != null && _seededRecipeId != existingReview.recipeId) {
       _seedFromReview(viewModel);
+    }
+
+    if (widget.initialAiRecipe != null && !_didRequestAiIngredientImages) {
+      _didRequestAiIngredientImages = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _fetchMissingIngredientImages(viewModel);
+      });
     }
 
     _initialFormSignature ??= _formSignature();
@@ -225,7 +237,6 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Progress Bar
               if (!widget.hideProgressBar)
                 const Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -344,6 +355,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     );
   }
 
+  // Handle back action
   Future<void> _handleBack(BuildContext context) async {
     if (!_hasUnsavedChanges()) {
       _leaveEditPage(context);
@@ -374,6 +386,31 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     final image = await _pickImageFile();
     if (image == null) return;
     setState(() => row.imageFile = image);
+  }
+
+  Future<void> _fetchMissingIngredientImages(
+    AddRecipeIngredientsViewModel viewModel,
+  ) async {
+    for (final row in List<IngredientRowState>.of(_rows)) {
+      final ingredientName = row.nameController.text.trim();
+      if (ingredientName.isEmpty ||
+          row.imageFile != null ||
+          row.existingImageUrl != null) {
+        continue;
+      }
+
+      final imageUrl = await viewModel.getIngredientImageUrl(ingredientName);
+      if (!mounted || imageUrl == null) continue;
+
+      final currentName = row.nameController.text.trim();
+      if (currentName != ingredientName ||
+          row.imageFile != null ||
+          row.existingImageUrl != null) {
+        continue;
+      }
+
+      setState(() => row.existingImageUrl = imageUrl);
+    }
   }
 
   Future<File?> _pickImageFile() async {
@@ -408,15 +445,21 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     if (selected == null) return;
     if (!mounted) return;
 
+    // Fetch nutrients from USDA and search image from Unsplash after selection.
     Map<String, dynamic>? nutrients;
-    if (!selected.isCustom && selected.usdaId != null) {
+    String? ingredientImageUrl;
+    if (selected.name.trim().isNotEmpty) {
       final rootNavigator = Navigator.of(context, rootNavigator: true);
       showDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (_) => const LoadingDialog(),
       );
-      nutrients = await viewModel.getFoodNutrients(selected.usdaId!);
+      final imageUrlFuture = viewModel.getIngredientImageUrl(selected.name);
+      if (!selected.isCustom && selected.usdaId != null) {
+        nutrients = await viewModel.getFoodNutrients(selected.usdaId!);
+      }
+      ingredientImageUrl = await imageUrlFuture;
       if (mounted) rootNavigator.pop();
     }
 
@@ -425,6 +468,9 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       row.nameController.text = selected.name;
       row.usdaId = selected.usdaId;
       row.usdaNutrients = selected.isCustom ? null : nutrients;
+      if (ingredientImageUrl != null) {
+        row.existingImageUrl = ingredientImageUrl;
+      }
       row.ingredientCategoryId = null;
       row.markAnalysisCurrent();
     });
@@ -758,5 +804,18 @@ class IngredientRowState {
     }
     nameController.dispose();
     amountController.dispose();
+  }
+}
+
+// Loading Page
+class _AddRecipePageLoading extends StatelessWidget {
+  const _AddRecipePageLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: LoadingDialog(message: "Loading...", inline: true),
+    );
   }
 }

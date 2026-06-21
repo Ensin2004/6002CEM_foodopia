@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 
+import '../../../meal_plan/domain/entities/meal_calorie_guidance.dart';
+import '../../../meal_plan/domain/services/meal_calorie_guidance_service.dart';
 import '../../domain/entities/explore_recipe.dart';
 import 'explore_recipe_card.dart';
 
+// Builds a scrollable grid of recipe cards with interactive callbacks
 class ExploreRecipeGridView extends StatelessWidget {
+  // List of recipe entities to display in the grid
   final List<ExploreRecipe> recipes;
+  // Callback when comment action is triggered on a recipe
   final ValueChanged<ExploreRecipe> onCommentTap;
+  // Callback when favourite action is triggered, passing recipe ID
   final ValueChanged<String> onFavouriteTap;
+  // Callback when image is long-pressed for additional actions
   final ValueChanged<ExploreRecipe> onImageLongPress;
+  // Callback when a recipe card is tapped for navigation
   final ValueChanged<ExploreRecipe> onRecipeTap;
+  // Set of recipe IDs that should appear disabled/uninteractive
   final Set<String> disabledRecipeIds;
+  final MealCalorieBudget? calorieBudget;
   final EdgeInsetsGeometry padding;
 
   const ExploreRecipeGridView({
@@ -20,16 +30,20 @@ class ExploreRecipeGridView extends StatelessWidget {
     required this.onImageLongPress,
     required this.onRecipeTap,
     this.disabledRecipeIds = const {},
+    this.calorieBudget,
     this.padding = const EdgeInsets.fromLTRB(12, 10, 12, 24),
   });
 
   @override
   Widget build(BuildContext context) {
+    // Determines available screen width for responsive column count
     final width = MediaQuery.sizeOf(context).width;
 
     return GridView.builder(
       padding: padding,
+      // Dismisses keyboard when scrolling to improve touch interaction
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      // Enables scrolling even when content fits the viewport
       physics: const AlwaysScrollableScrollPhysics(),
       gridDelegate: _recipeGridDelegate(width),
       itemCount: recipes.length,
@@ -37,23 +51,34 @@ class ExploreRecipeGridView extends StatelessWidget {
         return _ExploreRecipeGridItem(
           recipe: recipes[index],
           onCommentTap: onCommentTap,
+          // Checks if current recipe ID exists in the disabled set
           disabled: disabledRecipeIds.contains(recipes[index].id),
           onFavouriteTap: onFavouriteTap,
           onImageLongPress: onImageLongPress,
           onRecipeTap: onRecipeTap,
+          calorieBudget: calorieBudget,
         );
       },
     );
   }
 }
 
+// Provides a sliver-based grid for use in CustomScrollView or NestedScrollView
 class ExploreRecipeSliverGrid extends StatelessWidget {
+  // List of recipe entities to display in the sliver grid
   final List<ExploreRecipe> recipes;
+  // Callback when comment action is triggered on a recipe
   final ValueChanged<ExploreRecipe> onCommentTap;
+  // Callback when favourite action is triggered, passing recipe ID
   final ValueChanged<String> onFavouriteTap;
+  // Callback when image is long-pressed for additional actions
   final ValueChanged<ExploreRecipe> onImageLongPress;
+  // Callback when a recipe card is tapped for navigation
   final ValueChanged<ExploreRecipe> onRecipeTap;
+  // Set of recipe IDs that should appear disabled/uninteractive
   final Set<String> disabledRecipeIds;
+  // Internal padding around the sliver grid content
+  final MealCalorieBudget? calorieBudget;
   final EdgeInsetsGeometry padding;
 
   const ExploreRecipeSliverGrid({
@@ -64,11 +89,13 @@ class ExploreRecipeSliverGrid extends StatelessWidget {
     required this.onImageLongPress,
     required this.onRecipeTap,
     this.disabledRecipeIds = const {},
+    this.calorieBudget,
     this.padding = const EdgeInsets.fromLTRB(16, 12, 16, 24),
   });
 
   @override
   Widget build(BuildContext context) {
+    // Retrieves screen width for responsive grid column calculation
     final width = MediaQuery.sizeOf(context).width;
 
     return SliverPadding(
@@ -80,10 +107,12 @@ class ExploreRecipeSliverGrid extends StatelessWidget {
           return _ExploreRecipeGridItem(
             recipe: recipes[index],
             onCommentTap: onCommentTap,
+            // Evaluates whether this specific recipe should be disabled
             disabled: disabledRecipeIds.contains(recipes[index].id),
             onFavouriteTap: onFavouriteTap,
             onImageLongPress: onImageLongPress,
             onRecipeTap: onRecipeTap,
+            calorieBudget: calorieBudget,
           );
         },
       ),
@@ -91,13 +120,21 @@ class ExploreRecipeSliverGrid extends StatelessWidget {
   }
 }
 
+// Internal widget that wraps a recipe card with all configured callbacks
 class _ExploreRecipeGridItem extends StatelessWidget {
+  // The recipe entity data for this grid item
   final ExploreRecipe recipe;
+  // Callback for comment action on this specific recipe
   final ValueChanged<ExploreRecipe> onCommentTap;
+  // Callback for favourite action on this specific recipe
   final ValueChanged<String> onFavouriteTap;
+  // Callback for image long-press on this specific recipe
   final ValueChanged<ExploreRecipe> onImageLongPress;
+  // Callback for tap navigation on this specific recipe
   final ValueChanged<ExploreRecipe> onRecipeTap;
+  // Flag indicating whether this item should be non-interactive
   final bool disabled;
+  final MealCalorieBudget? calorieBudget;
 
   const _ExploreRecipeGridItem({
     required this.recipe,
@@ -106,22 +143,35 @@ class _ExploreRecipeGridItem extends StatelessWidget {
     required this.onImageLongPress,
     required this.onRecipeTap,
     this.disabled = false,
+    this.calorieBudget,
   });
 
   @override
   Widget build(BuildContext context) {
     return ExploreRecipeCard(
       recipe: recipe,
+      // Wraps comment callback with the current recipe instance
       onComingSoonTap: () => onCommentTap(recipe),
+      // Wraps favourite callback with the current recipe ID
       onFavouriteTap: () => onFavouriteTap(recipe.id),
+      // Wraps long-press callback with the current recipe instance
       onImageLongPress: () => onImageLongPress(recipe),
+      // Conditionally provides tap callback only when not disabled
       onTap: disabled ? null : () => onRecipeTap(recipe),
       disabled: disabled,
+      calorieGuidance: calorieBudget == null
+          ? null
+          : MealCalorieGuidanceService().evaluate(
+              budget: calorieBudget!,
+              mealCalories: recipe.nutrition.calories,
+            ),
     );
   }
 }
 
+// Creates a grid delegate with responsive column count based on available width
 SliverGridDelegateWithFixedCrossAxisCount _recipeGridDelegate(double width) {
+  // Determines number of columns based on screen width breakpoints
   final crossAxisCount = width >= 900
       ? 4
       : width >= 600
@@ -130,8 +180,11 @@ SliverGridDelegateWithFixedCrossAxisCount _recipeGridDelegate(double width) {
 
   return SliverGridDelegateWithFixedCrossAxisCount(
     crossAxisCount: crossAxisCount,
+    // Horizontal spacing between grid items
     crossAxisSpacing: 12,
+    // Vertical spacing between grid items
     mainAxisSpacing: 12,
+    // Fixed height for each grid item, adjusted for smaller screens
     mainAxisExtent: width < 380 ? 258 : 282,
   );
 }

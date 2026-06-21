@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/user_profile.dart';
 
 /// Defines behavior for user profile model.
+/// Maps Firestore documents to UserProfile domain entities.
 class UserProfileModel extends UserProfile {
   /// Creates a user profile model instance.
   UserProfileModel({
@@ -17,9 +18,11 @@ class UserProfileModel extends UserProfile {
     super.updatedAt,
   });
 
-  /// Creates a user profile model instance.
+  /// Creates a user profile model instance from a Firestore document.
   factory UserProfileModel.fromFirestore(DocumentSnapshot doc) {
+    // Extract data from the document.
     final data = doc.data() as Map<String, dynamic>;
+
     /// Handles the user profile model operation.
     return UserProfileModel(
       uid: doc.id,

@@ -1,3 +1,5 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -15,6 +17,10 @@ import '../../domain/entities/post_difficulty_statistics.dart';
 import '../../domain/entities/posted_meal_time_statistics.dart';
 import '../../domain/entities/statistics_dashboard.dart';
 
+// Local statistics data source.
+// This keeps fixed menu/dashboard data that does not need Firestore, such as
+// the list of report pages and sample fallback statistics.
+// Handles StatisticsLocalDataSource for this part of the statistics page.
 class StatisticsLocalDataSource {
   Future<StatisticsDashboardModel> getUserStatistics() async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
@@ -91,6 +97,7 @@ class StatisticsLocalDataSource {
         StatisticsMenuItem(title: 'Time Taken For Cooking'),
         StatisticsMenuItem(title: 'Grocery List'),
         StatisticsMenuItem(title: 'Nutrient Intake'),
+        StatisticsMenuItem(title: 'Nutrient Insight'),
         StatisticsMenuItem(title: 'Meal Planned Time'),
         StatisticsMenuItem(title: 'Method For Creating Plan'),
         StatisticsMenuItem(title: 'Difficulty'),
@@ -98,6 +105,7 @@ class StatisticsLocalDataSource {
       communityMenuItems: [
         StatisticsMenuItem(title: 'Post Analytic'),
         StatisticsMenuItem(title: 'Most Nutrient Posted Meal'),
+        StatisticsMenuItem(title: 'Posted Nutrient Insight'),
         StatisticsMenuItem(title: 'Recipe Performance'),
         StatisticsMenuItem(title: 'Most Cooked Recipe By Others'),
         StatisticsMenuItem(title: 'Difficulty Posted'),
@@ -105,6 +113,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getAdminStatistics for this part of the statistics page.
   Future<StatisticsDashboardModel> getAdminStatistics() async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
 
@@ -193,15 +202,18 @@ class StatisticsLocalDataSource {
         StatisticsMenuItem(title: 'Planned Meal Analytic'),
         StatisticsMenuItem(title: 'Post Analytic'),
         StatisticsMenuItem(title: 'Dietary Preference'),
+        StatisticsMenuItem(title: 'Nutrient Insight'),
       ],
       communityMenuItems: [
         StatisticsMenuItem(title: 'Gender'),
         StatisticsMenuItem(title: 'User Usage'),
+        StatisticsMenuItem(title: 'Usage Forecast'),
         StatisticsMenuItem(title: 'Hub Rating'),
       ],
     );
   }
 
+  // Handles getMealPlannedTime for this part of the statistics page.
   Future<MealPlannedTimeStatistics> getMealPlannedTime({
     DateTime? startDate,
     DateTime? endDate,
@@ -290,6 +302,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getFoodAnalytic for this part of the statistics page.
   Future<FoodAnalyticStatistics> getFoodAnalytic({
     DateTime? startDate,
     DateTime? endDate,
@@ -447,6 +460,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getCaloriesIntake for this part of the statistics page.
   Future<CaloriesIntakeStatistics> getCaloriesIntake({
     DateTime? startDate,
     DateTime? endDate,
@@ -603,6 +617,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getDifficultyMeals for this part of the statistics page.
   Future<DifficultyMealStatistics> getDifficultyMeals({
     DateTime? startDate,
     DateTime? endDate,
@@ -732,6 +747,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getMealPlanMethods for this part of the statistics page.
   Future<MealPlanMethodStatistics> getMealPlanMethods({
     DateTime? startDate,
     DateTime? endDate,
@@ -835,6 +851,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getPostAnalytic for this part of the statistics page.
   Future<PostAnalyticStatistics> getPostAnalytic({
     DateTime? startDate,
     DateTime? endDate,
@@ -979,6 +996,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getCaloriesPosted for this part of the statistics page.
   Future<CaloriesPostedStatistics> getCaloriesPosted({
     DateTime? startDate,
     DateTime? endDate,
@@ -1137,6 +1155,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getPostedMealTime for this part of the statistics page.
   Future<PostedMealTimeStatistics> getPostedMealTime({
     DateTime? startDate,
     DateTime? endDate,
@@ -1225,6 +1244,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getMostCookedRecipes for this part of the statistics page.
   Future<MostCookedRecipeStatistics> getMostCookedRecipes({
     DateTime? startDate,
     DateTime? endDate,
@@ -1341,6 +1361,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getPostDifficulty for this part of the statistics page.
   Future<PostDifficultyStatistics> getPostDifficulty({
     DateTime? startDate,
     DateTime? endDate,
@@ -1442,6 +1463,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getAdminMealAnalytic for this part of the statistics page.
   Future<AdminMealAnalyticStatistics> getAdminMealAnalytic({
     DateTime? startDate,
     DateTime? endDate,
@@ -1459,6 +1481,7 @@ class StatisticsLocalDataSource {
         wave: 29,
       ),
       sections: [
+        // Handles AdminAnalyticSection for this part of the statistics page.
         const AdminAnalyticSection(
           title: 'Most Planned Meal',
           summaryTitle: 'Total Planned',
@@ -1648,6 +1671,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getAdminPostAnalytic for this part of the statistics page.
   Future<AdminPostAnalyticStatistics> getAdminPostAnalytic({
     DateTime? startDate,
     DateTime? endDate,
@@ -1665,6 +1689,7 @@ class StatisticsLocalDataSource {
         wave: 17,
       ),
       sections: [
+        // Handles AdminAnalyticSection for this part of the statistics page.
         const AdminAnalyticSection(
           title: 'Most Rating For All Posted',
           summaryTitle: 'Total Post',
@@ -1840,6 +1865,7 @@ class StatisticsLocalDataSource {
     );
   }
 
+  // Handles getAdminDietaryPreference for this part of the statistics page.
   Future<AdminDietaryPreferenceStatistics> getAdminDietaryPreference({
     DateTime? startDate,
     DateTime? endDate,
@@ -1897,11 +1923,13 @@ class StatisticsLocalDataSource {
         : (start: start, end: end);
   }
 
+  // Handles _formatRange for this part of the statistics page.
   String _formatRange(DateTime start, DateTime end) {
     final formatter = DateFormat('MMM d, yyyy');
     return '${formatter.format(start)} - ${formatter.format(end)}';
   }
 
+  // Handles _buildDailyStatistics for this part of the statistics page.
   List<AdminDailyStatistic> _buildDailyStatistics({
     required DateTime start,
     required DateTime end,

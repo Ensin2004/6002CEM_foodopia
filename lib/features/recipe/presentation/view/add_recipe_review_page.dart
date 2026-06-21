@@ -128,8 +128,8 @@ class AddRecipeReviewPage extends StatelessWidget {
       visibility: basicInfo.visibility,
       nutrients: AddRecipeReviewNutrients(
         calories: aiRecipe.calories > 0 ? '${aiRecipe.calories} kcal' : '-',
-        carbohydrates: _formatMacro(aiRecipe.carbohydrates),
         proteins: _formatMacro(aiRecipe.protein),
+        carbohydrates: _formatMacro(aiRecipe.carbohydrates),
         fats: _formatMacro(aiRecipe.fat),
       ),
       ingredients: aiDraftIngredients
@@ -211,7 +211,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
         : AppSpacing.lg;
 
     if (widget.aiReview == null && viewModel.isLoading) {
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     final review = widget.aiReview ?? viewModel.review;
@@ -292,37 +292,48 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                 horizontalPadding,
                 AppSpacing.lg,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(child: Label(text: "Review")),
-                      if (widget.aiReview == null)
-                        IconButton(
-                          tooltip: "Delete recipe",
-                          onPressed: viewModel.isDeleting
-                              ? null
-                              : () => _confirmDeleteRecipe(
-                                  context,
-                                  viewModel,
-                                  review,
-                                ),
-                          icon: const Icon(Icons.delete_outline_rounded),
-                          color: AppColors.error,
+
+                  // Label, Tips
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Label(text: "Review"),
+                        const SizedBox(height: 2),
+                        Text(
+                          "Review your recipe before saving",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.text.bodySmall,
                         ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    "Review your recipe before saving",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodySmall,
-                  ),
+
+                  // Delete button
+                  if (widget.aiReview == null)
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      tooltip: "Delete recipe",
+                      onPressed: viewModel.isDeleting
+                          ? null
+                          : () => _confirmDeleteRecipe(
+                                context,
+                                viewModel,
+                                review,
+                              ),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      color: AppColors.error,
+                    ),
                 ],
               ),
             ),
+
+            // Information
             Expanded(
               child: ListView(
                 padding: EdgeInsets.fromLTRB(
@@ -332,8 +343,12 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                   0,
                 ),
                 children: [
+
+                  // Recipe Image and Video
                   ReviewHeroImage(media: review.media),
                   const SizedBox(height: AppSpacing.lg),
+
+                  // Basic Info
                   ReviewSectionRow(
                     icon: Icons.info_rounded,
                     title: "Basic Info",
@@ -384,29 +399,48 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.lg),
+
+                  // Nutrients
                   ReviewSectionRow(
                     icon: Icons.science_rounded,
                     title: "Nutrients (AI Estimated)",
                     children: [
+                      const _NutritionSubheader(title: "Macronutrients"),
                       ReviewInfoRow(
                         label: "Calories",
                         value: review.nutrients.calories,
+                      ),
+                      ReviewInfoRow(
+                        label: "Protein",
+                        value: review.nutrients.proteins,
                       ),
                       ReviewInfoRow(
                         label: "Carbohydrates",
                         value: review.nutrients.carbohydrates,
                       ),
                       ReviewInfoRow(
-                        label: "Proteins",
-                        value: review.nutrients.proteins,
-                      ),
-                      ReviewInfoRow(
-                        label: "Fats",
+                        label: "Fat",
                         value: review.nutrients.fats,
                       ),
+                      ReviewInfoRow(
+                        label: "Fiber",
+                        value: review.nutrients.fiber,
+                      ),
+                      ReviewInfoRow(
+                        label: "Water",
+                        value: review.nutrients.water,
+                      ),
+                      if (review.nutrients.vitamins.isNotEmpty)
+                        const _NutritionSubheader(title: "Vitamins"),
+                      ..._nutrientRows(review.nutrients.vitamins),
+                      if (review.nutrients.minerals.isNotEmpty)
+                        const _NutritionSubheader(title: "Minerals"),
+                      ..._nutrientRows(review.nutrients.minerals),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.lg),
+
+                  // Ingredients
                   ReviewSectionRow(
                     icon: Icons.eco_rounded,
                     title: "Ingredients",
@@ -427,6 +461,8 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                         .toList(),
                   ),
                   const SizedBox(height: AppSpacing.lg),
+
+                  // Instructions
                   ReviewSectionRow(
                     icon: Icons.menu_book_rounded,
                     title: "Instructions",
@@ -474,13 +510,15 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
-  List<AddRecipeReviewIngredient> _sortedIngredients(List<AddRecipeReviewIngredient> ingredients,) {
+  // Sort Ingredients
+  List<AddRecipeReviewIngredient> _sortedIngredients(List<AddRecipeReviewIngredient> ingredients) {
     return [...ingredients]..sort(
       (first, second) =>
           first.name.toLowerCase().compareTo(second.name.toLowerCase()),
     );
   }
 
+  // Handle save action
   Future<void> _finishSavedRecipe(
     BuildContext context,
     AddRecipeReviewViewModel viewModel,
@@ -515,6 +553,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
+  // Handle delete action
   Future<void> _confirmDeleteRecipe(
     BuildContext context,
     AddRecipeReviewViewModel viewModel,
@@ -580,6 +619,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
+  // Handle save action (for AI draft)
   Future<void> _saveAiDraft(BuildContext context) async {
     final basicInfo = widget.aiDraftBasicInfo;
     if (basicInfo == null) return;
@@ -637,6 +677,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
+  // Instruction Widgets
   List<Widget> _instructionsWidgets(AddRecipeReview review) {
     if (!review.instructionUseSection) {
       return review.instructions
@@ -689,8 +730,63 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     final visibleValues = values.where((value) => value.trim().isNotEmpty);
     return visibleValues.isEmpty ? "-" : visibleValues.join(", ");
   }
+
+  List<Widget> _nutrientRows(List<AddRecipeReviewMicronutrient> nutrients) {
+    return nutrients
+        .map(
+          (nutrient) => ReviewInfoRow(
+            label: nutrient.label,
+            value: '${nutrient.amount} (${nutrient.dailyValue})',
+          ),
+        )
+        .toList(growable: false);
+  }
 }
 
+class _NutritionSubheader extends StatelessWidget {
+  final String title;
+
+  const _NutritionSubheader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.sm,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFF4B8),
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Text(
+        title,
+        style: context.text.labelLarge?.copyWith(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+// Loading Page
+class _AddRecipePageLoading extends StatelessWidget {
+  const _AddRecipePageLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: LoadingDialog(message: "Loading...", inline: true),
+    );
+  }
+}
+
+// Error Page
 class _RecipeErrorState extends StatelessWidget {
   final String? message;
 

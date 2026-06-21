@@ -14,9 +14,13 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../viewmodel/forgot_password_viewmodel.dart';
 
+/// Screen for requesting a password reset.
+/// Allows users to enter their email to receive a reset link.
 class ForgotPasswordScreen extends StatelessWidget {
+  /// Arguments passed to the screen.
   final ForgotPasswordArgs args;
 
+  /// Creates a new forgot password screen instance.
   const ForgotPasswordScreen({
     super.key,
     this.args = const ForgotPasswordArgs(),
@@ -24,6 +28,7 @@ class ForgotPasswordScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model to the widget tree.
     return ChangeNotifierProvider(
       create: (_) => sl<ForgotPasswordViewModel>(),
       child: _ForgotPasswordView(args: args),
@@ -31,21 +36,28 @@ class ForgotPasswordScreen extends StatelessWidget {
   }
 }
 
+/// Internal view for the forgot password screen.
 class _ForgotPasswordView extends StatefulWidget {
+  /// Arguments passed to the screen.
   final ForgotPasswordArgs args;
 
+  /// Creates a new forgot password view instance.
   const _ForgotPasswordView({required this.args});
 
   @override
   State<_ForgotPasswordView> createState() => _ForgotPasswordViewState();
 }
 
+/// State for the forgot password view.
 class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
+  /// Controller for the email input field.
   late final TextEditingController _emailController;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize with the email from args if provided.
     _emailController = TextEditingController(text: widget.args.initialEmail);
   }
 
@@ -57,6 +69,7 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ForgotPasswordViewModel>();
 
     return Scaffold(
@@ -80,6 +93,7 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    // Title.
                     Text(
                       'Enter your email',
                       textAlign: TextAlign.center,
@@ -88,14 +102,20 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xl),
+
+                    // Email icon.
                     const _EmailIcon(showSuccessTick: false),
                     const SizedBox(height: AppSpacing.xl),
+
+                    // Description.
                     Text(
                       'Enter the email linked to your Foodopia account and a secure password reset link will be sent to your email.',
                       textAlign: TextAlign.center,
                       style: context.text.bodyMedium,
                     ),
                     const SizedBox(height: AppSpacing.xl * 1.5),
+
+                    // Email input field.
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 420),
                       child: TextField(
@@ -114,6 +134,8 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
                         onSubmitted: (_) => _handleSubmit(context, viewModel),
                       ),
                     ),
+
+                    // Error message.
                     if (viewModel.errorMessage != null) ...[
                       const SizedBox(height: AppSpacing.lg),
                       ConstrainedBox(
@@ -126,6 +148,8 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
                       ),
                     ],
                     const SizedBox(height: AppSpacing.xl * 1.5),
+
+                    // Submit button.
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 420),
                       child: PrimaryButton(
@@ -146,23 +170,30 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
     );
   }
 
+  /// Handles the submit action.
   Future<void> _handleSubmit(
-    BuildContext context,
-    ForgotPasswordViewModel viewModel,
-  ) async {
+      BuildContext context,
+      ForgotPasswordViewModel viewModel,
+      ) async {
+    // Show loading dialog.
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const LoadingDialog(),
     );
 
+    // Get the email.
     final email = _emailController.text.trim();
+
+    // Request password reset.
     final sent = await viewModel.requestReset(email);
 
+    // Dismiss loading dialog.
     if (context.mounted) {
       context.pop();
     }
 
+    // Navigate to success screen if sent.
     if (sent && context.mounted) {
       context.go(
         AppRouter.forgotPasswordSent,
@@ -172,13 +203,17 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
   }
 }
 
+/// Screen shown after the reset email is sent.
 class ForgotPasswordSentScreen extends StatelessWidget {
+  /// Arguments passed to the screen.
   final ForgotPasswordSentArgs args;
 
+  /// Creates a new forgot password sent screen instance.
   const ForgotPasswordSentScreen({super.key, required this.args});
 
   @override
   Widget build(BuildContext context) {
+    // Provide the view model to the widget tree.
     return ChangeNotifierProvider(
       create: (_) => sl<ForgotPasswordViewModel>(),
       child: _ForgotPasswordSentView(args: args),
@@ -186,9 +221,12 @@ class ForgotPasswordSentScreen extends StatelessWidget {
   }
 }
 
+/// Internal view for the forgot password sent screen.
 class _ForgotPasswordSentView extends StatefulWidget {
+  /// Arguments passed to the screen.
   final ForgotPasswordSentArgs args;
 
+  /// Creates a new forgot password sent view instance.
   const _ForgotPasswordSentView({required this.args});
 
   @override
@@ -196,10 +234,15 @@ class _ForgotPasswordSentView extends StatefulWidget {
       _ForgotPasswordSentViewState();
 }
 
+/// State for the forgot password sent view.
 class _ForgotPasswordSentViewState extends State<_ForgotPasswordSentView> {
+  /// Resend cooldown in seconds.
   static const _resendSeconds = 60;
 
+  /// Timer for the resend cooldown.
   Timer? _timer;
+
+  /// Seconds remaining in the cooldown.
   int _secondsRemaining = _resendSeconds;
 
   @override
@@ -216,7 +259,10 @@ class _ForgotPasswordSentViewState extends State<_ForgotPasswordSentView> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model for state changes.
     final viewModel = context.watch<ForgotPasswordViewModel>();
+
+    // Check if resend is available.
     final canResend = _secondsRemaining == 0 && !viewModel.isLoading;
 
     return Scaffold(
@@ -239,6 +285,7 @@ class _ForgotPasswordSentViewState extends State<_ForgotPasswordSentView> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    // Title.
                     Text(
                       'Email sent succesfully',
                       textAlign: TextAlign.center,
@@ -247,13 +294,19 @@ class _ForgotPasswordSentViewState extends State<_ForgotPasswordSentView> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xl),
+
+                    // Email icon with success tick.
                     const _EmailIcon(showSuccessTick: true),
                     const SizedBox(height: AppSpacing.xl),
+
+                    // Instructions.
                     Text(
                       'Please check your inbox and spam mail for reset link. If you did not receive any email, you may click on the button below to resend.',
                       textAlign: TextAlign.center,
                       style: context.text.bodyMedium,
                     ),
+
+                    // Error message.
                     if (viewModel.errorMessage != null) ...[
                       const SizedBox(height: AppSpacing.lg),
                       ConstrainedBox(
@@ -266,6 +319,8 @@ class _ForgotPasswordSentViewState extends State<_ForgotPasswordSentView> {
                       ),
                     ],
                     const SizedBox(height: AppSpacing.xl * 1.5),
+
+                    // Resend button.
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 420),
                       child: PrimaryButton(
@@ -288,9 +343,15 @@ class _ForgotPasswordSentViewState extends State<_ForgotPasswordSentView> {
     );
   }
 
+  /// Starts the resend cooldown timer.
   void _startCountdown() {
+    // Cancel existing timer.
     _timer?.cancel();
+
+    // Reset seconds remaining.
     setState(() => _secondsRemaining = _resendSeconds);
+
+    // Start new timer.
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_secondsRemaining <= 1) {
         timer.cancel();
@@ -304,31 +365,39 @@ class _ForgotPasswordSentViewState extends State<_ForgotPasswordSentView> {
     });
   }
 
+  /// Handles the resend action.
   Future<void> _handleResend(
-    BuildContext context,
-    ForgotPasswordViewModel viewModel,
-  ) async {
+      BuildContext context,
+      ForgotPasswordViewModel viewModel,
+      ) async {
+    // Show loading dialog.
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const LoadingDialog(),
     );
 
+    // Request password reset again.
     final sent = await viewModel.requestReset(widget.args.email);
 
+    // Dismiss loading dialog.
     if (context.mounted) {
       context.pop();
     }
 
+    // Restart countdown if sent.
     if (sent && mounted) {
       _startCountdown();
     }
   }
 }
 
+/// Email icon widget with optional success tick.
 class _EmailIcon extends StatelessWidget {
+  /// Whether to show the success tick.
   final bool showSuccessTick;
 
+  /// Creates a new email icon instance.
   const _EmailIcon({required this.showSuccessTick});
 
   @override
@@ -339,6 +408,7 @@ class _EmailIcon extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          // Email icon circle.
           Center(
             child: Container(
               width: 96,
@@ -354,6 +424,7 @@ class _EmailIcon extends StatelessWidget {
               ),
             ),
           ),
+          // Success tick overlay.
           if (showSuccessTick)
             Positioned(
               right: 4,
@@ -375,11 +446,18 @@ class _EmailIcon extends StatelessWidget {
   }
 }
 
+/// Message box widget for displaying errors and info.
 class _MessageBox extends StatelessWidget {
+  /// Message text.
   final String message;
+
+  /// Color of the message box.
   final Color color;
+
+  /// Icon to display.
   final IconData icon;
 
+  /// Creates a new message box instance.
   const _MessageBox({
     required this.message,
     required this.color,

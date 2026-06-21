@@ -1,3 +1,5 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
@@ -5,6 +7,7 @@ import '../../domain/entities/admin_statistics.dart';
 import '../../domain/entities/recipe_performance_statistics.dart';
 import '../../domain/usecases/get_admin_post_analytic_statistics_usecase.dart';
 
+// Handles AdminPostAnalyticViewModel for this part of the statistics page.
 class AdminPostAnalyticViewModel extends ChangeNotifier {
   final GetAdminPostAnalyticStatisticsUseCase _getStatisticsUseCase;
 
@@ -24,15 +27,18 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
     Future.microtask(loadStatistics);
   }
 
+  // Handles statistics for this part of the statistics page.
   AdminPostAnalyticStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   DateTime? get startDate => _startDate;
+  // Handles endDate for this part of the statistics page.
   DateTime? get endDate => _endDate;
   int get selectedSectionIndex => _selectedSectionIndex;
   String? get selectedRecipeId => _selectedRecipeId;
   AdminStatisticsSortOrder get sortOrder => _sortOrder;
 
+  // Handles selectedRecipe for this part of the statistics page.
   RecipePerformanceItem? get selectedRecipe {
     final statistics = _statistics?.recipePerformance;
     final selectedId = _selectedRecipeId;
@@ -43,6 +49,7 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
     return null;
   }
 
+  // Handles selectedSection for this part of the statistics page.
   AdminAnalyticSection? get selectedSection {
     final sections = _statistics?.sections;
     if (sections == null || sections.isEmpty) return null;
@@ -51,6 +58,7 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
     );
   }
 
+  // Handles loadStatistics for this part of the statistics page.
   Future<void> loadStatistics() async {
     _isLoading = _statistics == null;
     _errorMessage = null;
@@ -80,6 +88,7 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  // Handles selectSection for this part of the statistics page.
   void selectSection(int index) {
     if (_selectedSectionIndex == index) return;
     _selectedSectionIndex = index;
@@ -87,18 +96,21 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  // Handles setSortOrder for this part of the statistics page.
   void setSortOrder(AdminStatisticsSortOrder order) {
     if (_sortOrder == order) return;
     _sortOrder = order;
     _notifyIfActive();
   }
 
+  // Handles selectRecipe for this part of the statistics page.
   void selectRecipe(String recipeId) {
     if (_selectedRecipeId == recipeId) return;
     _selectedRecipeId = recipeId;
     _notifyIfActive();
   }
 
+  // Handles selectDateRange for this part of the statistics page.
   Future<void> selectDateRange({
     required DateTime startDate,
     required DateTime endDate,
@@ -108,10 +120,12 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
     await loadStatistics();
   }
 
+  // Handles _notifyIfActive for this part of the statistics page.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
+  // Handles dispose for this part of the statistics page.
   @override
   void dispose() {
     _isDisposed = true;

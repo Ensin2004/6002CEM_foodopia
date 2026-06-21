@@ -5,7 +5,10 @@ import '../../domain/entities/onboarding_item.dart';
 
 /// Defines behavior for onboarding page.
 class OnboardingPage extends StatelessWidget {
+  /// The onboarding item to display.
   final OnboardingItem item;
+
+  /// The page offset for parallax animation.
   final double pageOffset;
 
   /// Creates a onboarding page instance.
@@ -26,10 +29,12 @@ class OnboardingPage extends StatelessWidget {
           /// Creates a spacer instance.
           const Spacer(flex: 2),
 
+          // Background vector and main image with parallax effect.
           /// Creates a stack instance.
           Stack(
             alignment: Alignment.center,
             children: [
+              // Background vector image with slight parallax.
               Transform.translate(
                 offset: Offset(pageOffset * 10, 0),
                 child: Opacity(
@@ -41,6 +46,7 @@ class OnboardingPage extends StatelessWidget {
                   ),
                 ),
               ),
+              // Main image with stronger parallax and scale effect.
               Transform.translate(
                 offset: Offset(pageOffset * 30, 0),
                 child: Transform.scale(
@@ -59,6 +65,7 @@ class OnboardingPage extends StatelessWidget {
           const Spacer(),
 
           // --- ANIMATED CONTENT GROUP ---
+          // Fade in/out content based on page offset.
           AnimatedOpacity(
             duration: const Duration(milliseconds: 300),
             opacity: (1 - pageOffset.abs()).clamp(0.0, 1.0),

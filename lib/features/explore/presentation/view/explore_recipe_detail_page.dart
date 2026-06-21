@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -15,10 +16,19 @@ import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/entities/meal_calorie_guidance.dart';
+import '../../../meal_plan/domain/services/meal_calorie_guidance_service.dart';
+import '../../../meal_plan/domain/usecases/get_meal_categories_usecase.dart';
 import '../../../meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
 import '../viewmodel/explore_recipe_detail_viewmodel.dart';
 
+part 'explore_recipe_detail_recipe_tab.dart';
+part 'explore_recipe_detail_nutrition_tab.dart';
+part 'explore_recipe_detail_community_tab.dart';
+
+/// Displays detailed recipe information with three tab views: recipe, nutrition, and community.
+/// Supports library actions, meal plan selection, and favourite toggling.
 class ExploreRecipeDetailPage extends StatelessWidget {
   final String recipeId;
   final bool showLibraryActions;
@@ -35,6 +45,7 @@ class ExploreRecipeDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Provides the view model to the widget tree for state management.
     return ChangeNotifierProvider(
       create: (_) => ExploreRecipeDetailViewModel(
         recipeId: recipeId,
@@ -51,6 +62,7 @@ class ExploreRecipeDetailPage extends StatelessWidget {
         updateRecipeVisibilityUseCase: sl(),
         toggleFavouriteUseCase: sl(),
         saveRecipeMealPlanUseCase: sl<SaveRecipeMealPlanUseCase>(),
+        getMealCategoriesUseCase: sl<GetMealCategoriesUseCase>(),
       ),
       child: _ExploreRecipeDetailView(
         showLibraryActions: showLibraryActions,
@@ -77,6 +89,7 @@ class _ExploreRecipeDetailView extends StatefulWidget {
       _ExploreRecipeDetailViewState();
 }
 
+/// Manages the recipe detail view state, tab navigation, and user interactions.
 class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
@@ -84,6 +97,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   @override
   void initState() {
     super.initState();
+    // Initializes the tab controller with the number of available tabs.
     _tabController = TabController(
       length: ExploreRecipeDetailTab.values.length,
       vsync: this,
@@ -91,30 +105,27 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     _tabController.addListener(_handleTabChanged);
   }
 
+  // Synchronizes tab changes with the view model state.
   void _handleTabChanged() {
     if (_tabController.indexIsChanging) return;
+    _selectDetailTab(_tabController.index);
+  }
+
+  // Updates the selected tab in the view model.
+  void _selectDetailTab(int index) {
     context.read<ExploreRecipeDetailViewModel>().selectTab(
-      ExploreRecipeDetailTab.values[_tabController.index],
+      ExploreRecipeDetailTab.values[index],
     );
   }
 
+  // Displays a snackbar indicating the feature is not yet available.
   void _showComingSoonMessage() {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
-  void _openAddMealPlan() {
-    context.push(
-      AppRouter.addMealPlan,
-      extra: AddMealPlanArgs(
-        mealType: 'Breakfast',
-        mealCategoryId: 'breakfast',
-        selectedDate: DateTime.now(),
-      ),
-    );
-  }
-
+  // Navigates to the recipe review screen for editing.
   void _openRecipeReview(ExploreRecipeDetailViewModel viewModel) {
     final recipeId = viewModel.recipe?.id;
     if (recipeId == null || recipeId.isEmpty) return;
@@ -125,6 +136,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     );
   }
 
+  // Toggles the favourite status and shows a feedback message.
   Future<void> _toggleFavourite(ExploreRecipeDetailViewModel viewModel) async {
     final success = await viewModel.toggleFavourite();
     if (!mounted) return;
@@ -141,11 +153,96 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Opens a bottom sheet for selecting dates and meal categories to add the recipe to a meal plan.
+  /// Handles loading states, user authentication, and error feedback.
+  Future<void> _openMealPlanCalendar(
+    ExploreRecipeDetailViewModel viewModel,
+  ) async {
+    var isShowingLoadingDialog = false;
+    try {
+      // Guards against null recipe or in-progress operations.
+      if (viewModel.recipe == null || viewModel.isSavingMealPlan) return;
+
+      // Verifies user authentication before proceeding.
+      final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (userId.isEmpty) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(content: Text('Sign in to add this meal plan.')),
+          );
+        return;
+      }
+
+      // Loads meal categories if not already available.
+      if (viewModel.mealCategories.isEmpty) {
+        await viewModel.loadMealCategories();
+        if (!mounted) return;
+      }
+
+      // Displays the calendar selection bottom sheet.
+      final request =
+          await showModalBottomSheet<_RecipeCalendarMealPlanRequest>(
+            context: context,
+            isScrollControlled: true,
+            builder: (_) => _RecipeCalendarMealPlanSheet(
+              categories: viewModel.mealCategories.isEmpty
+                  ? RecipeDetailMealPlanDefaults.categories
+                  : viewModel.mealCategories,
+              initialServings: viewModel.recipe?.servings ?? 1,
+            ),
+          );
+      if (request == null || !mounted) return;
+
+      // Shows a loading dialog while saving the meal plan.
+      isShowingLoadingDialog = true;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const LoadingDialog(message: 'Adding meal plan...'),
+      );
+      final result = await viewModel.saveToMealPlanDates(
+        userId: userId,
+        dates: request.dates,
+        mealCategories: request.mealCategories,
+        source: 'recipe_detail_calendar',
+        servingCount: request.servingCount,
+      );
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      isShowingLoadingDialog = false;
+
+      // Displays success or error feedback.
+      final message = result.isSuccess
+          ? result.savedCount == 1
+                ? 'Meal plan added.'
+                : '${result.savedCount} meal plans added.'
+          : result.errorMessage ?? 'Unable to add meal plan.';
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    } catch (error) {
+      // Handles unexpected errors and cleans up loading state.
+      if (!mounted) return;
+      if (isShowingLoadingDialog) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('Unable to open calendar: $error')),
+        );
+    }
+  }
+
+  /// Handles selecting a recipe for a specific meal plan slot from a selection context.
+  /// Checks for duplicates, asks for serving count, and navigates to the meal plan screen on success.
   Future<void> _selectForMealPlan(
     ExploreRecipeDetailViewModel viewModel,
   ) async {
     final selection = widget.mealPlanSelection;
     if (selection == null) return;
+    // Prevents duplicate additions to the meal plan.
     final recipeId = viewModel.recipe?.id;
     if (recipeId != null && selection.existingRecipeIds.contains(recipeId)) {
       ScaffoldMessenger.of(context)
@@ -155,7 +252,22 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         );
       return;
     }
+    // Prompts the user for the desired serving count.
+    final guidance = MealCalorieGuidanceService().evaluate(
+      budget: selection.calorieBudget,
+      mealCalories: viewModel.recipe?.nutrition.calories ?? 0,
+    );
+    if (guidance.status == MealCalorieGuidanceStatus.exceeds) {
+      final shouldAdd = await _showOverTargetDialog(guidance);
+      if (shouldAdd != true || !mounted) return;
+    }
 
+    final servingCount = await _showMealPlanServingDialog(
+      initialServings: viewModel.recipe?.servings ?? 1,
+    );
+    if (servingCount == null || !mounted) return;
+
+    // Saves the recipe to the meal plan.
     final success = await viewModel.saveToMealPlan(
       userId: selection.userId,
       date: selection.selectedDate,
@@ -164,9 +276,11 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         name: selection.mealCategoryName,
       ),
       source: selection.source,
+      servingCount: servingCount,
     );
     if (!mounted) return;
 
+    // Shows feedback message based on the operation result.
     final message = success
         ? 'Meal plan added.'
         : viewModel.communityActionErrorMessage ?? 'Unable to add meal plan.';
@@ -175,9 +289,41 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       ..showSnackBar(SnackBar(content: Text(message)));
     if (!success) return;
 
-    context.go(
-      AppRouter.mealPlan,
-      extra: MealPlanArgs(initialTabIndex: 0, userId: selection.userId),
+    // Return success to the existing planning page so it can refresh cheaply.
+    context.pop(true);
+  }
+
+  // Shows a dialog to select the number of servings for a meal plan.
+  Future<int?> _showMealPlanServingDialog({required int initialServings}) {
+    return showDialog<int>(
+      context: context,
+      builder: (_) => _MealPlanServingDialog(
+        initialServings: initialServings <= 0 ? 1 : initialServings,
+      ),
+    );
+  }
+
+  /// Shows an over-target confirmation dialog.
+  Future<bool?> _showOverTargetDialog(MealCalorieGuidance guidance) {
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Calorie target exceeded'),
+        content: Text(
+          'This meal exceeds your daily target by '
+          '${guidance.exceededByCalories ?? 0} ${guidance.calorieUnit}.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Choose another'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Add anyway'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -191,6 +337,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<ExploreRecipeDetailViewModel>();
+    // Checks if the recipe is already added to the meal plan in selection mode.
     final alreadyAdded =
         widget.mealPlanSelection?.existingRecipeIds.contains(
           viewModel.recipe?.id ?? '',
@@ -205,28 +352,37 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
           onPressed: () => context.pop(),
           icon: const Icon(Icons.chevron_left),
         ),
-        actions: widget.showLibraryActions
-            ? [
-                IconButton(
-                  tooltip: 'Edit recipe',
-                  onPressed: viewModel.recipe == null
-                      ? null
-                      : () => _openRecipeReview(viewModel),
-                  icon: const Icon(Icons.edit_outlined),
-                ),
-              ]
-            : null,
+        actions: [
+          IconButton(
+            tooltip: 'Add to meal plan',
+            onPressed: viewModel.recipe == null || viewModel.isSavingMealPlan
+                ? null
+                : () => _openMealPlanCalendar(viewModel),
+            icon: const Icon(Icons.calendar_month_outlined),
+          ),
+          if (widget.showLibraryActions)
+            IconButton(
+              tooltip: 'Edit recipe',
+              onPressed: viewModel.recipe == null
+                  ? null
+                  : () => _openRecipeReview(viewModel),
+              icon: const Icon(Icons.edit_outlined),
+            ),
+        ],
       ),
       body: _DetailBody(
         viewModel: viewModel,
         tabController: _tabController,
+        onTabSelected: _selectDetailTab,
         onComingSoonTap: _showComingSoonMessage,
-        onStartCooking: _openAddMealPlan,
+        onPlanMeal: () => _openMealPlanCalendar(viewModel),
         showLibraryActions: widget.showLibraryActions,
         isPublished: widget.isPublished,
         onFavouriteTap: () => _toggleFavourite(viewModel),
         isMealPlanSelection: widget.mealPlanSelection != null,
+        mealPlanSelection: widget.mealPlanSelection,
       ),
+      // Shows a bottom action button when in meal plan selection mode.
       bottomNavigationBar: widget.mealPlanSelection == null
           ? null
           : SafeArea(
@@ -251,35 +407,437 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   }
 }
 
+/// Encapsulates the data required to add a recipe to a meal plan calendar.
+class _RecipeCalendarMealPlanRequest {
+  final List<DateTime> dates;
+  final List<AddMealCategoryOption> mealCategories;
+  final int servingCount;
+
+  const _RecipeCalendarMealPlanRequest({
+    required this.dates,
+    required this.mealCategories,
+    required this.servingCount,
+  });
+}
+
+/// Bottom sheet widget that allows users to select dates, meal categories, and servings.
+class _RecipeCalendarMealPlanSheet extends StatefulWidget {
+  final List<AddMealCategoryOption> categories;
+  final int initialServings;
+
+  const _RecipeCalendarMealPlanSheet({
+    required this.categories,
+    required this.initialServings,
+  });
+
+  @override
+  State<_RecipeCalendarMealPlanSheet> createState() =>
+      _RecipeCalendarMealPlanSheetState();
+}
+
+class _RecipeCalendarMealPlanSheetState
+    extends State<_RecipeCalendarMealPlanSheet> {
+  late DateTime _focusedDate;
+  late int _servings;
+  final Set<String> _selectedCategoryIds = {};
+  final Set<DateTime> _selectedDates = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Sets today as the default focused date and selected date.
+    final today = _dateOnly(DateTime.now());
+    _focusedDate = today;
+    _selectedDates.add(today);
+    // Selects a preferred initial category (breakfast if available).
+    _selectedCategoryIds.add(_preferredInitialCategory(_categories).id);
+    _servings = widget.initialServings.clamp(1, 99);
+  }
+
+  // Returns the list of categories, falling back to defaults if empty.
+  List<AddMealCategoryOption> get _categories {
+    return widget.categories.isEmpty
+        ? RecipeDetailMealPlanDefaults.categories
+        : widget.categories;
+  }
+
+  // Toggles a date in the selected dates set.
+  void _toggleDate(DateTime date) {
+    final normalized = _dateOnly(date);
+    setState(() {
+      if (_selectedDates.contains(normalized)) {
+        _selectedDates.remove(normalized);
+      } else {
+        _selectedDates.add(normalized);
+      }
+    });
+  }
+
+  // Toggles a meal category in the selected categories set.
+  void _toggleCategory(AddMealCategoryOption category) {
+    setState(() {
+      if (_selectedCategoryIds.contains(category.id)) {
+        _selectedCategoryIds.remove(category.id);
+      } else {
+        _selectedCategoryIds.add(category.id);
+      }
+    });
+  }
+
+  // Submits the selection and returns the request to the parent widget.
+  void _submit() {
+    if (_selectedDates.isEmpty || _selectedCategoryIds.isEmpty) return;
+    final dates = _selectedDates.toList()..sort();
+    final categories = _categories
+        .where((category) => _selectedCategoryIds.contains(category.id))
+        .toList();
+    Navigator.of(context).pop(
+      _RecipeCalendarMealPlanRequest(
+        dates: dates,
+        mealCategories: categories,
+        servingCount: _servings,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = context.text;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final today = _dateOnly(DateTime.now());
+    final firstDate = DateTime(today.year - 1, today.month, today.day);
+    final lastDate = DateTime(today.year + 2, today.month, today.day);
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 10, 16, 16 + bottomInset),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag handle indicator at the top of the sheet.
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Header row with title and close button.
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Add to meal plan',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleMedium,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Meal type selection section with filter chips.
+              Text('Meal type', style: textTheme.labelLarge),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _categories.map((category) {
+                  final selected = _selectedCategoryIds.contains(category.id);
+                  return FilterChip(
+                    label: Text(
+                      category.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    selected: selected,
+                    showCheckmark: false,
+                    selectedColor: AppColors.secondary.withValues(alpha: 0.18),
+                    side: BorderSide(
+                      color: selected ? AppColors.secondary : AppColors.border,
+                    ),
+                    onSelected: (_) => _toggleCategory(category),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 8),
+              // Selection count summary.
+              Text(
+                _selectedCategoryIds.isEmpty
+                    ? 'Select one or more meal types.'
+                    : _selectedCategoryIds.length == 1
+                    ? '1 meal type selected'
+                    : '${_selectedCategoryIds.length} meal types selected',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              // Date selection section with calendar picker.
+              Text('Dates', style: textTheme.labelLarge),
+              const SizedBox(height: 8),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: CalendarDatePicker(
+                  initialDate: _focusedDate,
+                  firstDate: firstDate,
+                  lastDate: lastDate,
+                  currentDate: today,
+                  onDateChanged: (date) {
+                    _focusedDate = _dateOnly(date);
+                    _toggleDate(date);
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Displays selected dates as removable chips.
+              _SelectedDateChips(
+                dates: _selectedDates.toList()..sort(),
+                onRemove: _toggleDate,
+              ),
+              const SizedBox(height: 16),
+              // Serving count adjustment section.
+              Text('Servings', style: textTheme.labelLarge),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Decrease servings',
+                      onPressed: _servings <= 1
+                          ? null
+                          : () => setState(() => _servings--),
+                      icon: const Icon(Icons.remove),
+                    ),
+                    Expanded(
+                      child: Text(
+                        _servings == 1 ? '1 serving' : '$_servings servings',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Increase servings',
+                      onPressed: _servings >= 99
+                          ? null
+                          : () => setState(() => _servings++),
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Action buttons: cancel and submit.
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed:
+                          _selectedDates.isEmpty || _selectedCategoryIds.isEmpty
+                          ? null
+                          : _submit,
+                      child: const Text('Add meal'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Selects a preferred initial category, defaulting to breakfast if available.
+  static AddMealCategoryOption _preferredInitialCategory(
+    List<AddMealCategoryOption> categories,
+  ) {
+    return categories.firstWhere(
+      (category) => category.id.toLowerCase() == 'breakfast',
+      orElse: () => categories.first,
+    );
+  }
+}
+
+/// Displays selected dates as removable chips for visual feedback.
+class _SelectedDateChips extends StatelessWidget {
+  final List<DateTime> dates;
+  final ValueChanged<DateTime> onRemove;
+
+  const _SelectedDateChips({required this.dates, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    if (dates.isEmpty) {
+      return Text('Select one or more dates.', style: context.text.bodySmall);
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: dates.map((date) {
+        return InputChip(
+          label: Text(_dateLabel(date)),
+          onDeleted: () => onRemove(date),
+        );
+      }).toList(),
+    );
+  }
+}
+
+/// Dialog for selecting the number of servings when adding a recipe to a meal plan.
+class _MealPlanServingDialog extends StatefulWidget {
+  final int initialServings;
+
+  const _MealPlanServingDialog({required this.initialServings});
+
+  @override
+  State<_MealPlanServingDialog> createState() => _MealPlanServingDialogState();
+}
+
+class _MealPlanServingDialogState extends State<_MealPlanServingDialog> {
+  late int _servings;
+
+  @override
+  void initState() {
+    super.initState();
+    _servings = widget.initialServings.clamp(1, 99);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Choose servings', style: context.text.titleMedium),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Set the serving count for this planned meal.',
+            style: context.text.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Decrease servings',
+                  onPressed: _servings <= 1
+                      ? null
+                      : () => setState(() => _servings--),
+                  icon: const Icon(Icons.remove),
+                ),
+                Expanded(
+                  child: Text(
+                    _servings == 1 ? '1 serving' : '$_servings servings',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Increase servings',
+                  onPressed: _servings >= 99
+                      ? null
+                      : () => setState(() => _servings++),
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_servings),
+          child: const Text('Add meal'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Builds the main scrollable body of the recipe detail page with tabs.
 class _DetailBody extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final TabController tabController;
+  final ValueChanged<int> onTabSelected;
   final VoidCallback onComingSoonTap;
-  final VoidCallback onStartCooking;
+  final VoidCallback onPlanMeal;
   final VoidCallback onFavouriteTap;
   final bool showLibraryActions;
   final bool isPublished;
   final bool isMealPlanSelection;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const _DetailBody({
     required this.viewModel,
     required this.tabController,
+    required this.onTabSelected,
     required this.onComingSoonTap,
-    required this.onStartCooking,
+    required this.onPlanMeal,
     required this.onFavouriteTap,
     required this.showLibraryActions,
     required this.isPublished,
     required this.isMealPlanSelection,
+    required this.mealPlanSelection,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Shows a loading indicator while the recipe is being fetched.
     if (viewModel.isLoading) {
       return const LoadingDialog(message: 'Loading recipe...', inline: true);
     }
 
     final error = viewModel.errorMessage;
     final recipe = viewModel.recipe;
+    // Displays an error message if the recipe failed to load.
     if (error != null || recipe == null) {
       return Center(
         child: Padding(
@@ -293,45 +851,62 @@ class _DetailBody extends StatelessWidget {
       );
     }
 
-    return NestedScrollView(
-      headerSliverBuilder: (context, innerBoxIsScrolled) {
-        return [
-          SliverToBoxAdapter(child: _HeroImage(recipe: recipe)),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _RecipeHeader(
-                recipe: recipe,
-                isPublished: isPublished,
-                onFavouriteTap: onFavouriteTap,
-              ),
+    final selectedIndex = ExploreRecipeDetailTab.values.indexOf(
+      viewModel.selectedTab,
+    );
+
+    return CustomScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      slivers: [
+        SliverToBoxAdapter(child: _HeroImage(recipe: recipe)),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: _RecipeHeader(
+              recipe: recipe,
+              isPublished: isPublished,
+              onFavouriteTap: onFavouriteTap,
             ),
           ),
-          SliverToBoxAdapter(child: _TopTabs(tabController: tabController)),
-        ];
-      },
-      body: TabBarView(
-        controller: tabController,
-        children: ExploreRecipeDetailTab.values.map((tab) {
-          return SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            child: _SelectedTabContent(
-              tab: tab,
-              viewModel: viewModel,
-              recipe: recipe,
-              onComingSoonTap: onComingSoonTap,
-              onStartCooking: onStartCooking,
-              isPublished: isPublished,
-              showStartCooking: !isMealPlanSelection,
+        ),
+        SliverToBoxAdapter(
+          child: _TopTabs(
+            tabController: tabController,
+            onTabSelected: onTabSelected,
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          sliver: SliverToBoxAdapter(
+            child: _AutoSizingDetailTabView(
+              selectedIndex: selectedIndex,
+              onPageChanged: (index) {
+                if (tabController.index != index) {
+                  tabController.animateTo(index);
+                }
+                onTabSelected(index);
+              },
+              children: ExploreRecipeDetailTab.values.map((tab) {
+                return _SelectedTabContent(
+                  tab: tab,
+                  viewModel: viewModel,
+                  recipe: recipe,
+                  onComingSoonTap: onComingSoonTap,
+                  onPlanMeal: onPlanMeal,
+                  isPublished: isPublished,
+                  showPlanMeal: !isMealPlanSelection,
+                  mealPlanSelection: mealPlanSelection,
+                );
+              }).toList(),
             ),
-          );
-        }).toList(),
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
 
+/// Displays the recipe hero image with a page view for multiple images.
 class _HeroImage extends StatefulWidget {
   final ExploreRecipe recipe;
 
@@ -348,6 +923,7 @@ class _HeroImageState extends State<_HeroImage> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final recipeImages = widget.recipe.imagePaths;
+    // Falls back to a single image if no image list is provided.
     final images = recipeImages == null || recipeImages.isEmpty
         ? <String>[widget.recipe.imagePath]
         : recipeImages;
@@ -378,6 +954,7 @@ class _HeroImageState extends State<_HeroImage> {
             ),
           ),
         ),
+        // Image counter badge displayed on top of the hero image.
         Positioned(
           right: 10,
           top: 10,
@@ -401,6 +978,7 @@ class _HeroImageState extends State<_HeroImage> {
   }
 }
 
+/// Displays the recipe title, author, publication info, and key metrics.
 class _RecipeHeader extends StatelessWidget {
   final ExploreRecipe recipe;
   final bool isPublished;
@@ -419,6 +997,7 @@ class _RecipeHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Title row with favourite button.
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -448,6 +1027,7 @@ class _RecipeHeader extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
+        // Author and publication date.
         Text(
           'By ${recipe.author} - ${recipe.publishedAtLabel}',
           maxLines: 1,
@@ -455,6 +1035,7 @@ class _RecipeHeader extends StatelessWidget {
           style: textTheme.bodyMedium,
         ),
         const SizedBox(height: 14),
+        // Metrics grid: time, difficulty, servings, rating.
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
@@ -496,6 +1077,7 @@ class _RecipeHeader extends StatelessWidget {
   }
 }
 
+/// Individual metric tile displaying an icon, value, and label.
 class _MetricTile extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -557,10 +1139,12 @@ class _MetricTile extends StatelessWidget {
   }
 }
 
+/// Renders the tab bar for switching between recipe, nutrition, and community views.
 class _TopTabs extends StatelessWidget {
   final TabController tabController;
+  final ValueChanged<int> onTabSelected;
 
-  const _TopTabs({required this.tabController});
+  const _TopTabs({required this.tabController, required this.onTabSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -569,27 +1153,159 @@ class _TopTabs extends StatelessWidget {
       tabs: ExploreRecipeDetailTab.values.map(_detailTabLabel).toList(),
       margin: const EdgeInsets.only(top: 12),
       isScrollable: false,
+      onTap: onTabSelected,
     );
   }
 }
 
+/// Manages the height of tab content dynamically using a page view.
+class _AutoSizingDetailTabView extends StatefulWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onPageChanged;
+  final List<Widget> children;
+
+  const _AutoSizingDetailTabView({
+    required this.selectedIndex,
+    required this.onPageChanged,
+    required this.children,
+  });
+
+  @override
+  State<_AutoSizingDetailTabView> createState() =>
+      _AutoSizingDetailTabViewState();
+}
+
+class _AutoSizingDetailTabViewState extends State<_AutoSizingDetailTabView> {
+  late final PageController _pageController;
+  // Caches measured heights for each tab content.
+  final Map<int, double> _heights = {};
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.selectedIndex;
+    _pageController = PageController(initialPage: widget.selectedIndex);
+  }
+
+  @override
+  void didUpdateWidget(covariant _AutoSizingDetailTabView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedIndex == _currentIndex) return;
+
+    _currentIndex = widget.selectedIndex;
+    // Animates to the selected page when the index changes externally.
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        widget.selectedIndex,
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height =
+        _heights[_currentIndex] ??
+        (_heights.isEmpty ? 1.0 : _heights.values.first);
+
+    // Animates height changes smoothly when tab content changes.
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: SizedBox(
+        height: height,
+        child: PageView.builder(
+          controller: _pageController,
+          clipBehavior: Clip.none,
+          itemCount: widget.children.length,
+          onPageChanged: (index) {
+            setState(() => _currentIndex = index);
+            widget.onPageChanged(index);
+          },
+          itemBuilder: (context, index) {
+            return OverflowBox(
+              alignment: Alignment.topCenter,
+              minHeight: 0,
+              maxHeight: double.infinity,
+              child: _MeasureSize(
+                onChange: (size) {
+                  // Updates the cached height only when it changes.
+                  if (size.height <= 0 || _heights[index] == size.height) {
+                    return;
+                  }
+                  setState(() => _heights[index] = size.height);
+                },
+                child: widget.children[index],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Measures the size of its child widget and reports changes.
+class _MeasureSize extends StatefulWidget {
+  final Widget child;
+  final ValueChanged<Size> onChange;
+
+  const _MeasureSize({required this.child, required this.onChange});
+
+  @override
+  State<_MeasureSize> createState() => _MeasureSizeState();
+}
+
+class _MeasureSizeState extends State<_MeasureSize> {
+  Size? _oldSize;
+
+  @override
+  Widget build(BuildContext context) {
+    // Reports the size after the frame is rendered.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final renderObject = context.findRenderObject();
+      if (renderObject is! RenderBox || !renderObject.hasSize) return;
+
+      final size = renderObject.size;
+      if (_oldSize == size) return;
+      _oldSize = size;
+      widget.onChange(size);
+    });
+
+    return widget.child;
+  }
+}
+
+/// Selects and builds the appropriate tab content based on the current tab.
 class _SelectedTabContent extends StatelessWidget {
   final ExploreRecipeDetailTab tab;
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
-  final VoidCallback onStartCooking;
-  final bool showStartCooking;
+  final VoidCallback onPlanMeal;
+  final bool showPlanMeal;
   final bool isPublished;
+  final MealPlanSelectionArgs? mealPlanSelection;
 
   const _SelectedTabContent({
     required this.tab,
     required this.viewModel,
     required this.recipe,
     required this.onComingSoonTap,
-    required this.onStartCooking,
+    required this.onPlanMeal,
     required this.isPublished,
-    required this.showStartCooking,
+    required this.showPlanMeal,
+    required this.mealPlanSelection,
   });
 
   @override
@@ -600,8 +1316,14 @@ class _SelectedTabContent extends StatelessWidget {
           viewModel: viewModel,
           recipe: recipe,
           onComingSoonTap: onComingSoonTap,
-          onStartCooking: onStartCooking,
-          showStartCooking: showStartCooking,
+          onPlanMeal: onPlanMeal,
+          showPlanMeal: showPlanMeal,
+          calorieGuidance: mealPlanSelection == null
+              ? null
+              : MealCalorieGuidanceService().evaluate(
+                  budget: mealPlanSelection!.calorieBudget,
+                  mealCalories: recipe.nutrition.calories,
+                ),
         );
       case ExploreRecipeDetailTab.nutrition:
         return _NutritionTab(recipe: recipe, onServingTap: onComingSoonTap);
@@ -616,2602 +1338,7 @@ class _SelectedTabContent extends StatelessWidget {
   }
 }
 
-class _RecipeTab extends StatelessWidget {
-  final ExploreRecipeDetailViewModel viewModel;
-  final ExploreRecipe recipe;
-  final VoidCallback onComingSoonTap;
-  final VoidCallback onStartCooking;
-  final bool showStartCooking;
-
-  const _RecipeTab({
-    required this.viewModel,
-    required this.recipe,
-    required this.onComingSoonTap,
-    required this.onStartCooking,
-    required this.showStartCooking,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('About This Recipe', style: textTheme.titleMedium),
-        const SizedBox(height: 6),
-        Text(recipe.description, style: textTheme.bodyMedium),
-        const SizedBox(height: 14),
-        Text('Other Names', style: textTheme.titleMedium),
-        const SizedBox(height: 6),
-        Text(
-          recipe.otherNames.isEmpty ? 'None' : recipe.otherNames.join(', '),
-          style: textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 14),
-        Text('Category', style: textTheme.titleMedium),
-        const SizedBox(height: 6),
-        Text(recipe.category, style: textTheme.bodyMedium),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Text('Allergen Info', style: textTheme.titleMedium),
-            const SizedBox(width: 4),
-            const Icon(Icons.warning_amber, size: 15, color: AppColors.error),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(recipe.allergenInfo, style: textTheme.bodyMedium),
-        const SizedBox(height: 14),
-        AppPillSegmentedControl(
-          labels: const ['Ingredients', 'Instructions'],
-          selectedIndex: ExploreRecipeMethodTab.values.indexOf(
-            viewModel.selectedMethodTab,
-          ),
-          onChanged: (index) =>
-              viewModel.selectMethodTab(ExploreRecipeMethodTab.values[index]),
-        ),
-        const SizedBox(height: 16),
-        if (viewModel.selectedMethodTab == ExploreRecipeMethodTab.ingredients)
-          _IngredientsList(
-            recipe: recipe,
-            onStartCooking: onStartCooking,
-            showStartCooking: showStartCooking,
-          )
-        else
-          _InstructionsList(recipe: recipe),
-      ],
-    );
-  }
-}
-
-class _IngredientsList extends StatelessWidget {
-  final ExploreRecipe recipe;
-  final VoidCallback onStartCooking;
-  final bool showStartCooking;
-
-  const _IngredientsList({
-    required this.recipe,
-    required this.onStartCooking,
-    required this.showStartCooking,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-    final colors = context.colors;
-    final ingredientGroups = _groupIngredientsByCategory(recipe.ingredients);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Ingredients List', style: textTheme.titleMedium),
-        Text('${recipe.ingredients.length} items', style: textTheme.bodyMedium),
-        const SizedBox(height: 10),
-        ...ingredientGroups.expand(
-          (group) => <Widget>[
-            Padding(
-              padding: const EdgeInsets.only(top: 6, bottom: 8),
-              child: Text(
-                group.name,
-                style: textTheme.labelLarge?.copyWith(
-                  color: colors.primary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            ...group.ingredients.map(
-              (ingredient) => _IngredientListItem(ingredient: ingredient),
-            ),
-          ],
-        ),
-        if (showStartCooking) ...[
-          const SizedBox(height: 6),
-          PrimaryButton(
-            onPressed: onStartCooking,
-            text:
-                'Start Cooking (Total Calorie: ${recipe.nutrition.calories} kcal)',
-            verticalPadding: 14,
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _InstructionsList extends StatelessWidget {
-  final ExploreRecipe recipe;
-
-  const _InstructionsList({required this.recipe});
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-    final colors = context.colors;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: recipe.instructionSections.map((section) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                section.title,
-                style: textTheme.titleMedium?.copyWith(
-                  color: colors.primary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ...section.steps.asMap().entries.map((entry) {
-                final stepIndex = entry.key;
-                final step = entry.value;
-                final isLast = stepIndex == section.steps.length - 1;
-                return Padding(
-                  padding: EdgeInsets.only(
-                    bottom: stepIndex == section.steps.length - 1 ? 0 : 10,
-                  ),
-                  child: IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _InstructionTimelineMarker(showLine: !isLast),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: _RecipeDetailThumbnail(
-                                    imagePath: step.imagePath,
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        step.title,
-                                        style: textTheme.labelLarge,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        step.description,
-                                        style: textTheme.bodySmall,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _InstructionTimelineMarker extends StatelessWidget {
-  final bool showLine;
-
-  const _InstructionTimelineMarker({required this.showLine});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-
-    return SizedBox(
-      width: 24,
-      child: Column(
-        children: [
-          CircleAvatar(radius: 11, backgroundColor: colors.primary),
-          if (showLine) const Expanded(child: _DottedTimelineLine()),
-        ],
-      ),
-    );
-  }
-}
-
-class _DottedTimelineLine extends StatelessWidget {
-  const _DottedTimelineLine();
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _DottedTimelineLinePainter(color: context.colors.primary),
-      child: const SizedBox(width: 1, height: double.infinity),
-    );
-  }
-}
-
-class _DottedTimelineLinePainter extends CustomPainter {
-  final Color color;
-
-  const _DottedTimelineLinePainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color.withValues(alpha: 0.55)
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
-    const dashHeight = 3.0;
-    const gap = 4.0;
-    final x = size.width / 2;
-
-    double y = 4;
-    while (y < size.height) {
-      canvas.drawLine(Offset(x, y), Offset(x, y + dashHeight), paint);
-      y += dashHeight + gap;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DottedTimelineLinePainter oldDelegate) {
-    return oldDelegate.color != color;
-  }
-}
-
-class _RecipeDetailThumbnail extends StatelessWidget {
-  final String imagePath;
-  final double width;
-  final double height;
-  final BoxFit fit;
-
-  const _RecipeDetailThumbnail({
-    required this.imagePath,
-    required this.width,
-    required this.height,
-    this.fit = BoxFit.cover,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => showRecipeMediaDialog(context, imagePath),
-      child: AppRemoteOrAssetImage(
-        imagePath: imagePath,
-        width: width,
-        height: height,
-        fit: fit,
-      ),
-    );
-  }
-}
-
-enum _NutritionSummaryMode { total, serving }
-
-enum _IngredientMacroCategory { carbohydrates, protein, fats }
-
-class _NutritionTab extends StatefulWidget {
-  final ExploreRecipe recipe;
-  final VoidCallback onServingTap;
-
-  const _NutritionTab({required this.recipe, required this.onServingTap});
-
-  @override
-  State<_NutritionTab> createState() => _NutritionTabState();
-}
-
-class _NutritionTabState extends State<_NutritionTab> {
-  _NutritionSummaryMode _summaryMode = _NutritionSummaryMode.serving;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-    final recipe = widget.recipe;
-    final displayNutrition = _nutritionForMode(recipe, _summaryMode);
-    final totalMacroGrams =
-        displayNutrition.carbsGrams +
-        displayNutrition.proteinGrams +
-        displayNutrition.fatGrams;
-    final servings = recipe.servings <= 0 ? 1 : recipe.servings;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _NutritionPanel(
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Text('Nutrition Summary', style: textTheme.titleMedium),
-                  const Spacer(),
-                  PopupMenuButton<_NutritionSummaryMode>(
-                    initialValue: _summaryMode,
-                    onSelected: (mode) => setState(() => _summaryMode = mode),
-                    itemBuilder: (context) =>
-                        _NutritionSummaryMode.values.map((mode) {
-                          return PopupMenuItem(
-                            value: mode,
-                            child: Text(_nutritionModeLabel(mode)),
-                          );
-                        }).toList(),
-                    child: Container(
-                      height: 30,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _nutritionModeLabel(_summaryMode),
-                            style: textTheme.bodySmall,
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.keyboard_arrow_down,
-                            size: 16,
-                            color: AppColors.textSecondary,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 118,
-                    height: 118,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CustomPaint(
-                          size: const Size.square(118),
-                          painter: _MacroRingPainter(
-                            carbs: displayNutrition.carbsGrams,
-                            protein: displayNutrition.proteinGrams,
-                            fat: displayNutrition.fatGrams,
-                          ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${displayNutrition.calories}',
-                              style: textTheme.headlineSmall,
-                            ),
-                            Text('kcal', style: textTheme.bodySmall),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _MacroRow(
-                          label: 'Carbohydrate',
-                          grams: displayNutrition.carbsGrams,
-                          totalGrams: totalMacroGrams,
-                          color: AppColors.primary,
-                        ),
-                        _MacroRow(
-                          label: 'Protein',
-                          grams: displayNutrition.proteinGrams,
-                          totalGrams: totalMacroGrams,
-                          color: AppColors.error,
-                        ),
-                        _MacroRow(
-                          label: 'Fat',
-                          grams: displayNutrition.fatGrams,
-                          totalGrams: totalMacroGrams,
-                          color: AppColors.secondary,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        _NutritionPanel(
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Text('Ingredients Breakdown', style: textTheme.titleMedium),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _IngredientMacroPager(
-                key: ValueKey(_summaryMode),
-                ingredients: recipe.ingredients,
-                totalNutrition: displayNutrition,
-                servings: servings,
-                summaryMode: _summaryMode,
-                onSeeAll: (category, totalGrams) =>
-                    _showIngredientBreakdownDialog(
-                      context,
-                      category,
-                      totalGrams,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showIngredientBreakdownDialog(
-    BuildContext context,
-    _IngredientMacroCategory category,
-    double totalGrams,
-  ) {
-    final ingredients = _sortedIngredientsByMacro(
-      widget.recipe.ingredients,
-      category,
-      summaryMode: _summaryMode,
-      servings: widget.recipe.servings <= 0 ? 1 : widget.recipe.servings,
-    );
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 36,
-          ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420, maxHeight: 560),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        '${_ingredientMacroLabel(category)} Breakdown',
-                        style: context.text.titleMedium,
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: 'Close',
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Flexible(
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: ingredients
-                          .map(
-                            (ingredient) => _IngredientNutritionRow(
-                              ingredient: ingredient,
-                              category: category,
-                              color: _ingredientMacroColor(category),
-                              totalGrams: totalGrams,
-                              servings: widget.recipe.servings <= 0
-                                  ? 1
-                                  : widget.recipe.servings,
-                              summaryMode: _summaryMode,
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  static String _nutritionModeLabel(_NutritionSummaryMode mode) {
-    switch (mode) {
-      case _NutritionSummaryMode.serving:
-        return 'Per serving';
-      case _NutritionSummaryMode.total:
-        return 'Total serving';
-    }
-  }
-
-  static ExploreNutrition _nutritionForMode(
-    ExploreRecipe recipe,
-    _NutritionSummaryMode mode,
-  ) {
-    if (mode == _NutritionSummaryMode.total) return recipe.nutrition;
-
-    final servings = recipe.servings <= 0 ? 1 : recipe.servings;
-    return ExploreNutrition(
-      calories: (recipe.nutrition.calories / servings).round(),
-      carbsGrams: (recipe.nutrition.carbsGrams / servings).round(),
-      proteinGrams: (recipe.nutrition.proteinGrams / servings).round(),
-      fatGrams: (recipe.nutrition.fatGrams / servings).round(),
-    );
-  }
-
-  static double _ingredientMacroValue(
-    ExploreIngredient ingredient,
-    _IngredientMacroCategory category, {
-    required _NutritionSummaryMode summaryMode,
-    required int servings,
-  }) {
-    final totalValue = switch (category) {
-      _IngredientMacroCategory.carbohydrates => ingredient.carbsGrams,
-      _IngredientMacroCategory.protein => ingredient.proteinGrams,
-      _IngredientMacroCategory.fats => ingredient.fatGrams,
-    };
-    if (summaryMode == _NutritionSummaryMode.total) return totalValue;
-    return totalValue / (servings <= 0 ? 1 : servings);
-  }
-
-  static List<ExploreIngredient> _sortedIngredientsByMacro(
-    List<ExploreIngredient> ingredients,
-    _IngredientMacroCategory category, {
-    required _NutritionSummaryMode summaryMode,
-    required int servings,
-  }) {
-    return [...ingredients]..sort((first, second) {
-      final firstValue = _ingredientMacroValue(
-        first,
-        category,
-        summaryMode: summaryMode,
-        servings: servings,
-      );
-      final secondValue = _ingredientMacroValue(
-        second,
-        category,
-        summaryMode: summaryMode,
-        servings: servings,
-      );
-      final valueCompare = secondValue.compareTo(firstValue);
-      if (valueCompare != 0) return valueCompare;
-      return first.name.toLowerCase().compareTo(second.name.toLowerCase());
-    });
-  }
-
-  static String _ingredientMacroLabel(_IngredientMacroCategory category) {
-    switch (category) {
-      case _IngredientMacroCategory.carbohydrates:
-        return 'Carbohydrates';
-      case _IngredientMacroCategory.protein:
-        return 'Protein';
-      case _IngredientMacroCategory.fats:
-        return 'Fats';
-    }
-  }
-
-  static Color _ingredientMacroColor(_IngredientMacroCategory category) {
-    switch (category) {
-      case _IngredientMacroCategory.carbohydrates:
-        return AppColors.primary;
-      case _IngredientMacroCategory.protein:
-        return AppColors.error;
-      case _IngredientMacroCategory.fats:
-        return AppColors.secondary;
-    }
-  }
-}
-
-class _IngredientMacroPager extends StatefulWidget {
-  final List<ExploreIngredient> ingredients;
-  final ExploreNutrition totalNutrition;
-  final int servings;
-  final _NutritionSummaryMode summaryMode;
-  final void Function(_IngredientMacroCategory category, double totalGrams)
-  onSeeAll;
-
-  const _IngredientMacroPager({
-    super.key,
-    required this.ingredients,
-    required this.totalNutrition,
-    required this.servings,
-    required this.summaryMode,
-    required this.onSeeAll,
-  });
-
-  @override
-  State<_IngredientMacroPager> createState() => _IngredientMacroPagerState();
-}
-
-class _IngredientMacroPagerState extends State<_IngredientMacroPager> {
-  late final PageController _pageController;
-  int _currentPage = 0;
-
-  static const _categories = [
-    _IngredientMacroCategory.carbohydrates,
-    _IngredientMacroCategory.protein,
-    _IngredientMacroCategory.fats,
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 374,
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: _categories.length,
-            onPageChanged: (index) => setState(() => _currentPage = index),
-            itemBuilder: (context, index) {
-              final category = _categories[index];
-              return _IngredientMacroPage(
-                key: ValueKey('${widget.summaryMode}-$category'),
-                category: category,
-                color: _NutritionTabState._ingredientMacroColor(category),
-                ingredients: widget.ingredients,
-                totalGrams: _totalGramsFor(category),
-                servings: widget.servings,
-                summaryMode: widget.summaryMode,
-                onSeeAll: () =>
-                    widget.onSeeAll(category, _totalGramsFor(category)),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_categories.length, (index) {
-            final isSelected = index == _currentPage;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              width: isSelected ? 18 : 7,
-              height: 7,
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              decoration: BoxDecoration(
-                color: isSelected ? context.colors.primary : AppColors.border,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            );
-          }),
-        ),
-      ],
-    );
-  }
-
-  double _totalGramsFor(_IngredientMacroCategory category) {
-    switch (category) {
-      case _IngredientMacroCategory.carbohydrates:
-        return widget.totalNutrition.carbsGrams.toDouble();
-      case _IngredientMacroCategory.protein:
-        return widget.totalNutrition.proteinGrams.toDouble();
-      case _IngredientMacroCategory.fats:
-        return widget.totalNutrition.fatGrams.toDouble();
-    }
-  }
-}
-
-class _IngredientMacroPage extends StatelessWidget {
-  final _IngredientMacroCategory category;
-  final Color color;
-  final List<ExploreIngredient> ingredients;
-  final double totalGrams;
-  final int servings;
-  final _NutritionSummaryMode summaryMode;
-  final VoidCallback onSeeAll;
-
-  const _IngredientMacroPage({
-    super.key,
-    required this.category,
-    required this.color,
-    required this.ingredients,
-    required this.totalGrams,
-    required this.servings,
-    required this.summaryMode,
-    required this.onSeeAll,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final sortedIngredients = _NutritionTabState._sortedIngredientsByMacro(
-      ingredients,
-      category,
-      summaryMode: summaryMode,
-      servings: servings,
-    );
-    final visibleIngredients = sortedIngredients.take(5).toList();
-    final totalLabel = _formatMacroGramValue(totalGrams);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              _NutritionTabState._ingredientMacroLabel(category),
-              style: context.text.labelLarge?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              '${_NutritionTabState._nutritionModeLabel(summaryMode)} - ${totalLabel}g',
-              style: context.text.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 8),
-            TextButton(
-              onPressed: onSeeAll,
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                'See all',
-                style: context.text.bodySmall?.copyWith(
-                  color: context.colors.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (visibleIngredients.isEmpty)
-          Text('No ingredients yet.', style: context.text.bodySmall)
-        else
-          ...visibleIngredients.map(
-            (ingredient) => _IngredientNutritionRow(
-              ingredient: ingredient,
-              category: category,
-              color: color,
-              totalGrams: totalGrams,
-              servings: servings,
-              summaryMode: summaryMode,
-            ),
-          ),
-      ],
-    );
-  }
-
-  static String _formatMacroGramValue(double value) {
-    if (value == value.roundToDouble()) return value.round().toString();
-    return value.toStringAsFixed(1);
-  }
-}
-
-class _IngredientListItem extends StatelessWidget {
-  final ExploreIngredient ingredient;
-
-  const _IngredientListItem({required this.ingredient});
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-    final colors = context.colors;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: colors.onSurface.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: _RecipeDetailThumbnail(
-              imagePath: ingredient.imagePath,
-              width: 50,
-              height: 50,
-              fit: BoxFit.contain,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ingredient.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelLarge,
-                ),
-                Text(ingredient.calories, style: textTheme.bodySmall),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 112,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Text(
-                ingredient.amount,
-                maxLines: 3,
-                overflow: TextOverflow.visible,
-                textAlign: TextAlign.center,
-                style: textTheme.bodySmall,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-List<_IngredientCategoryGroup> _groupIngredientsByCategory(
-  List<ExploreIngredient> ingredients,
-) {
-  final groups = <String, _IngredientCategoryGroup>{};
-
-  for (final ingredient in ingredients) {
-    final name = ingredient.ingredientCategoryName.trim().isEmpty
-        ? 'Uncategorized'
-        : ingredient.ingredientCategoryName.trim();
-    groups.putIfAbsent(name, () => _IngredientCategoryGroup(name, []));
-    groups[name]!.ingredients.add(ingredient);
-  }
-
-  for (final group in groups.values) {
-    group.ingredients.sort(
-      (first, second) =>
-          first.name.toLowerCase().compareTo(second.name.toLowerCase()),
-    );
-  }
-
-  return groups.values.toList();
-}
-
-class _IngredientCategoryGroup {
-  final String name;
-  final List<ExploreIngredient> ingredients;
-
-  const _IngredientCategoryGroup(this.name, this.ingredients);
-}
-
-class _NutritionPanel extends StatelessWidget {
-  final Widget child;
-
-  const _NutritionPanel({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _MacroRow extends StatelessWidget {
-  final String label;
-  final int grams;
-  final int totalGrams;
-  final Color color;
-
-  const _MacroRow({
-    required this.label,
-    required this.grams,
-    required this.totalGrams,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-    final value = totalGrams <= 0 ? 0.0 : (grams / totalGrams).clamp(0.0, 1.0);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: textTheme.bodySmall),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: LinearProgressIndicator(
-                  value: value,
-                  color: color,
-                  backgroundColor: AppColors.background,
-                  minHeight: 6,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 44,
-                child: Text(
-                  '${(value * 100).round()}%',
-                  style: textTheme.bodySmall,
-                  textAlign: TextAlign.right,
-                ),
-              ),
-              SizedBox(
-                width: 34,
-                child: Text(
-                  '${grams}g',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                  textAlign: TextAlign.right,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MacroRingPainter extends CustomPainter {
-  final int carbs;
-  final int protein;
-  final int fat;
-
-  const _MacroRingPainter({
-    required this.carbs,
-    required this.protein,
-    required this.fat,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final strokeWidth = 12.0;
-    final rect = Offset.zero & size;
-    final total = (carbs + protein + fat).toDouble();
-    final backgroundPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..color = AppColors.background;
-
-    canvas.drawArc(
-      rect.deflate(strokeWidth / 2),
-      -1.5708,
-      6.2832,
-      false,
-      backgroundPaint,
-    );
-
-    if (total <= 0) return;
-
-    final segmentPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-    var startAngle = -1.5708;
-    const gapAngle = 0.08;
-    final segments = [
-      _MacroRingSegment(value: carbs, color: AppColors.primary),
-      _MacroRingSegment(value: protein, color: AppColors.error),
-      _MacroRingSegment(value: fat, color: AppColors.secondary),
-    ];
-
-    for (final segment in segments) {
-      final sweep = (segment.value / total) * 6.2832;
-      segmentPaint.color = segment.color;
-      canvas.drawArc(
-        rect.deflate(strokeWidth / 2),
-        startAngle,
-        (sweep - gapAngle).clamp(0.0, 6.2832).toDouble(),
-        false,
-        segmentPaint,
-      );
-      startAngle += sweep;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _MacroRingPainter oldDelegate) {
-    return oldDelegate.carbs != carbs ||
-        oldDelegate.protein != protein ||
-        oldDelegate.fat != fat;
-  }
-}
-
-class _MacroRingSegment {
-  final int value;
-  final Color color;
-
-  const _MacroRingSegment({required this.value, required this.color});
-}
-
-class _IngredientNutritionRow extends StatelessWidget {
-  final ExploreIngredient ingredient;
-  final _IngredientMacroCategory category;
-  final Color color;
-  final double totalGrams;
-  final int servings;
-  final _NutritionSummaryMode summaryMode;
-
-  const _IngredientNutritionRow({
-    required this.ingredient,
-    required this.category,
-    required this.color,
-    required this.totalGrams,
-    required this.servings,
-    required this.summaryMode,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-    final value = _NutritionTabState._ingredientMacroValue(
-      ingredient,
-      category,
-      summaryMode: summaryMode,
-      servings: servings,
-    );
-    final valueLabel = value == value.roundToDouble()
-        ? value.round().toString()
-        : value.toStringAsFixed(1);
-    final percent = totalGrams <= 0
-        ? 0
-        : ((value / totalGrams).clamp(0.0, 1.0) * 100).round();
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: _RecipeDetailThumbnail(
-              imagePath: ingredient.imagePath,
-              width: 50,
-              height: 50,
-              fit: BoxFit.contain,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        ingredient.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.labelLarge,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '$percent%',
-                          maxLines: 1,
-                          overflow: TextOverflow.visible,
-                          style: textTheme.bodySmall,
-                        ),
-                        Text(
-                          '${valueLabel}g',
-                          maxLines: 1,
-                          overflow: TextOverflow.visible,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                LinearProgressIndicator(
-                  value: totalGrams <= 0
-                      ? 0
-                      : (value / totalGrams).clamp(0.0, 1.0),
-                  color: color,
-                  backgroundColor: AppColors.background,
-                  minHeight: 4,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CommunityTab extends StatelessWidget {
-  final ExploreRecipeDetailViewModel viewModel;
-  final ExploreRecipe recipe;
-  final VoidCallback onComingSoonTap;
-  final bool isPublished;
-
-  const _CommunityTab({
-    required this.viewModel,
-    required this.recipe,
-    required this.onComingSoonTap,
-    required this.isPublished,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-    final relatedRecipes = recipe.relatedRecipes.take(4).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.primary, width: 1.4),
-              ),
-              child: _RecipeDetailAvatar(
-                imagePath: recipe.authorAvatarPath,
-                radius: 24,
-                imageSize: 48,
-                iconSize: 28,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(recipe.author, style: textTheme.titleMedium),
-                  const SizedBox(height: 3),
-                  Text(
-                    recipe.community.authorBio,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodySmall?.copyWith(height: 1.35),
-                  ),
-                ],
-              ),
-            ),
-            if (!recipe.isCreatedByCurrentUser) ...[
-              const SizedBox(width: 10),
-              SizedBox(
-                height: 36,
-                child: recipe.isFollowingAuthor
-                    ? FilledButton.icon(
-                        onPressed: () => viewModel.toggleCreatorFollow(),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: context.colors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        icon: const Icon(Icons.check, size: 16),
-                        label: const Text('Following'),
-                      )
-                    : OutlinedButton(
-                        onPressed: () => viewModel.toggleCreatorFollow(),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: context.colors.primary,
-                          side: BorderSide(color: context.colors.primary),
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text('Follow'),
-                      ),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Text('Related Recipes', style: textTheme.titleMedium),
-            const Spacer(),
-            TextButton(
-              onPressed: () {
-                context.push(
-                  AppRouter.exploreCreatorDetail,
-                  extra: ExploreCreatorDetailArgs(
-                    creatorUid: recipe.creatorUid,
-                  ),
-                );
-              },
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text('See All'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        if (relatedRecipes.isEmpty)
-          Text(
-            'No recent recipes from this creator yet.',
-            style: textTheme.bodySmall,
-          )
-        else
-          SizedBox(
-            height: 102,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final itemWidth = (constraints.maxWidth - 30) / 4;
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: relatedRecipes.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final item = entry.value;
-                    return SizedBox(
-                      width: itemWidth,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          right: index == relatedRecipes.length - 1 ? 0 : 10,
-                        ),
-                        child: _RelatedRecipeCard(item: item),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-          ),
-        const SizedBox(height: 18),
-        AppPillSegmentedControl(
-          labels: const ['Ratings', 'Comments'],
-          selectedIndex: ExploreCommunityTab.values.indexOf(
-            viewModel.selectedCommunityTab,
-          ),
-          onChanged: (index) =>
-              viewModel.selectCommunityTab(ExploreCommunityTab.values[index]),
-        ),
-        const SizedBox(height: 24),
-        if (viewModel.selectedCommunityTab == ExploreCommunityTab.ratings)
-          _RatingsPanel(
-            viewModel: viewModel,
-            recipe: recipe,
-            isPublished: isPublished,
-            isSubmitting: viewModel.isSubmittingCommunityAction,
-            canRate: !recipe.isCreatedByCurrentUser,
-            onRatingSelected: (rating) =>
-                _submitRating(context, viewModel, rating),
-          )
-        else
-          ExploreCommentsPanel(
-            viewModel: viewModel,
-            recipe: recipe,
-            isSubmitting: viewModel.isSubmittingCommunityAction,
-            onAddComment: (content) =>
-                _submitComment(context, viewModel, content),
-            onToggleLike: (commentId) => viewModel.toggleCommentLike(commentId),
-            onReply: (commentId, content) => viewModel.addCommentReply(
-              commentId: commentId,
-              content: content,
-            ),
-            onToggleReplyLike: viewModel.toggleReplyLike,
-            onReplyToReply: (replyPath, content) => viewModel.addReplyToReply(
-              replyPath: replyPath,
-              content: content,
-            ),
-          ),
-      ],
-    );
-  }
-
-  Future<void> _submitRating(
-    BuildContext context,
-    ExploreRecipeDetailViewModel viewModel,
-    int rating,
-  ) async {
-    final success = await viewModel.submitRating(rating.toDouble());
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Rating submitted.'
-                : viewModel.communityActionErrorMessage ??
-                      'Unable to submit rating.',
-          ),
-        ),
-      );
-  }
-
-  Future<void> _submitComment(
-    BuildContext context,
-    ExploreRecipeDetailViewModel viewModel,
-    String content,
-  ) async {
-    final success = await viewModel.addComment(content);
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Comment posted.'
-                : viewModel.communityActionErrorMessage ??
-                      'Unable to post comment.',
-          ),
-        ),
-      );
-  }
-}
-
-class _RelatedRecipeCard extends StatelessWidget {
-  final ExploreRecipeSummary item;
-
-  const _RelatedRecipeCard({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: () {
-        context.push(
-          AppRouter.exploreRecipeDetail,
-          extra: ExploreRecipeDetailArgs(recipeId: item.id),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 68,
-              height: 68,
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.secondary, width: 1.6),
-              ),
-              child: ClipOval(
-                child: AppRecipeMediaPreview(
-                  mediaPath: item.imagePath,
-                  fit: BoxFit.cover,
-                  playOverlaySize: 28,
-                  playIconSize: 18,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              item.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: textTheme.bodySmall?.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w700,
-                height: 1.15,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CommunitySectionCard extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-
-  const _CommunitySectionCard({
-    required this.child,
-    this.padding = const EdgeInsets.all(14),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(padding: padding, child: child),
-    );
-  }
-}
-
-class _RatingsPanel extends StatelessWidget {
-  final ExploreRecipeDetailViewModel viewModel;
-  final ExploreRecipe recipe;
-  final bool isPublished;
-  final bool isSubmitting;
-  final bool canRate;
-  final ValueChanged<int> onRatingSelected;
-
-  const _RatingsPanel({
-    required this.viewModel,
-    required this.recipe,
-    required this.isPublished,
-    required this.isSubmitting,
-    required this.canRate,
-    required this.onRatingSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _CommunitySectionCard(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: context.colors.surface,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: SizedBox(
-                  width: 104,
-                  height: 112,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        isPublished
-                            ? recipe.rating.toStringAsFixed(1)
-                            : 'No rating',
-                        textAlign: TextAlign.center,
-                        style: textTheme.headlineSmall?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      _RatingStars(size: 22, rating: recipe.rating),
-                      const SizedBox(height: 4),
-                      Text(
-                        isPublished
-                            ? '${recipe.ratingCount} ratings'
-                            : 'Unpublished',
-                        style: textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  children: recipe.community.ratingBreakdown.map((row) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 9),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 22,
-                            child: Row(
-                              children: [
-                                Text(
-                                  '${row.stars}',
-                                  style: textTheme.bodySmall,
-                                ),
-                                const Icon(
-                                  Icons.star,
-                                  size: 12,
-                                  color: AppColors.secondary,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: LinearProgressIndicator(
-                              value: recipe.ratingCount == 0
-                                  ? 0
-                                  : row.count / recipe.ratingCount,
-                              color: context.colors.primary,
-                              backgroundColor: AppColors.background,
-                              minHeight: 6,
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            width: 24,
-                            child: Text(
-                              '${row.count}',
-                              style: textTheme.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        _RateRecipeCard(
-          isSubmitting: isSubmitting,
-          canRate: canRate,
-          hasRated: recipe.hasRatedByCurrentUser,
-          onRatingSelected: onRatingSelected,
-        ),
-        const SizedBox(height: 14),
-        _ViewRatingsCard(
-          reviews: viewModel.visibleReviews,
-          starFilter: viewModel.ratingStarFilter,
-          dateFilter: viewModel.ratingDateFilter,
-          onFiltersChanged: viewModel.updateRatingFilters,
-        ),
-      ],
-    );
-  }
-}
-
-class _RateRecipeCard extends StatefulWidget {
-  final bool isSubmitting;
-  final bool canRate;
-  final bool hasRated;
-  final ValueChanged<int> onRatingSelected;
-
-  const _RateRecipeCard({
-    required this.isSubmitting,
-    required this.canRate,
-    required this.hasRated,
-    required this.onRatingSelected,
-  });
-
-  @override
-  State<_RateRecipeCard> createState() => _RateRecipeCardState();
-}
-
-class _RateRecipeCardState extends State<_RateRecipeCard> {
-  int _selectedRating = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-
-    return _CommunitySectionCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Rate this Recipe', style: textTheme.titleMedium),
-          Text(
-            widget.canRate
-                ? widget.hasRated
-                      ? 'You already rated this recipe'
-                      : 'Tap a star to rate'
-                : 'You cannot rate your own recipe',
-            style: textTheme.bodySmall,
-          ),
-          const SizedBox(height: 10),
-          if (widget.isSubmitting)
-            const LoadingDialog(message: 'Submitting rating...', inline: true)
-          else if (!widget.canRate)
-            const SizedBox.shrink()
-          else
-            Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(5, (index) {
-                    final rating = index + 1;
-                    return InkResponse(
-                      onTap: widget.hasRated
-                          ? null
-                          : () => setState(() => _selectedRating = rating),
-                      radius: 26,
-                      child: Icon(
-                        rating <= _selectedRating
-                            ? Icons.star
-                            : Icons.star_border,
-                        color: AppColors.secondary,
-                        size: 34,
-                      ),
-                    );
-                  }),
-                ),
-                if (_selectedRating > 0 || widget.hasRated) ...[
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: widget.hasRated
-                          ? null
-                          : () => widget.onRatingSelected(_selectedRating),
-                      style: widget.hasRated
-                          ? FilledButton.styleFrom(
-                              disabledBackgroundColor: AppColors.border,
-                              disabledForegroundColor: AppColors.textSecondary,
-                            )
-                          : null,
-                      child: Text(widget.hasRated ? 'Rated' : 'Submit Rating'),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ViewRatingsCard extends StatelessWidget {
-  final List<ExploreReview> reviews;
-  final ExploreRatingStarFilter starFilter;
-  final ExploreCommunityDateFilter dateFilter;
-  final void Function({
-    required ExploreRatingStarFilter star,
-    required ExploreCommunityDateFilter date,
-  })
-  onFiltersChanged;
-
-  const _ViewRatingsCard({
-    required this.reviews,
-    required this.starFilter,
-    required this.dateFilter,
-    required this.onFiltersChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-
-    return _CommunitySectionCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text('View Ratings', style: textTheme.titleMedium),
-              const Spacer(),
-              _CompactPopupDropdown(
-                label: _ratingsDropdownLabel(starFilter, dateFilter),
-                items: [
-                  ...ExploreRatingStarFilter.values.map(
-                    (filter) => _CompactPopupItem(
-                      value: 'star:${filter.name}',
-                      label: _ratingStarLabel(filter),
-                    ),
-                  ),
-                  ...ExploreCommunityDateFilter.values.map(
-                    (filter) => _CompactPopupItem(
-                      value: 'date:${filter.name}',
-                      label: _dateFilterLabel(filter),
-                    ),
-                  ),
-                ],
-                onSelected: (value) {
-                  if (value.startsWith('star:')) {
-                    final filter = ExploreRatingStarFilter.values.firstWhere(
-                      (item) => item.name == value.substring(5),
-                    );
-                    onFiltersChanged(star: filter, date: dateFilter);
-                  } else if (value.startsWith('date:')) {
-                    final filter = ExploreCommunityDateFilter.values.firstWhere(
-                      (item) => item.name == value.substring(5),
-                    );
-                    onFiltersChanged(star: starFilter, date: filter);
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (reviews.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text('No ratings yet', style: textTheme.bodySmall),
-            )
-          else
-            ...reviews.map((review) => _ReviewTile(review: review)),
-        ],
-      ),
-    );
-  }
-
-  static String _ratingStarLabel(ExploreRatingStarFilter filter) {
-    switch (filter) {
-      case ExploreRatingStarFilter.all:
-        return 'All';
-      case ExploreRatingStarFilter.one:
-        return '1 star';
-      case ExploreRatingStarFilter.two:
-        return '2 star';
-      case ExploreRatingStarFilter.three:
-        return '3 star';
-      case ExploreRatingStarFilter.four:
-        return '4 star';
-      case ExploreRatingStarFilter.five:
-        return '5 star';
-    }
-  }
-
-  static String _dateFilterLabel(ExploreCommunityDateFilter filter) {
-    switch (filter) {
-      case ExploreCommunityDateFilter.all:
-        return 'All';
-      case ExploreCommunityDateFilter.latest:
-        return 'Latest';
-      case ExploreCommunityDateFilter.oldest:
-        return 'Oldest';
-    }
-  }
-
-  static String _ratingsDropdownLabel(
-    ExploreRatingStarFilter star,
-    ExploreCommunityDateFilter date,
-  ) {
-    if (star == ExploreRatingStarFilter.all &&
-        date == ExploreCommunityDateFilter.all) {
-      return 'All';
-    }
-    final parts = <String>[];
-    if (star != ExploreRatingStarFilter.all) parts.add(_ratingStarLabel(star));
-    if (date != ExploreCommunityDateFilter.all) {
-      parts.add(_dateFilterLabel(date));
-    }
-    return parts.join(', ');
-  }
-}
-
-class _ReviewTile extends StatelessWidget {
-  final ExploreReview review;
-
-  const _ReviewTile({required this.review});
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: [
-              _RecipeDetailAvatar(
-                imagePath: review.avatarPath,
-                radius: 18,
-                imageSize: 36,
-                iconSize: 22,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(review.author, style: textTheme.labelLarge),
-                    Text(review.timeAgo, style: textTheme.bodySmall),
-                  ],
-                ),
-              ),
-              SizedBox(
-                width: 92,
-                child: _RatingStars(size: 18, rating: review.rating),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CompactPopupItem {
-  final String value;
-  final String label;
-
-  const _CompactPopupItem({required this.value, required this.label});
-}
-
-class _CompactPopupDropdown extends StatelessWidget {
-  final String label;
-  final List<_CompactPopupItem> items;
-  final ValueChanged<String> onSelected;
-
-  const _CompactPopupDropdown({
-    required this.label,
-    required this.items,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      position: PopupMenuPosition.under,
-      constraints: const BoxConstraints(minWidth: 150, maxWidth: 240),
-      onSelected: onSelected,
-      itemBuilder: (context) {
-        return items.map((item) {
-          return PopupMenuItem(value: item.value, child: Text(item.label));
-        }).toList();
-      },
-      child: Container(
-        height: 30,
-        constraints: const BoxConstraints(maxWidth: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: context.colors.surface,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: context.text.bodySmall,
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(
-              Icons.keyboard_arrow_down,
-              size: 16,
-              color: AppColors.textSecondary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RatingStars extends StatelessWidget {
-  final double size;
-  final double rating;
-
-  const _RatingStars({required this.size, required this.rating});
-
-  @override
-  Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(5, (index) {
-          final isFilled = index < rating.round();
-          return Icon(
-            Icons.star,
-            size: size,
-            color: isFilled ? AppColors.secondary : AppColors.border,
-          );
-        }),
-      ),
-    );
-  }
-}
-
-class ExploreCommentsPanel extends StatefulWidget {
-  final ExploreRecipeDetailViewModel viewModel;
-  final ExploreRecipe recipe;
-  final bool isSubmitting;
-  final ValueChanged<String> onAddComment;
-  final ValueChanged<String> onToggleLike;
-  final Future<bool> Function(String commentId, String content) onReply;
-  final ValueChanged<String> onToggleReplyLike;
-  final Future<bool> Function(String replyPath, String content) onReplyToReply;
-
-  const ExploreCommentsPanel({
-    super.key,
-    required this.viewModel,
-    required this.recipe,
-    required this.isSubmitting,
-    required this.onAddComment,
-    required this.onToggleLike,
-    required this.onReply,
-    required this.onToggleReplyLike,
-    required this.onReplyToReply,
-  });
-
-  @override
-  State<ExploreCommentsPanel> createState() => _ExploreCommentsPanelState();
-}
-
-class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
-  final _commentController = TextEditingController();
-
-  @override
-  void dispose() {
-    _commentController.dispose();
-    super.dispose();
-  }
-
-  void _submitComment() {
-    final content = _commentController.text.trim();
-    if (content.isEmpty || widget.isSubmitting) return;
-    widget.onAddComment(content);
-    _commentController.clear();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-    final comments = widget.viewModel.visibleComments;
-
-    return _CommunitySectionCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text('${comments.length} Comments', style: textTheme.titleMedium),
-              const Spacer(),
-              _CompactPopupDropdown(
-                label: _commentDateLabel(widget.viewModel.commentDateFilter),
-                items: ExploreCommunityDateFilter.values.map((filter) {
-                  return _CompactPopupItem(
-                    value: filter.name,
-                    label: _commentDateLabel(filter),
-                  );
-                }).toList(),
-                onSelected: (value) {
-                  final filter = ExploreCommunityDateFilter.values.firstWhere(
-                    (item) => item.name == value,
-                  );
-                  widget.viewModel.updateCommentDateFilter(filter);
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (comments.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text('No comments yet', style: textTheme.bodySmall),
-            )
-          else
-            ...comments.map((comment) {
-              return _CommentTile(
-                comment: comment,
-                isSubmitting: widget.isSubmitting,
-                onToggleLike: () => widget.onToggleLike(comment.id),
-                onReply: (content) => widget.onReply(comment.id, content),
-                onToggleReplyLike: widget.onToggleReplyLike,
-                onReplyToReply: widget.onReplyToReply,
-              );
-            }),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _commentController,
-            minLines: 1,
-            maxLines: 3,
-            enabled: !widget.isSubmitting,
-            textInputAction: TextInputAction.send,
-            onSubmitted: (_) => _submitComment(),
-            decoration: InputDecoration(
-              hintText: 'Add a comment',
-              prefixIcon: Icon(
-                Icons.chat_bubble_outline,
-                color: AppColors.textSecondary.withValues(alpha: 0.45),
-              ),
-              filled: true,
-              fillColor: context.colors.surfaceContainerHighest.withValues(
-                alpha: 0.46,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 13,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: context.colors.primary,
-                  width: 1.4,
-                ),
-              ),
-              suffixIcon: IconButton(
-                onPressed: widget.isSubmitting ? null : _submitComment,
-                icon: Icon(
-                  Icons.send,
-                  color: AppColors.textSecondary.withValues(alpha: 0.45),
-                ),
-              ),
-            ),
-          ),
-          if (widget.isSubmitting)
-            const Padding(
-              padding: EdgeInsets.only(top: 10),
-              child: LoadingDialog(message: 'Posting comment...', inline: true),
-            ),
-        ],
-      ),
-    );
-  }
-
-  static String _commentDateLabel(ExploreCommunityDateFilter filter) {
-    switch (filter) {
-      case ExploreCommunityDateFilter.all:
-        return 'All';
-      case ExploreCommunityDateFilter.latest:
-        return 'Latest';
-      case ExploreCommunityDateFilter.oldest:
-        return 'Oldest';
-    }
-  }
-}
-
-class _CommentTile extends StatefulWidget {
-  final ExploreComment comment;
-  final bool isSubmitting;
-  final VoidCallback onToggleLike;
-  final Future<bool> Function(String content) onReply;
-  final ValueChanged<String> onToggleReplyLike;
-  final Future<bool> Function(String replyPath, String content) onReplyToReply;
-
-  const _CommentTile({
-    required this.comment,
-    required this.isSubmitting,
-    required this.onToggleLike,
-    required this.onReply,
-    required this.onToggleReplyLike,
-    required this.onReplyToReply,
-  });
-
-  @override
-  State<_CommentTile> createState() => _CommentTileState();
-}
-
-class _CommentTileState extends State<_CommentTile> {
-  final _replyController = TextEditingController();
-  bool _isReplying = false;
-
-  @override
-  void dispose() {
-    _replyController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submitReply() async {
-    final content = _replyController.text.trim();
-    if (content.isEmpty || widget.isSubmitting) return;
-    final success = await widget.onReply(content);
-    if (!mounted) return;
-    if (success) {
-      _replyController.clear();
-      setState(() => _isReplying = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-    final comment = widget.comment;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _RecipeDetailAvatar(
-                    imagePath: comment.avatarPath,
-                    radius: 24,
-                    imageSize: 48,
-                    iconSize: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            comment.author,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.titleMedium?.copyWith(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          comment.timeAgo,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade400,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      comment.content,
-                      style: textTheme.bodyLarge?.copyWith(
-                        color: AppColors.textPrimary.withValues(alpha: 0.82),
-                        fontWeight: FontWeight.w700,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  _LikeIconButton(
-                    isLiked: comment.isLiked,
-                    onTap: widget.isSubmitting ? null : widget.onToggleLike,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: widget.isSubmitting
-                        ? null
-                        : () => setState(() => _isReplying = !_isReplying),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text('Reply'),
-                  ),
-                  const Spacer(),
-                  _LikeCountLabel(
-                    likes: comment.likes,
-                    onTap: widget.isSubmitting ? null : widget.onToggleLike,
-                  ),
-                ],
-              ),
-              if (comment.replies.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16),
-                  child: Column(
-                    children: comment.replies.map((reply) {
-                      return _ReplyTile(
-                        reply: reply,
-                        isSubmitting: widget.isSubmitting,
-                        onToggleLike: widget.onToggleReplyLike,
-                        onReply: widget.onReplyToReply,
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-              if (_isReplying) ...[
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _replyController,
-                  minLines: 1,
-                  maxLines: 3,
-                  enabled: !widget.isSubmitting,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _submitReply(),
-                  decoration: InputDecoration(
-                    hintText: 'Write a reply',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    suffixIcon: IconButton(
-                      onPressed: widget.isSubmitting ? null : _submitReply,
-                      icon: const Icon(Icons.send),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LikeIconButton extends StatelessWidget {
-  final bool isLiked;
-  final VoidCallback? onTap;
-  final double iconSize;
-
-  const _LikeIconButton({
-    required this.isLiked,
-    required this.onTap,
-    this.iconSize = 18,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Icon(
-          isLiked ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
-          size: iconSize,
-          color: isLiked ? context.colors.primary : AppColors.textSecondary,
-        ),
-      ),
-    );
-  }
-}
-
-class _LikeCountLabel extends StatelessWidget {
-  final int likes;
-  final VoidCallback? onTap;
-
-  const _LikeCountLabel({required this.likes, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Text(
-          '$likes',
-          style: context.text.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w800,
-            height: 1,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ReplyTile extends StatefulWidget {
-  final ExploreCommentReply reply;
-  final bool isSubmitting;
-  final ValueChanged<String> onToggleLike;
-  final Future<bool> Function(String replyPath, String content) onReply;
-
-  const _ReplyTile({
-    required this.reply,
-    required this.isSubmitting,
-    required this.onToggleLike,
-    required this.onReply,
-  });
-
-  @override
-  State<_ReplyTile> createState() => _ReplyTileState();
-}
-
-class _ReplyTileState extends State<_ReplyTile> {
-  final _replyController = TextEditingController();
-  bool _isReplying = false;
-
-  @override
-  void dispose() {
-    _replyController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submitReply() async {
-    final content = _replyController.text.trim();
-    if (content.isEmpty || widget.isSubmitting) return;
-    final success = await widget.onReply(widget.reply.documentPath, content);
-    if (!mounted) return;
-    if (success) {
-      _replyController.clear();
-      setState(() => _isReplying = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = context.text;
-    final reply = widget.reply;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _RecipeDetailAvatar(
-                imagePath: reply.avatarPath,
-                radius: 16,
-                imageSize: 32,
-                iconSize: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        reply.author,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.labelLarge?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      reply.timeAgo,
-                      style: textTheme.labelSmall?.copyWith(
-                        color: Colors.grey.shade400,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  reply.content,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textPrimary.withValues(alpha: 0.82),
-                    fontWeight: FontWeight.w700,
-                    height: 1.32,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              _LikeIconButton(
-                isLiked: reply.isLiked,
-                iconSize: 17,
-                onTap: widget.isSubmitting
-                    ? null
-                    : () => widget.onToggleLike(reply.documentPath),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              TextButton(
-                onPressed: widget.isSubmitting
-                    ? null
-                    : () => setState(() => _isReplying = !_isReplying),
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text('Reply'),
-              ),
-              const Spacer(),
-              _LikeCountLabel(
-                likes: reply.likes,
-                onTap: widget.isSubmitting
-                    ? null
-                    : () => widget.onToggleLike(reply.documentPath),
-              ),
-            ],
-          ),
-          if (reply.replies.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 18, top: 4),
-              child: Column(
-                children: reply.replies.map((nestedReply) {
-                  return _ReplyTile(
-                    reply: nestedReply,
-                    isSubmitting: widget.isSubmitting,
-                    onToggleLike: widget.onToggleLike,
-                    onReply: widget.onReply,
-                  );
-                }).toList(),
-              ),
-            ),
-          if (_isReplying) ...[
-            const SizedBox(height: 6),
-            TextField(
-              controller: _replyController,
-              minLines: 1,
-              maxLines: 3,
-              enabled: !widget.isSubmitting,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _submitReply(),
-              decoration: InputDecoration(
-                hintText: 'Write a reply',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                suffixIcon: IconButton(
-                  onPressed: widget.isSubmitting ? null : _submitReply,
-                  icon: const Icon(Icons.send),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _RecipeDetailAvatar extends StatelessWidget {
-  final String imagePath;
-  final double radius;
-  final double imageSize;
-  final double iconSize;
-
-  const _RecipeDetailAvatar({
-    required this.imagePath,
-    required this.radius,
-    required this.imageSize,
-    required this.iconSize,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasImage = imagePath.trim().isNotEmpty;
-
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: Colors.white,
-      child: hasImage
-          ? ClipOval(
-              child: AppRemoteOrAssetImage(
-                imagePath: imagePath,
-                width: imageSize,
-                height: imageSize,
-              ),
-            )
-          : Icon(Icons.person, color: AppColors.primary, size: iconSize),
-    );
-  }
-}
-
+// Converts a tab enum to its display label.
 String _detailTabLabel(ExploreRecipeDetailTab tab) {
   switch (tab) {
     case ExploreRecipeDetailTab.recipe:
@@ -3222,3 +1349,26 @@ String _detailTabLabel(ExploreRecipeDetailTab tab) {
       return 'Community';
   }
 }
+
+// Normalizes a DateTime to date-only format (ignores time).
+DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
+// Formats a date as a readable string (e.g., "Jan 1, 2023").
+String _dateLabel(DateTime date) {
+  return '${_monthNames[date.month - 1]} ${date.day}, ${date.year}';
+}
+
+const _monthNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];

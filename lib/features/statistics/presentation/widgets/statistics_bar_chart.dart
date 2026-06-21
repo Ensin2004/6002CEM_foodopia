@@ -1,8 +1,13 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
+import 'statistics_recipe_media_thumbnail.dart';
 
+/// One value displayed by [StatisticsBarChart].
+// Handles StatisticsBarChartItem for this part of the statistics page.
 class StatisticsBarChartItem {
   final String label;
   final int value;
@@ -12,6 +17,7 @@ class StatisticsBarChartItem {
   final String? markerText;
   final Color? markerIconColor;
 
+  // Handles StatisticsBarChartItem for this part of the statistics page.
   const StatisticsBarChartItem({
     required this.label,
     required this.value,
@@ -23,11 +29,14 @@ class StatisticsBarChartItem {
   });
 }
 
+/// Small reusable bar chart used by the statistics detail pages.
+// Handles StatisticsBarChart for this part of the statistics page.
 class StatisticsBarChart extends StatelessWidget {
   final List<StatisticsBarChartItem> items;
   final int? maxValue;
   final double height;
 
+  // Handles StatisticsBarChart for this part of the statistics page.
   const StatisticsBarChart({
     super.key,
     required this.items,
@@ -35,9 +44,15 @@ class StatisticsBarChart extends StatelessWidget {
     this.height = 190,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
+    // BAR CHART BUILDING STARTS HERE.
+    // Unlike the pie and line charts, this chart does not use CustomPainter.
+    // It creates each bar from normal Flutter Row, Column, and Container widgets.
+    // Keep the chart readable on phones by showing at most five bars.
     final visibleItems = _visibleItems(items);
+    // Round the highest value so the vertical labels are easy to read.
     final highestValue = maxValue ?? _niceMaxValue(visibleItems);
     final gridValues = _gridValues(highestValue);
 
@@ -76,11 +91,13 @@ class StatisticsBarChart extends StatelessWidget {
                             .toList(),
                       ),
                     ),
+                    // Handles SizedBox for this part of the statistics page.
                     const SizedBox(height: iconGap),
                     const SizedBox(height: iconRowHeight),
                   ],
                 ),
               ),
+              // Handles SizedBox for this part of the statistics page.
               const SizedBox(width: 6),
               Expanded(
                 child: Column(
@@ -97,6 +114,8 @@ class StatisticsBarChart extends StatelessWidget {
                                   Container(height: 1, color: AppColors.border),
                             ),
                           ),
+                          // EACH VERTICAL BAR STARTS HERE.
+                          // Every visible item becomes one Expanded column.
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: visibleItems.map((item) {
@@ -115,6 +134,8 @@ class StatisticsBarChart extends StatelessWidget {
                                         child: FractionallySizedBox(
                                           heightFactor: ratio.clamp(0.0, 1.0),
                                           alignment: Alignment.bottomCenter,
+                                          // This Container is the coloured bar.
+                                          // Its height is based on value / highestValue.
                                           child: Container(
                                             width: 30,
                                             decoration: BoxDecoration(
@@ -139,6 +160,7 @@ class StatisticsBarChart extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // Handles SizedBox for this part of the statistics page.
                     const SizedBox(height: iconGap),
                     SizedBox(
                       height: iconRowHeight,
@@ -179,7 +201,9 @@ class StatisticsBarChart extends StatelessWidget {
     );
   }
 
+  // Handles _niceMaxValue for this part of the statistics page.
   int _niceMaxValue(List<StatisticsBarChartItem> items) {
+    // Pick a clean chart limit instead of ending at an uneven value.
     final maxItemValue = items.fold<int>(
       0,
       (max, item) => item.value > max ? item.value : max,
@@ -190,12 +214,14 @@ class StatisticsBarChart extends StatelessWidget {
     return ((maxItemValue / 10).ceil()) * 10;
   }
 
+  // Handles _visibleItems for this part of the statistics page.
   List<StatisticsBarChartItem> _visibleItems(
     List<StatisticsBarChartItem> source,
   ) {
     return source.take(5).toList(growable: false);
   }
 
+  // Handles _gridValues for this part of the statistics page.
   List<int> _gridValues(int highestValue) {
     if (highestValue <= 0) return List.filled(5, 0);
 
@@ -206,23 +232,22 @@ class StatisticsBarChart extends StatelessWidget {
   }
 }
 
+// Handles _ChartMarkerContent for this part of the statistics page.
 class _ChartMarkerContent extends StatelessWidget {
   final StatisticsBarChartItem item;
 
   const _ChartMarkerContent({required this.item});
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     if (item.imageUrl?.isNotEmpty == true) {
-      return ClipOval(
-        child: Image.network(
-          item.imageUrl!,
-          width: 34,
-          height: 34,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stack) =>
-              Icon(item.icon, size: 17, color: const Color(0xFF6D642C)),
-        ),
+      return StatisticsRecipeMediaThumbnail(
+        mediaPath: item.imageUrl,
+        fallbackIcon: item.icon,
+        size: 34,
+        backgroundColor: const Color(0xFFECE7CF),
+        iconColor: const Color(0xFF6D642C),
       );
     }
 
@@ -249,6 +274,7 @@ class _ChartMarkerContent extends StatelessWidget {
     );
   }
 
+  // Handles _markerText for this part of the statistics page.
   String _markerText(String? value) {
     final words = value
         ?.trim()

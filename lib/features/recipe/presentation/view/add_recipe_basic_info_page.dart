@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
+import 'package:foodopia/core/theme/app_colors.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/basic_info/input_option_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -149,6 +150,10 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       _customCategories = [
         recipe.categoryName.trim(),
       ].where((value) => value.isNotEmpty).toList();
+      final existingAiImage = _aiExistingImageUrlForSave(recipe);
+      if (existingAiImage != null) {
+        _existingImageUrls.add(existingAiImage);
+      }
     }
     _recipeNameController.addListener(_refreshRequiredState);
     _descriptionController.addListener(_refreshRequiredState);
@@ -178,7 +183,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         : AppSpacing.lg;
 
     if (viewModel.isLoading) {
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     final setup = viewModel.setup;
@@ -205,7 +210,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
           recipeId,
         );
       });
-      return const LoadingDialog();
+      return const _AddRecipePageLoading();
     }
 
     final existingReview = viewModel.existingReview;
@@ -456,6 +461,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     );
   }
 
+  // Handle back action
   Future<void> _handleBack(
     BuildContext context,
     AddRecipeBasicInfoViewModel viewModel,
@@ -490,13 +496,27 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     final remainingSlots = 10 - _images.length - _existingImageUrls.length;
     if (remainingSlots <= 0) return;
 
+    // Select file
     final result = await fp.FilePicker.pickFiles(
       allowMultiple: true,
       type: fp.FileType.custom,
-      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'mp4', 'mov', 'm4v', 'avi', 'webm'],
+      allowedExtensions: const [
+        'jpg',
+        'jpeg',
+        'png',
+        'webp',
+        'heic',
+        'heif',
+        'mp4',
+        'mov',
+        'm4v',
+        'avi',
+        'webm',
+      ],
     );
     if (result == null || result.files.isEmpty) return;
 
+    // Store temporarily
     setState(() {
       _images.addAll(
         result.files
@@ -613,10 +633,15 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
 
     return ([
       ...optionValues.map(
-        (option) => SelectedRecipeOption(id: option.id, name: option.name, isCustom: false,),
+        (option) => SelectedRecipeOption(
+          id: option.id,
+          name: option.name,
+          isCustom: false,
+        ),
       ),
       ...customOptions.map(
-        (option) => SelectedRecipeOption(id: option, name: option, isCustom: true),
+        (option) =>
+            SelectedRecipeOption(id: option, name: option, isCustom: true),
       ),
     ]..sort(
       (first, second) =>
@@ -672,10 +697,24 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     BuildContext context,
     AddRecipeBasicInfoViewModel viewModel,
   ) async {
+    final aiImageFile = await _aiImageFileForSave();
+    if (!context.mounted) return;
+    final aiExistingImage = aiImageFile == null
+        ? _aiExistingImageUrlForSave(widget.initialAiRecipe)
+        : null;
+
     final info = AddRecipeBasicInfo(
       recipeId: widget.recipeId,
-      mediaFiles: List<File>.unmodifiable(_images),
-      existingMediaUrls: List<String>.unmodifiable(_existingImageUrls),
+      mediaFiles: List<File>.unmodifiable([
+        ..._images,
+        if (aiImageFile != null) aiImageFile,
+      ]),
+      existingMediaUrls: List<String>.unmodifiable([
+        ..._existingImageUrls,
+        if (aiExistingImage != null &&
+            !_existingImageUrls.contains(aiExistingImage))
+          aiExistingImage,
+      ]),
       recipeName: _recipeNameController.text.trim(),
       description: _descriptionController.text.trim(),
       otherNames: _nonEmptyControllerValues(_otherNameControllers),
@@ -743,6 +782,48 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         userId: widget.userId,
       ),
     );
+  }
+
+  Future<File?> _aiImageFileForSave() async {
+    if (_images.isNotEmpty || _existingImageUrls.isNotEmpty) return null;
+
+    final recipe = widget.initialAiRecipe;
+    final encoded = recipe?.imageBase64;
+    if (encoded == null || encoded.trim().isEmpty) return null;
+
+    try {
+      final payload = encoded.contains(',')
+          ? encoded.substring(encoded.indexOf(',') + 1)
+          : encoded;
+      final bytes = base64Decode(payload);
+      final safeId = (recipe?.id ?? 'ai_recipe').replaceAll(
+        RegExp(r'[^a-zA-Z0-9_-]+'),
+        '_',
+      );
+      final file = File(
+        '${Directory.systemTemp.path}${Platform.pathSeparator}'
+        'foodopia_${safeId}_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      return file;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _aiExistingImageUrlForSave(AddMealAiRecipe? recipe) {
+    if (recipe == null || recipe.imageBase64?.trim().isNotEmpty == true) {
+      return null;
+    }
+
+    final imagePath = recipe.imagePath.trim();
+    if (imagePath.isEmpty || imagePath.startsWith('assets/')) return null;
+    if (imagePath == 'assets/images/meal1.png') return null;
+    if (!imagePath.startsWith('http://') && !imagePath.startsWith('https://')) {
+      return null;
+    }
+
+    return imagePath;
   }
 
   List<String> _nonEmptyControllerValues(List<TextEditingController> values) {
@@ -878,17 +959,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   }
 }
 
-// Saved Recipe Option Class
-class _SavedRecipeOption {
-  final List<String> optionIds;
-  final List<String> customNames;
-
-  const _SavedRecipeOption({
-    required this.optionIds,
-    required this.customNames,
-  });
-}
-
+/// Shows an AI-generated recipe image preview with a replace action.
 class _AiRecipeImagePreview extends StatelessWidget {
   final String imageBase64;
   final VoidCallback onReplace;
@@ -907,7 +978,7 @@ class _AiRecipeImagePreview extends StatelessWidget {
           AspectRatio(
             aspectRatio: 16 / 9,
             child: Image.memory(
-              base64Decode(imageBase64),
+              base64Decode(_base64Payload(imageBase64)),
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => Image.asset(
                 "assets/images/empty_page.png",
@@ -928,6 +999,22 @@ class _AiRecipeImagePreview extends StatelessWidget {
       ),
     );
   }
+
+  String _base64Payload(String value) {
+    final commaIndex = value.indexOf(',');
+    return commaIndex >= 0 ? value.substring(commaIndex + 1) : value;
+  }
+}
+
+// Saved Recipe Option Class
+class _SavedRecipeOption {
+  final List<String> optionIds;
+  final List<String> customNames;
+
+  const _SavedRecipeOption({
+    required this.optionIds,
+    required this.customNames,
+  });
 }
 
 // Selected Recipe Option Class
@@ -941,6 +1028,19 @@ class SelectedRecipeOption {
     required this.name,
     required this.isCustom,
   });
+}
+
+// Loading Page
+class _AddRecipePageLoading extends StatelessWidget {
+  const _AddRecipePageLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: LoadingDialog(message: "Loading...", inline: true),
+    );
+  }
 }
 
 // Error Page

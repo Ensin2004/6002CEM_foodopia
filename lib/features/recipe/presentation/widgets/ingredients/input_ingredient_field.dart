@@ -8,6 +8,7 @@ import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../view/add_recipe_ingredients_page.dart';
 
+/// Ingredient row with image, name, amount, unit, reorder and remove controls.
 class InputIngredientField extends StatelessWidget {
   final int index;
   final IngredientRowState row;
@@ -173,6 +174,7 @@ class InputIngredientField extends StatelessWidget {
   }
 }
 
+/// Ingredient image picker box.
 class _IngredientImageBox extends StatelessWidget {
   final File? imageFile;
   final String? imageUrl;

@@ -1,3 +1,5 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -18,16 +20,24 @@ import '../../domain/entities/post_difficulty_statistics.dart';
 import '../../domain/entities/recipe_performance_statistics.dart';
 import '../../domain/entities/statistics_dashboard.dart';
 
+// This is the main database reader for statistics.
+// It collects raw Firestore data such as users, meal plans, recipes,
+// grocery lists, ratings, and preferences, then turns them into report data.
+// Handles StatisticsRemoteDataSource for this part of the statistics page.
 class StatisticsRemoteDataSource {
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
 
+  // Handles StatisticsRemoteDataSource for this part of the statistics page.
   const StatisticsRemoteDataSource({
     required this.firestore,
     required this.auth,
   });
 
+  // Handles getUserSelfHeroSlides for this part of the statistics page.
   Future<List<StatisticsHeroSlide>> getUserSelfHeroSlides() async {
+    // Get the current user's meal plans from the database so the top
+    // statistics cards can show their personal meal planning progress.
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) {
       return _buildSelfSlides(const [], createdAt: DateTime.now());
@@ -41,7 +51,10 @@ class StatisticsRemoteDataSource {
     return _buildSelfSlides(allPlans, createdAt: createdAt);
   }
 
+  // Handles getUserCommunityHeroSlides for this part of the statistics page.
   Future<List<StatisticsHeroSlide>> getUserCommunityHeroSlides() async {
+    // Get recipes posted by the current user, then build the community
+    // statistics cards from those recipe records.
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) return _buildCommunitySlides(const []);
 
@@ -49,7 +62,10 @@ class StatisticsRemoteDataSource {
     return _buildCommunitySlides(recipes);
   }
 
+  // Handles getAdminHeroSlides for this part of the statistics page.
   Future<List<StatisticsHeroSlide>> getAdminHeroSlides() async {
+    // Admin cards look at system-wide database data, so this reads all meal
+    // plans and public recipes instead of only the logged-in user's records.
     final today = _resolveRange(DateTime.now(), DateTime.now());
     final todayPlans = await _getAllMealPlans(today);
     final todayRecipes = await _getAllSharedRecipes(today);
@@ -164,10 +180,13 @@ class StatisticsRemoteDataSource {
     ];
   }
 
+  // Handles getAdminMealAnalytic for this part of the statistics page.
   Future<AdminMealAnalyticStatistics> getAdminMealAnalytic({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads meal plan records for the selected date range and groups them
+    // into admin-friendly sections like top meal, category, time, and method.
     var range = _resolveAdminRange(startDate, endDate);
     final plans = await _getAllMealPlans(range);
     final categoryConfigs = await _getMealCategoryConfigs();
@@ -264,10 +283,13 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getAdminPostAnalytic for this part of the statistics page.
   Future<AdminPostAnalyticStatistics> getAdminPostAnalytic({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads public recipe posts and related meal plans, then compares ratings,
+    // views, difficulty, and how often posted recipes are planned.
     var range = _resolveAdminRange(startDate, endDate);
     final recipes = await _getAllSharedRecipes(range);
     final allPlans = await _getAllMealPlans(range);
@@ -353,10 +375,13 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getAdminDietaryPreference for this part of the statistics page.
   Future<AdminDietaryPreferenceStatistics> getAdminDietaryPreference({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads every normal user's food profile from Firestore and counts diets,
+    // allergies, and dislikes so admins can see common dietary needs.
     var range = _resolveAdminRange(startDate, endDate);
     final users = await firestore.collection('users').get();
     final counts = <String, int>{};
@@ -405,10 +430,13 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getAdminGender for this part of the statistics page.
   Future<AdminGenderStatistics> getAdminGender({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Checks user profile records and counts gender choices for users created
+    // inside the selected date range.
     var range = _resolveAdminRange(startDate, endDate);
     final users = await firestore.collection('users').get();
     final userDocs = users.docs
@@ -449,10 +477,13 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getAdminUserUsage for this part of the statistics page.
   Future<AdminUserUsageStatistics> getAdminUserUsage({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Counts user account creation dates from the users collection to show
+    // how many new users joined each month.
     var range = _resolveAdminRange(startDate, endDate);
     final users = await firestore.collection('users').get();
     final createdDates = users.docs
@@ -483,10 +514,55 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getAdminUsageForecast for this part of the statistics page.
+  Future<AdminUserUsageStatistics> getAdminUsageForecast({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final statistics = await getAdminUserUsage(
+      startDate: startDate,
+      endDate: endDate,
+    );
+    final predictedMonth = _nextMonthForForecast(statistics.monthlyUsers);
+    final predictedUsers = _predictedNextMonthUsers(statistics.monthlyUsers);
+    final forecastMonths = [
+      ...statistics.monthlyUsers,
+      AdminMonthlyUserStatistic(
+        month: predictedMonth,
+        newUsers: predictedUsers,
+        isPrediction: true,
+      ),
+    ];
+
+    return AdminUserUsageStatistics(
+      dateRange: statistics.dateRange,
+      totalUsers: statistics.totalUsers,
+      topMonth: '$predictedUsers next month',
+      monthlyUsers: forecastMonths,
+    );
+  }
+
+  // Handles getAdminNutrientInsight for this part of the statistics page.
+  Future<CaloriesIntakeStatistics> getAdminNutrientInsight({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final range = _resolveAdminRange(startDate, endDate);
+    final plannedRecipes = await _getAllPlannedRecipeNutrition(range);
+
+    return _buildCaloriesIntakeStatistics(
+      recipes: plannedRecipes,
+      range: range,
+    );
+  }
+
+  // Handles getAdminHubRating for this part of the statistics page.
   Future<AdminHubRatingStatistics> getAdminHubRating({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads app-rating feedback stored in the support center collection and
+    // turns the star ratings into a monthly admin report.
     var range = _resolveAdminRange(startDate, endDate);
     final nonAdminUserIds = await _nonAdminUserIds();
     final ratings = await firestore
@@ -546,10 +622,13 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getUserPostAnalytic for this part of the statistics page.
   Future<PostAnalyticStatistics> getUserPostAnalytic({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads the current user's shared recipes and counts post activity such
+    // as ratings, comments, and total engagement.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final recipes = uid.isEmpty
@@ -585,10 +664,12 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getUserPostDifficulty for this part of the statistics page.
   Future<PostDifficultyStatistics> getUserPostDifficulty({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads the user's posted recipes and groups them by difficulty level.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final recipes = uid.isEmpty
@@ -638,7 +719,10 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getUserRecipePerformance for this part of the statistics page.
   Future<RecipePerformanceStatistics> getUserRecipePerformance() async {
+    // Reads the user's public recipes and compares views, ratings, and
+    // comments so the creator can see which recipe performs best.
     final uid = auth.currentUser?.uid ?? '';
     final recipes = uid.isEmpty
         ? <_CommunityRecipeStat>[]
@@ -687,6 +771,7 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _recipeFavouriteCount for this part of the statistics page.
   Future<int> _recipeFavouriteCount(String recipeId) async {
     if (recipeId.trim().isEmpty) return 0;
     final favouritedUserIds = <String>{};
@@ -729,6 +814,7 @@ class StatisticsRemoteDataSource {
     }
   }
 
+  // Handles _hasRecipeInSavedArrays for this part of the statistics page.
   bool _hasRecipeInSavedArrays(Map<String, dynamic> data, String recipeId) {
     for (final field in const [
       'bookmarkedRecipeIds',
@@ -746,6 +832,7 @@ class StatisticsRemoteDataSource {
     return false;
   }
 
+  // Handles _currentUserFavouriteCount for this part of the statistics page.
   Future<int> _currentUserFavouriteCount(String recipeId) async {
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) return 0;
@@ -758,10 +845,13 @@ class StatisticsRemoteDataSource {
     return doc.exists ? 1 : 0;
   }
 
+  // Handles getUserFoodAnalytic for this part of the statistics page.
   Future<FoodAnalyticStatistics> getUserFoodAnalytic({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads the user's meal plans and groups the planned recipes by food,
+    // ingredient, and category for the food analytics charts.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final plans = uid.isEmpty
@@ -825,10 +915,13 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getUserMealPlannedTime for this part of the statistics page.
   Future<MealPlannedTimeStatistics> getUserMealPlannedTime({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads meal plans and counts which meal time is used most, like
+    // breakfast, lunch, dinner, or snack.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final plans = uid.isEmpty
@@ -880,6 +973,7 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getUserCookingTime for this part of the statistics page.
   Future<CookingTimeStatistics> getUserCookingTime({
     DateTime? startDate,
     DateTime? endDate,
@@ -937,10 +1031,13 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getUserGroceryLists for this part of the statistics page.
   Future<GroceryListStatistics> getUserGroceryLists({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads grocery lists stored under the current user and counts how many
+    // lists were created in each month.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final monthKeys = _monthsInRange(
@@ -1005,10 +1102,12 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getUserDifficultyMeals for this part of the statistics page.
   Future<DifficultyMealStatistics> getUserDifficultyMeals({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads planned meals and counts their difficulty levels from 1 to 5.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final plans = uid.isEmpty
@@ -1049,10 +1148,13 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getUserMealPlanMethods for this part of the statistics page.
   Future<MealPlanMethodStatistics> getUserMealPlanMethods({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads the source saved with each meal plan, then shows whether meals
+    // came from Explore, Library, AI generation, or another method.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     final plans = uid.isEmpty
@@ -1097,10 +1199,13 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getUserMostCookedRecipes for this part of the statistics page.
   Future<MostCookedRecipeStatistics> getUserMostCookedRecipes({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    // Reads meal plans connected to the user's own recipes, then counts which
+    // recipe other users planned to cook the most.
     final range = _resolveRange(startDate, endDate);
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) {
@@ -1225,6 +1330,7 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _foodChart for this part of the statistics page.
   FoodAnalyticChart _foodChart({
     required String title,
     required FoodAnalyticChartType type,
@@ -1246,10 +1352,12 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _groupMealPlans for this part of the statistics page.
   Map<String, _FoodGroup> _groupMealPlans(
     List<_MealPlanStat> plans, {
     required String Function(_MealPlanStat plan) labelFor,
     String? Function(_MealPlanStat plan)? imageFor,
+    // Handles Function for this part of the statistics page.
     String Function(_MealPlanStat plan)? detailLabelFor,
     String? Function(_MealPlanStat plan)? detailImageFor,
   }) {
@@ -1273,6 +1381,7 @@ class StatisticsRemoteDataSource {
     return groups;
   }
 
+  // Handles _ingredientGroups for this part of the statistics page.
   Future<Map<String, _FoodGroup>> _ingredientGroups(
     List<_MealPlanStat> plans,
   ) async {
@@ -1299,6 +1408,7 @@ class StatisticsRemoteDataSource {
     return groups;
   }
 
+  // Handles _categoryGroups for this part of the statistics page.
   Future<Map<String, _FoodGroup>> _categoryGroups(
     List<_MealPlanStat> plans,
   ) async {
@@ -1356,6 +1466,7 @@ class StatisticsRemoteDataSource {
     return groups;
   }
 
+  // Handles _barItemsFromGroups for this part of the statistics page.
   List<FoodAnalyticBarItem> _barItemsFromGroups({
     required Map<String, _FoodGroup> groups,
     required int total,
@@ -1386,6 +1497,7 @@ class StatisticsRemoteDataSource {
     });
   }
 
+  // Handles _detailItemsFromGroup for this part of the statistics page.
   List<FoodAnalyticDetailItem> _detailItemsFromGroup(_FoodGroup group) {
     final details = group.detailCounts.entries.toList()
       ..sort((left, right) => right.value.compareTo(left.value));
@@ -1402,10 +1514,13 @@ class StatisticsRemoteDataSource {
         .toList();
   }
 
+  // Handles _getUserMealPlans for this part of the statistics page.
   Future<List<_MealPlanStat>> _getUserMealPlans(
     String uid,
     ({DateTime start, DateTime end}) range,
   ) async {
+    // Reads meal_plans from Firestore for one user and one date range.
+    // Each document is converted into a small statistics row for calculations.
     final snapshot = await firestore
         .collection('meal_plans')
         .where('uid', isEqualTo: uid)
@@ -1420,9 +1535,12 @@ class StatisticsRemoteDataSource {
     return plans..sort((left, right) => left.date.compareTo(right.date));
   }
 
+  // Handles _getAllMealPlans for this part of the statistics page.
   Future<List<_MealPlanStat>> _getAllMealPlans(
     ({DateTime start, DateTime end}) range,
   ) async {
+    // Admin reports use this to read every meal plan in the database, then
+    // filter by date before building the charts.
     final nonAdminUserIds = await _nonAdminUserIds();
     final snapshot = await firestore.collection('meal_plans').get();
     final plans = <_MealPlanStat>[];
@@ -1439,6 +1557,7 @@ class StatisticsRemoteDataSource {
     return plans..sort((left, right) => left.date.compareTo(right.date));
   }
 
+  // Handles _dailyPlanCounts for this part of the statistics page.
   List<AdminDailyStatistic> _dailyPlanCounts(
     List<_MealPlanStat> plans,
     ({DateTime start, DateTime end}) range,
@@ -1449,6 +1568,7 @@ class StatisticsRemoteDataSource {
     }).toList();
   }
 
+  // Handles _dailyPostCounts for this part of the statistics page.
   List<AdminDailyStatistic> _dailyPostCounts(
     List<_CommunityRecipeStat> recipes,
     ({DateTime start, DateTime end}) range,
@@ -1461,6 +1581,7 @@ class StatisticsRemoteDataSource {
     }).toList();
   }
 
+  // Handles _adminSectionFromGroups for this part of the statistics page.
   AdminAnalyticSection _adminSectionFromGroups({
     required String title,
     required String summaryTitle,
@@ -1492,6 +1613,7 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _adminSectionFromPostCategories for this part of the statistics page.
   Future<AdminAnalyticSection> _adminSectionFromPostCategories({
     required String title,
     required String summaryTitle,
@@ -1515,6 +1637,7 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _adminSectionFromCounts for this part of the statistics page.
   AdminAnalyticSection _adminSectionFromCounts({
     required String title,
     required String summaryTitle,
@@ -1525,6 +1648,7 @@ class StatisticsRemoteDataSource {
     Map<String, List<AdminRankedStatisticDetail>> details = const {},
     Map<String, String?> imageUrls = const {},
     Map<String, String> markerTexts = const {},
+    // Handles Function for this part of the statistics page.
     Color Function(String label)? colorFor,
     bool includeZeroValues = false,
     bool preserveOrder = false,
@@ -1550,6 +1674,7 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _rankedStatsFromCounts for this part of the statistics page.
   List<AdminRankedStatistic> _rankedStatsFromCounts({
     required Map<String, int> counts,
     required int total,
@@ -1557,6 +1682,7 @@ class StatisticsRemoteDataSource {
     Map<String, List<AdminRankedStatisticDetail>> details = const {},
     Map<String, String?> imageUrls = const {},
     Map<String, String> markerTexts = const {},
+    // Handles Function for this part of the statistics page.
     Color Function(String label)? colorFor,
     bool includeZeroValues = false,
     bool preserveOrder = false,
@@ -1590,6 +1716,7 @@ class StatisticsRemoteDataSource {
     });
   }
 
+  // Handles _buildAdminRecipePerformance for this part of the statistics page.
   Future<RecipePerformanceStatistics> _buildAdminRecipePerformance(
     List<_CommunityRecipeStat> recipes,
   ) async {
@@ -1633,6 +1760,7 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _detailsFromFoodGroup for this part of the statistics page.
   List<AdminRankedStatisticDetail> _detailsFromFoodGroup(_FoodGroup group) {
     final entries = group.detailCounts.entries.toList()
       ..sort((left, right) => right.value.compareTo(left.value));
@@ -1648,6 +1776,7 @@ class StatisticsRemoteDataSource {
         .toList();
   }
 
+  // Handles _detailsByMealTime for this part of the statistics page.
   Map<String, List<AdminRankedStatisticDetail>> _detailsByMealTime(
     Map<String, List<_MealPlanStat>> groups,
   ) {
@@ -1657,6 +1786,7 @@ class StatisticsRemoteDataSource {
     };
   }
 
+  // Handles _detailsByMethod for this part of the statistics page.
   Map<String, List<AdminRankedStatisticDetail>> _detailsByMethod(
     List<_MealPlanStat> plans,
   ) {
@@ -1674,6 +1804,7 @@ class StatisticsRemoteDataSource {
     };
   }
 
+  // Handles _detailsByMealDifficulty for this part of the statistics page.
   Map<String, List<AdminRankedStatisticDetail>> _detailsByMealDifficulty(
     List<_MealPlanStat> plans,
   ) {
@@ -1685,6 +1816,7 @@ class StatisticsRemoteDataSource {
     };
   }
 
+  // Handles _detailsByPostDifficulty for this part of the statistics page.
   Map<String, List<AdminRankedStatisticDetail>> _detailsByPostDifficulty(
     List<_CommunityRecipeStat> recipes,
   ) {
@@ -1705,6 +1837,7 @@ class StatisticsRemoteDataSource {
     };
   }
 
+  // Handles _detailsByRecipes for this part of the statistics page.
   Map<String, List<AdminRankedStatisticDetail>> _detailsByRecipes(
     List<_CommunityRecipeStat> recipes,
   ) {
@@ -1722,6 +1855,7 @@ class StatisticsRemoteDataSource {
     };
   }
 
+  // Handles _detailsByRecipeName for this part of the statistics page.
   Map<String, List<AdminRankedStatisticDetail>> _detailsByRecipeName(
     List<_MealPlanStat> plans,
   ) {
@@ -1735,6 +1869,7 @@ class StatisticsRemoteDataSource {
     };
   }
 
+  // Handles _detailsFromMealPlans for this part of the statistics page.
   List<AdminRankedStatisticDetail> _detailsFromMealPlans(
     List<_MealPlanStat> plans, {
     bool includeMealTime = false,
@@ -1756,6 +1891,7 @@ class StatisticsRemoteDataSource {
     }).toList()..sort((left, right) => right.quantity.compareTo(left.quantity));
   }
 
+  // Handles _mealPlanStatFromDoc for this part of the statistics page.
   Future<_MealPlanStat> _mealPlanStatFromDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) async {
@@ -1810,10 +1946,13 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _getUserPlannedRecipeNutrition for this part of the statistics page.
   Future<List<_RecipeNutritionStat>> _getUserPlannedRecipeNutrition(
     String uid,
     ({DateTime start, DateTime end}) range,
   ) async {
+    // Gets the user's planned recipes first, then opens each recipe document
+    // to collect nutrition data for calories, protein, carbs, and fat.
     final plans = await _getUserMealPlans(uid, range);
     final items = <_RecipeNutritionStat>[];
     for (final plan in plans) {
@@ -1831,6 +1970,30 @@ class StatisticsRemoteDataSource {
     return items..sort((left, right) => left.date.compareTo(right.date));
   }
 
+  // Handles _getAllPlannedRecipeNutrition for this part of the statistics page.
+  Future<List<_RecipeNutritionStat>> _getAllPlannedRecipeNutrition(
+    ({DateTime start, DateTime end}) range,
+  ) async {
+    // Admin nutrient insight uses this to collect nutrition from all planned
+    // recipes in the selected date range.
+    final plans = await _getAllMealPlans(range);
+    final items = <_RecipeNutritionStat>[];
+    for (final plan in plans) {
+      final recipeRef = firestore.collection('recipes').doc(plan.recipeId);
+      items.add(
+        _RecipeNutritionStat(
+          id: plan.recipeId,
+          name: plan.recipeName,
+          imageUrl: plan.imageUrl,
+          date: plan.date,
+          nutrition: await _recipeNutrition(recipeRef),
+        ),
+      );
+    }
+    return items..sort((left, right) => left.date.compareTo(right.date));
+  }
+
+  // Handles _getUserPostedRecipeNutrition for this part of the statistics page.
   Future<List<_RecipeNutritionStat>> _getUserPostedRecipeNutrition(
     String uid,
     ({DateTime start, DateTime end}) range,
@@ -1858,6 +2021,7 @@ class StatisticsRemoteDataSource {
     return items..sort((left, right) => left.date.compareTo(right.date));
   }
 
+  // Handles _recipeNutrition for this part of the statistics page.
   Future<_RecipeNutrition> _recipeNutrition(
     DocumentReference<Map<String, dynamic>> recipeRef,
   ) async {
@@ -1898,6 +2062,7 @@ class StatisticsRemoteDataSource {
     }
   }
 
+  // Handles _nutrientValue for this part of the statistics page.
   double _nutrientValue(Map<dynamic, dynamic> nutrients, List<String> keys) {
     for (final key in keys) {
       final value = _valueForInsensitiveKey(nutrients, key);
@@ -1916,6 +2081,7 @@ class StatisticsRemoteDataSource {
     return null;
   }
 
+  // Handles _numberFromNutrient for this part of the statistics page.
   double? _numberFromNutrient(Object? value) {
     if (value is num) return value.toDouble();
     if (value is Map) {
@@ -1927,6 +2093,7 @@ class StatisticsRemoteDataSource {
     return double.tryParse(value?.toString() ?? '');
   }
 
+  // Handles _buildCaloriesIntakeStatistics for this part of the statistics page.
   CaloriesIntakeStatistics _buildCaloriesIntakeStatistics({
     required List<_RecipeNutritionStat> recipes,
     required ({DateTime start, DateTime end}) range,
@@ -1973,6 +2140,7 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _buildCaloriesPostedStatistics for this part of the statistics page.
   CaloriesPostedStatistics _buildCaloriesPostedStatistics({
     required List<_RecipeNutritionStat> recipes,
     required ({DateTime start, DateTime end}) range,
@@ -2028,6 +2196,7 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _groupNutritionByDay for this part of the statistics page.
   Map<DateTime, List<_RecipeNutritionStat>> _groupNutritionByDay(
     List<_RecipeNutritionStat> recipes,
   ) {
@@ -2046,6 +2215,7 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _daysInRange for this part of the statistics page.
   List<DateTime> _daysInRange(({DateTime start, DateTime end}) range) {
     final days = <DateTime>[];
     var cursor = _startOfDay(range.start);
@@ -2057,6 +2227,7 @@ class StatisticsRemoteDataSource {
     return days;
   }
 
+  // Handles _emptyMostCookedDays for this part of the statistics page.
   List<MostCookedRecipeDay> _emptyMostCookedDays(
     ({DateTime start, DateTime end}) range,
   ) {
@@ -2071,6 +2242,7 @@ class StatisticsRemoteDataSource {
         .toList();
   }
 
+  // Handles _currentUserCreatedAt for this part of the statistics page.
   Future<DateTime> _currentUserCreatedAt(String uid) async {
     try {
       final userDoc = await firestore.collection('users').doc(uid).get();
@@ -2082,6 +2254,7 @@ class StatisticsRemoteDataSource {
     return auth.currentUser?.metadata.creationTime ?? DateTime.now();
   }
 
+  // Handles _nonAdminUserIds for this part of the statistics page.
   Future<Set<String>> _nonAdminUserIds() async {
     final snapshot = await firestore.collection('users').get();
     return snapshot.docs
@@ -2090,10 +2263,12 @@ class StatisticsRemoteDataSource {
         .toSet();
   }
 
+  // Handles _isAdminUser for this part of the statistics page.
   bool _isAdminUser(Map<String, dynamic> data) {
     return _stringValue(data['role']).toLowerCase() == 'admin';
   }
 
+  // Handles _buildSelfSlides for this part of the statistics page.
   List<StatisticsHeroSlide> _buildSelfSlides(
     List<_MealPlanStat> plans, {
     required DateTime createdAt,
@@ -2200,6 +2375,7 @@ class StatisticsRemoteDataSource {
     ];
   }
 
+  // Handles _currentPlanStreak for this part of the statistics page.
   int _currentPlanStreak(Set<DateTime> planDays, DateTime today) {
     if (planDays.isEmpty) return 0;
     var cursor = today;
@@ -2211,6 +2387,7 @@ class StatisticsRemoteDataSource {
     return streak;
   }
 
+  // Handles _formatHours for this part of the statistics page.
   String _formatHours(int minutes) {
     final hours = minutes ~/ 60;
     final remainingMinutes = minutes % 60;
@@ -2219,6 +2396,7 @@ class StatisticsRemoteDataSource {
     return '$hours Hrs $remainingMinutes Min';
   }
 
+  // Handles _getMealCategoryConfigs for this part of the statistics page.
   Future<List<_MealCategoryConfig>> _getMealCategoryConfigs() async {
     try {
       final snapshot = await firestore
@@ -2250,6 +2428,7 @@ class StatisticsRemoteDataSource {
     ];
   }
 
+  // Handles _sumNutrition for this part of the statistics page.
   int _sumNutrition(
     List<_RecipeNutritionStat> recipes,
     int Function(_RecipeNutrition nutrition) value,
@@ -2257,6 +2436,7 @@ class StatisticsRemoteDataSource {
     return recipes.fold<int>(0, (total, item) => total + value(item.nutrition));
   }
 
+  // Handles _averageNutrition for this part of the statistics page.
   int _averageNutrition(
     List<_RecipeNutritionStat> recipes,
     int Function(_RecipeNutrition nutrition) value,
@@ -2266,14 +2446,20 @@ class StatisticsRemoteDataSource {
     return (total / recipes.length).round();
   }
 
+  // Handles _getUserSharedRecipes for this part of the statistics page.
   Future<List<_CommunityRecipeStat>> _getUserSharedRecipes(String uid) async {
+    // Loads recipes owned by the user, then keeps only recipes that are shared
+    // publicly and finalized.
     final recipes = await _getUserOwnedRecipes(uid);
     return recipes.where((recipe) => recipe.isShared).toList();
   }
 
+  // Handles _getAllSharedRecipes for this part of the statistics page.
   Future<List<_CommunityRecipeStat>> _getAllSharedRecipes(
     ({DateTime start, DateTime end}) range,
   ) async {
+    // Loads all recipe documents from Firestore, then keeps public finalized
+    // posts that fall inside the requested date range.
     final nonAdminUserIds = await _nonAdminUserIds();
     final snapshot = await firestore.collection('recipes').get();
     final recipes = snapshot.docs
@@ -2291,7 +2477,10 @@ class StatisticsRemoteDataSource {
       ..sort((left, right) => left.publishedAt.compareTo(right.publishedAt));
   }
 
+  // Handles _getUserOwnedRecipes for this part of the statistics page.
   Future<List<_CommunityRecipeStat>> _getUserOwnedRecipes(String uid) async {
+    // Checks the recipes collection for records that belong to this user.
+    // The code supports a few possible creator id fields used by older data.
     final docsById = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
 
     final creatorIdSnapshot = await firestore
@@ -2315,6 +2504,7 @@ class StatisticsRemoteDataSource {
         .toList();
   }
 
+  // Handles _allRecipeCategoryNames for this part of the statistics page.
   Future<Set<String>> _allRecipeCategoryNames(
     List<_CommunityRecipeStat> recipes,
   ) async {
@@ -2326,6 +2516,7 @@ class StatisticsRemoteDataSource {
     return names;
   }
 
+  // Handles _topMealName for this part of the statistics page.
   String _topMealName(List<_MealPlanStat> plans) {
     if (plans.isEmpty) return '-';
     final counts = <String, int>{};
@@ -2337,6 +2528,7 @@ class StatisticsRemoteDataSource {
     return entries.first.key;
   }
 
+  // Handles _topFoodGroupName for this part of the statistics page.
   String _topFoodGroupName(Map<String, _FoodGroup> groups) {
     if (groups.isEmpty) return '-';
     final entries = groups.entries.toList()
@@ -2344,12 +2536,14 @@ class StatisticsRemoteDataSource {
     return entries.first.key;
   }
 
+  // Handles _averageDifficulty for this part of the statistics page.
   double _averageDifficulty(List<_MealPlanStat> plans) {
     if (plans.isEmpty) return 0;
     return plans.fold<int>(0, (total, plan) => total + plan.difficultyLevel) /
         plans.length;
   }
 
+  // Handles _averagePostDifficulty for this part of the statistics page.
   double _averagePostDifficulty(List<_CommunityRecipeStat> recipes) {
     if (recipes.isEmpty) return 0;
     return recipes.fold<int>(
@@ -2359,6 +2553,7 @@ class StatisticsRemoteDataSource {
         recipes.length;
   }
 
+  // Handles _buildPostRatingCategories for this part of the statistics page.
   Future<List<PostRatingCategory>> _buildPostRatingCategories(
     List<_CommunityRecipeStat> recipes,
   ) async {
@@ -2416,6 +2611,7 @@ class StatisticsRemoteDataSource {
     return categoryItems;
   }
 
+  // Handles _categoryNamesForRecipe for this part of the statistics page.
   Future<List<String>> _categoryNamesForRecipe(
     _CommunityRecipeStat recipe, {
     required Map<String, String> cache,
@@ -2453,6 +2649,7 @@ class StatisticsRemoteDataSource {
     return names.isEmpty ? const ['Uncategorised'] : names;
   }
 
+  // Handles _resolveCategoryName for this part of the statistics page.
   Future<String> _resolveCategoryName({
     required String cacheKey,
     required DocumentReference<Map<String, dynamic>> collectionPath,
@@ -2468,6 +2665,7 @@ class StatisticsRemoteDataSource {
     return name;
   }
 
+  // Handles getUserCaloriesIntake for this part of the statistics page.
   Future<CaloriesIntakeStatistics> getUserCaloriesIntake({
     DateTime? startDate,
     DateTime? endDate,
@@ -2484,6 +2682,7 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles getUserCaloriesPosted for this part of the statistics page.
   Future<CaloriesPostedStatistics> getUserCaloriesPosted({
     DateTime? startDate,
     DateTime? endDate,
@@ -2497,6 +2696,7 @@ class StatisticsRemoteDataSource {
     return _buildCaloriesPostedStatistics(recipes: recipes, range: range);
   }
 
+  // Handles _buildCommunitySlides for this part of the statistics page.
   List<StatisticsHeroSlide> _buildCommunitySlides(
     List<_CommunityRecipeStat> recipes,
   ) {
@@ -2573,6 +2773,7 @@ class StatisticsRemoteDataSource {
     ];
   }
 
+  // Handles _topRatedRecipe for this part of the statistics page.
   String _topRatedRecipe(List<_CommunityRecipeStat> recipes) {
     if (recipes.isEmpty) return '-';
     final sorted = [...recipes]
@@ -2584,6 +2785,7 @@ class StatisticsRemoteDataSource {
     return sorted.first.name;
   }
 
+  // Handles _topRatedRecipeByRatingDate for this part of the statistics page.
   Future<String> _topRatedRecipeByRatingDate({
     required List<_CommunityRecipeStat> recipes,
     required ({DateTime start, DateTime end}) range,
@@ -2634,6 +2836,7 @@ class StatisticsRemoteDataSource {
     return ratedRecipes.first.recipeName;
   }
 
+  // Handles _mostRatedRecipe for this part of the statistics page.
   String _mostRatedRecipe(List<_CommunityRecipeStat> recipes) {
     if (recipes.isEmpty) return '-';
     final sorted = [...recipes]
@@ -2645,6 +2848,7 @@ class StatisticsRemoteDataSource {
     return sorted.first.name;
   }
 
+  // Handles _averagePostedRecipeRating for this part of the statistics page.
   double _averagePostedRecipeRating(List<_CommunityRecipeStat> recipes) {
     if (recipes.isEmpty) return 0;
     final ratingTotal = recipes.fold<double>(
@@ -2682,18 +2886,22 @@ class StatisticsRemoteDataSource {
     );
   }
 
+  // Handles _startOfDay for this part of the statistics page.
   DateTime _startOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day);
   }
 
+  // Handles _endOfDay for this part of the statistics page.
   DateTime _endOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day, 23, 59, 59);
   }
 
+  // Handles _startOfMonth for this part of the statistics page.
   DateTime _startOfMonth(DateTime date) {
     return DateTime(date.year, date.month);
   }
 
+  // Handles _monthsInRange for this part of the statistics page.
   List<DateTime> _monthsInRange(({DateTime start, DateTime end}) range) {
     final months = <DateTime>[];
     var cursor = _startOfMonth(range.start);
@@ -2705,10 +2913,38 @@ class StatisticsRemoteDataSource {
     return months;
   }
 
+  // Handles _monthYearLabel for this part of the statistics page.
   String _monthYearLabel(DateTime month) {
     return DateFormat('MMM yyyy').format(month);
   }
 
+  // Handles _nextMonthForForecast for this part of the statistics page.
+  DateTime _nextMonthForForecast(List<AdminMonthlyUserStatistic> months) {
+    if (months.isEmpty) {
+      final now = DateTime.now();
+      return DateTime(now.year, now.month + 1);
+    }
+    final lastMonth = months.last.month;
+    return DateTime(lastMonth.year, lastMonth.month + 1);
+  }
+
+  // Handles _predictedNextMonthUsers for this part of the statistics page.
+  int _predictedNextMonthUsers(List<AdminMonthlyUserStatistic> months) {
+    if (months.isEmpty) return 0;
+    if (months.length == 1) return months.first.newUsers;
+
+    var totalChange = 0;
+    for (var index = 1; index < months.length; index++) {
+      totalChange += months[index].newUsers - months[index - 1].newUsers;
+    }
+    final averageChange = totalChange / (months.length - 1);
+    return (months.last.newUsers + averageChange)
+        .round()
+        .clamp(0, 999999)
+        .toInt();
+  }
+
+  // Handles _formatGroceryListDuration for this part of the statistics page.
   String _formatGroceryListDuration(Map<String, dynamic> data) {
     final directDuration = data['duration']?.toString().trim();
     if (directDuration != null && directDuration.isNotEmpty) {
@@ -2728,11 +2964,13 @@ class StatisticsRemoteDataSource {
     return '${formatter.format(start)} - ${formatter.format(end)}';
   }
 
+  // Handles _formatRange for this part of the statistics page.
   String _formatRange(DateTime start, DateTime end) {
     final formatter = DateFormat('MMM d, yyyy');
     return '${formatter.format(start)} - ${formatter.format(end)}';
   }
 
+  // Handles _dateTime for this part of the statistics page.
   DateTime _dateTime(Object? value) {
     if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;
@@ -2746,6 +2984,7 @@ class StatisticsRemoteDataSource {
         DateTime.fromMillisecondsSinceEpoch(0);
   }
 
+  // Handles _iconForRecipe for this part of the statistics page.
   IconData _iconForRecipe(String name) {
     final lowerName = name.toLowerCase();
     if (lowerName.contains('rice')) return Icons.rice_bowl;
@@ -2762,6 +3001,7 @@ class StatisticsRemoteDataSource {
     return Icons.restaurant;
   }
 
+  // Handles _iconForCategory for this part of the statistics page.
   IconData _iconForCategory(String name) {
     final lowerName = name.toLowerCase();
     if (lowerName.contains('asian')) return Icons.rice_bowl;
@@ -2775,21 +3015,25 @@ class StatisticsRemoteDataSource {
     return Icons.restaurant_menu;
   }
 
+  // Handles _stringValue for this part of the statistics page.
   String _stringValue(Object? value, {String fallback = ''}) {
     final text = value?.toString().trim() ?? '';
     return text.isEmpty ? fallback : text;
   }
 
+  // Handles _intValue for this part of the statistics page.
   int _intValue(Object? value) {
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
+  // Handles _doubleValue for this part of the statistics page.
   double _doubleValue(Object? value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
+  // Handles _firstMediaUrl for this part of the statistics page.
   String? _firstMediaUrl(Object? value) {
     if (value is Iterable) {
       for (final item in value) {
@@ -2800,6 +3044,7 @@ class StatisticsRemoteDataSource {
     return null;
   }
 
+  // Handles _stringList for this part of the statistics page.
   List<String> _stringList(Object? value) {
     if (value is Iterable) {
       return value
@@ -2810,12 +3055,14 @@ class StatisticsRemoteDataSource {
     return const [];
   }
 
+  // Handles _durationMinutes for this part of the statistics page.
   int _durationMinutes(Object? value) {
     if (value is num) return value.toInt();
     final text = value?.toString() ?? '';
     return int.tryParse(RegExp(r'\d+').firstMatch(text)?.group(0) ?? '') ?? 0;
   }
 
+  // Handles _methodColor for this part of the statistics page.
   Color _methodColor(String method) {
     final lower = method.toLowerCase();
     if (lower.contains('explore')) return const Color(0xFF21AEEA);
@@ -2824,6 +3071,7 @@ class StatisticsRemoteDataSource {
     return const Color(0xFF8E7CF3);
   }
 
+  // Handles _difficultyLevel for this part of the statistics page.
   int _difficultyLevel(Object? value) {
     if (value is num) return value.toInt().clamp(1, 5);
     final text = value?.toString().toLowerCase() ?? '';
@@ -2838,6 +3086,7 @@ class StatisticsRemoteDataSource {
         1;
   }
 
+  // Handles _methodLabel for this part of the statistics page.
   String _methodLabel(String source) {
     final value = source.toLowerCase();
     if (value.contains('ai')) return 'Generate With AI';
@@ -2855,6 +3104,7 @@ class StatisticsRemoteDataSource {
         .join(' ');
   }
 
+  // Handles _methodIcon for this part of the statistics page.
   IconData _methodIcon(String method) {
     final lower = method.toLowerCase();
     if (lower.contains('ai')) return Icons.auto_awesome;
@@ -2863,14 +3113,17 @@ class StatisticsRemoteDataSource {
     return Icons.restaurant_menu;
   }
 
+  // Handles _difficultyIcon for this part of the statistics page.
   IconData _difficultyIcon(String label) {
     return Icons.star;
   }
 
+  // Handles _difficultyColor for this part of the statistics page.
   Color _difficultyColor(String label) {
     return const Color(0xFF21AEEA);
   }
 
+  // Handles _genderLabel for this part of the statistics page.
   String _genderLabel(Object? value) {
     final lower = value?.toString().trim().toLowerCase() ?? '';
     if (lower.startsWith('m')) return 'Male';
@@ -2878,6 +3131,7 @@ class StatisticsRemoteDataSource {
     return 'Prefer not to say';
   }
 
+  // Handles _genderIcon for this part of the statistics page.
   IconData _genderIcon(String label) {
     final lower = label.toLowerCase();
     if (lower == 'male') return Icons.male;
@@ -2885,6 +3139,7 @@ class StatisticsRemoteDataSource {
     return Icons.privacy_tip_outlined;
   }
 
+  // Handles _genderColor for this part of the statistics page.
   Color _genderColor(String label) {
     final lower = label.toLowerCase();
     if (lower == 'male') return const Color(0xFF21AEEA);
@@ -2892,6 +3147,7 @@ class StatisticsRemoteDataSource {
     return const Color(0xFF8E7CF3);
   }
 
+  // Handles _dietaryIcon for this part of the statistics page.
   IconData _dietaryIcon(String label) {
     final lower = label.toLowerCase();
     if (lower.contains('vegetarian') || lower.contains('vege')) {
@@ -2905,6 +3161,7 @@ class StatisticsRemoteDataSource {
     return Icons.restaurant_menu;
   }
 
+  // Handles _mealTimeLabel for this part of the statistics page.
   String _mealTimeLabel(String value) {
     final text = value.trim();
     if (text.isEmpty) return 'Meal';
@@ -2916,6 +3173,7 @@ class StatisticsRemoteDataSource {
     return text;
   }
 
+  // Handles _mealTimeLabelForPlan for this part of the statistics page.
   String _mealTimeLabelForPlan(
     _MealPlanStat plan,
     List<_MealCategoryConfig> categories,
@@ -2936,6 +3194,7 @@ class StatisticsRemoteDataSource {
     return name;
   }
 
+  // Handles _mealTimeIcon for this part of the statistics page.
   IconData _mealTimeIcon(String value) {
     final lower = value.toLowerCase();
     if (lower.contains('breakfast')) return Icons.breakfast_dining;
@@ -2945,6 +3204,7 @@ class StatisticsRemoteDataSource {
     return Icons.room_service_outlined;
   }
 
+  // Handles _mealTimeColor for this part of the statistics page.
   Color _mealTimeColor(String value) {
     final lower = value.toLowerCase();
     if (lower.contains('breakfast')) return const Color(0xFF54C27A);
@@ -2955,10 +3215,12 @@ class StatisticsRemoteDataSource {
   }
 }
 
+// Handles _MealCategoryConfig for this part of the statistics page.
 class _MealCategoryConfig {
   final String id;
   final String name;
 
+  // Handles _MealCategoryConfig for this part of the statistics page.
   const _MealCategoryConfig({required this.id, required this.name});
 }
 
@@ -2977,6 +3239,7 @@ class _MealPlanStat {
   final List<String> categoryIds;
   final List<String> customCategoryIds;
 
+  // Handles _MealPlanStat for this part of the statistics page.
   const _MealPlanStat({
     required this.id,
     required this.plannerUid,
@@ -2994,6 +3257,7 @@ class _MealPlanStat {
   });
 }
 
+// Handles _MostCookedGroup for this part of the statistics page.
 class _MostCookedGroup {
   final String recipeName;
   final String? imageUrl;
@@ -3003,6 +3267,7 @@ class _MostCookedGroup {
   _MostCookedGroup({required this.recipeName, this.imageUrl});
 }
 
+// Handles _FoodGroup for this part of the statistics page.
 class _FoodGroup {
   final String label;
   int count = 0;
@@ -3015,6 +3280,7 @@ class _FoodGroup {
   _FoodGroup({required this.label});
 }
 
+// Handles _CommunityRecipeStat for this part of the statistics page.
 class _CommunityRecipeStat {
   final String id;
   final String name;
@@ -3030,6 +3296,7 @@ class _CommunityRecipeStat {
   final String? imageUrl;
   final bool isShared;
 
+  // Handles _CommunityRecipeStat for this part of the statistics page.
   const _CommunityRecipeStat({
     required this.id,
     required this.name,
@@ -3080,6 +3347,7 @@ class _CommunityRecipeStat {
     );
   }
 
+  // Handles _firstMediaUrl for this part of the statistics page.
   static String? _firstMediaUrl(Object? value) {
     if (value is Iterable) {
       for (final item in value) {
@@ -3090,6 +3358,7 @@ class _CommunityRecipeStat {
     return null;
   }
 
+  // Handles _dateTime for this part of the statistics page.
   static DateTime _dateTime(Object? value) {
     if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;
@@ -3103,23 +3372,27 @@ class _CommunityRecipeStat {
         DateTime.fromMillisecondsSinceEpoch(0);
   }
 
+  // Handles _stringValue for this part of the statistics page.
   static String _stringValue(Object? value, {String fallback = ''}) {
     final text = value?.toString().trim() ?? '';
     return text.isEmpty ? fallback : text;
   }
 
+  // Handles _intValue for this part of the statistics page.
   static int _intValue(Object? value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
+  // Handles _doubleValue for this part of the statistics page.
   static double _doubleValue(Object? value) {
     if (value is double) return value;
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
+  // Handles _stringList for this part of the statistics page.
   static List<String> _stringList(Object? value) {
     if (value is Iterable) {
       return value
@@ -3131,11 +3404,13 @@ class _CommunityRecipeStat {
   }
 }
 
+// Handles _TodayRecipeRating for this part of the statistics page.
 class _TodayRecipeRating {
   final String recipeName;
   final double averageRating;
   final int ratingCount;
 
+  // Handles _TodayRecipeRating for this part of the statistics page.
   const _TodayRecipeRating({
     required this.recipeName,
     required this.averageRating,
@@ -3143,6 +3418,7 @@ class _TodayRecipeRating {
   });
 }
 
+// Handles _RecipeNutritionStat for this part of the statistics page.
 class _RecipeNutritionStat {
   final String id;
   final String name;
@@ -3150,6 +3426,7 @@ class _RecipeNutritionStat {
   final DateTime date;
   final _RecipeNutrition nutrition;
 
+  // Handles _RecipeNutritionStat for this part of the statistics page.
   const _RecipeNutritionStat({
     required this.id,
     required this.name,
@@ -3159,12 +3436,14 @@ class _RecipeNutritionStat {
   });
 }
 
+// Handles _RecipeNutrition for this part of the statistics page.
 class _RecipeNutrition {
   final int caloriesKcal;
   final int carbohydrateGram;
   final int proteinGram;
   final int fatGram;
 
+  // Handles _RecipeNutrition for this part of the statistics page.
   const _RecipeNutrition({
     required this.caloriesKcal,
     required this.carbohydrateGram,

@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/entities/app_notification.dart';
 
+// Data model for notifications.
+// This converts notification data between Firestore JSON, local JSON, and the
+// clean domain entity used by the rest of the app.
 class AppNotificationModel extends AppNotification {
   const AppNotificationModel({
     required super.id,
@@ -44,6 +47,8 @@ class AppNotificationModel extends AppNotification {
   factory AppNotificationModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
+    // Reads one Firestore notification document and fills safe default values
+    // if any field is missing.
     final data = doc.data() ?? const <String, dynamic>{};
     return AppNotificationModel(
       id: doc.id,

@@ -5,17 +5,30 @@ import '../../../../../../core/widgets/custom_app_bar.dart';
 import '../../../../domain/entities/rating.dart';
 import '../../../../domain/entities/user_profile.dart';
 
+/// Page for displaying detailed information about a rating.
+/// Shows user info, star rating, feedback, and timestamp.
 class RatingDetailPage extends StatelessWidget {
+  /// The rating entity to display.
   final RatingEntity rating;
+
+  /// The user profile of the person who submitted the rating.
   final UserProfile? userProfile;
 
+  /// Creates a new rating detail page instance.
   const RatingDetailPage({super.key, required this.rating, this.userProfile});
 
   @override
   Widget build(BuildContext context) {
+    // Get the theme for styling.
     final theme = Theme.of(context);
+
+    // Get display name from user profile or fallback to user ID.
     final displayName = userProfile?.name ?? rating.userId;
+
+    // Get profile image URL.
     final profileImageUrl = userProfile?.profileImageUrl;
+
+    // Get trimmed feedback.
     final feedback = rating.comment.trim();
 
     return Scaffold(
@@ -26,8 +39,11 @@ class RatingDetailPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Summary card with rating and date.
               _buildSummaryCard(context, displayName),
               const SizedBox(height: 16),
+
+              // User section.
               _buildSectionCard(
                 context: context,
                 title: 'Submitted by',
@@ -44,9 +60,9 @@ class RatingDetailPage extends StatelessWidget {
                       ),
                       child: profileImageUrl == null
                           ? Icon(
-                              Icons.person_outline_rounded,
-                              color: theme.colorScheme.primary,
-                            )
+                        Icons.person_outline_rounded,
+                        color: theme.colorScheme.primary,
+                      )
                           : null,
                     ),
                     const SizedBox(width: 12),
@@ -64,6 +80,8 @@ class RatingDetailPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Feedback section.
               _buildSectionCard(
                 context: context,
                 title: 'Feedback',
@@ -80,8 +98,16 @@ class RatingDetailPage extends StatelessWidget {
     );
   }
 
+  // =========================================================================
+  // WIDGET BUILDERS
+  // =========================================================================
+
+  /// Builds the summary card with rating and date.
   Widget _buildSummaryCard(BuildContext context, String displayName) {
+    // Get the theme for styling.
     final theme = Theme.of(context);
+
+    // Format the update date.
     final formattedDate = DateFormat(
       'MMM dd, yyyy - hh:mm a',
     ).format(rating.updatedAt);
@@ -104,6 +130,7 @@ class RatingDetailPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header with star icon and rating score.
           Row(
             children: [
               Container(
@@ -129,6 +156,8 @@ class RatingDetailPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
+
+          // Rating source.
           Text(
             'Rating from $displayName',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -136,24 +165,30 @@ class RatingDetailPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+
+          // Timestamp.
           _buildMetaLine(
             context,
             icon: Icons.calendar_today_outlined,
             text: formattedDate,
           ),
           const SizedBox(height: 14),
+
+          // Star rating display.
           _buildStarRating(rating.stars, size: 28),
         ],
       ),
     );
   }
 
+  /// Builds a section card with title and content.
   Widget _buildSectionCard({
     required BuildContext context,
     required String title,
     required IconData icon,
     required Widget child,
   }) {
+    // Get the theme for styling.
     final theme = Theme.of(context);
 
     return Container(
@@ -167,6 +202,7 @@ class RatingDetailPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header with icon and title.
           Row(
             children: [
               Container(
@@ -194,11 +230,13 @@ class RatingDetailPage extends StatelessWidget {
     );
   }
 
+  /// Builds a meta line with icon and text.
   Widget _buildMetaLine(
-    BuildContext context, {
-    required IconData icon,
-    required String text,
-  }) {
+      BuildContext context, {
+        required IconData icon,
+        required String text,
+      }) {
+    // Get the theme for styling.
     final theme = Theme.of(context);
 
     return Row(
@@ -221,12 +259,13 @@ class RatingDetailPage extends StatelessWidget {
     );
   }
 
+  /// Builds a star rating display.
   Widget _buildStarRating(int filledStars, {double size = 24}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(
         5,
-        (index) => Icon(
+            (index) => Icon(
           index < filledStars ? Icons.star_rounded : Icons.star_border_rounded,
           color: Colors.amber.shade700,
           size: size,

@@ -5,13 +5,20 @@ import 'package:video_player/video_player.dart';
 
 import '../images/app_remote_or_asset_image.dart';
 
+/// Checks if a path points to a video file or Cloudinary video URL.
 bool isRecipeVideoPath(String path) {
   final trimmed = path.trim().toLowerCase();
+
+  // Return false for empty paths.
   if (trimmed.isEmpty) return false;
+
+  // Check for Cloudinary video URL pattern.
   if (trimmed.contains('/video/upload/')) return true;
 
+  // Check for video file extensions.
   final uri = Uri.tryParse(trimmed);
   final pathOnly = uri?.path.toLowerCase() ?? trimmed.split('?').first;
+
   return const [
     '.mp4',
     '.mov',
@@ -23,18 +30,63 @@ bool isRecipeVideoPath(String path) {
   ].any(pathOnly.endsWith);
 }
 
+/// Returns a static image preview path for video media when one can be derived.
+String recipeMediaStaticPreviewPath(String path) {
+  final trimmed = path.trim();
+  if (!isRecipeVideoPath(trimmed)) return trimmed;
+
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null || !uri.hasScheme) return trimmed;
+
+  final videoUploadIndex = uri.path.indexOf('/video/upload/');
+  if (videoUploadIndex < 0) return trimmed;
+
+  final previewPath = uri.path.replaceFirst(
+    '/video/upload/',
+    '/video/upload/so_0/',
+  );
+  final withImageExtension = previewPath.replaceFirst(
+    RegExp(r'\.(mp4|mov|m4v|webm|mkv|avi|3gp)$', caseSensitive: false),
+    '.jpg',
+  );
+
+  return uri.replace(path: withImageExtension).toString();
+}
+
+/// Widget for displaying recipe media (images or videos).
+/// Automatically detects video paths and uses VideoPlayer.
 class AppRecipeMedia extends StatelessWidget {
+  /// Path to the media (image URL, asset path, or video URL).
   final String mediaPath;
+
+  /// Box fit for the media.
   final BoxFit fit;
+
+  /// Whether to show video controls.
   final bool showVideoControls;
+
+  /// Whether to auto-play videos.
   final bool autoPlayVideo;
+
+  /// Whether to loop videos.
   final bool loopVideo;
+
+  /// Whether to allow fullscreen mode.
   final bool allowFullscreen;
+
+  /// Whether the video is currently in fullscreen.
   final bool isFullscreen;
+
+  /// Callback when fullscreen is toggled.
   final VoidCallback? onFullscreenTap;
+
+  /// Optional width of the media.
   final double? width;
+
+  /// Optional height of the media.
   final double? height;
 
+  /// Creates a new app recipe media instance.
   const AppRecipeMedia({
     super.key,
     required this.mediaPath,
@@ -51,6 +103,7 @@ class AppRecipeMedia extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if the path is a video.
     if (isRecipeVideoPath(mediaPath)) {
       return _RecipeVideoPlayer(
         mediaPath: mediaPath,
@@ -64,6 +117,7 @@ class AppRecipeMedia extends StatelessWidget {
       );
     }
 
+    // Display as image.
     return AppRemoteOrAssetImage(
       imagePath: mediaPath,
       width: width,
@@ -73,26 +127,45 @@ class AppRecipeMedia extends StatelessWidget {
   }
 }
 
+/// Preview widget for recipe media with a play overlay for videos.
 class AppRecipeMediaPreview extends StatelessWidget {
+  /// Path to the media.
   final String mediaPath;
+
+  /// Box fit for the media.
   final BoxFit fit;
+
+  /// Size of the play overlay.
   final double playOverlaySize;
+
+  /// Size of the play icon.
   final double playIconSize;
 
+  /// Whether video previews display the play overlay.
+  final bool showPlayOverlay;
+
+  /// Creates a new app recipe media preview instance.
   const AppRecipeMediaPreview({
     super.key,
     required this.mediaPath,
     this.fit = BoxFit.cover,
     this.playOverlaySize = 46,
     this.playIconSize = 30,
+    this.showPlayOverlay = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Display image without overlay.
     if (!isRecipeVideoPath(mediaPath)) {
       return AppRecipeMedia(mediaPath: mediaPath, fit: fit);
     }
 
+    if (!showPlayOverlay) {
+      return AppRecipeMedia(mediaPath: mediaPath, fit: fit);
+    }
+
+    // Display video with play overlay.
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -119,6 +192,7 @@ class AppRecipeMediaPreview extends StatelessWidget {
   }
 }
 
+/// Shows a fullscreen dialog for viewing media.
 Future<void> showRecipeMediaDialog(
   BuildContext context,
   String mediaPath,
@@ -131,6 +205,7 @@ Future<void> showRecipeMediaDialog(
         child: SafeArea(
           child: Stack(
             children: [
+              // Media content.
               Center(
                 child: mediaPath.trim().isEmpty
                     ? const Icon(
@@ -160,6 +235,7 @@ Future<void> showRecipeMediaDialog(
                         ),
                       ),
               ),
+              // Close button.
               Positioned(
                 top: 8,
                 right: 8,
@@ -176,6 +252,7 @@ Future<void> showRecipeMediaDialog(
   );
 }
 
+/// Internal video player widget.
 class _RecipeVideoPlayer extends StatefulWidget {
   final String mediaPath;
   final BoxFit fit;
@@ -201,11 +278,21 @@ class _RecipeVideoPlayer extends StatefulWidget {
   State<_RecipeVideoPlayer> createState() => _RecipeVideoPlayerState();
 }
 
+/// State for the recipe video player.
 class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
+  /// Video player controller.
   VideoPlayerController? _controller;
+
+  /// Future for initialization.
   Future<void>? _initializeFuture;
+
+  /// Whether to ignore the next tap.
   bool _ignoreNextTap = false;
+
+  /// Seek feedback state.
   _SeekFeedback? _seekFeedback;
+
+  /// Token for seek feedback.
   int _seekFeedbackToken = 0;
 
   @override
@@ -217,15 +304,19 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
   @override
   void didUpdateWidget(covariant _RecipeVideoPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // Reinitialize if media path changed.
     if (oldWidget.mediaPath != widget.mediaPath) {
       _controller?.dispose();
       _initialize();
     }
   }
 
+  /// Initializes the video player.
   void _initialize() {
     final path = widget.mediaPath.trim();
     final controller = _createController(path);
+
     _controller = controller;
     _initializeFuture = controller.initialize().then((_) async {
       await controller.setLooping(widget.loop);
@@ -239,6 +330,7 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
     });
   }
 
+  /// Creates a video player controller based on the path type.
   VideoPlayerController _createController(String path) {
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return VideoPlayerController.networkUrl(Uri.parse(path));
@@ -249,6 +341,7 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
     return VideoPlayerController.asset(path);
   }
 
+  /// Toggles play/pause.
   void _togglePlayback() {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
@@ -257,12 +350,14 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
     });
   }
 
+  /// Sets the volume.
   Future<void> _setVolume(double volume) async {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
     await controller.setVolume(volume.clamp(0, 1).toDouble());
   }
 
+  /// Seeks by a duration offset.
   Future<void> _seekBy(Duration offset) async {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
@@ -270,33 +365,46 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
     final duration = controller.value.duration;
     final current = controller.value.position;
     var next = current + offset;
+
     if (next < Duration.zero) next = Duration.zero;
     if (duration > Duration.zero && next > duration) next = duration;
+
     await controller.seekTo(next);
   }
 
+  /// Handles double tap for seeking.
   Future<void> _handleDoubleTapDown(TapDownDetails details) async {
+    // Set ignore flag to prevent single tap after double tap.
     _ignoreNextTap = true;
     Future<void>.delayed(const Duration(milliseconds: 450), () {
       if (mounted) _ignoreNextTap = false;
     });
+
+    // Determine which side was tapped.
     final renderBox = context.findRenderObject() as RenderBox?;
     final width = renderBox?.size.width ?? 0;
     if (width <= 0) return;
 
     final isRightSide = details.localPosition.dx >= width / 2;
+
+    // Show seek feedback.
     final token = ++_seekFeedbackToken;
     setState(() {
       _seekFeedback = _SeekFeedback(isForward: isRightSide);
     });
+
+    // Hide feedback after delay.
     Future<void>.delayed(const Duration(milliseconds: 650), () {
       if (mounted && token == _seekFeedbackToken) {
         setState(() => _seekFeedback = null);
       }
     });
+
+    // Seek forward or backward.
     await _seekBy(Duration(seconds: isRightSide ? 10 : -10));
   }
 
+  /// Handles single tap.
   void _handleTap() {
     if (_ignoreNextTap) {
       _ignoreNextTap = false;
@@ -305,6 +413,7 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
     _togglePlayback();
   }
 
+  /// Opens fullscreen mode.
   Future<void> _openFullscreen() async {
     if (widget.isFullscreen) {
       widget.onFullscreenTap?.call();
@@ -316,10 +425,12 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
       return;
     }
 
+    // Pause video before showing fullscreen.
     final controller = _controller;
     if (controller?.value.isInitialized == true) {
       await controller!.pause();
     }
+
     if (!mounted) return;
     await showRecipeMediaDialog(context, widget.mediaPath);
   }
@@ -333,15 +444,19 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
+
+    // Show fallback if controller is null.
     if (controller == null) return const _VideoFallback();
 
     return FutureBuilder<void>(
       future: _initializeFuture,
       builder: (context, snapshot) {
+        // Show fallback on error.
         if (snapshot.hasError) {
           return const _VideoFallback();
         }
 
+        // Show loading state.
         if (snapshot.connectionState != ConnectionState.done ||
             !controller.value.isInitialized) {
           return const _VideoFallback(isLoading: true);
@@ -354,6 +469,7 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
           child: Stack(
             fit: StackFit.expand,
             children: [
+              // Video content.
               FittedBox(
                 fit: widget.fit,
                 child: SizedBox(
@@ -362,8 +478,10 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
                   child: VideoPlayer(controller),
                 ),
               ),
+              // Seek feedback overlay.
               if (_seekFeedback != null)
                 _SeekFeedbackOverlay(feedback: _seekFeedback!),
+              // Video controls.
               if (widget.showControls)
                 _VideoControls(
                   controller: controller,
@@ -380,15 +498,21 @@ class _RecipeVideoPlayerState extends State<_RecipeVideoPlayer> {
   }
 }
 
+/// Seek feedback data class.
 class _SeekFeedback {
+  /// Whether seeking forward.
   final bool isForward;
 
+  /// Creates a new seek feedback instance.
   const _SeekFeedback({required this.isForward});
 }
 
+/// Seek feedback overlay widget.
 class _SeekFeedbackOverlay extends StatelessWidget {
+  /// The seek feedback data.
   final _SeekFeedback feedback;
 
+  /// Creates a new seek feedback overlay instance.
   const _SeekFeedbackOverlay({required this.feedback});
 
   @override
@@ -437,6 +561,7 @@ class _SeekFeedbackOverlay extends StatelessWidget {
   }
 }
 
+/// Video controls widget.
 class _VideoControls extends StatefulWidget {
   final VideoPlayerController controller;
   final VoidCallback onTogglePlayback;
@@ -456,9 +581,12 @@ class _VideoControls extends StatefulWidget {
   State<_VideoControls> createState() => _VideoControlsState();
 }
 
+/// State for video controls.
 class _VideoControlsState extends State<_VideoControls> {
+  /// Whether to show the volume slider.
   bool _showVolumeSlider = false;
 
+  /// Toggles the volume slider visibility.
   void _toggleVolumeSlider() {
     setState(() => _showVolumeSlider = !_showVolumeSlider);
   }
@@ -474,8 +602,10 @@ class _VideoControlsState extends State<_VideoControls> {
             ? duration
             : value.position;
         final volume = value.volume.clamp(0.0, 1.0).toDouble();
+
         return Stack(
           children: [
+            // Play button overlay when paused.
             if (!value.isPlaying)
               Center(
                 child: DecoratedBox(
@@ -493,6 +623,7 @@ class _VideoControlsState extends State<_VideoControls> {
                   ),
                 ),
               ),
+            // Controls bar at bottom.
             Positioned(
               left: 10,
               right: 10,
@@ -507,6 +638,7 @@ class _VideoControlsState extends State<_VideoControls> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Progress bar.
                       VideoProgressIndicator(
                         widget.controller,
                         allowScrubbing: true,
@@ -517,8 +649,11 @@ class _VideoControlsState extends State<_VideoControls> {
                         ),
                       ),
                       const SizedBox(height: 2),
+
+                      // Control buttons row.
                       Row(
                         children: [
+                          // Play/Pause button.
                           _VideoControlButton(
                             tooltip: 'Play or pause',
                             icon: value.isPlaying
@@ -526,6 +661,7 @@ class _VideoControlsState extends State<_VideoControls> {
                                 : Icons.play_arrow,
                             onPressed: widget.onTogglePlayback,
                           ),
+                          // Volume button.
                           _VideoControlButton(
                             tooltip: 'Volume',
                             icon: volume == 0
@@ -533,6 +669,7 @@ class _VideoControlsState extends State<_VideoControls> {
                                 : Icons.volume_up,
                             onPressed: _toggleVolumeSlider,
                           ),
+                          // Volume slider (animated).
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 160),
                             switchInCurve: Curves.easeOutCubic,
@@ -566,6 +703,7 @@ class _VideoControlsState extends State<_VideoControls> {
                                     width: 0,
                                   ),
                           ),
+                          // Time display.
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 86),
                             child: Text(
@@ -581,6 +719,7 @@ class _VideoControlsState extends State<_VideoControls> {
                             ),
                           ),
                           const Spacer(),
+                          // Fullscreen button.
                           if (widget.onFullscreen != null)
                             _VideoControlButton(
                               tooltip: widget.isFullscreen
@@ -604,6 +743,7 @@ class _VideoControlsState extends State<_VideoControls> {
     );
   }
 
+  /// Formats a duration as MM:SS.
   static String _formatDuration(Duration duration) {
     final totalSeconds = duration.inSeconds;
     final minutes = totalSeconds ~/ 60;
@@ -611,6 +751,7 @@ class _VideoControlsState extends State<_VideoControls> {
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
+  /// Returns the volume slider theme.
   SliderThemeData _volumeSliderTheme(BuildContext context) {
     return SliderTheme.of(context).copyWith(
       trackHeight: 2,
@@ -624,6 +765,7 @@ class _VideoControlsState extends State<_VideoControls> {
   }
 }
 
+/// Video control button widget.
 class _VideoControlButton extends StatelessWidget {
   final String tooltip;
   final IconData icon;
@@ -648,9 +790,12 @@ class _VideoControlButton extends StatelessWidget {
   }
 }
 
+/// Video fallback widget.
 class _VideoFallback extends StatelessWidget {
+  /// Whether loading.
   final bool isLoading;
 
+  /// Creates a new video fallback instance.
   const _VideoFallback({this.isLoading = false});
 
   @override

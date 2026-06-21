@@ -1,3 +1,5 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,11 +12,18 @@ import '../viewmodel/admin_gender_viewmodel.dart';
 import '../widgets/admin_statistics_detail_widgets.dart';
 import '../widgets/statistics_page_helpers.dart';
 
+/// Admin report showing the gender distribution of users.
+// Handles AdminGenderPage for this part of the statistics page.
 class AdminGenderPage extends StatelessWidget {
   const AdminGenderPage({super.key});
 
   @override
+  // Build the admin gender page with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
   Widget build(BuildContext context) {
+    // The ViewModel loads gender totals for the selected period.
     return ChangeNotifierProvider(
       create: (_) => AdminGenderViewModel(
         getStatisticsUseCase: sl<GetAdminGenderStatisticsUseCase>(),
@@ -24,15 +33,28 @@ class AdminGenderPage extends StatelessWidget {
   }
 }
 
+// This widget builds the main content for the admin gender view.
+// It reads the ViewModel and chooses loading, error, or data content.
+// Smaller widgets below handle the individual visual sections.
+// Handles _AdminGenderView for this part of the statistics page.
 class _AdminGenderView extends StatefulWidget {
   const _AdminGenderView();
 
+  // Handles createState for this part of the statistics page.
   @override
   State<_AdminGenderView> createState() => _AdminGenderViewState();
 }
 
+// This state object manages the changing parts of the admin gender view state.
+// It listens to user actions and rebuilds the affected widgets.
+// Controllers and other temporary UI values also belong here.
+// Handles _AdminGenderViewState for this part of the statistics page.
 class _AdminGenderViewState extends State<_AdminGenderView> {
   @override
+  // Build the admin gender view state with the latest available state.
+  // This method arranges the section widgets in the order seen on screen.
+  // User interaction is forwarded through callbacks instead of stored here.
+  // Handles build for this part of the statistics page.
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminGenderViewModel>();
 
@@ -46,7 +68,9 @@ class _AdminGenderViewState extends State<_AdminGenderView> {
     );
   }
 
+  // Handles _buildBody for this part of the statistics page.
   Widget _buildBody(AdminGenderViewModel viewModel) {
+    // Wait for gender data before drawing the summary and pie chart.
     if (viewModel.isLoading && viewModel.statistics == null) {
       return const LoadingDialog(inline: true, message: 'Loading gender...');
     }
@@ -75,6 +99,7 @@ class _AdminGenderViewState extends State<_AdminGenderView> {
               dateRange: statistics.dateRange,
               onTap: () => _pickDateRange(viewModel),
             ),
+            // Handles SizedBox for this part of the statistics page.
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -85,6 +110,7 @@ class _AdminGenderViewState extends State<_AdminGenderView> {
                     value: statistics.totalUsers.toString(),
                   ),
                 ),
+                // Handles SizedBox for this part of the statistics page.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: AdminStatisticSummaryTile(
@@ -95,12 +121,21 @@ class _AdminGenderViewState extends State<_AdminGenderView> {
                 ),
               ],
             ),
+            // Handles SizedBox for this part of the statistics page.
             const SizedBox(height: AppSpacing.lg),
+            // Reuse the preference pie widget because the data shape is the same.
+            // GENDER PIE-CHART UI CALL STARTS HERE.
+            // This page passes gender values into the shared admin pie card.
+            // The card later calls StatisticsPieChart to draw the slices.
+            // Draws a pie chart showing the gender distribution of users.
+            // Link: AdminGenderPage -> AdminPreferencePieCard.
+            // Next: admin_statistics_detail_widgets.dart -> StatisticsPieChart.
             AdminPreferencePieCard(
               title: 'Gender',
               totalUsers: statistics.totalUsers,
               preferences: statistics.genders,
             ),
+            // Handles SizedBox for this part of the statistics page.
             const SizedBox(height: AppSpacing.lg),
             AdminRankedStatisticList(
               title: 'Gender Quantity',
@@ -112,6 +147,9 @@ class _AdminGenderViewState extends State<_AdminGenderView> {
     );
   }
 
+  // Open the calendar with the current range already selected.
+  // Send confirmed dates to the ViewModel so it can reload the report.
+  // Handles _pickDateRange for this part of the statistics page.
   Future<void> _pickDateRange(AdminGenderViewModel viewModel) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

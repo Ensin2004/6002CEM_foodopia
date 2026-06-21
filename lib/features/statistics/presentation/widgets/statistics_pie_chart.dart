@@ -1,3 +1,5 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -5,11 +7,14 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_extension.dart';
 
+/// One coloured section displayed by [StatisticsPieChart].
+// Handles StatisticsPieChartSegment for this part of the statistics page.
 class StatisticsPieChartSegment {
   final String label;
   final int value;
   final Color color;
 
+  // Handles StatisticsPieChartSegment for this part of the statistics page.
   const StatisticsPieChartSegment({
     required this.label,
     required this.value,
@@ -17,12 +22,15 @@ class StatisticsPieChartSegment {
   });
 }
 
+/// Reusable pie chart with a value shown in the centre.
+// Handles StatisticsPieChart for this part of the statistics page.
 class StatisticsPieChart extends StatelessWidget {
   final List<StatisticsPieChartSegment> segments;
   final String centerTitle;
   final String centerValue;
   final double size;
 
+  // Handles StatisticsPieChart for this part of the statistics page.
   const StatisticsPieChart({
     super.key,
     required this.segments,
@@ -31,8 +39,10 @@ class StatisticsPieChart extends StatelessWidget {
     this.size = 220,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
+    // Zero-value sections are hidden because they have no visible angle.
     final visibleSegments = segments
         .where((segment) => segment.value > 0)
         .toList();
@@ -42,6 +52,8 @@ class StatisticsPieChart extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
+          // PIE CHART DRAWING SETUP STARTS HERE.
+          // CustomPaint gives the segment data and canvas area to the painter.
           CustomPaint(
             size: Size.square(size),
             painter: _StatisticsPieChartPainter(segments: visibleSegments),
@@ -69,6 +81,7 @@ class StatisticsPieChart extends StatelessWidget {
                       height: 1.05,
                     ),
                   ),
+                  // Handles SizedBox for this part of the statistics page.
                   const SizedBox(height: 3),
                   Text(
                     centerValue,
@@ -89,13 +102,18 @@ class StatisticsPieChart extends StatelessWidget {
   }
 }
 
+// Handles _StatisticsPieChartPainter for this part of the statistics page.
 class _StatisticsPieChartPainter extends CustomPainter {
   final List<StatisticsPieChartSegment> segments;
 
   _StatisticsPieChartPainter({required this.segments});
 
+  // Handles paint for this part of the statistics page.
   @override
   void paint(Canvas canvas, Size size) {
+    // ACTUAL PIE CHART CANVAS DRAWING STARTS HERE.
+    // This method calculates every slice angle and paints it on the screen.
+    // Every angle is calculated as a part of this combined total.
     final total = segments.fold<int>(0, (sum, segment) => sum + segment.value);
     if (total <= 0) return;
 
@@ -107,10 +125,12 @@ class _StatisticsPieChartPainter extends CustomPainter {
       ..color = Colors.white
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
+    // Start from the top of the circle and draw each section clockwise.
     var startAngle = -math.pi / 2;
     for (final segment in segments) {
       final sweepAngle = (segment.value / total) * math.pi * 2;
       segmentPaint.color = segment.color;
+      // This drawArc call paints one coloured slice of the pie.
       canvas.drawArc(rect, startAngle, sweepAngle, true, segmentPaint);
       canvas.drawArc(rect, startAngle, sweepAngle, true, dividerPaint);
 
@@ -129,6 +149,7 @@ class _StatisticsPieChartPainter extends CustomPainter {
     }
   }
 
+  // Handles _drawLeader for this part of the statistics page.
   void _drawLeader({
     required Canvas canvas,
     required Size size,
@@ -179,6 +200,7 @@ class _StatisticsPieChartPainter extends CustomPainter {
     textPainter.paint(canvas, labelOffset);
   }
 
+  // Handles shouldRepaint for this part of the statistics page.
   @override
   bool shouldRepaint(covariant _StatisticsPieChartPainter oldDelegate) {
     return oldDelegate.segments != segments;

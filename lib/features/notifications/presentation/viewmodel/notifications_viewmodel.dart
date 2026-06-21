@@ -9,6 +9,9 @@ import '../../domain/usecases/mark_notification_as_read_usecase.dart';
 import '../../domain/usecases/schedule_plan_reminder_usecase.dart';
 import '../../domain/usecases/update_notification_preference_usecase.dart';
 
+// View model for the notification page.
+// It loads notifications/settings, keeps loading and error state, and asks the
+// use cases to mark notifications as read or schedule reminders.
 class NotificationsViewModel extends ChangeNotifier {
   final GetNotificationsUseCase _getNotificationsUseCase;
   final GetNotificationPreferencesUseCase _getPreferencesUseCase;
@@ -48,6 +51,9 @@ class NotificationsViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   Future<void> load() async {
+    // Load both notification items and preference switches for the screen.
+    // The view model does not know whether the data came from Firestore or
+    // local storage; that decision stays in the repository.
     _setLoading(true);
     final notificationsResult = await _getNotificationsUseCase.execute();
     final preferencesResult = await _getPreferencesUseCase.execute();
@@ -64,6 +70,7 @@ class NotificationsViewModel extends ChangeNotifier {
   }
 
   Future<void> markAsRead(String notificationId) async {
+    // Mark one notification as read, then update the local UI list to match.
     final result = await _markAsReadUseCase.execute(notificationId);
     result.fold((failure) => _errorMessage = failure.message, (_) {
       _notifications = _notifications
@@ -77,6 +84,7 @@ class NotificationsViewModel extends ChangeNotifier {
   }
 
   Future<void> markAllAsRead() async {
+    // Mark every notification as read and refresh the UI state.
     final result = await _markAllAsReadUseCase.execute();
     result.fold((failure) => _errorMessage = failure.message, (_) {
       _notifications = _notifications
@@ -87,6 +95,7 @@ class NotificationsViewModel extends ChangeNotifier {
   }
 
   Future<void> updatePreference(String preferenceId, bool enabled) async {
+    // Save one setting change, then update the switch state on the screen.
     final result = await _updatePreferenceUseCase.execute(
       preferenceId: preferenceId,
       enabled: enabled,
@@ -104,6 +113,8 @@ class NotificationsViewModel extends ChangeNotifier {
   }
 
   Future<void> schedulePlanReminder(DateTime scheduledAt) async {
+    // Schedule a device reminder for the chosen time, then reload so the new
+    // pending/visible notification state is reflected on screen.
     _isScheduling = true;
     _notifyIfActive();
 

@@ -7,6 +7,7 @@ import '../../domain/entities/settings_section.dart';
 import '../../domain/repositories/settings_repository.dart';
 
 /// Defines behavior for settings repository impl.
+/// Implements the SettingsRepository interface.
 class SettingsRepositoryImpl implements SettingsRepository {
   /// Loads data for the get user settings operation.
   @override
@@ -22,7 +23,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
     return _getSettings(isAdmin: true);
   }
 
-  /// Private method to build settings sections based on user role
+  /// Private method to build settings sections based on user role.
   Future<Either<Failure, List<SettingsSection>>> _getSettings({
     required bool isAdmin,
   }) async {
@@ -133,7 +134,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
       }
 
       // ============================================================
-      // 5. SUPPORT SECTION (Cannot be const because title depends on isAdmin)
+      // 5. SUPPORT SECTION
       // ============================================================
       final supportItems = [
         /// Creates a settings item instance.
@@ -147,7 +148,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
 
         /// Creates a settings item instance.
         SettingsItem(
-          // Remove const because title uses ternary
+          // Remove const because title uses ternary.
           id: 'rate_us',
           title: isAdmin ? 'Rating & Feedback' : 'Rate Us & Feedback',
           icon: Icons.star,
@@ -210,6 +211,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
 
       return Right(sections);
     } catch (e) {
+      // Map any exception to a server failure.
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -220,6 +222,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
     try {
       return Right(SharedPrefsManager.isNotificationEnabled());
     } catch (e) {
+      // Map any exception to a server failure.
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -232,6 +235,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
       await SharedPrefsManager.setNotificationEnabled(enabled);
       return const Right(null);
     } catch (e) {
+      // Map any exception to a server failure.
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -242,6 +246,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
     try {
       return Right(SharedPrefsManager.isNotificationTypeEnabled(id));
     } catch (e) {
+      // Map any exception to a server failure.
       return Left(ServerFailure(message: e.toString()));
     }
   }
@@ -249,13 +254,14 @@ class SettingsRepositoryImpl implements SettingsRepository {
   /// Updates one notification preference by menu id.
   @override
   Future<Either<Failure, void>> setNotificationTypeEnabled(
-    String id,
-    bool enabled,
-  ) async {
+      String id,
+      bool enabled,
+      ) async {
     try {
       await SharedPrefsManager.setNotificationTypeEnabled(id, enabled);
       return const Right(null);
     } catch (e) {
+      // Map any exception to a server failure.
       return Left(ServerFailure(message: e.toString()));
     }
   }

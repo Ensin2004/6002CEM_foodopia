@@ -1,25 +1,29 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Defines behavior for about remote data source.
+/// Handles CRUD operations for About Us, Terms & Conditions, and Privacy Policy content.
 class AboutRemoteDataSource {
+  /// Firestore instance used for database operations.
   final FirebaseFirestore _firestore;
 
   /// Creates a about remote data source instance.
   AboutRemoteDataSource({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Loads data for the get about content operation.
   Future<DocumentSnapshot> getAboutContent(String documentId) async {
     return await _firestore.collection('support_center').doc(documentId).get();
   }
 
+  /// Streams real-time updates for a support center document.
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchAboutContent(
-    String documentId,
-  ) {
+      String documentId,
+      ) {
     return _firestore.collection('support_center').doc(documentId).snapshots();
   }
 
-  // Changed from update to set (creates if not exists, updates if exists)
+  /// Saves content to a support center document.
+  /// Uses set with merge: true to create or update without overwriting.
   Future<void> saveAboutContent(String documentId, String content) async {
     await _firestore.collection('support_center').doc(documentId).set(
       {
@@ -31,10 +35,12 @@ class AboutRemoteDataSource {
     ); // merge: true allows updates without overwriting
   }
 
+  /// Deletes a support center document.
   Future<void> deleteAboutContent(String documentId) async {
     await _firestore.collection('support_center').doc(documentId).delete();
   }
 
+  /// Returns a display title for a given document ID.
   String _getTitleFromId(String id) {
     switch (id) {
       case 'about_us':

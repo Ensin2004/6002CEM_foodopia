@@ -8,18 +8,24 @@ import '../../../../app/routers/router_args.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
-import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../core/widgets/media/app_recipe_media.dart';
-import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
 import '../../domain/entities/explore_recipe.dart';
 import 'explore_recipe_detail_page.dart';
 import '../viewmodel/explore_recipe_detail_viewmodel.dart';
 import '../viewmodel/explore_viewmodel.dart';
+import '../widgets/explore_creator_avatar.dart';
 import '../widgets/explore_empty_state.dart';
+import '../widgets/explore_filters.dart';
 import '../widgets/explore_recipe_grid.dart';
 
+/// Main entry point for the recipe exploration feature.
+/// Displays a grid of community recipes with filtering and search capabilities.
 class ExplorePage extends StatelessWidget {
+  /// Controls whether the app bar is displayed.
+  /// When false, the page is embedded without navigation chrome.
   final bool showAppBar;
+
+  /// Optional meal plan selection context for adding recipes to a meal plan.
   final MealPlanSelectionArgs? mealPlanSelection;
 
   const ExplorePage({
@@ -30,15 +36,20 @@ class ExplorePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Provide the viewmodel at the page level with all required dependencies.
     final page = ChangeNotifierProvider(
       create: (_) => ExploreViewModel(
         getRecipesUseCase: sl(),
         watchRecipesUseCase: sl(),
+        getRecipeSetupUseCase: sl(),
+        getIngredientCategoriesUseCase: sl(),
+        getMealCategoriesUseCase: sl(),
         toggleCreatorFollowUseCase: sl(),
         toggleFavouriteUseCase: sl(),
       ),
       child: _ExplorePageView(mealPlanSelection: mealPlanSelection),
     );
+    // Return bare page or scaffold with app bar based on configuration.
     if (!showAppBar) return page;
 
     return Scaffold(
@@ -55,6 +66,8 @@ class ExplorePage extends StatelessWidget {
   }
 }
 
+/// Stateful widget that manages the tab-based navigation for recipe exploration.
+/// Handles tab switching between All recipes, Following, and Trending views.
 class _ExplorePageView extends StatefulWidget {
   final MealPlanSelectionArgs? mealPlanSelection;
 
@@ -66,6 +79,7 @@ class _ExplorePageView extends StatefulWidget {
 
 class _ExplorePageViewState extends State<_ExplorePageView>
     with SingleTickerProviderStateMixin {
+  // Controller for managing the three main tabs: All, Following, Trending.
   late final TabController _tabController;
 
   @override
@@ -78,6 +92,7 @@ class _ExplorePageViewState extends State<_ExplorePageView>
     _tabController.addListener(_handleTabChanged);
   }
 
+  /// Synchronizes the tab controller state with the viewmodel when tabs change.
   void _handleTabChanged() {
     if (_tabController.indexIsChanging) return;
     context.read<ExploreViewModel>().selectTab(
@@ -85,6 +100,7 @@ class _ExplorePageViewState extends State<_ExplorePageView>
     );
   }
 
+  /// Programmatically selects a tab and updates the viewmodel.
   void _selectTab(ExploreRecipeTab tab) {
     final index = ExploreRecipeTab.values.indexOf(tab);
     if (_tabController.index != index) {
@@ -93,10 +109,12 @@ class _ExplorePageViewState extends State<_ExplorePageView>
     context.read<ExploreViewModel>().selectTab(tab);
   }
 
+  /// Displays a modal dialog showing comments for a specific recipe.
   Future<void> _showCommentsPopup(ExploreRecipe recipe) async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
+        // Create a separate viewmodel instance scoped to the dialog.
         return ChangeNotifierProvider(
           create: (_) => ExploreRecipeDetailViewModel(
             recipeId: recipe.id,
@@ -137,13 +155,13 @@ class _ExplorePageViewState extends State<_ExplorePageView>
         top: false,
         child: Column(
           children: [
-            _ExploreFilters(
+            // Filter bar with search input and category filter button.
+            ExploreFilters(
               tabController: _tabController,
               viewModel: viewModel,
               onSearchChanged: viewModel.updateQuery,
-              onSortTap: () => _showSortSheet(context, viewModel),
-              onFilterTap: () => _showFilterSheet(context, viewModel),
-              onCategoryChanged: viewModel.updateCategoryFilter,
+              onFilterTap: (target) =>
+                  _showFilterDialog(context, viewModel, target: target),
             ),
             Expanded(
               child: TabBarView(
@@ -165,38 +183,62 @@ class _ExplorePageViewState extends State<_ExplorePageView>
     );
   }
 
-  Future<void> _showSortSheet(
+  /// Displays the advanced filter dialog with category, time, and rating options.
+  Future<void> _showFilterDialog(
     BuildContext context,
-    ExploreViewModel viewModel,
-  ) async {
-    final selected = await showModalBottomSheet<Set<ExploreSortOption>>(
+    ExploreViewModel viewModel, {
+    ExploreFilterTarget? target,
+  }) async {
+    final selected = await showGeneralDialog<RecipeFilterSelection>(
       context: context,
-      showDragHandle: true,
-      builder: (sheetContext) =>
-          _RecipeSortSheet(selected: viewModel.sortOptions),
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return RecipeFilterDialog(
+          recipeCategories: viewModel.categoryOptions,
+          ingredientCategories: viewModel.ingredientCategoryOptions,
+          mealCategories: viewModel.mealCategoryOptions,
+          initialTarget: target,
+          initial: RecipeFilterSelection(
+            sortOptions: viewModel.sortOptions,
+            recipeCategories: viewModel.recipeCategoryFilters,
+            ingredientCategories: viewModel.ingredientCategoryFilters,
+            mealCategories: viewModel.mealCategoryFilters,
+            preparationTimes: viewModel.preparationTimeFilters,
+            ratings: viewModel.ratingFilters,
+            comments: viewModel.commentsFilters,
+            views: viewModel.viewsFilters,
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.04),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
     );
-    if (selected != null) viewModel.updateSortOptions(selected);
-  }
-
-  Future<void> _showFilterSheet(
-    BuildContext context,
-    ExploreViewModel viewModel,
-  ) async {
-    final selected = await showModalBottomSheet<_RecipeFilterSelection>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) => _RecipeFilterSheet(
-        initial: _RecipeFilterSelection(
-          rating: viewModel.ratingFilter,
-          comments: viewModel.commentsFilter,
-          views: viewModel.viewsFilter,
-        ),
-      ),
-    );
+    // Apply selected filters if the user confirmed the dialog.
     if (selected != null) {
+      viewModel.updateSortOptions(selected.sortOptions);
       viewModel.updateFilters(
-        rating: selected.rating,
+        recipeCategories: selected.recipeCategories,
+        ingredientCategories: selected.ingredientCategories,
+        mealCategories: selected.mealCategories,
+        preparationTimes: selected.preparationTimes,
+        ratings: selected.ratings,
         comments: selected.comments,
         views: selected.views,
       );
@@ -204,6 +246,8 @@ class _ExplorePageViewState extends State<_ExplorePageView>
   }
 }
 
+/// Dialog widget that displays the comment section for a recipe.
+/// Contains the comment list, input field, and interaction buttons.
 class _ExploreCommentsDialog extends StatelessWidget {
   const _ExploreCommentsDialog();
 
@@ -225,6 +269,7 @@ class _ExploreCommentsDialog extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Dialog header with title and close button.
                 Row(
                   children: [
                     Expanded(
@@ -263,6 +308,7 @@ class _ExploreCommentsDialog extends StatelessWidget {
   }
 }
 
+/// Body of the comments dialog that handles loading, error, and content states.
 class _ExploreCommentsDialogBody extends StatelessWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe? recipe;
@@ -274,6 +320,7 @@ class _ExploreCommentsDialogBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading indicator while fetching comments.
     if (viewModel.isLoading) {
       return const LoadingDialog(message: 'Loading comments...', inline: true);
     }
@@ -290,6 +337,7 @@ class _ExploreCommentsDialogBody extends StatelessWidget {
       );
     }
 
+    // Render the interactive comments panel with all CRUD operations.
     return ExploreCommentsPanel(
       viewModel: viewModel,
       recipe: recipe!,
@@ -305,6 +353,8 @@ class _ExploreCommentsDialogBody extends StatelessWidget {
   }
 }
 
+/// Content widget displayed for each tab in the explore page.
+/// Renders the appropriate view based on the selected tab and data state.
 class _ExploreContent extends StatelessWidget {
   final ExploreRecipeTab tab;
   final ExploreViewModel viewModel;
@@ -322,6 +372,7 @@ class _ExploreContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading state while fetching recipes.
     if (viewModel.isLoading) {
       return const LoadingDialog(message: 'Loading recipes...', inline: true);
     }
@@ -340,15 +391,18 @@ class _ExploreContent extends StatelessWidget {
       );
     }
 
-    if (viewModel.shouldShowFollowingEmptyFor(tab)) {
-      return ExploreEmptyState(onExploreNow: onExploreNow);
-    }
-
+    // Following tab displays a list of creators instead of recipes.
     if (tab == ExploreRecipeTab.following) {
       return _FollowingCreatorsList(
         creators: viewModel.followedCreators,
+        suggestedCreators: viewModel.suggestedCreators,
         onToggleFollow: viewModel.toggleCreatorFollow,
       );
+    }
+
+    // Show empty state message when no recipes match the current filter.
+    if (viewModel.shouldShowFollowingEmptyFor(tab)) {
+      return ExploreEmptyState(onExploreNow: onExploreNow);
     }
 
     final recipes = viewModel.visibleRecipesFor(tab);
@@ -361,6 +415,7 @@ class _ExploreContent extends StatelessWidget {
       );
     }
 
+    // Render the recipe grid with pull-to-refresh and interaction callbacks.
     return RefreshIndicator(
       onRefresh: viewModel.loadRecipes,
       child: ExploreRecipeGridView(
@@ -368,19 +423,25 @@ class _ExploreContent extends StatelessWidget {
         onCommentTap: onCommentTap,
         onFavouriteTap: viewModel.toggleFavourite,
         onImageLongPress: (recipe) => _showRecipeImage(context, recipe),
-        onRecipeTap: (recipe) {
-          context.push(
+        disabledRecipeIds: mealPlanSelection?.existingRecipeIds.toSet() ?? {},
+        calorieBudget: mealPlanSelection?.calorieBudget,
+        onRecipeTap: (recipe) async {
+          final result = await context.push(
             AppRouter.exploreRecipeDetail,
             extra: ExploreRecipeDetailArgs(
               recipeId: recipe.id,
               mealPlanSelection: mealPlanSelection,
             ),
           );
+          if (result == true && context.mounted && mealPlanSelection != null) {
+            context.pop(true);
+          }
         },
       ),
     );
   }
 
+  /// Displays a full-screen dialog showing the recipe image on long press.
   Future<void> _showRecipeImage(
     BuildContext context,
     ExploreRecipe recipe,
@@ -389,1082 +450,409 @@ class _ExploreContent extends StatelessWidget {
   }
 }
 
-class _FollowingCreatorsList extends StatelessWidget {
+/// Displays a list of followed creators with follow/unfollow controls.
+/// Also shows suggested creators in a horizontal scrollable section.
+class _FollowingCreatorsList extends StatefulWidget {
   final List<ExploreCreatorSummary> creators;
+  final List<ExploreCreatorSummary> suggestedCreators;
   final ValueChanged<String> onToggleFollow;
 
   const _FollowingCreatorsList({
     required this.creators,
+    required this.suggestedCreators,
+    required this.onToggleFollow,
+  });
+
+  @override
+  State<_FollowingCreatorsList> createState() => _FollowingCreatorsListState();
+}
+
+class _FollowingCreatorsListState extends State<_FollowingCreatorsList> {
+  // Pagination threshold for loading more suggested creators.
+  static const _suggestionBatchSize = 20;
+  int _visibleSuggestionCount = _suggestionBatchSize;
+
+  @override
+  void didUpdateWidget(covariant _FollowingCreatorsList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Adjust visible count when suggested creators list changes.
+    if (widget.suggestedCreators.length < _visibleSuggestionCount) {
+      _visibleSuggestionCount =
+          widget.suggestedCreators.length < _suggestionBatchSize
+          ? _suggestionBatchSize
+          : widget.suggestedCreators.length;
+    }
+  }
+
+  /// Increases the number of visible suggested creators by batch size.
+  void _showMoreSuggestions() {
+    setState(() {
+      final nextCount = _visibleSuggestionCount + _suggestionBatchSize;
+      _visibleSuggestionCount = nextCount > widget.suggestedCreators.length
+          ? widget.suggestedCreators.length
+          : nextCount;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleSuggestions = widget.suggestedCreators
+        .take(_visibleSuggestionCount)
+        .toList(growable: false);
+    final hasMoreSuggestions =
+        widget.suggestedCreators.length > visibleSuggestions.length;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      children: [
+        // Section header for followed creators.
+        _CreatorSectionHeader(
+          title: 'Total following: ${widget.creators.length}',
+        ),
+        const SizedBox(height: 8),
+        if (widget.creators.isEmpty)
+          const _CreatorEmptyMessage(message: 'No followed creators yet.')
+        else
+          ..._separatedCreatorTiles(creators: widget.creators),
+        const SizedBox(height: 22),
+        // Section header for suggested creators.
+        const _CreatorSectionHeader(title: 'Suggested for you'),
+        const SizedBox(height: 10),
+        if (visibleSuggestions.isEmpty)
+          const _CreatorEmptyMessage(message: 'No suggested creators yet.')
+        else
+          SizedBox(
+            height: 194,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              itemCount:
+                  visibleSuggestions.length + (hasMoreSuggestions ? 1 : 0),
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                // Show "View more" card at the end of the list if more exist.
+                if (index == visibleSuggestions.length) {
+                  return _SuggestedViewMoreCard(
+                    onPressed: _showMoreSuggestions,
+                  );
+                }
+                final creator = visibleSuggestions[index];
+                return _SuggestedCreatorCard(
+                  creator: creator,
+                  onToggleFollow: widget.onToggleFollow,
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Builds a list of creator tiles separated by dividers.
+  List<Widget> _separatedCreatorTiles({
+    required List<ExploreCreatorSummary> creators,
+  }) {
+    final widgets = <Widget>[];
+    for (var index = 0; index < creators.length; index++) {
+      widgets.add(
+        _FollowingCreatorTile(
+          creator: creators[index],
+          onToggleFollow: widget.onToggleFollow,
+        ),
+      );
+      if (index != creators.length - 1) {
+        widgets.add(
+          const Divider(height: 1, thickness: 0.7, color: AppColors.border),
+        );
+      }
+    }
+    return widgets;
+  }
+}
+
+/// Header widget for creator list sections with bold title styling.
+class _CreatorSectionHeader extends StatelessWidget {
+  final String title;
+
+  const _CreatorSectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Empty state message displayed when no creators are available in a section.
+class _CreatorEmptyMessage extends StatelessWidget {
+  final String message;
+
+  const _CreatorEmptyMessage({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Text(
+        message,
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+      ),
+    );
+  }
+}
+
+/// Tile widget displaying a followed creator with avatar, name, follower count, and unfollow button.
+class _FollowingCreatorTile extends StatelessWidget {
+  final ExploreCreatorSummary creator;
+  final ValueChanged<String> onToggleFollow;
+
+  const _FollowingCreatorTile({
+    required this.creator,
     required this.onToggleFollow,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      itemCount: creators.length + 1,
-      separatorBuilder: (_, index) => index == 0
-          ? const SizedBox(height: 8)
-          : const Divider(height: 1, thickness: 0.7, color: AppColors.border),
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              'Total following: ${creators.length}',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
+    return InkWell(
+      onTap: () {
+        context.push(
+          AppRouter.exploreCreatorDetail,
+          extra: ExploreCreatorDetailArgs(creatorUid: creator.uid),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Row(
+          children: [
+            ExploreCreatorAvatar(
+              imagePath: creator.avatarPath,
+              radius: 28,
+              imageSize: 56,
+              iconSize: 32,
+              hasBorder: true,
+            ),
+            const SizedBox(width: 18),
+            Expanded(child: _CreatorTextBlock(creator: creator)),
+            const SizedBox(width: 12),
+            FilledButton(
+              onPressed: () => onToggleFollow(creator.uid),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: const Size(0, 38),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check, size: 15),
+                  SizedBox(width: 4),
+                  Text(
+                    'Following',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                  ),
+                ],
               ),
             ),
-          );
-        }
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-        final creator = creators[index - 1];
-        return InkWell(
-          onTap: () {
-            context.push(
-              AppRouter.exploreCreatorDetail,
-              extra: ExploreCreatorDetailArgs(creatorUid: creator.uid),
-            );
-          },
+/// Card widget for suggested creators with follow button and avatar.
+class _SuggestedCreatorCard extends StatelessWidget {
+  final ExploreCreatorSummary creator;
+  final ValueChanged<String> onToggleFollow;
+
+  const _SuggestedCreatorCard({
+    required this.creator,
+    required this.onToggleFollow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        context.push(
+          AppRouter.exploreCreatorDetail,
+          extra: ExploreCreatorDetailArgs(creatorUid: creator.uid),
+        );
+      },
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(
+        width: 164,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border, width: 1),
+          ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+            child: Column(
               children: [
-                _ExploreCreatorAvatar(
-                  imagePath: creator.avatarPath,
-                  radius: 28,
-                  imageSize: 56,
-                  iconSize: 32,
-                  hasBorder: true,
-                ),
-                const SizedBox(width: 18),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        creator.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${_compactCount(creator.followerCount)} Followers',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 4),
+                _SuggestedCreatorAvatar(creator: creator),
+                const SizedBox(height: 6),
+                Text(
+                  creator.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(width: 12),
-                FilledButton(
-                  onPressed: () => onToggleFollow(creator.uid),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    minimumSize: const Size(0, 38),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 34,
+                  child: OutlinedButton(
+                    onPressed: () => onToggleFollow(creator.uid),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(17),
+                      ),
                     ),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check, size: 15),
-                      SizedBox(width: 4),
-                      Text(
-                        'Following',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    child: const Text(
+                      'Follow',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
+/// Avatar widget for suggested creator cards with larger size.
+class _SuggestedCreatorAvatar extends StatelessWidget {
+  final ExploreCreatorSummary creator;
+
+  const _SuggestedCreatorAvatar({required this.creator});
+
+  @override
+  Widget build(BuildContext context) {
+    return ExploreCreatorAvatar(
+      imagePath: creator.avatarPath,
+      radius: 38,
+      imageSize: 76,
+      iconSize: 36,
+      hasBorder: false,
+    );
+  }
+}
+
+/// Card that triggers loading more suggested creators when pressed.
+class _SuggestedViewMoreCard extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _SuggestedViewMoreCard({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 140,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border, width: 1),
+        ),
+        child: Center(
+          child: OutlinedButton(
+            onPressed: onPressed,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.primary),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(17),
+              ),
+            ),
+            child: const Text('View more'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Text block displaying creator name and formatted follower count.
+class _CreatorTextBlock extends StatelessWidget {
+  final ExploreCreatorSummary creator;
+
+  const _CreatorTextBlock({required this.creator});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          creator.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          '${_compactCount(creator.followerCount)} Followers',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+}
+
+/// Formats a number into a compact string with 'k' suffix for thousands.
+/// Example: 1500 -> '1.5k', 10000 -> '10k'
 String _compactCount(int value) {
   if (value >= 1000) {
     final compact = value / 1000;
     return '${compact.toStringAsFixed(compact >= 10 ? 0 : 1)}k';
   }
   return '$value';
-}
-
-class _ExploreFilters extends StatefulWidget {
-  final TabController tabController;
-  final ExploreViewModel viewModel;
-  final ValueChanged<String> onSearchChanged;
-  final VoidCallback onSortTap;
-  final VoidCallback onFilterTap;
-  final ValueChanged<ExploreRecipeCategoryOption?> onCategoryChanged;
-
-  const _ExploreFilters({
-    required this.tabController,
-    required this.viewModel,
-    required this.onSearchChanged,
-    required this.onSortTap,
-    required this.onFilterTap,
-    required this.onCategoryChanged,
-  });
-
-  @override
-  State<_ExploreFilters> createState() => _ExploreFiltersState();
-}
-
-class _ExploreFiltersState extends State<_ExploreFilters> {
-  final _searchController = TextEditingController();
-  final _recentSearches = <String>[];
-
-  @override
-  void didUpdateWidget(covariant _ExploreFilters oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_searchController.text != widget.viewModel.query) {
-      _searchController.text = widget.viewModel.query;
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _openSearchMenu() async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    final selected = await showGeneralDialog<String>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: Colors.black.withValues(alpha: 0.32),
-      transitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        return Align(
-          alignment: Alignment.topCenter,
-          child: _ExploreSearchSheet(
-            initialQuery: widget.viewModel.query,
-            recentSearches: _recentSearches,
-            discoveries: _discoverOptions,
-            creators: _creatorOptions,
-            onRemoveRecent: _removeRecentSearch,
-          ),
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, -1),
-            end: Offset.zero,
-          ).animate(curved),
-          child: FadeTransition(opacity: curved, child: child),
-        );
-      },
-    );
-    if (selected == null) return;
-    final query = selected.trim();
-    _searchController.text = query;
-    widget.onSearchChanged(query);
-    if (query.isNotEmpty) {
-      setState(() {
-        _recentSearches.removeWhere(
-          (item) => item.toLowerCase() == query.toLowerCase(),
-        );
-        _recentSearches.insert(0, query);
-        if (_recentSearches.length > 6) {
-          _recentSearches.removeRange(6, _recentSearches.length);
-        }
-      });
-    }
-  }
-
-  void _removeRecentSearch(String search) {
-    setState(() {
-      _recentSearches.removeWhere(
-        (item) => item.toLowerCase() == search.toLowerCase(),
-      );
-    });
-  }
-
-  List<_CreatorSearchOption> get _creatorOptions {
-    final options = <String, _CreatorSearchOption>{};
-    for (final recipe in widget.viewModel.recipes) {
-      if (recipe.isCreatedByCurrentUser || recipe.creatorUid.isEmpty) {
-        continue;
-      }
-      final existing = options[recipe.creatorUid];
-      options[recipe.creatorUid] = _CreatorSearchOption(
-        name: recipe.author == 'You' ? 'Creator' : recipe.author,
-        avatarPath: recipe.authorAvatarPath,
-        popularityScore:
-            (existing?.popularityScore ?? 0) +
-            recipe.totalViews +
-            recipe.commentCount +
-            recipe.ratingCount,
-      );
-    }
-    final sorted = options.values.toList()
-      ..sort(
-        (first, second) =>
-            second.popularityScore.compareTo(first.popularityScore),
-      );
-    return sorted.take(5).toList();
-  }
-
-  List<_DiscoverSearchOption> get _discoverOptions {
-    final recipes = [
-      ...widget.viewModel.recipes,
-    ]..sort((first, second) => second.publishedAt.compareTo(first.publishedAt));
-    return recipes.take(6).map((recipe) {
-      return _DiscoverSearchOption(
-        title: recipe.title,
-        category: recipe.category,
-      );
-    }).toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: AppColors.border, width: 0.5),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: widget.onSortTap,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 25,
-                      height: 30,
-                    ),
-                    icon: const Icon(
-                      Icons.sort,
-                      size: 25,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    onPressed: widget.onFilterTap,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 25,
-                      height: 30,
-                    ),
-                    icon: const Icon(
-                      Icons.filter_alt,
-                      size: 25,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _CategoryDropdown(
-                      selected: widget.viewModel.categoryFilter,
-                      options: widget.viewModel.categoryOptions,
-                      onChanged: widget.onCategoryChanged,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 38,
-                child: TextField(
-                  controller: _searchController,
-                  readOnly: true,
-                  onTap: _openSearchMenu,
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    hintText: 'Search food, brand, category, ...',
-                    suffixIcon: _searchController.text.trim().isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              widget.onSearchChanged('');
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.close, size: 18),
-                          ),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    contentPadding: EdgeInsets.zero,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.transparent),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.transparent),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 2),
-              AppSegmentedTabs(
-                controller: widget.tabController,
-                tabs: ExploreRecipeTab.values.map(_tabLabel).toList(),
-                isScrollable: false,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  static String _tabLabel(ExploreRecipeTab tab) {
-    switch (tab) {
-      case ExploreRecipeTab.all:
-        return 'All';
-      case ExploreRecipeTab.popular:
-        return 'Popular';
-      case ExploreRecipeTab.recent:
-        return 'Recent';
-      case ExploreRecipeTab.following:
-        return 'Following';
-    }
-  }
-}
-
-class _CreatorSearchOption {
-  final String name;
-  final String avatarPath;
-  final int popularityScore;
-
-  const _CreatorSearchOption({
-    required this.name,
-    required this.avatarPath,
-    required this.popularityScore,
-  });
-}
-
-class _DiscoverSearchOption {
-  final String title;
-  final String category;
-
-  const _DiscoverSearchOption({required this.title, required this.category});
-}
-
-class _ExploreSearchSheet extends StatefulWidget {
-  final String initialQuery;
-  final List<String> recentSearches;
-  final List<_DiscoverSearchOption> discoveries;
-  final List<_CreatorSearchOption> creators;
-  final ValueChanged<String> onRemoveRecent;
-
-  const _ExploreSearchSheet({
-    required this.initialQuery,
-    required this.recentSearches,
-    required this.discoveries,
-    required this.creators,
-    required this.onRemoveRecent,
-  });
-
-  @override
-  State<_ExploreSearchSheet> createState() => _ExploreSearchSheetState();
-}
-
-class _ExploreSearchSheetState extends State<_ExploreSearchSheet> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialQuery);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit(String value) {
-    Navigator.of(context).pop(value.trim());
-  }
-
-  void _clearSearch() {
-    _controller.clear();
-    setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return SafeArea(
-      bottom: false,
-      child: Material(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(18)),
-        clipBehavior: Clip.antiAlias,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.78,
-          ),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              14,
-              16,
-              16 + MediaQuery.viewInsetsOf(context).bottom,
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _controller,
-                    autofocus: true,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: _submit,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                      hintText: 'Search food, creator, category, ...',
-                      suffixIcon: _controller.text.trim().isEmpty
-                          ? null
-                          : IconButton(
-                              onPressed: _clearSearch,
-                              icon: const Icon(Icons.close, size: 18),
-                            ),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  const SizedBox(height: 16),
-                  if (widget.discoveries.isNotEmpty) ...[
-                    Text('Discover', style: textTheme.titleSmall),
-                    const SizedBox(height: 8),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: widget.discoveries.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                            mainAxisExtent: 58,
-                          ),
-                      itemBuilder: (context, index) {
-                        final item = widget.discoveries[index];
-                        return InkWell(
-                          onTap: () => _submit(item.title),
-                          borderRadius: BorderRadius.circular(8),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: AppColors.background,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 7,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    item.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: textTheme.labelMedium,
-                                  ),
-                                  Text(
-                                    item.category,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: textTheme.bodySmall?.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (widget.recentSearches.isNotEmpty) ...[
-                    Text('Recent Searches', style: textTheme.titleSmall),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: widget.recentSearches.map((search) {
-                        return InputChip(
-                          label: Text(search),
-                          onPressed: () => _submit(search),
-                          onDeleted: () {
-                            widget.onRemoveRecent(search);
-                            setState(() {});
-                          },
-                          deleteIcon: const Icon(Icons.close, size: 16),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  Text('Creators', style: textTheme.titleSmall),
-                  const SizedBox(height: 8),
-                  if (widget.creators.isEmpty)
-                    Text(
-                      'No creator recommendations yet.',
-                      style: textTheme.bodySmall,
-                    )
-                  else
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 260),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: widget.creators.length,
-                        itemBuilder: (context, index) {
-                          final creator = widget.creators[index];
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: _ExploreCreatorAvatar(
-                              imagePath: creator.avatarPath,
-                              radius: 18,
-                              imageSize: 36,
-                              iconSize: 22,
-                            ),
-                            title: Text(creator.name),
-                            onTap: () => _submit(creator.name),
-                          );
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryDropdown extends StatelessWidget {
-  final ExploreRecipeCategoryOption? selected;
-  final List<ExploreRecipeCategoryOption> options;
-  final ValueChanged<ExploreRecipeCategoryOption?> onChanged;
-
-  const _CategoryDropdown({
-    required this.selected,
-    required this.options,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      position: PopupMenuPosition.under,
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
-      onSelected: (value) {
-        if (value == 'all') {
-          onChanged(null);
-          return;
-        }
-        for (final option in options) {
-          final key = '${option.isCustom ? 'custom' : 'standard'}:${option.id}';
-          if (key == value) {
-            onChanged(option);
-            return;
-          }
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(value: 'all', child: Text('All')),
-        ...options.map((option) {
-          return PopupMenuItem(
-            value: '${option.isCustom ? 'custom' : 'standard'}:${option.id}',
-            child: Text(option.name),
-          );
-        }),
-      ],
-      child: Container(
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                selected?.name ?? 'All',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            const Icon(
-              Icons.keyboard_arrow_down,
-              color: AppColors.textSecondary,
-              size: 18,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RecipeSortSheet extends StatefulWidget {
-  final Set<ExploreSortOption> selected;
-
-  const _RecipeSortSheet({required this.selected});
-
-  @override
-  State<_RecipeSortSheet> createState() => _RecipeSortSheetState();
-}
-
-class _RecipeSortSheetState extends State<_RecipeSortSheet> {
-  late Set<ExploreSortOption> _selected;
-
-  @override
-  void initState() {
-    super.initState();
-    _selected = {...widget.selected};
-  }
-
-  void _toggleSortOption(
-    ExploreSortOption option,
-    List<ExploreSortOption> group,
-  ) {
-    setState(() {
-      if (_selected.contains(option)) {
-        _selected.remove(option);
-      } else {
-        _selected.removeAll(group);
-        _selected.add(option);
-      }
-      if (_selected.isEmpty) {
-        _selected.add(ExploreSortOption.alphabetAZ);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Sort Recipes',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            _SortButtonSection(
-              title: 'By Alphabet:',
-              selected: _selected,
-              values: const [
-                ExploreSortOption.alphabetAZ,
-                ExploreSortOption.alphabetZA,
-              ],
-              labelBuilder: _sortLabel,
-              onSelected: _toggleSortOption,
-            ),
-            const SizedBox(height: 14),
-            _SortButtonSection(
-              title: 'By Date:',
-              selected: _selected,
-              values: const [
-                ExploreSortOption.newest,
-                ExploreSortOption.oldest,
-              ],
-              labelBuilder: _sortLabel,
-              onSelected: _toggleSortOption,
-            ),
-            const SizedBox(height: 14),
-            _SortButtonSection(
-              title: 'By Rating:',
-              selected: _selected,
-              values: const [
-                ExploreSortOption.ratingHighLow,
-                ExploreSortOption.ratingLowHigh,
-              ],
-              labelBuilder: _sortLabel,
-              onSelected: _toggleSortOption,
-            ),
-            const SizedBox(height: 14),
-            _SortButtonSection(
-              title: 'By Views:',
-              selected: _selected,
-              values: const [
-                ExploreSortOption.viewsHighLow,
-                ExploreSortOption.viewsLowHigh,
-              ],
-              labelBuilder: _sortLabel,
-              onSelected: _toggleSortOption,
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => Navigator.of(context).pop(_selected),
-                child: const Text('Apply Sort'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static String _sortLabel(ExploreSortOption option) {
-    switch (option) {
-      case ExploreSortOption.alphabetAZ:
-        return 'Alphabet: A-Z';
-      case ExploreSortOption.alphabetZA:
-        return 'Alphabet: Z-A';
-      case ExploreSortOption.newest:
-        return 'Date: Newest';
-      case ExploreSortOption.oldest:
-        return 'Date: Oldest';
-      case ExploreSortOption.ratingHighLow:
-        return 'Rating: High-Low';
-      case ExploreSortOption.ratingLowHigh:
-        return 'Rating: Low-High';
-      case ExploreSortOption.viewsHighLow:
-        return 'Views: High-Low';
-      case ExploreSortOption.viewsLowHigh:
-        return 'Views: Low-High';
-    }
-  }
-}
-
-class _SortButtonSection extends StatelessWidget {
-  final String title;
-  final Set<ExploreSortOption> selected;
-  final List<ExploreSortOption> values;
-  final String Function(ExploreSortOption value) labelBuilder;
-  final void Function(ExploreSortOption value, List<ExploreSortOption> group)
-  onSelected;
-
-  const _SortButtonSection({
-    required this.title,
-    required this.selected,
-    required this.values,
-    required this.labelBuilder,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: textTheme.titleSmall),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: values.map((value) {
-            final isSelected = selected.contains(value);
-            return ChoiceChip(
-              label: Text(labelBuilder(value)),
-              selected: isSelected,
-              onSelected: (_) => onSelected(value, values),
-              selectedColor: AppColors.primary.withValues(alpha: 0.14),
-              labelStyle: textTheme.bodySmall?.copyWith(
-                color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
-              side: BorderSide(
-                color: isSelected ? AppColors.primary : AppColors.border,
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-}
-
-class _RecipeFilterSelection {
-  final ExploreRatingFilter rating;
-  final ExploreCommentsFilter comments;
-  final ExploreViewsFilter views;
-
-  const _RecipeFilterSelection({
-    required this.rating,
-    required this.comments,
-    required this.views,
-  });
-}
-
-class _RecipeFilterSheet extends StatefulWidget {
-  final _RecipeFilterSelection initial;
-
-  const _RecipeFilterSheet({required this.initial});
-
-  @override
-  State<_RecipeFilterSheet> createState() => _RecipeFilterSheetState();
-}
-
-class _RecipeFilterSheetState extends State<_RecipeFilterSheet> {
-  late ExploreRatingFilter _rating;
-  late ExploreCommentsFilter _comments;
-  late ExploreViewsFilter _views;
-
-  @override
-  void initState() {
-    super.initState();
-    _rating = widget.initial.rating;
-    _comments = widget.initial.comments;
-    _views = widget.initial.views;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          16 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Filter Recipes',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              _FilterButtonSection<ExploreRatingFilter>(
-                title: 'Ratings',
-                selected: _rating,
-                values: ExploreRatingFilter.values,
-                labelBuilder: _ratingFilterLabel,
-                onSelected: (value) => setState(() => _rating = value),
-              ),
-              const SizedBox(height: 14),
-              _FilterButtonSection<ExploreCommentsFilter>(
-                title: 'Comments',
-                selected: _comments,
-                values: ExploreCommentsFilter.values,
-                labelBuilder: _commentsFilterLabel,
-                onSelected: (value) => setState(() => _comments = value),
-              ),
-              const SizedBox(height: 14),
-              _FilterButtonSection<ExploreViewsFilter>(
-                title: 'Views',
-                selected: _views,
-                values: ExploreViewsFilter.values,
-                labelBuilder: _viewsFilterLabel,
-                onSelected: (value) => setState(() => _views = value),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.of(context).pop(
-                    _RecipeFilterSelection(
-                      rating: _rating,
-                      comments: _comments,
-                      views: _views,
-                    ),
-                  ),
-                  child: const Text('Apply Filters'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  static String _ratingFilterLabel(ExploreRatingFilter value) {
-    switch (value) {
-      case ExploreRatingFilter.all:
-        return 'All';
-      case ExploreRatingFilter.oneToTwo:
-        return '1 - 2 star';
-      case ExploreRatingFilter.twoToThree:
-        return '2 - 3 star';
-      case ExploreRatingFilter.threeToFour:
-        return '3 - 4 star';
-      case ExploreRatingFilter.fourToFive:
-        return '4 - 5 star';
-    }
-  }
-
-  static String _commentsFilterLabel(ExploreCommentsFilter value) {
-    switch (value) {
-      case ExploreCommentsFilter.all:
-        return 'All';
-      case ExploreCommentsFilter.under100:
-        return '< 100';
-      case ExploreCommentsFilter.over100:
-        return '> 100';
-      case ExploreCommentsFilter.between500And1000:
-        return '500 - 1000';
-    }
-  }
-
-  static String _viewsFilterLabel(ExploreViewsFilter value) {
-    switch (value) {
-      case ExploreViewsFilter.all:
-        return 'All';
-      case ExploreViewsFilter.under100:
-        return '< 100';
-      case ExploreViewsFilter.over100:
-        return '> 100';
-      case ExploreViewsFilter.between500And1000:
-        return '500 - 1000';
-    }
-  }
-}
-
-class _FilterButtonSection<T> extends StatelessWidget {
-  final String title;
-  final T selected;
-  final List<T> values;
-  final String Function(T value) labelBuilder;
-  final ValueChanged<T> onSelected;
-
-  const _FilterButtonSection({
-    required this.title,
-    required this.selected,
-    required this.values,
-    required this.labelBuilder,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: textTheme.titleSmall),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: values.map((value) {
-            final isSelected = value == selected;
-            return ChoiceChip(
-              label: Text(labelBuilder(value)),
-              selected: isSelected,
-              onSelected: (_) => onSelected(value),
-              selectedColor: AppColors.primary.withValues(alpha: 0.14),
-              labelStyle: textTheme.bodySmall?.copyWith(
-                color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
-              side: BorderSide(
-                color: isSelected ? AppColors.primary : AppColors.border,
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-}
-
-class _ExploreCreatorAvatar extends StatelessWidget {
-  final String imagePath;
-  final double radius;
-  final double imageSize;
-  final double iconSize;
-  final bool hasBorder;
-
-  const _ExploreCreatorAvatar({
-    required this.imagePath,
-    required this.radius,
-    required this.imageSize,
-    required this.iconSize,
-    this.hasBorder = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasImage = imagePath.trim().isNotEmpty;
-
-    return Container(
-      width: radius * 2,
-      height: radius * 2,
-      padding: hasBorder ? const EdgeInsets.all(2) : EdgeInsets.zero,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: hasBorder
-            ? Border.all(color: AppColors.primary, width: 1.5)
-            : null,
-      ),
-      child: CircleAvatar(
-        backgroundColor: Colors.white,
-        child: hasImage
-            ? ClipOval(
-                child: AppRemoteOrAssetImage(
-                  imagePath: imagePath,
-                  width: imageSize,
-                  height: imageSize,
-                ),
-              )
-            : Icon(Icons.person, color: AppColors.primary, size: iconSize),
-      ),
-    );
-  }
 }

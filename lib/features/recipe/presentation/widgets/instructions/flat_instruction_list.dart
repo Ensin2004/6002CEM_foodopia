@@ -7,6 +7,7 @@ import '../../../../../core/widgets/buttons/secondary_button.dart';
 import '../../view/add_recipe_instructions_page.dart';
 import 'input_step_field.dart';
 
+/// Reorderable list for recipe's instruction that use step-by-step method.
 class FlatInstructionList extends StatelessWidget {
   final List<InstructionStepState> steps;
   final double horizontalPadding;
@@ -45,7 +46,7 @@ class FlatInstructionList extends StatelessWidget {
             final step = steps[index];
             return Padding(
               key: ValueKey(step.id),
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
               child: _InstructionStepCard(
                 index: index,
                 title: "Step ${index + 1}",
@@ -56,18 +57,16 @@ class FlatInstructionList extends StatelessWidget {
             );
           },
         ),
-        Padding(
-          padding: EdgeInsets.only(top: AppSpacing.sm),
-          child: SecondaryButton(
-            text: "+  Add Step",
-            onPressed: onAddStep,
-          ),
+        SecondaryButton(
+          text: "+  Add Step",
+          onPressed: onAddStep,
         ),
       ],
     );
   }
 }
 
+/// Card for one flat instruction step with reorder and delete actions.
 class _InstructionStepCard extends StatelessWidget {
   final int index;
   final String title;
@@ -92,9 +91,10 @@ class _InstructionStepCard extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.md),
         child: Column(
           children: [
+            const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 ReorderableDragStartListener(
@@ -105,7 +105,7 @@ class _InstructionStepCard extends StatelessWidget {
                     size: 20,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xs),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
                     title,
@@ -117,17 +117,19 @@ class _InstructionStepCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                IconButton(
-                  onPressed: onDelete,
-                  icon: const Icon(
+                const SizedBox(width: AppSpacing.sm),
+                InkWell(
+                  onTap: onDelete,
+                  child: const Icon(
                     Icons.delete_outline,
                     color: AppColors.error,
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: AppSpacing.sm),
             const Divider(color: AppColors.border),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.sm),
             InputStepField(
               index: index,
               step: step,
@@ -135,7 +137,7 @@ class _InstructionStepCard extends StatelessWidget {
               onPickImage: onPickImage,
               onDelete: onDelete,
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.sm),
           ],
         ),
       ),

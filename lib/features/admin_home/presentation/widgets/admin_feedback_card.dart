@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../domain/entities/admin_home_dashboard.dart';
 
+/// Feedback card widget for the admin home page.
+/// Displays user feedback with rating and comment.
 class AdminFeedbackCard extends StatelessWidget {
+  /// The feedback item to display.
   final AdminFeedbackItem feedback;
 
+  /// Creates a new admin feedback card instance.
   const AdminFeedbackCard({super.key, required this.feedback});
 
   @override
@@ -19,6 +23,7 @@ class AdminFeedbackCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // User avatar with initials.
           CircleAvatar(
             radius: 22,
             backgroundColor: const Color(0xFFFFF1C2),
@@ -31,10 +36,13 @@ class AdminFeedbackCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
+
+          // Feedback content.
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // User name.
                 Text(
                   feedback.userName,
                   maxLines: 1,
@@ -45,8 +53,12 @@ class AdminFeedbackCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
+
+                // Star rating.
                 _RatingStars(rating: feedback.rating),
                 const SizedBox(height: 6),
+
+                // Comment.
                 Text(
                   feedback.comment,
                   maxLines: 2,
@@ -56,6 +68,8 @@ class AdminFeedbackCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
+
+                // Time ago.
                 Text(feedback.timeAgo, style: context.text.bodySmall),
               ],
             ),
@@ -66,9 +80,12 @@ class AdminFeedbackCard extends StatelessWidget {
   }
 }
 
+/// Star rating display widget.
 class _RatingStars extends StatelessWidget {
+  /// The rating value.
   final double rating;
 
+  /// Creates a new rating stars instance.
   const _RatingStars({required this.rating});
 
   @override

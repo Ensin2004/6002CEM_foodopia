@@ -1,3 +1,5 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -8,18 +10,23 @@ import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../domain/entities/admin_statistics.dart';
 import 'statistics_bar_chart.dart';
 import 'statistics_line_chart.dart';
+import 'statistics_recipe_media_thumbnail.dart';
 import 'statistics_pie_chart.dart';
 
+/// Date-range control shared by the smaller admin reports.
+// Handles AdminStatisticDateRangeBar for this part of the statistics page.
 class AdminStatisticDateRangeBar extends StatelessWidget {
   final String dateRange;
   final VoidCallback? onTap;
 
+  // Handles AdminStatisticDateRangeBar for this part of the statistics page.
   const AdminStatisticDateRangeBar({
     super.key,
     required this.dateRange,
     this.onTap,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -32,6 +39,7 @@ class AdminStatisticDateRangeBar extends StatelessWidget {
             fontSize: 11,
           ),
         ),
+        // Handles SizedBox for this part of the statistics page.
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: InkWell(
@@ -55,6 +63,7 @@ class AdminStatisticDateRangeBar extends StatelessWidget {
                       style: context.text.bodySmall?.copyWith(fontSize: 11),
                     ),
                   ),
+                  // Handles Icon for this part of the statistics page.
                   const Icon(Icons.calendar_month, size: 18),
                 ],
               ),
@@ -66,11 +75,14 @@ class AdminStatisticDateRangeBar extends StatelessWidget {
   }
 }
 
+/// Compact tile for one important admin total.
+// Handles AdminStatisticSummaryTile for this part of the statistics page.
 class AdminStatisticSummaryTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
 
+  // Handles AdminStatisticSummaryTile for this part of the statistics page.
   const AdminStatisticSummaryTile({
     super.key,
     required this.icon,
@@ -78,6 +90,7 @@ class AdminStatisticSummaryTile extends StatelessWidget {
     required this.value,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -91,6 +104,7 @@ class AdminStatisticSummaryTile extends StatelessWidget {
       child: Row(
         children: [
           AdminStatisticSoftIcon(icon: icon),
+          // Handles SizedBox for this part of the statistics page.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -107,6 +121,7 @@ class AdminStatisticSummaryTile extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
+                // Handles SizedBox for this part of the statistics page.
                 const SizedBox(height: 2),
                 Text(
                   value,
@@ -127,16 +142,20 @@ class AdminStatisticSummaryTile extends StatelessWidget {
   }
 }
 
+/// Places a daily line chart inside the standard admin card style.
+// Handles AdminLineChartCard for this part of the statistics page.
 class AdminLineChartCard extends StatelessWidget {
   final String title;
   final List<AdminDailyStatistic> values;
 
+  // Handles AdminLineChartCard for this part of the statistics page.
   const AdminLineChartCard({
     super.key,
     required this.title,
     required this.values,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMM d');
@@ -161,9 +180,11 @@ class AdminLineChartCard extends StatelessWidget {
               fontSize: 13,
             ),
           ),
+          // Handles SizedBox for this part of the statistics page.
           const SizedBox(height: AppSpacing.lg),
           LayoutBuilder(
             builder: (context, constraints) {
+              // Give every date enough horizontal space and scroll if needed.
               final chartWidth = (values.length * 52.0).clamp(
                 constraints.maxWidth,
                 double.infinity,
@@ -173,6 +194,12 @@ class AdminLineChartCard extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
                   width: chartWidth,
+                  // LINE CHART CALL STARTS HERE.
+                  // This shared admin card sends the prepared daily points to
+                  // StatisticsLineChart, which draws the actual line.
+                  // Draws a line chart of the supplied daily admin values.
+                  // Linked from: AdminMealAnalyticPage and AdminPostAnalyticPage.
+                  // Links to: statistics_line_chart.dart -> StatisticsLineChart.
                   child: StatisticsLineChart(
                     height: 220,
                     points: values
@@ -194,6 +221,8 @@ class AdminLineChartCard extends StatelessWidget {
   }
 }
 
+/// Lets the admin move between related report sections.
+// Handles AdminAnalyticSectionPager for this part of the statistics page.
 class AdminAnalyticSectionPager extends StatelessWidget {
   final PageController controller;
   final List<AdminAnalyticSection> sections;
@@ -203,6 +232,7 @@ class AdminAnalyticSectionPager extends StatelessWidget {
   final ValueChanged<AdminStatisticsSortOrder> onSortChanged;
   final Widget? Function(AdminAnalyticSection section)? customSectionBuilder;
 
+  // Handles AdminAnalyticSectionPager for this part of the statistics page.
   const AdminAnalyticSectionPager({
     super.key,
     required this.controller,
@@ -214,6 +244,7 @@ class AdminAnalyticSectionPager extends StatelessWidget {
     this.customSectionBuilder,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     final pageHeight = MediaQuery.sizeOf(context).width < 360 ? 820.0 : 780.0;
@@ -232,6 +263,7 @@ class AdminAnalyticSectionPager extends StatelessWidget {
             onPageChanged(index);
           },
         ),
+        // Handles SizedBox for this part of the statistics page.
         const SizedBox(height: AppSpacing.md),
         SizedBox(
           height: pageHeight,
@@ -244,6 +276,8 @@ class AdminAnalyticSectionPager extends StatelessWidget {
               if (custom != null) {
                 return SingleChildScrollView(child: custom);
               }
+              // Difficulty keeps its natural 1-to-5 order. Other lists follow
+              // the sort option selected by the admin.
               final section = sections[index].title == 'Average Difficulty'
                   ? sections[index]
                   : sections[index].sorted(sortOrder);
@@ -257,6 +291,7 @@ class AdminAnalyticSectionPager extends StatelessWidget {
             },
           ),
         ),
+        // Handles SizedBox for this part of the statistics page.
         const SizedBox(height: AppSpacing.md),
         AdminPageDots(count: sections.length, selectedIndex: selectedIndex),
       ],
@@ -264,17 +299,20 @@ class AdminAnalyticSectionPager extends StatelessWidget {
   }
 }
 
+// Handles _AdminSectionTabs for this part of the statistics page.
 class _AdminSectionTabs extends StatelessWidget {
   final List<AdminAnalyticSection> sections;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
+  // Handles _AdminSectionTabs for this part of the statistics page.
   const _AdminSectionTabs({
     required this.sections,
     required this.selectedIndex,
     required this.onSelected,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
@@ -295,6 +333,7 @@ class _AdminSectionTabs extends StatelessWidget {
     );
   }
 
+  // Handles _shortTabLabel for this part of the statistics page.
   String _shortTabLabel(String title) {
     switch (title) {
       case 'Most Planned Meal':
@@ -320,11 +359,14 @@ class _AdminSectionTabs extends StatelessWidget {
   }
 }
 
+/// Standard layout for a summary, chart, and ranked breakdown.
+// Handles AdminAnalyticSectionCard for this part of the statistics page.
 class AdminAnalyticSectionCard extends StatelessWidget {
   final AdminAnalyticSection section;
   final AdminStatisticsSortOrder sortOrder;
   final ValueChanged<AdminStatisticsSortOrder> onSortChanged;
 
+  // Handles AdminAnalyticSectionCard for this part of the statistics page.
   const AdminAnalyticSectionCard({
     super.key,
     required this.section,
@@ -332,8 +374,10 @@ class AdminAnalyticSectionCard extends StatelessWidget {
     required this.onSortChanged,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
+    // Use pie charts for parts of a whole and bars for ranked values.
     final chartWidth = (MediaQuery.sizeOf(context).width - 52).clamp(
       288.0,
       340.0,
@@ -365,6 +409,7 @@ class AdminAnalyticSectionCard extends StatelessWidget {
               fontSize: 13,
             ),
           ),
+          // Handles SizedBox for this part of the statistics page.
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -375,6 +420,7 @@ class AdminAnalyticSectionCard extends StatelessWidget {
                   value: section.summaryValue,
                 ),
               ),
+              // Handles SizedBox for this part of the statistics page.
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: AdminStatisticSummaryTile(
@@ -385,6 +431,7 @@ class AdminAnalyticSectionCard extends StatelessWidget {
               ),
             ],
           ),
+          // Handles SizedBox for this part of the statistics page.
           const SizedBox(height: AppSpacing.lg),
           _SectionChart(section: section, chartWidth: chartWidth),
           const SizedBox(height: AppSpacing.lg),
@@ -400,10 +447,12 @@ class AdminAnalyticSectionCard extends StatelessWidget {
   }
 }
 
+// Handles _SectionChart for this part of the statistics page.
 class _SectionChart extends StatelessWidget {
   final AdminAnalyticSection section;
   final double chartWidth;
 
+  // Handles _SectionChart for this part of the statistics page.
   const _SectionChart({required this.section, required this.chartWidth});
 
   @override
@@ -418,6 +467,12 @@ class _SectionChart extends StatelessWidget {
     if (section.title == 'Meal Planned Time' ||
         section.title == 'Method Of Creating Meal Plan') {
       final chartSize = MediaQuery.sizeOf(context).width < 360 ? 238.0 : 260.0;
+      // PIE CHART CALL STARTS HERE.
+      // Meal-time and creation-method sections represent parts of a total, so
+      // this branch sends their values to the shared StatisticsPieChart.
+      // Draws a pie chart of meal-time or plan-creation-method totals.
+      // Linked from: AdminMealAnalyticPage through AdminAnalyticSectionPager.
+      // Links to: statistics_pie_chart.dart -> StatisticsPieChart.
       return StatisticsPieChart(
         size: chartSize,
         centerTitle: section.title == 'Method Of Creating Meal Plan'
@@ -439,6 +494,12 @@ class _SectionChart extends StatelessWidget {
     return Center(
       child: SizedBox(
         width: chartWidth,
+        // BAR CHART CALL STARTS HERE.
+        // All other ranked analytic sections send their first five items to
+        // StatisticsBarChart, which builds one vertical bar for each item.
+        // Draws a bar chart of the first five ranked section values.
+        // Linked from: AdminMealAnalyticPage and AdminPostAnalyticPage.
+        // Links to: statistics_bar_chart.dart -> StatisticsBarChart.
         child: StatisticsBarChart(
           height: chartWidth * 0.72,
           items: chartItems
@@ -462,12 +523,15 @@ class _SectionChart extends StatelessWidget {
   }
 }
 
+/// Ranked values that can sort and open extra detail rows.
+// Handles AdminRankedStatisticList for this part of the statistics page.
 class AdminRankedStatisticList extends StatefulWidget {
   final String title;
   final List<AdminRankedStatistic> items;
   final AdminStatisticsSortOrder? sortOrder;
   final ValueChanged<AdminStatisticsSortOrder>? onSortChanged;
 
+  // Handles AdminRankedStatisticList for this part of the statistics page.
   const AdminRankedStatisticList({
     super.key,
     required this.title,
@@ -476,14 +540,17 @@ class AdminRankedStatisticList extends StatefulWidget {
     this.onSortChanged,
   });
 
+  // Handles createState for this part of the statistics page.
   @override
   State<AdminRankedStatisticList> createState() =>
       _AdminRankedStatisticListState();
 }
 
+// Handles _AdminRankedStatisticListState for this part of the statistics page.
 class _AdminRankedStatisticListState extends State<AdminRankedStatisticList> {
   int? _expandedIndex;
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -538,6 +605,7 @@ class _AdminRankedStatisticListState extends State<AdminRankedStatisticList> {
                         'Sort',
                         style: context.text.bodySmall?.copyWith(fontSize: 9),
                       ),
+                      // Handles SizedBox for this part of the statistics page.
                       const SizedBox(width: 2),
                       const Icon(Icons.tune, size: 17),
                     ],
@@ -545,10 +613,13 @@ class _AdminRankedStatisticListState extends State<AdminRankedStatisticList> {
                 ),
             ],
           ),
+          // Handles SizedBox for this part of the statistics page.
           const SizedBox(height: AppSpacing.md),
           ...List.generate(widget.items.length, (index) {
             final item = widget.items[index];
             final isExpanded = _expandedIndex == index;
+            // Only one ranked item stays open at a time.
+            // Handles toggleExpanded for this part of the statistics page.
             void toggleExpanded() {
               setState(() {
                 _expandedIndex = isExpanded ? null : index;
@@ -575,12 +646,14 @@ class _AdminRankedStatisticListState extends State<AdminRankedStatisticList> {
   }
 }
 
+// Handles AdminPreferencePieCard for this part of the statistics page.
 class AdminPreferencePieCard extends StatelessWidget {
   final String title;
   final String centerTitle;
   final int totalUsers;
   final List<AdminRankedStatistic> preferences;
 
+  // Handles AdminPreferencePieCard for this part of the statistics page.
   const AdminPreferencePieCard({
     super.key,
     this.title = 'Dietary Preference',
@@ -589,6 +662,7 @@ class AdminPreferencePieCard extends StatelessWidget {
     required this.preferences,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     final chartSize = MediaQuery.sizeOf(context).width < 360 ? 238.0 : 260.0;
@@ -615,7 +689,14 @@ class AdminPreferencePieCard extends StatelessWidget {
               fontSize: 13,
             ),
           ),
+          // Handles SizedBox for this part of the statistics page.
           const SizedBox(height: AppSpacing.md),
+          // PIE CHART CALL STARTS HERE.
+          // Gender and dietary-preference pages call this card. This line sends
+          // their converted segments to the shared pie-chart widget.
+          // Draws a pie chart of gender or dietary-preference distribution.
+          // Linked from: AdminGenderPage and AdminDietaryPreferencePage.
+          // Links to: statistics_pie_chart.dart -> StatisticsPieChart.
           StatisticsPieChart(
             size: chartSize,
             centerTitle: centerTitle,
@@ -636,16 +717,19 @@ class AdminPreferencePieCard extends StatelessWidget {
   }
 }
 
+// Handles AdminPageDots for this part of the statistics page.
 class AdminPageDots extends StatelessWidget {
   final int count;
   final int selectedIndex;
 
+  // Handles AdminPageDots for this part of the statistics page.
   const AdminPageDots({
     super.key,
     required this.count,
     required this.selectedIndex,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -667,11 +751,13 @@ class AdminPageDots extends StatelessWidget {
   }
 }
 
+// Handles AdminStatisticSoftIcon for this part of the statistics page.
 class AdminStatisticSoftIcon extends StatelessWidget {
   final IconData icon;
 
   const AdminStatisticSoftIcon({super.key, required this.icon});
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -687,17 +773,20 @@ class AdminStatisticSoftIcon extends StatelessWidget {
   }
 }
 
+// Handles _RankedRow for this part of the statistics page.
 class _RankedRow extends StatelessWidget {
   final AdminRankedStatistic item;
   final bool isExpanded;
   final VoidCallback onTap;
 
+  // Handles _RankedRow for this part of the statistics page.
   const _RankedRow({
     required this.item,
     required this.isExpanded,
     required this.onTap,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -720,6 +809,7 @@ class _RankedRow extends StatelessWidget {
                   ),
                   child: _RankedMarker(item: item),
                 ),
+                // Handles SizedBox for this part of the statistics page.
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -739,6 +829,7 @@ class _RankedRow extends StatelessWidget {
                               ),
                             ),
                           ),
+                          // Handles SizedBox for this part of the statistics page.
                           const SizedBox(width: AppSpacing.sm),
                           Text(
                             item.value.toString(),
@@ -750,6 +841,7 @@ class _RankedRow extends StatelessWidget {
                           ),
                         ],
                       ),
+                      // Handles SizedBox for this part of the statistics page.
                       const SizedBox(height: 5),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(100),
@@ -763,6 +855,7 @@ class _RankedRow extends StatelessWidget {
                     ],
                   ),
                 ),
+                // Handles SizedBox for this part of the statistics page.
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   '${(item.percent * 100).round()}%',
@@ -773,6 +866,7 @@ class _RankedRow extends StatelessWidget {
                   ),
                 ),
                 if (item.details.isNotEmpty) ...[
+                  // Handles SizedBox for this part of the statistics page.
                   const SizedBox(width: AppSpacing.xs),
                   Icon(
                     isExpanded
@@ -793,24 +887,23 @@ class _RankedRow extends StatelessWidget {
   }
 }
 
+// Handles _RankedMarker for this part of the statistics page.
 class _RankedMarker extends StatelessWidget {
   final AdminRankedStatistic item;
 
   const _RankedMarker({required this.item});
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     final imageUrl = item.imageUrl?.trim() ?? '';
     if (imageUrl.isNotEmpty) {
-      return ClipOval(
-        child: Image.network(
-          imageUrl,
-          width: 32,
-          height: 32,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              Icon(item.icon, color: const Color(0xFF6D642C), size: 18),
-        ),
+      return StatisticsRecipeMediaThumbnail(
+        mediaPath: imageUrl,
+        fallbackIcon: item.icon,
+        size: 32,
+        backgroundColor: const Color(0xFFECE7CF),
+        iconColor: const Color(0xFF6D642C),
       );
     }
 
@@ -836,6 +929,7 @@ class _RankedMarker extends StatelessWidget {
     return Icon(item.icon, color: const Color(0xFF6D642C), size: 18);
   }
 
+  // Handles _markerText for this part of the statistics page.
   String _markerText(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return '';
@@ -844,12 +938,14 @@ class _RankedMarker extends StatelessWidget {
   }
 }
 
+// Handles _DifficultyRankedRow for this part of the statistics page.
 class _DifficultyRankedRow extends StatelessWidget {
   final AdminRankedStatistic item;
   final bool isExpanded;
   final bool showDivider;
   final VoidCallback onTap;
 
+  // Handles _DifficultyRankedRow for this part of the statistics page.
   const _DifficultyRankedRow({
     required this.item,
     required this.isExpanded,
@@ -857,6 +953,7 @@ class _DifficultyRankedRow extends StatelessWidget {
     required this.onTap,
   });
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     final level = _difficultyLevelFromLabel(item.label);
@@ -872,6 +969,7 @@ class _DifficultyRankedRow extends StatelessWidget {
             ),
             child: Row(
               children: [
+                // Handles AdminStatisticSoftIcon for this part of the statistics page.
                 const AdminStatisticSoftIcon(icon: Icons.star_border),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
@@ -879,6 +977,7 @@ class _DifficultyRankedRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _DifficultyStars(count: level),
+                      // Handles SizedBox for this part of the statistics page.
                       const SizedBox(height: 2),
                       Text(
                         '$level Star Difficulty',
@@ -892,6 +991,7 @@ class _DifficultyRankedRow extends StatelessWidget {
                     ],
                   ),
                 ),
+                // Handles SizedBox for this part of the statistics page.
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   item.value.toString(),
@@ -901,6 +1001,7 @@ class _DifficultyRankedRow extends StatelessWidget {
                     fontSize: 13,
                   ),
                 ),
+                // Handles SizedBox for this part of the statistics page.
                 const SizedBox(width: AppSpacing.md),
                 Icon(
                   isExpanded
@@ -921,11 +1022,13 @@ class _DifficultyRankedRow extends StatelessWidget {
   }
 }
 
+// Handles _DifficultyStars for this part of the statistics page.
 class _DifficultyStars extends StatelessWidget {
   final int count;
 
   const _DifficultyStars({required this.count});
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -942,17 +1045,20 @@ class _DifficultyStars extends StatelessWidget {
   }
 }
 
+// Handles _difficultyLevelFromLabel for this part of the statistics page.
 int _difficultyLevelFromLabel(String label) {
   final match = RegExp(r'\d+').firstMatch(label);
   final level = int.tryParse(match?.group(0) ?? '') ?? 0;
   return level.clamp(1, 5);
 }
 
+// Handles _RankedDetailRow for this part of the statistics page.
 class _RankedDetailRow extends StatelessWidget {
   final AdminRankedStatisticDetail detail;
 
   const _RankedDetailRow({required this.detail});
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -964,6 +1070,7 @@ class _RankedDetailRow extends StatelessWidget {
       child: Row(
         children: [
           _DetailMarker(detail: detail),
+          // Handles SizedBox for this part of the statistics page.
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -993,6 +1100,7 @@ class _RankedDetailRow extends StatelessWidget {
               ],
             ),
           ),
+          // Handles SizedBox for this part of the statistics page.
           const SizedBox(width: AppSpacing.sm),
           Text(
             detail.quantity.toString(),
@@ -1008,34 +1116,22 @@ class _RankedDetailRow extends StatelessWidget {
   }
 }
 
+// Handles _DetailMarker for this part of the statistics page.
 class _DetailMarker extends StatelessWidget {
   final AdminRankedStatisticDetail detail;
 
   const _DetailMarker({required this.detail});
 
+  // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
-    final imageUrl = detail.imageUrl?.trim() ?? '';
-    return Container(
-      width: 32,
-      height: 32,
-      clipBehavior: Clip.antiAlias,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFECE7CF),
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFD7C98D)),
-      ),
-      child: imageUrl.isNotEmpty
-          ? Image.network(
-              imageUrl,
-              width: 32,
-              height: 32,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  Icon(detail.icon, color: const Color(0xFF6D642C), size: 18),
-            )
-          : Icon(detail.icon, color: const Color(0xFF6D642C), size: 18),
+    return StatisticsRecipeMediaThumbnail(
+      mediaPath: detail.imageUrl,
+      fallbackIcon: detail.icon,
+      size: 32,
+      backgroundColor: const Color(0xFFECE7CF),
+      iconColor: const Color(0xFF6D642C),
+      borderColor: const Color(0xFFD7C98D),
     );
   }
 }

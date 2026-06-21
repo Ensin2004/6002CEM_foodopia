@@ -4,6 +4,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 
+/// Displays one labeled value row in the review page.
 class ReviewInfoRow extends StatelessWidget {
   final String label;
   final String value;

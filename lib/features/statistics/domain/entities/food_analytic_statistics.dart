@@ -1,5 +1,8 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 
+// Handles StatisticsSortOrder for this part of the statistics page.
 enum StatisticsSortOrder { most, least }
 
 enum FoodAnalyticChartType {
@@ -8,12 +11,14 @@ enum FoodAnalyticChartType {
   categoryMealPrepared,
 }
 
+// Handles FoodAnalyticStatistics for this part of the statistics page.
 class FoodAnalyticStatistics {
   final String dateRange;
   final int totalDish;
   final int totalMeals;
   final List<FoodAnalyticChart> charts;
 
+  // Handles FoodAnalyticStatistics for this part of the statistics page.
   const FoodAnalyticStatistics({
     required this.dateRange,
     required this.totalDish,
@@ -22,6 +27,7 @@ class FoodAnalyticStatistics {
   });
 }
 
+// Handles FoodAnalyticChart for this part of the statistics page.
 class FoodAnalyticChart {
   final String title;
   final FoodAnalyticChartType type;
@@ -31,6 +37,7 @@ class FoodAnalyticChart {
   final String highlightValue;
   final List<FoodAnalyticBarItem> items;
 
+  // Handles FoodAnalyticChart for this part of the statistics page.
   const FoodAnalyticChart({
     required this.title,
     required this.type,
@@ -41,6 +48,7 @@ class FoodAnalyticChart {
     required this.items,
   });
 
+  // Handles sorted for this part of the statistics page.
   FoodAnalyticChart sorted(StatisticsSortOrder order) {
     final sortedItems = [...items]
       ..sort(
@@ -61,6 +69,7 @@ class FoodAnalyticChart {
   }
 }
 
+// Handles FoodAnalyticBarItem for this part of the statistics page.
 class FoodAnalyticBarItem {
   final String? recipeId;
   final String label;
@@ -71,6 +80,7 @@ class FoodAnalyticBarItem {
   final String? imageUrl;
   final List<FoodAnalyticDetailItem> details;
 
+  // Handles FoodAnalyticBarItem for this part of the statistics page.
   const FoodAnalyticBarItem({
     this.recipeId,
     required this.label,
@@ -83,6 +93,7 @@ class FoodAnalyticBarItem {
   });
 }
 
+// Handles FoodAnalyticDetailItem for this part of the statistics page.
 class FoodAnalyticDetailItem {
   final String? recipeId;
   final String name;
@@ -90,6 +101,7 @@ class FoodAnalyticDetailItem {
   final IconData icon;
   final String? imageUrl;
 
+  // Handles FoodAnalyticDetailItem for this part of the statistics page.
   const FoodAnalyticDetailItem({
     this.recipeId,
     required this.name,

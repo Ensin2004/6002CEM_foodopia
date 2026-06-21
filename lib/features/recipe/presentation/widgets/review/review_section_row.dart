@@ -4,6 +4,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 
+/// Expandable recipe review section with icon, title, optional edit action and children.
 class ReviewSectionRow extends StatefulWidget {
   final IconData icon;
   final String title;

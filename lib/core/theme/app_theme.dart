@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 /// Defines behavior for app theme.
+/// Contains the light theme configuration for the application.
 class AppTheme {
+  /// Light theme configuration.
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
 
+    // =========================================================================
     // 🎨 COLOR SYSTEM
+    // =========================================================================
     colorScheme: const ColorScheme.light(
       primary: AppColors.primary,
       secondary: AppColors.secondary,
       surface: Colors.white,
       surfaceContainerHighest: Color(0xFFF4F5F4),
       error: AppColors.error,
-
       onPrimary: Colors.white,
       onSecondary: Colors.black,
       onSurface: AppColors.textPrimary,
@@ -22,6 +25,9 @@ class AppTheme {
 
     scaffoldBackgroundColor: Colors.white,
 
+    // =========================================================================
+    // 📱 APP BAR
+    // =========================================================================
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.white,
       foregroundColor: Colors.black,
@@ -39,7 +45,9 @@ class AppTheme {
       ),
     ),
 
+    // =========================================================================
     // 📝 TEXT SYSTEM (industry standard)
+    // =========================================================================
     textTheme: const TextTheme(
       headlineSmall: TextStyle(
         fontSize: 22,
@@ -62,6 +70,9 @@ class AppTheme {
       labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
     ),
 
+    // =========================================================================
+    // 📝 INPUT DECORATION
+    // =========================================================================
     inputDecorationTheme: InputDecorationTheme(
       hintStyle: TextStyle(
         color: AppColors.textSecondary.withValues(alpha: 0.55),
@@ -69,7 +80,9 @@ class AppTheme {
       ),
     ),
 
+    // =========================================================================
     // 🔘 BUTTON DEFAULT STYLE
+    // =========================================================================
     // elevatedButtonTheme: ElevatedButtonThemeData(
     //   style: ElevatedButton.styleFrom(
     //     backgroundColor: AppColors.primary,

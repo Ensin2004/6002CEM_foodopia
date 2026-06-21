@@ -15,6 +15,9 @@ import '../viewmodel/notifications_viewmodel.dart';
 import '../widgets/notification_empty_state.dart';
 import '../widgets/notification_tile.dart';
 
+// Main notification screen.
+// It creates the notification view model and lets the UI react to the loaded
+// notification list, unread state, and menu actions.
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});
 
@@ -39,6 +42,8 @@ class _NotificationsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model so this screen rebuilds when notifications are
+    // loaded, marked as read, or changed by a refresh.
     final viewModel = context.watch<NotificationsViewModel>();
 
     if (viewModel.errorMessage != null) {

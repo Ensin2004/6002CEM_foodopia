@@ -1,9 +1,12 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/recipe_performance_statistics.dart';
 import '../../domain/usecases/get_recipe_performance_statistics_usecase.dart';
 
+// Handles RecipePerformanceViewModel for this part of the statistics page.
 class RecipePerformanceViewModel extends ChangeNotifier {
   final GetRecipePerformanceStatisticsUseCase _getStatisticsUseCase;
 
@@ -19,11 +22,13 @@ class RecipePerformanceViewModel extends ChangeNotifier {
     Future.microtask(loadStatistics);
   }
 
+  // Handles statistics for this part of the statistics page.
   RecipePerformanceStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get selectedRecipeId => _selectedRecipeId;
 
+  // Handles selectedRecipe for this part of the statistics page.
   RecipePerformanceItem? get selectedRecipe {
     final statistics = _statistics;
     final selectedId = _selectedRecipeId;
@@ -34,6 +39,7 @@ class RecipePerformanceViewModel extends ChangeNotifier {
     return null;
   }
 
+  // Handles loadStatistics for this part of the statistics page.
   Future<void> loadStatistics() async {
     _isLoading = _statistics == null;
     _errorMessage = null;
@@ -57,16 +63,19 @@ class RecipePerformanceViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  // Handles selectRecipe for this part of the statistics page.
   void selectRecipe(String recipeId) {
     if (_selectedRecipeId == recipeId) return;
     _selectedRecipeId = recipeId;
     _notifyIfActive();
   }
 
+  // Handles _notifyIfActive for this part of the statistics page.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
+  // Handles dispose for this part of the statistics page.
   @override
   void dispose() {
     _isDisposed = true;

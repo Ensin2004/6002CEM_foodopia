@@ -4,10 +4,16 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../domain/entities/user_home_dashboard.dart';
 
+/// Grid of quick links for the user home page.
+/// Displays clickable tiles with icons and labels.
 class UserQuickLinksGrid extends StatelessWidget {
+  /// List of quick links to display.
   final List<UserHomeQuickLink> links;
+
+  /// Callback when a link is tapped.
   final ValueChanged<UserHomeQuickLinkTarget> onLinkTap;
 
+  /// Creates a new user quick links grid instance.
   const UserQuickLinksGrid({
     super.key,
     required this.links,
@@ -24,10 +30,12 @@ class UserQuickLinksGrid extends StatelessWidget {
         crossAxisCount: 3,
         mainAxisSpacing: AppSpacing.sm,
         crossAxisSpacing: AppSpacing.sm,
-        childAspectRatio: 1.02,
+        childAspectRatio: 1.28,
       ),
       itemBuilder: (context, index) {
+        // Get the link at the current index.
         final link = links[index];
+
         return InkWell(
           onTap: () => onLinkTap(link.target),
           borderRadius: BorderRadius.circular(8),
@@ -37,12 +45,18 @@ class UserQuickLinksGrid extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.sm),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs,
+                vertical: AppSpacing.sm,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(link.icon, color: context.colors.primary, size: 28),
-                  const SizedBox(height: AppSpacing.sm),
+                  // Icon.
+                  Icon(link.icon, color: context.colors.primary, size: 24),
+                  const SizedBox(height: AppSpacing.xs),
+
+                  // Title.
                   Text(
                     link.title,
                     textAlign: TextAlign.center,

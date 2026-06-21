@@ -2,7 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/entities/user_setup_preferences.dart';
 
+/// Model class for user setup preferences.
+/// Maps between domain entities and Firestore documents.
 class UserSetupPreferencesModel extends UserSetupPreferences {
+  /// Creates a new user setup preferences model instance.
   const UserSetupPreferencesModel({
     super.diet,
     super.allergies,
@@ -17,8 +20,11 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
     super.isCompleted,
   });
 
+  /// Creates a model from a Firestore document.
   factory UserSetupPreferencesModel.fromFirestore(DocumentSnapshot doc) {
+    // Extract data from the document.
     final data = doc.data() as Map<String, dynamic>? ?? {};
+
     return UserSetupPreferencesModel(
       diet: data['diet'] as String?,
       allergies: _stringList(data['allergies']),
@@ -40,6 +46,7 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
     );
   }
 
+  /// Creates a model from a domain entity.
   factory UserSetupPreferencesModel.fromEntity(UserSetupPreferences entity) {
     return UserSetupPreferencesModel(
       diet: entity.diet,
@@ -56,6 +63,7 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
     );
   }
 
+  /// Converts this model to Firestore data.
   Map<String, dynamic> toFirestore() {
     return {
       'diet': diet,
@@ -73,11 +81,13 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
     };
   }
 
+  /// Converts a dynamic value to a list of strings.
   static List<String> _stringList(dynamic value) {
     if (value is! List) return [];
     return value.map((item) => item.toString()).toList();
   }
 
+  /// Converts a dynamic value to a map of string-bool pairs.
   static Map<String, bool> _boolMap(dynamic value) {
     if (value is! Map) return {};
     return value.map((key, item) => MapEntry(key.toString(), item == true));

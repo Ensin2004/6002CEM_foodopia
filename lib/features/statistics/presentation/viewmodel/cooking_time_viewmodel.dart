@@ -1,9 +1,12 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/cooking_time_statistics.dart';
 import '../../domain/usecases/get_cooking_time_statistics_usecase.dart';
 
+// Handles CookingTimeViewModel for this part of the statistics page.
 class CookingTimeViewModel extends ChangeNotifier {
   final GetCookingTimeStatisticsUseCase _getStatisticsUseCase;
 
@@ -21,10 +24,12 @@ class CookingTimeViewModel extends ChangeNotifier {
     Future.microtask(loadStatistics);
   }
 
+  // Handles statistics for this part of the statistics page.
   CookingTimeStatistics? get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   DateTime? get startDate => _startDate;
+  // Handles endDate for this part of the statistics page.
   DateTime? get endDate => _endDate;
   int? get expandedIndex => _expandedIndex;
 
@@ -50,11 +55,13 @@ class CookingTimeViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  // Handles toggleDay for this part of the statistics page.
   void toggleDay(int index) {
     _expandedIndex = _expandedIndex == index ? null : index;
     _notifyIfActive();
   }
 
+  // Handles selectDateRange for this part of the statistics page.
   Future<void> selectDateRange({
     required DateTime startDate,
     required DateTime endDate,
@@ -64,10 +71,12 @@ class CookingTimeViewModel extends ChangeNotifier {
     await loadStatistics();
   }
 
+  // Handles _notifyIfActive for this part of the statistics page.
   void _notifyIfActive() {
     if (!_isDisposed) notifyListeners();
   }
 
+  // Handles dispose for this part of the statistics page.
   @override
   void dispose() {
     _isDisposed = true;

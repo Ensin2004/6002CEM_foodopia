@@ -4,6 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../domain/entities/notification_preference.dart';
 import '../models/app_notification_model.dart';
 
+// Remote data source for notifications.
+// This is the part that talks to Firestore: it reads notification records,
+// stores notification preferences, and marks notifications as read.
 class NotificationRemoteDataSource {
   static const List<NotificationPreference> userDefaultPreferences = [
     NotificationPreference(
@@ -70,6 +73,12 @@ class NotificationRemoteDataSource {
       description: 'Receive a notification when user submits help ticket',
       enabled: true,
     ),
+    NotificationPreference(
+      id: 'new_category_notification',
+      title: 'New Category Notification',
+      description: 'Receive a notification when user adds a new category',
+      enabled: true,
+    ),
   ];
 
   final FirebaseFirestore firestore;
@@ -81,6 +90,9 @@ class NotificationRemoteDataSource {
   });
 
   Future<List<AppNotificationModel>> getNotifications() async {
+    // Reads the logged-in user's notifications from:
+    // users/{uid}/notifications
+    // Admin users only see admin notification types.
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) return [];
     final isAdmin = await _isAdmin(uid);
@@ -100,6 +112,8 @@ class NotificationRemoteDataSource {
   }
 
   Future<List<NotificationPreference>> getPreferences() async {
+    // Loads saved notification preferences from Firestore. If a preference
+    // document is missing, the app falls back to the default value.
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) return userDefaultPreferences;
 
@@ -124,6 +138,9 @@ class NotificationRemoteDataSource {
   }
 
   Future<void> ensureDefaultPreferences() async {
+    // Makes sure every required preference document exists in the database.
+    // Existing records keep their enabled value, while new records get the
+    // default enabled/disabled value.
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) return;
 
@@ -160,6 +177,8 @@ class NotificationRemoteDataSource {
     required String preferenceId,
     required bool enabled,
   }) async {
+    // Saves one notification setting into Firestore so the user's choice is
+    // kept even after closing the app or logging in on another device.
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty || preferenceId.isEmpty) return;
 
@@ -191,18 +210,28 @@ class NotificationRemoteDataSource {
   }
 
   Future<bool> _isAdmin(String uid) async {
+    // Checks the user's role in Firestore so the app knows whether to show
+    // admin notification types or normal user notification types.
     if (uid.isEmpty) return false;
     final doc = await firestore.collection('users').doc(uid).get();
     return doc.data()?['role']?.toString().toLowerCase() == 'admin';
   }
 
   bool _isAllowedType(String? type, bool isAdmin) {
-    const adminTypes = {'newUser', 'systemRating', 'newHelpTicket'};
+    // Filters notification records so admins and normal users only see the
+    // notification types meant for their role.
+    const adminTypes = {
+      'newUser',
+      'systemRating',
+      'newHelpTicket',
+      'newCategory',
+    };
     if (isAdmin) return adminTypes.contains(type);
     return !adminTypes.contains(type);
   }
 
   Future<void> markAsRead(String notificationId) async {
+    // Updates one Firestore notification document by setting isRead to true.
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty || notificationId.isEmpty) return;
 
@@ -215,6 +244,8 @@ class NotificationRemoteDataSource {
   }
 
   Future<void> markAllAsRead() async {
+    // Finds unread notification documents in Firestore and marks them all as
+    // read in one batch update.
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) return;
 

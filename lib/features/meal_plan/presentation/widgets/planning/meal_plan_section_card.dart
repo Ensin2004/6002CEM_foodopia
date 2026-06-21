@@ -7,24 +7,40 @@ import '../../../../../app/routers/router_args.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
-import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../../core/widgets/dialogs/loading_dialog.dart';
+import '../../../../../core/widgets/media/app_recipe_media.dart';
+import '../../../../../core/widgets/recipe/planned_ai_recipe_sheet.dart';
+import '../../../domain/entities/meal_calorie_guidance.dart';
 import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
 
+/// Card widget for a meal plan section.
+/// Displays meals in a category with add and remove functionality.
 class MealPlanSectionCard extends StatelessWidget {
+  /// The meal plan section to display.
   final MealPlanSection section;
 
+  /// Creates a new meal plan section card instance.
   const MealPlanSectionCard({super.key, required this.section});
 
   @override
   Widget build(BuildContext context) {
+    // Determine meal label.
     final mealLabel = section.meals.length == 1
         ? '1 meal'
         : '${section.meals.length} meals';
+
+    // Calculate remaining slots (max 5 per category per date).
     final remainingCount = (5 - section.meals.length).clamp(0, 5);
+
+    // Extract existing recipe IDs for duplicate prevention.
     final existingRecipeIds = section.meals
         .map((meal) => meal.recipeId)
         .where((id) => id.trim().isNotEmpty)
+        .toList();
+    final existingMealNames = section.meals
+        .map((meal) => meal.title.trim())
+        .where((title) => title.isNotEmpty)
         .toList();
 
     return Container(
@@ -68,25 +84,35 @@ class MealPlanSectionCard extends StatelessWidget {
           ],
         ),
         children: [
+          // List of meals.
           ...section.meals.map((meal) => _MealRow(meal: meal)),
           const SizedBox(height: AppSpacing.sm),
+
+          // Slot status indicator.
           _MealLimitStatus(
             remainingCount: remainingCount,
             mealType: section.mealType,
           ),
           const SizedBox(height: AppSpacing.sm),
+
+          // Add meal button.
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
               onPressed: remainingCount <= 0
                   ? null
-                  : () {
+                  : () async {
+                      // Get required data from view model.
                       final userId = context.read<MealPlanViewModel>().userId;
                       final selectedDate = context
                           .read<MealPlanViewModel>()
                           .dashboard
                           ?.selectedDate;
-                      context.push(
+                      final viewModel = context.read<MealPlanViewModel>();
+                      final calorieBudget = _calorieBudgetFor(viewModel);
+
+                      // Navigate to add meal plan.
+                      final result = await context.push(
                         AppRouter.addMealPlan,
                         extra: AddMealPlanArgs(
                           userId: userId,
@@ -94,8 +120,13 @@ class MealPlanSectionCard extends StatelessWidget {
                           mealCategoryId: section.mealCategoryId,
                           selectedDate: selectedDate,
                           existingRecipeIds: existingRecipeIds,
+                          existingMealNames: existingMealNames,
+                          calorieBudget: calorieBudget,
                         ),
                       );
+                      if (result == true && context.mounted) {
+                        await viewModel.refreshPlanningOnly();
+                      }
                     },
               style: OutlinedButton.styleFrom(
                 backgroundColor: remainingCount <= 0
@@ -131,12 +162,42 @@ class MealPlanSectionCard extends StatelessWidget {
       ),
     );
   }
+
+  /// Builds the calorie budget for the selected planning date.
+  MealCalorieBudget _calorieBudgetFor(MealPlanViewModel viewModel) {
+    /*
+     * The dashboard already contains only meals for the selected date.
+     * Summing all section calories gives the current daily calorie usage.
+     */
+    final plannedCalories =
+        viewModel.dashboard?.sections.fold<int>(0, (sectionTotal, section) {
+          return sectionTotal +
+              section.meals.fold<int>(
+                0,
+                (mealTotal, meal) => mealTotal + meal.calories,
+              );
+        }) ??
+        0;
+    final preferences = viewModel.preferences;
+
+    return MealCalorieBudget(
+      plannedCalories: plannedCalories,
+      targetCalories: preferences?.targetCalories,
+      calorieUnit: preferences?.calorieUnit ?? 'kcal',
+      targetEnabled: preferences?.calorieTargetEnabled ?? false,
+    );
+  }
 }
 
+/// Meal limit status indicator widget.
 class _MealLimitStatus extends StatelessWidget {
+  /// Number of remaining slots.
   final int remainingCount;
+
+  /// Meal type label.
   final String mealType;
 
+  /// Creates a new meal limit status instance.
   const _MealLimitStatus({
     required this.remainingCount,
     required this.mealType,
@@ -144,7 +205,10 @@ class _MealLimitStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine if the section is full.
     final isFull = remainingCount <= 0;
+
+    // Determine color.
     final color = isFull ? AppColors.textSecondary : AppColors.primary;
 
     return Container(
@@ -182,51 +246,218 @@ class _MealLimitStatus extends StatelessWidget {
   }
 }
 
+/// Meal row widget.
 class _MealRow extends StatelessWidget {
+  /// The meal to display.
   final MealPlanMeal meal;
 
+  /// Creates a new meal row instance.
   const _MealRow({required this.meal});
 
   @override
   Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => _openRecipe(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.border)),
+        ),
+        child: Row(
+          children: [
+            // Meal image.
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: AppRecipeMediaPreview(
+                  mediaPath: meal.imagePath,
+                  fit: BoxFit.cover,
+                  playOverlaySize: 30,
+                  playIconSize: 20,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+
+            // Meal details.
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    meal.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.bodyMedium?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${meal.servingLabel} • ${meal.durationLabel}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+
+            if (meal.calories > 0) ...[
+              _MealMetaPill(
+                icon: Icons.local_fire_department_outlined,
+                label: '${meal.calories} kcal',
+                color: AppColors.secondary,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+            ],
+
+            // Delete button.
+            IconButton(
+              tooltip: 'Remove meal',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _confirmRemoveMeal(context, meal),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Opens the planned meal's recipe detail page.
+  void _openRecipe(BuildContext context) {
+    final aiPreview = PlannedAiRecipePreview(
+      title: meal.title,
+      description: meal.aiDescription,
+      durationLabel: meal.durationLabel,
+      servingLabel: meal.servingLabel,
+      imagePath: meal.imagePath,
+      ingredients: meal.aiIngredients,
+      instructions: meal.aiInstructions,
+    );
+    if (aiPreview.hasDetails) {
+      showPlannedAiRecipeSheet(context, aiPreview);
+      return;
+    }
+
+    final recipeId = meal.recipeId.trim();
+    if (recipeId.isEmpty) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Recipe details are unavailable.')),
+        );
+      return;
+    }
+
+    context.push(
+      AppRouter.exploreRecipeDetail,
+      extra: ExploreRecipeDetailArgs(recipeId: recipeId),
+    );
+  }
+
+  /// Shows a confirmation dialog before removing a meal.
+  Future<void> _confirmRemoveMeal(
+    BuildContext context,
+    MealPlanMeal meal,
+  ) async {
+    // Show confirmation dialog.
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Remove meal?', style: context.text.titleMedium),
+        content: Text(
+          'Remove ${meal.title} from this meal plan?',
+          style: context.text.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    // Return if not confirmed or context is gone.
+    if (confirmed != true || !context.mounted) return;
+
+    // Show loading dialog.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const LoadingDialog(message: 'Removing meal...'),
+    );
+
+    // Execute deletion.
+    final viewModel = context.read<MealPlanViewModel>();
+    final removed = await viewModel.deleteMealPlan(meal.id);
+
+    // Dismiss loading dialog.
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    // Show result message.
+    final message = removed
+        ? 'Meal removed from plan.'
+        : viewModel.mealActionErrorMessage ?? 'Unable to remove meal.';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+/// Compact metadata pill for meal rows.
+class _MealMetaPill extends StatelessWidget {
+  /// Pill icon.
+  final IconData icon;
+
+  /// Pill label.
+  final String label;
+
+  /// Accent color.
+  final Color color;
+
+  /// Creates a meal metadata pill.
+  const _MealMetaPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: AppRemoteOrAssetImage(
-              imagePath: meal.imagePath,
-              width: 48,
-              height: 48,
-              fit: BoxFit.cover,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  meal.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.bodyMedium?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${meal.servingLabel} • ${meal.durationLabel}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.bodySmall,
-                ),
-              ],
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: context.text.labelSmall?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],

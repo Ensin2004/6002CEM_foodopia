@@ -5,8 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/services/openai_ingredient_data_service.dart';
+import '../../../../core/services/recipe_search_service.dart';
 import '../../../../core/services/fcm_sender.dart';
 import '../../../../core/services/food_search_service.dart';
+import '../../../../core/services/unsplash_ingredient_image_service.dart';
 import '../../domain/entities/add_recipe_ingredient_data.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_food_search_result.dart';
@@ -24,20 +26,52 @@ import '../models/add_recipe_review_model.dart';
 import '../models/add_recipe_setup_model.dart';
 
 class AddRecipeRemoteDataSource {
+  static const List<String> _nutrientKeys = [
+    'calories',
+    'protein',
+    'carbohydrates',
+    'fat',
+    'fiber',
+    'water',
+    'vitaminA',
+    'vitaminC',
+    'vitaminD',
+    'vitaminE',
+    'vitaminK',
+    'vitaminB1',
+    'vitaminB2',
+    'vitaminB3',
+    'vitaminB6',
+    'vitaminB9',
+    'vitaminB12',
+    'calcium',
+    'iron',
+    'magnesium',
+    'phosphorus',
+    'potassium',
+    'sodium',
+    'zinc',
+  ];
+
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
   final FoodSearchService foodSearchService;
+  final UnsplashIngredientImageService unsplashIngredientImageService;
   final OpenAiIngredientDataService ingredientAiDataSource;
   final AddRecipeVideoDataSource videoDataSource;
+  final RecipeSearchService recipeAiSearchService;
 
   const AddRecipeRemoteDataSource({
     required this.firestore,
     required this.auth,
     required this.foodSearchService,
+    required this.unsplashIngredientImageService,
     required this.ingredientAiDataSource,
     required this.videoDataSource,
+    required this.recipeAiSearchService,
   });
 
+  /// Loads active recipe categories, allergens and fixed difficulty levels for setup screens.
   Future<AddRecipeSetupModel> getSetup() async {
     final categories = await _getActiveOptions(configId: 'recipe_categories');
     final allergens = await _getActiveOptions(configId: 'allergies');
@@ -81,6 +115,7 @@ class AddRecipeRemoteDataSource {
         .toList();
   }
 
+  /// Loads active ingredient units for ingredient selection.
   Future<List<AddRecipeIngredientUnit>> getIngredientUnits() async {
     final categorySnapshot = await firestore
         .collection('app_config')
@@ -139,6 +174,7 @@ class AddRecipeRemoteDataSource {
       });
   }
 
+  /// Searches USDA foods using keywords
   Future<List<AddRecipeFoodSearchResult>> searchFoods(String query) async {
     final foods = await foodSearchService.searchUsdaFoods(query);
     return foods
@@ -153,10 +189,18 @@ class AddRecipeRemoteDataSource {
     return foodSearchService.getUsdaLabelNutrients(fdcId);
   }
 
+  Future<String?> getIngredientImageUrl(String ingredientName) {
+    return unsplashIngredientImageService.findIngredientImageUrl(
+      ingredientName,
+    );
+  }
+
+  /// Generate draft recipe from video uploaded
   Future<AddRecipeVideoResult> generateRecipeFromVideo(String videoPath) {
     return videoDataSource.generateFromVideo(videoPath);
   }
 
+  /// Saves or updates basic recipe information
   Future<String> saveBasicInfo(AddRecipeBasicInfo info) async {
     final uid = auth.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
@@ -202,6 +246,7 @@ class AddRecipeRemoteDataSource {
     return doc.id;
   }
 
+  /// Delete working directory after recipe generated from video
   Future<void> _deleteVideoWorkingDirForFile(File file) async {
     final parent = file.parent;
     final parentName = parent.path.split(RegExp(r'[\\/]')).last;
@@ -216,6 +261,7 @@ class AddRecipeRemoteDataSource {
     }
   }
 
+  /// Saves or updates ingredients and nutrients info
   Future<void> saveIngredients({
     required String recipeId,
     required List<AddRecipeIngredient> ingredients,
@@ -223,7 +269,7 @@ class AddRecipeRemoteDataSource {
     final recipeRef = firestore.collection('recipes').doc(recipeId);
     final ingredientCollection = recipeRef.collection('ingredients');
     final existingIngredients = await ingredientCollection.get();
-    final categories = await _getActiveIngredientCategories();
+    final categories = await getActiveIngredientCategories();
     if (categories.isEmpty) {
       throw StateError('No active ingredient categories configured.');
     }
@@ -266,7 +312,10 @@ class AddRecipeRemoteDataSource {
           ? analysis!.ingredientCategoryId
           : othersCategoryId;
       final nutrients = _normalizedNutrients(ingredient.usdaNutrients);
-      final ingredientNutrients = nutrients ?? analysis?.nutrients;
+      final ingredientNutrients = _mergedNutrients(
+        nutrients,
+        analysis?.nutrients,
+      );
       _addNutrients(recipeNutrients, ingredientNutrients);
 
       final model = AddRecipeIngredientModel(
@@ -291,8 +340,9 @@ class AddRecipeRemoteDataSource {
     await batch.commit();
   }
 
+  /// Loads active ingredients categories
   Future<List<AddRecipeIngredientCategory>>
-  _getActiveIngredientCategories() async {
+  getActiveIngredientCategories() async {
     final snapshot = await firestore
         .collection('app_config')
         .doc('ingredient_categories')
@@ -313,6 +363,7 @@ class AddRecipeRemoteDataSource {
         .toList();
   }
 
+  /// Prepare data for ingredients nutrients calculation
   List<AddRecipeIngredientDataInput> _ingredientAnalysisInputs({
     required List<AddRecipeIngredient> ingredients,
     required Map<String, String> unitNames,
@@ -332,6 +383,7 @@ class AddRecipeRemoteDataSource {
     ];
   }
 
+  /// Fetch unit names for every ingredient based on unitId
   Future<Map<String, String>> _resolveIngredientUnitNames(
     List<AddRecipeIngredient> ingredients,
   ) async {
@@ -355,6 +407,7 @@ class AddRecipeRemoteDataSource {
     return names;
   }
 
+  /// Return the id of "others" category
   String? _getOthersCategoryId(List<AddRecipeIngredientCategory> categories) {
     for (final category in categories) {
       if (category.name.trim().toLowerCase() == 'others') {
@@ -364,6 +417,7 @@ class AddRecipeRemoteDataSource {
     return categories.isEmpty ? null : categories.first.id;
   }
 
+  /// Normalized the key in USDA's results to fetch relevant nutrients data
   Map<String, dynamic>? _normalizedNutrients(Map<String, dynamic>? nutrients) {
     if (nutrients == null || nutrients.isEmpty) return null;
 
@@ -380,26 +434,95 @@ class AddRecipeRemoteDataSource {
       ]),
       'fat': _nutrientValue(nutrients, const ['fat', 'fats', 'totalFat']),
       'protein': _nutrientValue(nutrients, const ['protein', 'proteins']),
+      'fiber': _nutrientValue(nutrients, const ['fiber', 'dietaryFiber']),
+      'water': _nutrientValue(nutrients, const ['water', 'moisture']),
+      'sodium': _nutrientValue(nutrients, const ['sodium']),
+      'potassium': _nutrientValue(nutrients, const ['potassium']),
+      'calcium': _nutrientValue(nutrients, const ['calcium']),
+      'iron': _nutrientValue(nutrients, const ['iron']),
+      'magnesium': _nutrientValue(nutrients, const ['magnesium']),
+      'phosphorus': _nutrientValue(nutrients, const [
+        'phosphorus',
+        'phosphorous',
+      ]),
+      'zinc': _nutrientValue(nutrients, const ['zinc']),
+      'vitaminA': _nutrientValue(nutrients, const [
+        'vitaminA',
+        'vitaminARAE',
+        'retinol',
+      ]),
+      'vitaminC': _nutrientValue(nutrients, const ['vitaminC', 'ascorbic']),
+      'vitaminD': _nutrientValue(nutrients, const ['vitaminD']),
+      'vitaminE': _nutrientValue(nutrients, const [
+        'vitaminE',
+        'alphatocopherol',
+        'tocopherol',
+      ]),
+      'vitaminK': _nutrientValue(nutrients, const ['vitaminK']),
+      'vitaminB1': _nutrientValue(nutrients, const [
+        'vitaminB1',
+        'thiamin',
+        'thiamine',
+      ]),
+      'vitaminB2': _nutrientValue(nutrients, const ['vitaminB2', 'riboflavin']),
+      'vitaminB3': _nutrientValue(nutrients, const ['vitaminB3', 'niacin']),
+      'vitaminB6': _nutrientValue(nutrients, const ['vitaminB6']),
+      'vitaminB9': _nutrientValue(nutrients, const [
+        'vitaminB9',
+        'folate',
+        'folicAcid',
+      ]),
+      'vitaminB12': _nutrientValue(nutrients, const [
+        'vitaminB12',
+        'cobalamin',
+      ]),
     };
 
     if (normalized.values.every((value) => value == 0)) return null;
     return normalized;
   }
 
+  Map<String, dynamic>? _mergedNutrients(
+    Map<String, dynamic>? preferred,
+    Map<String, dynamic>? fallback,
+  ) {
+    if (preferred == null && fallback == null) return null;
+
+    final merged = <String, dynamic>{};
+    for (final key in _nutrientKeys) {
+      final preferredValue = _numericValue(preferred?[key]);
+      final fallbackValue = _numericValue(fallback?[key]);
+      merged[key] = preferredValue > 0 ? preferredValue : fallbackValue;
+    }
+
+    if (merged.values.every((value) => _numericValue(value) == 0)) return null;
+    return merged;
+  }
+
+  /// Fetch nutrients data
   double _nutrientValue(Map<String, dynamic> nutrients, List<String> keys) {
     for (final entry in nutrients.entries) {
       final normalizedKey = entry.key.toLowerCase().replaceAll(
-        RegExp(r'[^a-z]'),
+        RegExp(r'[^a-z0-9]'),
         '',
       );
       for (final key in keys) {
-        final targetKey = key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
-        if (normalizedKey == targetKey || normalizedKey.contains(targetKey)) {
+        final targetKey = key.toLowerCase().replaceAll(
+          RegExp(r'[^a-z0-9]'),
+          '',
+        );
+        if (_nutrientKeyMatches(normalizedKey, targetKey)) {
           return _numericValue(entry.value);
         }
       }
     }
     return 0;
+  }
+
+  bool _nutrientKeyMatches(String normalizedKey, String targetKey) {
+    if (normalizedKey == targetKey) return true;
+    if (targetKey.startsWith('vitaminb')) return false;
+    return normalizedKey.contains(targetKey);
   }
 
   double _numericValue(dynamic value) {
@@ -411,19 +534,21 @@ class AddRecipeRemoteDataSource {
   }
 
   Map<String, dynamic> _emptyNutrients() {
-    return {'calories': 0.0, 'carbohydrates': 0.0, 'fat': 0.0, 'protein': 0.0};
+    return {for (final key in _nutrientKeys) key: 0.0};
   }
 
+  /// Add nutrients together to get total nutrients
   void _addNutrients(
     Map<String, dynamic> total,
     Map<String, dynamic>? nutrients,
   ) {
     if (nutrients == null) return;
-    for (final key in const ['calories', 'carbohydrates', 'fat', 'protein']) {
+    for (final key in _nutrientKeys) {
       total[key] = _numericValue(total[key]) + _numericValue(nutrients[key]);
     }
   }
 
+  /// Save custom unit in Firestore
   Future<String> _saveCustomUnit(String name) async {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) return '';
@@ -452,6 +577,7 @@ class AddRecipeRemoteDataSource {
     return doc.id;
   }
 
+  /// Save custom category or allergen info in Firestore
   Future<List<String>> _saveCustomItems({
     required String collectionId,
     required List<String> names,
@@ -482,14 +608,13 @@ class AddRecipeRemoteDataSource {
         .doc(collectionId)
         .collection('items');
 
-    final existing = await collection
-        .where('name', isEqualTo: name)
-        .where('isActive', isEqualTo: true)
-        .limit(1)
-        .get();
-
-    if (existing.docs.isNotEmpty) {
-      return existing.docs.first.id;
+    final existing = await collection.where('isActive', isEqualTo: true).get();
+    final normalizedName = _normalizeCategoryName(name);
+    for (final doc in existing.docs) {
+      final existingName = doc.data()['name']?.toString() ?? '';
+      if (_normalizeCategoryName(existingName) == normalizedName) {
+        return doc.id;
+      }
     }
 
     final doc = await collection.add({
@@ -501,6 +626,7 @@ class AddRecipeRemoteDataSource {
     return doc.id;
   }
 
+  /// Saves or updates instructions
   Future<void> saveInstructions({
     required String recipeId,
     required bool useSections,
@@ -542,6 +668,7 @@ class AddRecipeRemoteDataSource {
     await batch.commit();
   }
 
+  /// Loads recipe basic info, ingredient and instruction for review.
   Future<AddRecipeReviewModel> getReview(String recipeId) async {
     final recipeDoc = await firestore.collection('recipes').doc(recipeId).get();
     final recipe = recipeDoc.data();
@@ -623,6 +750,7 @@ class AddRecipeRemoteDataSource {
     );
   }
 
+  /// Updates recipe visibility and notifies followers when a finalized recipe becomes public.
   Future<void> updateVisibility({
     required String recipeId,
     required String visibility,
@@ -654,6 +782,7 @@ class AddRecipeRemoteDataSource {
     }
   }
 
+  /// Marks recipe as finalized, alerts admins about new custom categories and sends follower notifications for public recipes.
   Future<void> finalizeRecipe(String recipeId) async {
     final uid = auth.currentUser?.uid ?? '';
     if (uid.isEmpty) {
@@ -681,11 +810,23 @@ class AddRecipeRemoteDataSource {
       );
     }
 
+    final searchText = await _buildRecipeSearchText(recipeRef, data);
+    final searchMetadata = await recipeAiSearchService.buildRecipeMetadata(
+      searchText,
+    );
+
     await recipeRef.update({
       'isFinalized': true,
+      'tags': searchMetadata.tags,
       'finalizedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    await _notifyAdminsOfNewCategories(
+      recipeId: recipeId,
+      recipeData: data,
+      recipeOwnerUid: recipeOwnerUid,
+    );
 
     if (data['visibility']?.toString() == 'public' &&
         !_hasSentPublicNotification(data)) {
@@ -702,6 +843,34 @@ class AddRecipeRemoteDataSource {
     }
   }
 
+  Future<String> _buildRecipeSearchText(
+    DocumentReference<Map<String, dynamic>> recipeRef,
+    Map<String, dynamic> data,
+  ) async {
+    final ingredients = await recipeRef.collection('ingredients').get();
+    final instructions = await recipeRef.collection('instructions').get();
+    final ingredientNames = ingredients.docs
+        .map((doc) => doc.data()['name']?.toString().trim() ?? '')
+        .where((name) => name.isNotEmpty);
+    final instructionText = instructions.docs.expand((doc) {
+      final value = doc.data();
+      return [value['sectionTitle'], value['description']]
+          .map((item) => item?.toString().trim() ?? '')
+          .where((item) => item.isNotEmpty);
+    });
+    return [
+          data['name'],
+          data['description'],
+          ...((data['otherNames'] as List<dynamic>?) ?? const []),
+          ...ingredientNames,
+          ...instructionText,
+        ]
+        .map((value) => value?.toString().trim() ?? '')
+        .where((value) => value.isNotEmpty)
+        .join('\n');
+  }
+
+  /// Return recipe owner id
   String _recipeOwnerUid(
     Map<String, dynamic> data, {
     required String fallbackUid,
@@ -723,6 +892,7 @@ class AddRecipeRemoteDataSource {
     return data?['publicNotificationSentAt'] != null;
   }
 
+  /// Notify followers when new public recipe created
   Future<void> _notifyFollowersOfNewRecipe({
     required String recipeOwnerUid,
     required String recipeTitle,
@@ -765,6 +935,176 @@ class AddRecipeRemoteDataSource {
       }
     } on FirebaseException {
       // Best-effort notification fan-out.
+    }
+  }
+
+  /// Notify admin about new custom categories
+  Future<void> _notifyAdminsOfNewCategories({
+    required String recipeId,
+    required Map<String, dynamic> recipeData,
+    required String recipeOwnerUid,
+  }) async {
+    try {
+      final customCategoryNames = await _resolveCustomItemNames(
+        collectionId: 'custom_categories',
+        customIds: _stringList(recipeData['customCategoryIds']),
+      );
+      if (customCategoryNames.isEmpty) return;
+
+      final alreadySent = _stringList(
+        recipeData['adminCategoryNotificationKeys'],
+      ).toSet();
+      final existingCategoryNames = await _existingCategoryNamesForOtherRecipes(
+        recipeId,
+      );
+      final newCategories = <String, String>{};
+
+      for (final categoryName in customCategoryNames) {
+        final normalizedName = _normalizeCategoryName(categoryName);
+        if (normalizedName.isEmpty ||
+            alreadySent.contains(normalizedName) ||
+            existingCategoryNames.contains(normalizedName)) {
+          continue;
+        }
+        newCategories[normalizedName] = categoryName.trim();
+      }
+
+      if (newCategories.isEmpty) return;
+
+      final creatorName = await _currentUserName(recipeOwnerUid);
+      for (final entry in newCategories.entries) {
+        await _notifyAdminsOfNewCategory(
+          categoryName: entry.value,
+          recipeId: recipeId,
+          senderUid: recipeOwnerUid,
+          senderName: creatorName,
+        );
+      }
+
+      await firestore.collection('recipes').doc(recipeId).set({
+        'adminCategoryNotificationKeys': FieldValue.arrayUnion(
+          newCategories.keys.toList(growable: false),
+        ),
+      }, SetOptions(merge: true));
+    } on FirebaseException {
+      // Admin category notifications are best-effort.
+    }
+  }
+
+  Future<Set<String>> _existingCategoryNamesForOtherRecipes(
+    String recipeId,
+  ) async {
+    final names = <String>{};
+    final configNames = await _recipeCategoryNamesById();
+    names.addAll(configNames.values.map(_normalizeCategoryName));
+
+    final recipeSnapshot = await firestore.collection('recipes').get();
+    final customCategoryIds = <String>{};
+
+    for (final doc in recipeSnapshot.docs) {
+      if (doc.id == recipeId) continue;
+      final data = doc.data();
+      for (final categoryId in _stringList(data['categoryIds'])) {
+        final categoryName = configNames[categoryId] ?? categoryId;
+        names.add(_normalizeCategoryName(categoryName));
+      }
+      customCategoryIds.addAll(_stringList(data['customCategoryIds']));
+    }
+
+    final customNames = await _resolveCustomItemNames(
+      collectionId: 'custom_categories',
+      customIds: customCategoryIds.toList(growable: false),
+    );
+    names.addAll(customNames.map(_normalizeCategoryName));
+    names.remove('');
+    return names;
+  }
+
+  Future<Map<String, String>> _recipeCategoryNamesById() async {
+    final snapshot = await firestore
+        .collection('app_config')
+        .doc('recipe_categories')
+        .collection('items')
+        .get();
+
+    return {
+      for (final doc in snapshot.docs)
+        if ((doc.data()['name']?.toString().trim() ?? '').isNotEmpty)
+          doc.id: doc.data()['name']!.toString().trim(),
+    };
+  }
+
+  Future<List<String>> _resolveCustomItemNames({
+    required String collectionId,
+    required List<String> customIds,
+  }) async {
+    final names = <String>[];
+    for (final customId in customIds) {
+      final trimmedId = customId.trim();
+      if (trimmedId.isEmpty) continue;
+      final doc = await firestore
+          .collection('custom')
+          .doc(collectionId)
+          .collection('items')
+          .doc(trimmedId)
+          .get();
+      final name = doc.data()?['name']?.toString().trim() ?? '';
+      if (name.isNotEmpty) names.add(name);
+    }
+    return names;
+  }
+
+  Future<void> _notifyAdminsOfNewCategory({
+    required String categoryName,
+    required String recipeId,
+    required String senderUid,
+    required String senderName,
+  }) async {
+    final admins = await firestore
+        .collection('users')
+        .where('role', isEqualTo: 'admin')
+        .get();
+    final title = 'New Category';
+    final message = '$senderName added new category $categoryName.';
+
+    for (final admin in admins.docs) {
+      final adminUid = admin.id;
+      if (adminUid.isEmpty || adminUid == senderUid) continue;
+
+      final notificationRef = await firestore
+          .collection('users')
+          .doc(adminUid)
+          .collection('notifications')
+          .add({
+            'type': 'newCategory',
+            'title': title,
+            'message': message,
+            'isRead': false,
+            'senderUid': senderUid,
+            'recipeId': recipeId,
+            'categoryName': categoryName,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+      if (!await _isNotificationEnabled(
+        receiverUid: adminUid,
+        preferenceId: 'new_category_notification',
+      )) {
+        continue;
+      }
+
+      await _sendPushToUser(
+        receiverUid: adminUid,
+        title: title,
+        message: message,
+        data: {
+          'type': 'newCategory',
+          'notificationId': notificationRef.id,
+          'senderUid': senderUid,
+          'recipeId': recipeId,
+          'categoryName': categoryName,
+        },
+      );
     }
   }
 
@@ -843,6 +1183,7 @@ class AddRecipeRemoteDataSource {
     return name.isEmpty ? 'Someone' : name;
   }
 
+  /// Deletes recipe and its ingredients, instructions, ratings, comments, replies and nested like records.
   Future<void> deleteRecipe(String recipeId) async {
     final uid = auth.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
@@ -909,6 +1250,7 @@ class AddRecipeRemoteDataSource {
     }
   }
 
+  /// Marks recipe as completed.
   Future<void> completeRecipe({
     required String recipeId,
     required String mode,
@@ -935,7 +1277,13 @@ class AddRecipeRemoteDataSource {
           .collection('items')
           .doc(optionId)
           .get();
-      final name = doc.data()?['name']?.toString().trim() ?? '';
+      final data = doc.data();
+      final isActive = data?['isActive'] is bool
+          ? data!['isActive'] as bool
+          : true;
+      if (!isActive) continue;
+
+      final name = data?['name']?.toString().trim() ?? '';
       names.add(name.isEmpty ? optionId : name);
     }
     for (final customId in customIds) {
@@ -981,6 +1329,10 @@ class AddRecipeRemoteDataSource {
   List<String> _stringList(dynamic value) {
     if (value is! List) return const [];
     return value.map((item) => item.toString()).toList();
+  }
+
+  String _normalizeCategoryName(String value) {
+    return value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
   }
 
   int _intValue(dynamic value) {

@@ -7,7 +7,9 @@ import '../../domain/repositories/password_repository.dart';
 import '../datasources/password_remote_datasource.dart';
 
 /// Defines behavior for password repository impl.
+/// Implements the PasswordRepository interface using remote data source.
 class PasswordRepositoryImpl implements PasswordRepository {
+  /// Remote data source for password operations.
   final PasswordRemoteDataSource remoteDataSource;
 
   /// Creates a password repository impl instance.
@@ -27,7 +29,10 @@ class PasswordRepositoryImpl implements PasswordRepository {
       );
       return const Right(null);
     } on FirebaseAuthException catch (e) {
+      // Handle Firebase Auth specific errors.
       String message;
+
+      // Map error codes to user-friendly messages.
       switch (e.code) {
         case 'wrong-password':
           message = 'Current password is incorrect';
@@ -41,8 +46,10 @@ class PasswordRepositoryImpl implements PasswordRepository {
         default:
           message = e.message ?? 'Password change failed';
       }
+
       return Left(AuthFailure(message: message, code: e.code));
     } catch (e) {
+      // Map any other exception to a server failure.
       return Left(ServerFailure(message: e.toString()));
     }
   }

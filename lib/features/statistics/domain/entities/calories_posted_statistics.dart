@@ -1,5 +1,8 @@
+// These notes explain the statistics page code in simple words.
+// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 
+// Handles CaloriesPostedStatistics for this part of the statistics page.
 class CaloriesPostedStatistics {
   final String dateRange;
   final int totalPost;
@@ -9,6 +12,7 @@ class CaloriesPostedStatistics {
   final int averageFatGram;
   final List<CaloriesPostedDay> dailyPosts;
 
+  // Handles CaloriesPostedStatistics for this part of the statistics page.
   const CaloriesPostedStatistics({
     required this.dateRange,
     required this.totalPost,
@@ -20,6 +24,7 @@ class CaloriesPostedStatistics {
   });
 }
 
+// Handles CaloriesPostedDay for this part of the statistics page.
 class CaloriesPostedDay {
   final DateTime date;
   final String weekdayLabel;
@@ -30,6 +35,7 @@ class CaloriesPostedDay {
   final int totalFatGram;
   final List<CaloriesPostedItem> posts;
 
+  // Handles CaloriesPostedDay for this part of the statistics page.
   const CaloriesPostedDay({
     required this.date,
     required this.weekdayLabel,
@@ -42,6 +48,7 @@ class CaloriesPostedDay {
   });
 }
 
+// Handles CaloriesPostedItem for this part of the statistics page.
 class CaloriesPostedItem {
   final String recipeName;
   final int caloriesKcal;
@@ -51,6 +58,7 @@ class CaloriesPostedItem {
   final IconData icon;
   final String? imageUrl;
 
+  // Handles CaloriesPostedItem for this part of the statistics page.
   const CaloriesPostedItem({
     required this.recipeName,
     required this.caloriesKcal,
