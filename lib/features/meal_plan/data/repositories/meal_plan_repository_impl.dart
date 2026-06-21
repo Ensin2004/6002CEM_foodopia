@@ -62,6 +62,23 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
     }
   }
 
+  /// Retrieves only the planning dashboard data for a user on a specific date.
+  @override
+  Future<Either<Failure, MealPlanDashboard>> getPlanningDashboard({
+    required String userId,
+    required DateTime selectedDate,
+  }) async {
+    try {
+      final dashboard = await remoteDataSource.getPlanningDashboard(
+        userId: userId,
+        selectedDate: selectedDate,
+      );
+      return Right(dashboard);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
   // =========================================================================
   // WEATHER
   // =========================================================================

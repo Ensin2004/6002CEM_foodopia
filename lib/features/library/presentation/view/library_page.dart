@@ -420,7 +420,7 @@ class _LibraryRecipeResults extends StatelessWidget {
                         showRecipeMediaDialog(context, recipe.imagePath),
                     // Opens the recipe detail page and refreshes the library after returning.
                     onTap: () async {
-                      await context.push(
+                      final result = await context.push(
                         AppRouter.libraryRecipeDetail,
                         extra: LibraryRecipeDetailArgs(
                           recipeId: recipe.id,
@@ -430,6 +430,10 @@ class _LibraryRecipeResults extends StatelessWidget {
                         ),
                       );
                       if (!context.mounted) return;
+                      if (result == true && mealPlanSelection != null) {
+                        context.pop(true);
+                        return;
+                      }
                       await onRefresh();
                     },
                   );

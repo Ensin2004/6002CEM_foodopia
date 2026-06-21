@@ -101,7 +101,7 @@ class MealPlanSectionCard extends StatelessWidget {
             child: OutlinedButton(
               onPressed: remainingCount <= 0
                   ? null
-                  : () {
+                  : () async {
                       // Get required data from view model.
                       final userId = context.read<MealPlanViewModel>().userId;
                       final selectedDate = context
@@ -112,7 +112,7 @@ class MealPlanSectionCard extends StatelessWidget {
                       final calorieBudget = _calorieBudgetFor(viewModel);
 
                       // Navigate to add meal plan.
-                      context.push(
+                      final result = await context.push(
                         AppRouter.addMealPlan,
                         extra: AddMealPlanArgs(
                           userId: userId,
@@ -124,6 +124,9 @@ class MealPlanSectionCard extends StatelessWidget {
                           calorieBudget: calorieBudget,
                         ),
                       );
+                      if (result == true && context.mounted) {
+                        await viewModel.refreshPlanningOnly();
+                      }
                     },
               style: OutlinedButton.styleFrom(
                 backgroundColor: remainingCount <= 0

@@ -25,4 +25,15 @@ class GetMealPlanDashboardUseCase {
     // Delegate to repository to retrieve the dashboard.
     return repository.getDashboard(userId: userId, selectedDate: selectedDate);
   }
+
+  /// Executes a planning-only refresh with the given parameters.
+  Future<Either<Failure, MealPlanDashboard>> executePlanning({
+    required String userId,
+    required DateTime selectedDate,
+  }) {
+    return repository.getPlanningDashboard(
+      userId: userId,
+      selectedDate: selectedDate,
+    );
+  }
 }

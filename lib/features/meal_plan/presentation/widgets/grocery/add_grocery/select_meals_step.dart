@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../../../../../../core/theme/app_colors.dart';
 import '../../../../../../core/theme/app_spacing.dart';
 import '../../../../../../core/theme/theme_extension.dart';
+import '../../../../../../core/widgets/images/app_remote_or_asset_image.dart';
+import '../../../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../domain/entities/add_grocery_list_plan.dart';
 import '../../../viewmodel/grocery/add_grocery_list_viewmodel.dart';
 
@@ -382,6 +384,16 @@ class _AddGroceryMealImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final previewPath = recipeMediaStaticPreviewPath(path);
+    if (previewPath != path.trim()) {
+      return AppRemoteOrAssetImage(
+        imagePath: previewPath,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+      );
+    }
+
     final isRemote = path.startsWith('http://') || path.startsWith('https://');
 
     if (isRemote) {

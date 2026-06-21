@@ -27,7 +27,17 @@ class _MealImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Shared media preview handles both recipe image and video paths.
+    final previewPath = recipeMediaStaticPreviewPath(path);
+    if (previewPath != path.trim()) {
+      return AppRemoteOrAssetImage(
+        imagePath: previewPath,
+        width: width,
+        height: height,
+        fit: fit,
+      );
+    }
+
+    // Shared media preview handles regular image paths and non-Cloudinary videos.
     return SizedBox(
       width: width,
       height: height,

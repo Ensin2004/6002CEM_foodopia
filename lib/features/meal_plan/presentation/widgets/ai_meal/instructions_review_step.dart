@@ -564,11 +564,8 @@ class _ReviewStepState extends State<_ReviewStep> {
       context,
     ).showSnackBar(const SnackBar(content: Text('Meal plan added.')));
 
-    // Navigate to meal plan page.
-    context.go(
-      AppRouter.mealPlan,
-      extra: MealPlanArgs(initialTabIndex: 0, userId: viewModel.userId),
-    );
+    // Return success to the existing planning page for a lightweight refresh.
+    context.pop(true);
   }
 
   /// Opens the saved recipe in the private library tab.

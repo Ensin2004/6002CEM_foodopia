@@ -30,6 +30,29 @@ bool isRecipeVideoPath(String path) {
   ].any(pathOnly.endsWith);
 }
 
+/// Returns a static image preview path for video media when one can be derived.
+String recipeMediaStaticPreviewPath(String path) {
+  final trimmed = path.trim();
+  if (!isRecipeVideoPath(trimmed)) return trimmed;
+
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null || !uri.hasScheme) return trimmed;
+
+  final videoUploadIndex = uri.path.indexOf('/video/upload/');
+  if (videoUploadIndex < 0) return trimmed;
+
+  final previewPath = uri.path.replaceFirst(
+    '/video/upload/',
+    '/video/upload/so_0/',
+  );
+  final withImageExtension = previewPath.replaceFirst(
+    RegExp(r'\.(mp4|mov|m4v|webm|mkv|avi|3gp)$', caseSensitive: false),
+    '.jpg',
+  );
+
+  return uri.replace(path: withImageExtension).toString();
+}
+
 /// Widget for displaying recipe media (images or videos).
 /// Automatically detects video paths and uses VideoPlayer.
 class AppRecipeMedia extends StatelessWidget {

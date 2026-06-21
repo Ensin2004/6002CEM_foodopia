@@ -123,6 +123,37 @@ mixin _MealPlanDashboardViewModelMixin
     unawaited(loadInspirationInputs());
   }
 
+  /// Refreshes only planning data after an add/edit from the planning flow.
+  Future<void> refreshPlanningOnly() async {
+    _errorMessage = null;
+
+    final result = await _getDashboardUseCase.executePlanning(
+      userId: userId,
+      selectedDate: _selectedDate,
+    );
+
+    if (_isDisposed) return;
+
+    result.ifRight((planningDashboard) {
+      final current = _dashboard;
+      _dashboard = current == null
+          ? planningDashboard
+          : current.copyWith(
+              selectedDate: planningDashboard.selectedDate,
+              summary: planningDashboard.summary,
+              monthDays: planningDashboard.monthDays,
+              sections: planningDashboard.sections,
+            );
+      _normalizeSelectedFilter();
+    });
+
+    result.ifLeft((failure) {
+      _errorMessage = failure.message;
+    });
+
+    _notifyIfActive();
+  }
+
   /// Selects a date and reloads the dashboard.
   Future<void> selectDate(DateTime date) async {
     _selectedDate = DateTime(date.year, date.month, date.day);

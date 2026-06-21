@@ -185,10 +185,10 @@ class _ExplorePageViewState extends State<_ExplorePageView>
 
   /// Displays the advanced filter dialog with category, time, and rating options.
   Future<void> _showFilterDialog(
-      BuildContext context,
-      ExploreViewModel viewModel, {
-        ExploreFilterTarget? target,
-      }) async {
+    BuildContext context,
+    ExploreViewModel viewModel, {
+    ExploreFilterTarget? target,
+  }) async {
     final selected = await showGeneralDialog<RecipeFilterSelection>(
       context: context,
       barrierDismissible: true,
@@ -292,7 +292,7 @@ class _ExploreCommentsDialog extends StatelessWidget {
                 Expanded(
                   child: SingleChildScrollView(
                     keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     child: _ExploreCommentsDialogBody(
                       viewModel: viewModel,
                       recipe: recipe,
@@ -425,14 +425,17 @@ class _ExploreContent extends StatelessWidget {
         onImageLongPress: (recipe) => _showRecipeImage(context, recipe),
         disabledRecipeIds: mealPlanSelection?.existingRecipeIds.toSet() ?? {},
         calorieBudget: mealPlanSelection?.calorieBudget,
-        onRecipeTap: (recipe) {
-          context.push(
+        onRecipeTap: (recipe) async {
+          final result = await context.push(
             AppRouter.exploreRecipeDetail,
             extra: ExploreRecipeDetailArgs(
               recipeId: recipe.id,
               mealPlanSelection: mealPlanSelection,
             ),
           );
+          if (result == true && context.mounted && mealPlanSelection != null) {
+            context.pop(true);
+          }
         },
       ),
     );
@@ -440,9 +443,9 @@ class _ExploreContent extends StatelessWidget {
 
   /// Displays a full-screen dialog showing the recipe image on long press.
   Future<void> _showRecipeImage(
-      BuildContext context,
-      ExploreRecipe recipe,
-      ) async {
+    BuildContext context,
+    ExploreRecipe recipe,
+  ) async {
     await showRecipeMediaDialog(context, recipe.imagePath);
   }
 }
@@ -475,7 +478,7 @@ class _FollowingCreatorsListState extends State<_FollowingCreatorsList> {
     // Adjust visible count when suggested creators list changes.
     if (widget.suggestedCreators.length < _visibleSuggestionCount) {
       _visibleSuggestionCount =
-      widget.suggestedCreators.length < _suggestionBatchSize
+          widget.suggestedCreators.length < _suggestionBatchSize
           ? _suggestionBatchSize
           : widget.suggestedCreators.length;
     }
@@ -524,7 +527,7 @@ class _FollowingCreatorsListState extends State<_FollowingCreatorsList> {
               scrollDirection: Axis.horizontal,
               clipBehavior: Clip.none,
               itemCount:
-              visibleSuggestions.length + (hasMoreSuggestions ? 1 : 0),
+                  visibleSuggestions.length + (hasMoreSuggestions ? 1 : 0),
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 // Show "View more" card at the end of the list if more exist.

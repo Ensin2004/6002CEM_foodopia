@@ -17,6 +17,12 @@ abstract class MealPlanRepository {
     required DateTime selectedDate,
   });
 
+  /// Retrieves only planning data for a user on a specific date.
+  Future<Either<Failure, MealPlanDashboard>> getPlanningDashboard({
+    required String userId,
+    required DateTime selectedDate,
+  });
+
   /// Retrieves weather information for a specific date.
   Future<Either<Failure, MealPlanWeather>> getWeatherForDate(DateTime date);
 
@@ -37,13 +43,13 @@ abstract class MealPlanRepository {
 
   /// Retrieves the plan for creating a new grocery list.
   Future<Either<Failure, AddGroceryListPlan>> getAddGroceryListPlan(
-      String userId,
-      );
+    String userId,
+  );
 
   /// Creates a new grocery list from a request.
   Future<Either<Failure, String>> createGroceryList(
-      CreateGroceryListRequest request,
-      );
+    CreateGroceryListRequest request,
+  );
 
   /// Retrieves the plan for adding AI-generated meals.
   Future<Either<Failure, AddMealAiPlan>> getAddMealAiPlan({
@@ -56,8 +62,8 @@ abstract class MealPlanRepository {
 
   /// Generates AI meal ideas based on a request.
   Future<Either<Failure, List<AddMealAiRecipe>>> generateAiMealIdeas(
-      AddMealAiGenerationRequest request,
-      );
+    AddMealAiGenerationRequest request,
+  );
 
   /// Saves AI-generated meal plans.
   Future<Either<Failure, void>> saveAiMealPlans({
@@ -86,8 +92,8 @@ abstract class MealPlanRepository {
 
   /// Retrieves detailed information about a grocery list.
   Future<Either<Failure, ManageGroceryListDetail>> getManageGroceryListDetail(
-      String listId,
-      );
+    String listId,
+  );
 
   /// Adds an item to a grocery list.
   Future<Either<Failure, void>> addGroceryItem(AddGroceryItemRequest request);

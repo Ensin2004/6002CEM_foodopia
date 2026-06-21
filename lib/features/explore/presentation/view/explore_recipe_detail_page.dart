@@ -289,11 +289,8 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       ..showSnackBar(SnackBar(content: Text(message)));
     if (!success) return;
 
-    // Navigates to the meal plan screen after successful addition.
-    context.go(
-      AppRouter.mealPlan,
-      extra: MealPlanArgs(initialTabIndex: 0, userId: selection.userId),
-    );
+    // Return success to the existing planning page so it can refresh cheaply.
+    context.pop(true);
   }
 
   // Shows a dialog to select the number of servings for a meal plan.

@@ -103,4 +103,68 @@ mixin _MealPlanRemoteDashboardDataSource
       groceryGroups: groceryGroups,
     );
   }
+
+  /// Retrieves only the planning data for a specific user and date.
+  /// Skips grocery and side-panel queries so returning from add-meal is fast.
+  Future<MealPlanDashboard> getPlanningDashboard({
+    required String userId,
+    required DateTime selectedDate,
+  }) async {
+    final dayStart = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+    );
+    final monthStart = DateTime(selectedDate.year, selectedDate.month);
+    final nextMonth = DateTime(selectedDate.year, selectedDate.month + 1);
+
+    final categoriesFuture = getMealCategories();
+    final monthPlansFuture = _mealPlansBetween(
+      userId: userId,
+      start: monthStart,
+      end: nextMonth,
+    );
+
+    final categories = await categoriesFuture;
+    final monthPlans = await monthPlansFuture;
+
+    final selectedPlans = monthPlans.where((doc) {
+      final value = doc.data()['date'];
+      return value is Timestamp && _sameDay(value.toDate(), dayStart);
+    }).toList();
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final pastCount = monthPlans.where((doc) {
+      final value = doc.data()['date'];
+      return value is Timestamp && value.toDate().isBefore(today);
+    }).length;
+
+    final todayCount = monthPlans.where((doc) {
+      final value = doc.data()['date'];
+      return value is Timestamp && _sameDay(value.toDate(), today);
+    }).length;
+
+    final futureCount = monthPlans.where((doc) {
+      final value = doc.data()['date'];
+      return value is Timestamp && value.toDate().isAfter(today);
+    }).length;
+
+    return MealPlanDashboard(
+      selectedDate: dayStart,
+      weather: null,
+      summary: MealPlanSummary(
+        pastCount: pastCount,
+        todayCount: todayCount,
+        futureCount: futureCount,
+      ),
+      monthDays: _buildMonthDays(dayStart, monthPlans),
+      sections: await _buildSections(categories, selectedPlans),
+      inspirations: const [],
+      quickInspirations: const [],
+      groceryLists: const [],
+      groceryGroups: const [],
+    );
+  }
 }
