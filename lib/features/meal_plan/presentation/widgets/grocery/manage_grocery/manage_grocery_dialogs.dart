@@ -170,7 +170,7 @@ class _EditGroceryListDialogState extends State<_EditGroceryListDialog> {
       endDate: _endDate,
     );
     if (saved && mounted) {
-      Navigator.of(context).pop();
+      Navigator.of(context, rootNavigator: true).pop();
     }
   }
 }
@@ -198,8 +198,23 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
   /// Controller for unit.
   late final TextEditingController _unitController;
 
-  /// Controller for category.
-  late final TextEditingController _categoryController;
+  /// Selected configured unit ID.
+  String _unitId = '';
+
+  /// Selected custom unit text.
+  String _customUnit = '';
+
+  /// Optional ingredient image.
+  File? _imageFile;
+
+  /// Available ingredient units.
+  List<AddRecipeIngredientUnit> _units = const [];
+
+  /// Whether unit options are loading.
+  bool _isLoadingUnits = true;
+
+  /// Unit loading error.
+  String? _unitError;
 
   @override
   void initState() {
@@ -207,7 +222,7 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
     _nameController = TextEditingController();
     _amountController = TextEditingController();
     _unitController = TextEditingController();
-    _categoryController = TextEditingController(text: 'Uncategorized');
+    _loadUnits();
   }
 
   @override
@@ -215,7 +230,6 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
     _nameController.dispose();
     _amountController.dispose();
     _unitController.dispose();
-    _categoryController.dispose();
     super.dispose();
   }
 
@@ -230,6 +244,31 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Optional ingredient image.
+            Align(
+              alignment: Alignment.centerLeft,
+              child: InkWell(
+                onTap: viewModel.isSaving ? null : _pickImage,
+                borderRadius: BorderRadius.circular(8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    color: const Color(0xFFF7F7F7),
+                    child: _imageFile == null
+                        ? const Icon(
+                            Icons.add_photo_alternate_outlined,
+                            color: Color(0xFFC9CBCD),
+                            size: 34,
+                          )
+                        : Image.file(_imageFile!, fit: BoxFit.cover),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
             // Ingredient name.
             TextField(
               controller: _nameController,
@@ -259,28 +298,59 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: TextField(
-                    controller: _unitController,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Unit',
-                      border: OutlineInputBorder(),
+                  child: InkWell(
+                    onTap: viewModel.isSaving || _isLoadingUnits
+                        ? null
+                        : _showUnitSheet,
+                    borderRadius: BorderRadius.circular(4),
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Unit',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: _isLoadingUnits
+                            ? const Padding(
+                                padding: EdgeInsets.all(14),
+                                child: SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            : const Icon(Icons.keyboard_arrow_down),
+                      ),
+                      child: Text(
+                        _unitController.text.trim().isEmpty
+                            ? 'Select'
+                            : _unitController.text.trim(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.bodyMedium?.copyWith(
+                          color: _unitController.text.trim().isEmpty
+                              ? AppColors.textSecondary
+                              : AppColors.textPrimary,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
-
-            // Category.
-            TextField(
-              controller: _categoryController,
-              textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                border: OutlineInputBorder(),
+            if (_unitError != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _unitError!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.bodySmall?.copyWith(
+                    color: Colors.red.shade700,
+                  ),
+                ),
               ),
-            ),
+            ],
 
             // Error message if any.
             if (viewModel.actionErrorMessage != null) ...[
@@ -312,13 +382,63 @@ class _AddGroceryItemDialogState extends State<_AddGroceryItemDialog> {
     );
   }
 
+  Future<void> _loadUnits() async {
+    final result = await sl<GetAddRecipeIngredientUnitsUseCase>().execute();
+    if (!mounted) return;
+    result.fold(
+      (failure) => setState(() {
+        _unitError = failure.message;
+        _isLoadingUnits = false;
+      }),
+      (units) => setState(() {
+        _units = units;
+        _isLoadingUnits = false;
+      }),
+    );
+  }
+
+  Future<void> _pickImage() async {
+    final result = await fp.FilePicker.pickFiles(
+      allowMultiple: false,
+      type: fp.FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+    );
+    final path = result?.files.firstOrNull?.path;
+    if (path == null || !mounted) return;
+    setState(() => _imageFile = File(path));
+  }
+
+  Future<void> _showUnitSheet() async {
+    final selected = await showModalBottomSheet<UnitPickerSelection>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => IngredientUnitPickerSheet(
+        units: _units,
+        selectedUnitId: _unitId,
+        selectedCustomUnit: _customUnit,
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _unitId = selected.isCustom ? '' : selected.unitId;
+      _customUnit = selected.isCustom ? selected.unitName : '';
+      _unitController.text = selected.unitName;
+    });
+  }
+
   /// Saves the new item.
   Future<void> _saveItem() async {
     final saved = await context.read<ManageGroceryListViewModel>().addItem(
       name: _nameController.text,
       amountText: _amountController.text,
       unit: _unitController.text,
-      categoryName: _categoryController.text,
+      unitId: _unitId,
+      customUnit: _customUnit,
+      imageFile: _imageFile,
       relatedMealPlanIds: widget.relatedMealPlanIds,
     );
     if (saved && mounted) {

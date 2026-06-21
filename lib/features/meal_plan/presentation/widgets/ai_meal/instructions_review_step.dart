@@ -358,6 +358,7 @@ class _ReviewStepState extends State<_ReviewStep> {
       setState(() => _isSavingBoth = false);
       return;
     }
+    viewModel.linkSelectedRecipeToSavedRecipe(savedRecipeId);
 
     // Save the meal plan.
     final mealSaved = await viewModel.saveSelectedRecipesToPlan();

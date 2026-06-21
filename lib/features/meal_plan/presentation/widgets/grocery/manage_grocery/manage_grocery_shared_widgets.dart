@@ -74,8 +74,31 @@ class _TimelineIngredient extends StatelessWidget {
           onChanged: (_) =>
               context.read<ManageGroceryListViewModel>().toggleBought(item.id),
         ),
-        Expanded(child: Text(item.name, style: context.text.bodySmall)),
-        Text(item.quantityLabel, style: context.text.bodySmall),
+        _IngredientThumb(item: item, size: 30),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.bodySmall,
+              ),
+              if (item.quantityLabel.trim().isNotEmpty)
+                Text(
+                  item.quantityLabel,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.bodySmall?.copyWith(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+            ],
+          ),
+        ),
         const SizedBox(width: AppSpacing.sm),
         IconButton(
           tooltip: 'Delete ingredient',
@@ -88,6 +111,44 @@ class _TimelineIngredient extends StatelessWidget {
           icon: const Icon(Icons.delete_outline, size: 16),
         ),
       ],
+    );
+  }
+}
+
+/// Small grocery ingredient thumbnail with image fallback.
+class _IngredientThumb extends StatelessWidget {
+  /// Grocery item.
+  final ManageGroceryItem item;
+
+  /// Thumbnail size.
+  final double size;
+
+  /// Creates a new ingredient thumbnail.
+  const _IngredientThumb({required this.item, this.size = 36});
+
+  @override
+  Widget build(BuildContext context) {
+    final imagePath = item.imagePath.trim();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        color: const Color(0xFFE8F8EB),
+        child: imagePath.isEmpty
+            ? Icon(
+                Icons.inventory_2_outlined,
+                color: AppColors.primary,
+                size: size * 0.52,
+              )
+            : AppRemoteOrAssetImage(
+                imagePath: imagePath,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+              ),
+      ),
     );
   }
 }

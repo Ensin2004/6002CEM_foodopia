@@ -445,6 +445,8 @@ class _GroceryItemRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
+          _IngredientThumb(item: item),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Opacity(
               opacity: bought ? 0.55 : 1,

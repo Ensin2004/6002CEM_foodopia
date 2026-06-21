@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/services/cloudinary_service.dart';
+import '../../../../core/services/openai_ingredient_data_service.dart';
+import '../../../recipe/domain/entities/add_recipe_ingredient_data.dart';
 import '../../domain/entities/add_grocery_list_plan.dart';
 import '../../domain/entities/add_meal_ai_plan.dart';
 import '../../domain/entities/manage_grocery_list_detail.dart';
@@ -18,8 +21,14 @@ abstract class _MealPlanRemoteDataSourceCore {
   /// Firestore instance used for all database operations.
   final FirebaseFirestore firestore;
 
+  /// Ingredient AI service used for manual grocery item categorization.
+  final OpenAiIngredientDataService ingredientAiDataSource;
+
   /// Creates the shared Firestore holder.
-  const _MealPlanRemoteDataSourceCore({required this.firestore});
+  const _MealPlanRemoteDataSourceCore({
+    required this.firestore,
+    required this.ingredientAiDataSource,
+  });
 }
 
 /// Remote data source implementation for meal planning operations.
@@ -33,5 +42,8 @@ class MealPlanRemoteDataSource extends _MealPlanRemoteDataSourceCore
         _MealPlanRemoteGroceryDataSource,
         _MealPlanRemoteDashboardDataSource {
   /// Creates a new instance with the required Firestore reference.
-  const MealPlanRemoteDataSource({required super.firestore});
+  const MealPlanRemoteDataSource({
+    required super.firestore,
+    required super.ingredientAiDataSource,
+  });
 }

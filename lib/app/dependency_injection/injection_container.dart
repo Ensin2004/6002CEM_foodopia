@@ -523,7 +523,10 @@ void _initMealPlanFeature() {
       openAiMealIdeaService: sl(),
     ),
   );
-  sl.registerLazySingleton(() => MealPlanRemoteDataSource(firestore: sl()));
+  sl.registerLazySingleton(
+    () =>
+        MealPlanRemoteDataSource(firestore: sl(), ingredientAiDataSource: sl()),
+  );
 
   // Register repository.
   sl.registerLazySingleton<MealPlanRepository>(
