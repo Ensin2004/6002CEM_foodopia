@@ -20,6 +20,7 @@ import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../viewmodel/add_recipe_method_viewmodel.dart';
+import '../widgets/recipe_error_dialog.dart';
 
 class AddRecipePage extends StatelessWidget {
   const AddRecipePage({super.key});
@@ -146,13 +147,10 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
     rootNavigator.pop();
 
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            viewModel.errorMessage ??
-                "Unable to generate ingredients from image.",
-          ),
-        ),
+      await showRecipeErrorDialog(
+        context: context,
+        message: viewModel.errorMessage ??
+            "Unable to generate ingredients from image.",
       );
       return;
     }
@@ -190,12 +188,9 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
     rootNavigator.pop();
 
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            viewModel.errorMessage ?? "Unable to generate recipe from video.",
-          ),
-        ),
+      await showRecipeErrorDialog(
+        context: context,
+        message: viewModel.errorMessage ?? "Unable to generate recipe from video.",
       );
       return;
     }

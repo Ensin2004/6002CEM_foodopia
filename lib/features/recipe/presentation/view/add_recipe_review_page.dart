@@ -27,6 +27,7 @@ import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../viewmodel/add_recipe_review_viewmodel.dart';
 import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/recipe_error_dialog.dart';
 import '../widgets/recipe_visibility_action_button.dart';
 import '../widgets/review/review_hero_image.dart';
 import '../widgets/review/review_info_row.dart';
@@ -526,10 +527,9 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     final success = await viewModel.finalizeRecipe(widget.recipeId);
     if (!context.mounted) return;
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(viewModel.errorMessage ?? "Unable to save recipe."),
-        ),
+      await showRecipeErrorDialog(
+        context: context,
+        message: viewModel.errorMessage ?? "Unable to save recipe.",
       );
       return;
     }
@@ -596,10 +596,10 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     rootNavigator.pop();
 
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(viewModel.errorMessage ?? "Unable to delete recipe."),
-        ),
+      await showRecipeErrorDialog(
+        context: context,
+        message: viewModel.errorMessage ?? "Unable to delete recipe.",
+        title: "Unable to Delete",
       );
       return;
     }
@@ -631,31 +631,30 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
     if (!context.mounted) return;
     if (basicResult.isLeft()) {
-      _finishFailedSave(context, basicResult.left?.message);
+      await _finishFailedSave(context, basicResult.left?.message);
       return;
     }
 
     final savedRecipeId = basicResult.right!;
-    final ingredientResult = await sl<SaveAddRecipeIngredientsUseCase>()
-        .execute(
-          recipeId: savedRecipeId,
-          ingredients: widget.aiDraftIngredients,
-        );
+    final ingredientResult = await sl<SaveAddRecipeIngredientsUseCase>().execute(
+      recipeId: savedRecipeId,
+      ingredients: widget.aiDraftIngredients,
+    );
     if (!context.mounted) return;
     if (ingredientResult.isLeft()) {
-      _finishFailedSave(context, ingredientResult.left?.message);
+      await _finishFailedSave(context, ingredientResult.left?.message);
       return;
     }
 
-    final instructionResult = await sl<SaveAddRecipeInstructionsUseCase>()
-        .execute(
-          recipeId: savedRecipeId,
-          useSections: widget.aiDraftUseSections,
-          instructions: widget.aiDraftInstructions,
-        );
+    final instructionResult =
+        await sl<SaveAddRecipeInstructionsUseCase>().execute(
+      recipeId: savedRecipeId,
+      useSections: widget.aiDraftUseSections,
+      instructions: widget.aiDraftInstructions,
+    );
     if (!context.mounted) return;
     if (instructionResult.isLeft()) {
-      _finishFailedSave(context, instructionResult.left?.message);
+      await _finishFailedSave(context, instructionResult.left?.message);
       return;
     }
 
@@ -665,15 +664,18 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
     if (!context.mounted) return;
     setState(() => _isSavingAiDraft = false);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Recipe saved.")));
+    await showRecipeErrorDialog(
+      context: context,
+      title: "Recipe Saved",
+      message: "Recipe saved.",
+    );
   }
 
-  void _finishFailedSave(BuildContext context, String? message) {
+  Future<void> _finishFailedSave(BuildContext context, String? message) async {
     setState(() => _isSavingAiDraft = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message ?? "Unable to save recipe.")),
+    await showRecipeErrorDialog(
+      context: context,
+      message: message ?? "Unable to save recipe.",
     );
   }
 

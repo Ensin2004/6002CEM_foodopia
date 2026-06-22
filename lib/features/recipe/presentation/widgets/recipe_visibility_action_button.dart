@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
+import 'recipe_error_dialog.dart';
 
 /// Displays the current recipe visibility and toggles between private and public.
 class RecipeVisibilityActionButton extends StatelessWidget {
@@ -118,15 +119,18 @@ Future<void> confirmRecipeVisibilityChange({
   if (!context.mounted) return;
   rootNavigator.pop();
 
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? 'Recipe is now ${willPublish ? 'public' : 'private'}.'
-              : errorMessage() ?? 'Unable to update visibility.',
-        ),
-      ),
+  if (!success) {
+    await showRecipeErrorDialog(
+      context: context,
+      message: errorMessage() ?? 'Unable to update visibility.',
+      title: 'Unable to Update',
     );
+    return;
+  }
+
+  await showRecipeErrorDialog(
+    context: context,
+    title: 'Visibility Updated',
+    message: 'Recipe is now ${willPublish ? 'public' : 'private'}.',
+  );
 }

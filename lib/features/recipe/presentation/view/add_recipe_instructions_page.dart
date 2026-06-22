@@ -27,6 +27,7 @@ import '../widgets/discard_recipe_changes_dialog.dart';
 import '../widgets/instructions/flat_instruction_list.dart';
 import '../widgets/label.dart';
 import '../widgets/instructions/instruction_mode_button.dart';
+import '../widgets/recipe_error_dialog.dart';
 import '../widgets/recipe_visibility_action_button.dart';
 import '../widgets/instructions/section_instruction_list.dart';
 
@@ -540,12 +541,9 @@ class _AddRecipeInstructionsViewState
 
     if (!context.mounted) return;
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            viewModel.errorMessage ?? "Unable to save instructions.",
-          ),
-        ),
+      await showRecipeErrorDialog(
+        context: context,
+        message: viewModel.errorMessage ?? "Unable to save instructions.",
       );
       return;
     }

@@ -37,6 +37,7 @@ import '../widgets/basic_info/recipe_image_picker.dart';
 import '../widgets/label.dart';
 import '../widgets/basic_info/input_text_field.dart';
 import '../widgets/basic_info/recipe_option_picker_sheet.dart';
+import '../widgets/recipe_error_dialog.dart';
 
 class AddRecipeBasicInfoPage extends StatelessWidget {
   final String? recipeId;
@@ -792,10 +793,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
 
     if (!context.mounted) return;
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(viewModel.errorMessage ?? "Unable to save recipe."),
-        ),
+      await showRecipeErrorDialog(
+        context: context,
+        message: viewModel.errorMessage ?? "Unable to save recipe.",
       );
       return;
     }

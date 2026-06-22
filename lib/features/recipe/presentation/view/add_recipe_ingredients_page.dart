@@ -34,6 +34,7 @@ import '../widgets/discard_recipe_changes_dialog.dart';
 import '../widgets/ingredients/ingredient_name_picker_sheet.dart';
 import '../widgets/ingredients/ingredient_unit_picker_sheet.dart';
 import '../widgets/label.dart';
+import '../widgets/recipe_error_dialog.dart';
 import '../widgets/recipe_visibility_action_button.dart';
 
 class AddRecipeIngredientsPage extends StatelessWidget {
@@ -608,12 +609,9 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
 
     if (!context.mounted) return;
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            viewModel.errorMessage ?? "Unable to save ingredients.",
-          ),
-        ),
+      await showRecipeErrorDialog(
+        context: context,
+        message: viewModel.errorMessage ?? "Unable to save ingredients.",
       );
       return;
     }
