@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
 import '../entities/add_recipe_basic_info.dart';
 import '../entities/add_recipe_food_search_result.dart';
+import '../entities/add_recipe_image_result.dart';
 import '../entities/add_recipe_ingredient.dart';
 import '../entities/add_recipe_ingredient_data.dart';
 import '../entities/add_recipe_ingredient_unit.dart';
@@ -33,6 +36,10 @@ abstract class AddRecipeRepository {
 
   Future<Either<Failure, AddRecipeVideoResult>> generateRecipeFromVideo(
     String videoPath,
+  );
+
+  Future<Either<Failure, AddRecipeImageResult>> generateRecipeFromImage(
+    File imageFile,
   );
 
   Future<Either<Failure, void>> saveIngredients({

@@ -49,6 +49,7 @@ class AddRecipeInstructionsPage extends StatelessWidget {
   final String? userId;
   final AddRecipeBasicInfo? aiDraftBasicInfo;
   final List<AddRecipeIngredient> aiDraftIngredients;
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
   final bool hideProgressBar;
   final bool hideAppBar;
   final ValueChanged<AddRecipeInstructionDraft>? onAiDraftNext;
@@ -63,6 +64,7 @@ class AddRecipeInstructionsPage extends StatelessWidget {
     this.userId,
     this.aiDraftBasicInfo,
     this.aiDraftIngredients = const [],
+    this.initialGeneratedInstructions = const [],
     this.hideProgressBar = false,
     this.hideAppBar = false,
     this.onAiDraftNext,
@@ -93,6 +95,7 @@ class AddRecipeInstructionsPage extends StatelessWidget {
         userId: userId,
         aiDraftBasicInfo: aiDraftBasicInfo,
         aiDraftIngredients: aiDraftIngredients,
+        initialGeneratedInstructions: initialGeneratedInstructions,
         hideProgressBar: hideProgressBar,
         hideAppBar: hideAppBar,
         onAiDraftNext: onAiDraftNext,
@@ -109,6 +112,7 @@ class _AddRecipeInstructionsView extends StatefulWidget {
   final String? userId;
   final AddRecipeBasicInfo? aiDraftBasicInfo;
   final List<AddRecipeIngredient> aiDraftIngredients;
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
   final bool hideProgressBar;
   final bool hideAppBar;
   final ValueChanged<AddRecipeInstructionDraft>? onAiDraftNext;
@@ -121,6 +125,7 @@ class _AddRecipeInstructionsView extends StatefulWidget {
     this.userId,
     this.aiDraftBasicInfo,
     this.aiDraftIngredients = const [],
+    this.initialGeneratedInstructions = const [],
     this.hideProgressBar = false,
     this.hideAppBar = false,
     this.onAiDraftNext,
@@ -145,9 +150,19 @@ class _AddRecipeInstructionsViewState
   void initState() {
     super.initState();
     final aiInstructions = widget.initialAiRecipe?.instructions ?? const [];
-    _steps = aiInstructions.isEmpty
-        ? [InstructionStepState()]
-        : aiInstructions.map(InstructionStepState.fromDescription).toList();
+    final generatedInstructions = widget.initialGeneratedInstructions;
+    _steps = aiInstructions.isNotEmpty
+        ? aiInstructions.map(InstructionStepState.fromDescription).toList()
+        : generatedInstructions.isNotEmpty
+        ? generatedInstructions
+              .map(
+                (instruction) =>
+                    InstructionStepState.fromDescription(
+                      instruction.description,
+                    ),
+              )
+              .toList()
+        : [InstructionStepState()];
     for (final step in _steps) {
       step.addListener(_refreshFormState);
     }
@@ -179,6 +194,7 @@ class _AddRecipeInstructionsViewState
     }
 
     if (widget.initialAiRecipe == null &&
+        widget.initialGeneratedInstructions.isEmpty &&
         viewModel.existingReview == null &&
         _requestedRecipeId != widget.recipeId) {
       _requestedRecipeId = widget.recipeId;

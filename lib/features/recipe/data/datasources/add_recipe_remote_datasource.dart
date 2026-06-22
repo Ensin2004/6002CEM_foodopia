@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/services/openai_ingredient_data_service.dart';
+import '../../../../core/services/openai_recipe_content_validation_service.dart';
 import '../../../../core/services/recipe_search_service.dart';
 import '../../../../core/services/fcm_sender.dart';
 import '../../../../core/services/food_search_service.dart';
@@ -12,6 +13,7 @@ import '../../../../core/services/unsplash_ingredient_image_service.dart';
 import '../../domain/entities/add_recipe_ingredient_data.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_food_search_result.dart';
+import '../../domain/entities/add_recipe_image_result.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
@@ -24,6 +26,15 @@ import '../models/add_recipe_ingredient_model.dart';
 import '../models/add_recipe_instruction_model.dart';
 import '../models/add_recipe_review_model.dart';
 import '../models/add_recipe_setup_model.dart';
+
+class RecipeContentValidationException implements Exception {
+  final String message;
+
+  const RecipeContentValidationException(this.message);
+
+  @override
+  String toString() => message;
+}
 
 class AddRecipeRemoteDataSource {
   static const List<String> _nutrientKeys = [
@@ -58,6 +69,7 @@ class AddRecipeRemoteDataSource {
   final FoodSearchService foodSearchService;
   final UnsplashIngredientImageService unsplashIngredientImageService;
   final OpenAiIngredientDataService ingredientAiDataSource;
+  final OpenAiRecipeContentValidationService recipeValidationService;
   final AddRecipeVideoDataSource videoDataSource;
   final RecipeSearchService recipeAiSearchService;
 
@@ -67,6 +79,7 @@ class AddRecipeRemoteDataSource {
     required this.foodSearchService,
     required this.unsplashIngredientImageService,
     required this.ingredientAiDataSource,
+    required this.recipeValidationService,
     required this.videoDataSource,
     required this.recipeAiSearchService,
   });
@@ -196,8 +209,134 @@ class AddRecipeRemoteDataSource {
   }
 
   /// Generate draft recipe from video uploaded
-  Future<AddRecipeVideoResult> generateRecipeFromVideo(String videoPath) {
-    return videoDataSource.generateFromVideo(videoPath);
+  Future<AddRecipeVideoResult> generateRecipeFromVideo(String videoPath) async {
+    final result = await videoDataSource.generateFromVideo(videoPath);
+    return AddRecipeVideoResult(
+      basicInfo: result.basicInfo,
+      ingredients: await _ingredientsWithUnsplashImages(result.ingredients),
+      instructions: result.instructions,
+    );
+  }
+
+  Future<AddRecipeImageResult> generateRecipeFromImage(
+    File imageFile,
+  ) async {
+    final units = await getIngredientUnits();
+    final draft = await recipeValidationService.generateRecipeFromImage(
+      imageFile,
+    );
+    if (!draft.isFood) {
+      throw RecipeContentValidationException(
+        draft.reason.isEmpty
+            ? 'Please upload a food or cooking image.'
+            : draft.reason,
+      );
+    }
+
+    return AddRecipeImageResult(
+      recipeName: draft.recipeName,
+      description: draft.description,
+      ingredients: await _ingredientsWithUnsplashImages(
+        draft.ingredients.map((item) {
+          final unitId = _unitIdForName(units, item.unit);
+          return AddRecipeIngredient(
+            name: item.name,
+            amount: item.amount,
+            unitId: unitId ?? '',
+            customUnit: unitId == null ? item.unit : '',
+          );
+        }).toList(),
+      ),
+      instructions: [
+        for (var index = 0; index < draft.instructions.length; index++)
+          AddRecipeInstruction(
+            sectionIndex: null,
+            sectionTitle: null,
+            stepIndex: index + 1,
+            description: draft.instructions[index],
+          ),
+      ],
+    );
+  }
+
+  Future<List<AddRecipeIngredient>> _ingredientsWithUnsplashImages(
+    List<AddRecipeIngredient> ingredients,
+  ) async {
+    final enriched = <AddRecipeIngredient>[];
+
+    for (final ingredient in ingredients) {
+      final existingImage = ingredient.existingImageUrl?.trim();
+      final imageUrl = existingImage == null || existingImage.isEmpty
+          ? await getIngredientImageUrl(ingredient.name)
+          : existingImage;
+
+      enriched.add(
+        AddRecipeIngredient(
+          name: ingredient.name,
+          imageFile: ingredient.imageFile,
+          existingImageUrl: imageUrl,
+          amount: ingredient.amount,
+          unitId: ingredient.unitId,
+          customUnit: ingredient.customUnit,
+          usdaId: ingredient.usdaId,
+          usdaNutrients: ingredient.usdaNutrients,
+          ingredientCategoryId: ingredient.ingredientCategoryId,
+        ),
+      );
+    }
+
+    return enriched;
+  }
+
+  Future<void> validateBasicInfo(AddRecipeBasicInfo info) async {
+    final result = await recipeValidationService.validateBasicInfo(info);
+    if (!result.isValid) {
+      throw RecipeContentValidationException(result.message);
+    }
+  }
+
+  Future<void> validateIngredients(
+    List<AddRecipeIngredient> ingredients,
+  ) async {
+    final unitNames = await _resolveIngredientUnitNames(ingredients);
+    final normalizedIngredients = ingredients.map((ingredient) {
+      final displayUnit = ingredient.customUnit.trim().isNotEmpty
+          ? ingredient.customUnit.trim()
+          : unitNames[ingredient.unitId] ?? ingredient.unitId;
+      return AddRecipeIngredient(
+        name: ingredient.name,
+        amount: ingredient.amount,
+        unitId: '',
+        customUnit: displayUnit,
+      );
+    }).toList();
+    final result = await recipeValidationService.validateIngredients(
+      normalizedIngredients,
+    );
+    if (!result.isValid) {
+      throw RecipeContentValidationException(result.message);
+    }
+  }
+
+  Future<void> validateInstructions({
+    required bool useSections,
+    required List<AddRecipeInstruction> instructions,
+  }) async {
+    final result = await recipeValidationService.validateInstructions(
+      useSections: useSections,
+      instructions: instructions,
+    );
+    if (!result.isValid) {
+      throw RecipeContentValidationException(result.message);
+    }
+  }
+
+  Future<void> validateReview(String recipeId) async {
+    final review = await getReview(recipeId);
+    final result = await recipeValidationService.validateReview(review);
+    if (!result.isValid) {
+      throw RecipeContentValidationException(result.message);
+    }
   }
 
   /// Saves or updates basic recipe information
@@ -1324,6 +1463,15 @@ class AddRecipeRemoteDataSource {
       return name.isEmpty ? customUnitId : name;
     }
     return '';
+  }
+
+  String? _unitIdForName(List<AddRecipeIngredientUnit> units, String name) {
+    for (final unit in units) {
+      if (unit.name.toLowerCase() == name.trim().toLowerCase()) {
+        return unit.id;
+      }
+    }
+    return null;
   }
 
   List<String> _stringList(dynamic value) {

@@ -33,6 +33,7 @@ import '../../core/services/network_info.dart';
 import '../../core/services/openai_ingredient_data_service.dart';
 import '../../core/services/food_search_service.dart';
 import '../../core/services/openai_meal_idea_service.dart';
+import '../../core/services/openai_recipe_content_validation_service.dart';
 import '../../core/services/openai_video_recipe_service.dart';
 import '../../core/services/recipe_search_service.dart';
 import '../../core/services/open_meteo_weather_service.dart';
@@ -118,6 +119,7 @@ import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
 import '../../features/recipe/domain/usecases/finalize_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/complete_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/generate_add_recipe_from_video_usecase.dart';
+import '../../features/recipe/domain/usecases/generate_add_recipe_ingredients_from_image_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_categories_usecase.dart';
@@ -323,6 +325,9 @@ void _initRecipeFeature() {
   // Register OpenAI services.
   sl.registerLazySingleton(() => OpenAiIngredientDataService(client: sl()));
   sl.registerLazySingleton(() => OpenAiVideoRecipeService(client: sl()));
+  sl.registerLazySingleton(
+    () => OpenAiRecipeContentValidationService(client: sl()),
+  );
 
   // Register video data source.
   sl.registerLazySingleton(
@@ -340,6 +345,7 @@ void _initRecipeFeature() {
       foodSearchService: sl(),
       unsplashIngredientImageService: sl(),
       ingredientAiDataSource: sl(),
+      recipeValidationService: sl(),
       videoDataSource: sl(),
       recipeAiSearchService: sl(),
     ),
@@ -358,6 +364,9 @@ void _initRecipeFeature() {
   sl.registerLazySingleton(() => GetAddRecipeFoodNutrientsUseCase(sl()));
   sl.registerLazySingleton(() => GetAddRecipeIngredientImageUseCase(sl()));
   sl.registerLazySingleton(() => GenerateAddRecipeFromVideoUseCase(sl()));
+  sl.registerLazySingleton(
+    () => GenerateAddRecipeIngredientsFromImageUseCase(sl()),
+  );
   sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeInstructionsUseCase(sl()));

@@ -20,6 +20,7 @@ import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
+import '../../domain/entities/add_recipe_instruction.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../domain/usecases/get_add_recipe_ingredient_image_usecase.dart';
@@ -43,6 +44,8 @@ class AddRecipeIngredientsPage extends StatelessWidget {
   final AddMealAiGenerationRequest? initialAiRequest;
   final String? userId;
   final AddRecipeBasicInfo? aiDraftBasicInfo;
+  final List<AddRecipeIngredient> initialGeneratedIngredients;
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
   final bool hideProgressBar;
   final bool hideAppBar;
   final ValueChanged<List<AddRecipeIngredient>>? onAiDraftNext;
@@ -56,6 +59,8 @@ class AddRecipeIngredientsPage extends StatelessWidget {
     this.initialAiRequest,
     this.userId,
     this.aiDraftBasicInfo,
+    this.initialGeneratedIngredients = const [],
+    this.initialGeneratedInstructions = const [],
     this.hideProgressBar = false,
     this.hideAppBar = false,
     this.onAiDraftNext,
@@ -89,6 +94,8 @@ class AddRecipeIngredientsPage extends StatelessWidget {
         initialAiRequest: initialAiRequest,
         userId: userId,
         aiDraftBasicInfo: aiDraftBasicInfo,
+        initialGeneratedIngredients: initialGeneratedIngredients,
+        initialGeneratedInstructions: initialGeneratedInstructions,
         hideProgressBar: hideProgressBar,
         hideAppBar: hideAppBar,
         onAiDraftNext: onAiDraftNext,
@@ -104,6 +111,8 @@ class _AddRecipeIngredientsView extends StatefulWidget {
   final AddMealAiGenerationRequest? initialAiRequest;
   final String? userId;
   final AddRecipeBasicInfo? aiDraftBasicInfo;
+  final List<AddRecipeIngredient> initialGeneratedIngredients;
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
   final bool hideProgressBar;
   final bool hideAppBar;
   final ValueChanged<List<AddRecipeIngredient>>? onAiDraftNext;
@@ -115,6 +124,8 @@ class _AddRecipeIngredientsView extends StatefulWidget {
     this.initialAiRequest,
     this.userId,
     this.aiDraftBasicInfo,
+    this.initialGeneratedIngredients = const [],
+    this.initialGeneratedInstructions = const [],
     this.hideProgressBar = false,
     this.hideAppBar = false,
     this.onAiDraftNext,
@@ -132,14 +143,25 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
   String? _initialFormSignature;
   bool _didSaveChanges = false;
   bool _didRequestAiIngredientImages = false;
+  bool _didResolveGeneratedUnits = false;
 
   @override
   void initState() {
     super.initState();
     final aiIngredients = widget.initialAiRecipe?.ingredients ?? const [];
-    _rows = aiIngredients.isEmpty
-        ? [IngredientRowState()]
-        : aiIngredients.map(IngredientRowState.fromAiIngredient).toList();
+    final generatedIngredients = widget.initialGeneratedIngredients;
+    _rows = aiIngredients.isNotEmpty
+        ? aiIngredients.map(IngredientRowState.fromAiIngredient).toList()
+        : generatedIngredients.isNotEmpty
+        ? generatedIngredients
+              .map(
+                (ingredient) => IngredientRowState.fromIngredient(
+                  ingredient,
+                  units: const [],
+                ),
+              )
+              .toList()
+        : [IngredientRowState()];
     for (final row in _rows) {
       row.addListener(_refreshFormState);
     }
@@ -164,7 +186,17 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       return const _AddRecipePageLoading();
     }
 
+    if (widget.initialGeneratedIngredients.isNotEmpty &&
+        !_didResolveGeneratedUnits) {
+      _didResolveGeneratedUnits = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _resolveGeneratedUnitNames(viewModel.units);
+      });
+    }
+
     if (widget.initialAiRecipe == null &&
+        widget.initialGeneratedIngredients.isEmpty &&
         viewModel.existingReview == null &&
         _requestedRecipeId != widget.recipeId) {
       _requestedRecipeId = widget.recipeId;
@@ -423,6 +455,18 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     return path == null ? null : File(path);
   }
 
+  void _resolveGeneratedUnitNames(List<AddRecipeIngredientUnit> units) {
+    var changed = false;
+    for (final row in _rows) {
+      if (row.isCustomUnit || row.unitName.trim().isNotEmpty) continue;
+      final unitName = IngredientRowState.unitNameById(units, row.unitId);
+      if (unitName.isEmpty) continue;
+      row.unitName = unitName;
+      changed = true;
+    }
+    if (changed) setState(() {});
+  }
+
   // Name Picker Helper
   Future<void> _showIngredientNameSheet({
     required IngredientRowState row,
@@ -551,6 +595,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
           userId: widget.userId,
           aiDraftBasicInfo: widget.aiDraftBasicInfo,
           aiDraftIngredients: _completedIngredients,
+          initialGeneratedInstructions: widget.initialGeneratedInstructions,
         ),
       );
       return;
@@ -591,6 +636,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
         aiRecipe: widget.initialAiRecipe,
         aiRequest: widget.initialAiRequest,
         userId: widget.userId,
+        initialGeneratedInstructions: widget.initialGeneratedInstructions,
       ),
     );
   }
@@ -738,6 +784,27 @@ class IngredientRowState {
     return row;
   }
 
+  factory IngredientRowState.fromIngredient(
+    AddRecipeIngredient ingredient, {
+    required List<AddRecipeIngredientUnit> units,
+  }) {
+    final row = IngredientRowState();
+    row.nameController.text = ingredient.name;
+    row.amountController.text = _displayAmount(ingredient.amount);
+    row.imageFile = ingredient.imageFile;
+    row.existingImageUrl = ingredient.existingImageUrl;
+    row.unitId = ingredient.unitId;
+    row.isCustomUnit = ingredient.unitId.trim().isEmpty;
+    row.unitName = row.isCustomUnit
+        ? ingredient.customUnit
+        : unitNameById(units, ingredient.unitId);
+    row.usdaId = ingredient.usdaId;
+    row.usdaNutrients = ingredient.usdaNutrients;
+    row.ingredientCategoryId = ingredient.ingredientCategoryId;
+    row.markAnalysisCurrent();
+    return row;
+  }
+
   String get unitDisplayName => unitName;
 
   String get unitValueForSave => isCustomUnit ? unitName : unitId;
@@ -804,6 +871,21 @@ class IngredientRowState {
     }
     nameController.dispose();
     amountController.dispose();
+  }
+
+  static String _displayAmount(double amount) {
+    if (amount % 1 == 0) return amount.toInt().toString();
+    return amount.toString();
+  }
+
+  static String unitNameById(
+    List<AddRecipeIngredientUnit> units,
+    String unitId,
+  ) {
+    for (final unit in units) {
+      if (unit.id == unitId) return unit.name;
+    }
+    return '';
   }
 }
 
