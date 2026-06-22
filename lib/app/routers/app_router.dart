@@ -766,6 +766,13 @@ class AppRouter {
             initialAiRecipe: args?.aiRecipe,
             initialAiRequest: args?.aiRequest,
             userId: args?.userId,
+            initialImageFile: args?.initialImageFile,
+            initialRecipeName: args?.initialRecipeName,
+            initialRecipeDescription: args?.initialRecipeDescription,
+            initialGeneratedIngredients:
+                args?.initialGeneratedIngredients ?? const [],
+            initialGeneratedInstructions:
+                args?.initialGeneratedInstructions ?? const [],
           );
         },
       ),
@@ -784,6 +791,8 @@ class AppRouter {
             initialAiRequest: args.aiRequest,
             userId: args.userId,
             aiDraftBasicInfo: args.aiDraftBasicInfo,
+            initialGeneratedIngredients: args.initialGeneratedIngredients,
+            initialGeneratedInstructions: args.initialGeneratedInstructions,
           );
         },
       ),
@@ -803,6 +812,7 @@ class AppRouter {
             userId: args.userId,
             aiDraftBasicInfo: args.aiDraftBasicInfo,
             aiDraftIngredients: args.aiDraftIngredients,
+            initialGeneratedInstructions: args.initialGeneratedInstructions,
           );
         },
       ),

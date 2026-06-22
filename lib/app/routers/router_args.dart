@@ -305,6 +305,21 @@ class AddRecipeBasicInfoArgs {
   /// User ID.
   final String? userId;
 
+  /// Initial image selected from upload-image flow.
+  final File? initialImageFile;
+
+  /// Initial recipe name generated from upload-image flow.
+  final String? initialRecipeName;
+
+  /// Initial recipe description generated from upload-image flow.
+  final String? initialRecipeDescription;
+
+  /// Ingredients generated from the initial image.
+  final List<AddRecipeIngredient> initialGeneratedIngredients;
+
+  /// Instructions generated from the initial image.
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
+
   /// Creates a new add recipe basic info args instance.
   const AddRecipeBasicInfoArgs({
     this.recipeId,
@@ -313,6 +328,11 @@ class AddRecipeBasicInfoArgs {
     this.aiRecipe,
     this.aiRequest,
     this.userId,
+    this.initialImageFile,
+    this.initialRecipeName,
+    this.initialRecipeDescription,
+    this.initialGeneratedIngredients = const [],
+    this.initialGeneratedInstructions = const [],
   });
 }
 
@@ -339,6 +359,12 @@ class AddRecipeIngredientsArgs {
   /// AI draft basic info.
   final AddRecipeBasicInfo? aiDraftBasicInfo;
 
+  /// Ingredients generated before this step.
+  final List<AddRecipeIngredient> initialGeneratedIngredients;
+
+  /// Instructions generated before this step.
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
+
   /// Creates a new add recipe ingredients args instance.
   const AddRecipeIngredientsArgs({
     required this.recipeId,
@@ -348,6 +374,8 @@ class AddRecipeIngredientsArgs {
     this.aiRequest,
     this.userId,
     this.aiDraftBasicInfo,
+    this.initialGeneratedIngredients = const [],
+    this.initialGeneratedInstructions = const [],
   });
 }
 
@@ -377,6 +405,9 @@ class AddRecipeInstructionsArgs {
   /// AI draft ingredients.
   final List<AddRecipeIngredient> aiDraftIngredients;
 
+  /// Instructions generated before this step.
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
+
   /// Creates a new add recipe instructions args instance.
   const AddRecipeInstructionsArgs({
     required this.recipeId,
@@ -387,6 +418,7 @@ class AddRecipeInstructionsArgs {
     this.userId,
     this.aiDraftBasicInfo,
     this.aiDraftIngredients = const [],
+    this.initialGeneratedInstructions = const [],
   });
 }
 

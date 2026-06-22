@@ -18,6 +18,8 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
+import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_option.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
@@ -35,6 +37,7 @@ import '../widgets/basic_info/recipe_image_picker.dart';
 import '../widgets/label.dart';
 import '../widgets/basic_info/input_text_field.dart';
 import '../widgets/basic_info/recipe_option_picker_sheet.dart';
+import '../widgets/recipe_error_dialog.dart';
 
 class AddRecipeBasicInfoPage extends StatelessWidget {
   final String? recipeId;
@@ -42,6 +45,11 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
   final AddMealAiRecipe? initialAiRecipe;
   final AddMealAiGenerationRequest? initialAiRequest;
   final String? userId;
+  final File? initialImageFile;
+  final String? initialRecipeName;
+  final String? initialRecipeDescription;
+  final List<AddRecipeIngredient> initialGeneratedIngredients;
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
   final bool hideProgressBar;
   final bool hideAppBar;
   final ValueChanged<AddRecipeBasicInfo>? onAiDraftNext;
@@ -53,6 +61,11 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
     this.initialAiRecipe,
     this.initialAiRequest,
     this.userId,
+    this.initialImageFile,
+    this.initialRecipeName,
+    this.initialRecipeDescription,
+    this.initialGeneratedIngredients = const [],
+    this.initialGeneratedInstructions = const [],
     this.hideProgressBar = false,
     this.hideAppBar = false,
     this.onAiDraftNext,
@@ -81,6 +94,11 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
         initialAiRecipe: initialAiRecipe,
         initialAiRequest: initialAiRequest,
         userId: userId,
+        initialImageFile: initialImageFile,
+        initialRecipeName: initialRecipeName,
+        initialRecipeDescription: initialRecipeDescription,
+        initialGeneratedIngredients: initialGeneratedIngredients,
+        initialGeneratedInstructions: initialGeneratedInstructions,
         hideProgressBar: hideProgressBar,
         hideAppBar: hideAppBar,
         onAiDraftNext: onAiDraftNext,
@@ -95,6 +113,11 @@ class _AddRecipeBasicInfoView extends StatefulWidget {
   final AddMealAiRecipe? initialAiRecipe;
   final AddMealAiGenerationRequest? initialAiRequest;
   final String? userId;
+  final File? initialImageFile;
+  final String? initialRecipeName;
+  final String? initialRecipeDescription;
+  final List<AddRecipeIngredient> initialGeneratedIngredients;
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
   final bool hideProgressBar;
   final bool hideAppBar;
   final ValueChanged<AddRecipeBasicInfo>? onAiDraftNext;
@@ -105,6 +128,11 @@ class _AddRecipeBasicInfoView extends StatefulWidget {
     this.initialAiRecipe,
     this.initialAiRequest,
     this.userId,
+    this.initialImageFile,
+    this.initialRecipeName,
+    this.initialRecipeDescription,
+    this.initialGeneratedIngredients = const [],
+    this.initialGeneratedInstructions = const [],
     this.hideProgressBar = false,
     this.hideAppBar = false,
     this.onAiDraftNext,
@@ -154,6 +182,15 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       if (existingAiImage != null) {
         _existingImageUrls.add(existingAiImage);
       }
+    }
+    if (recipe == null) {
+      _recipeNameController.text = widget.initialRecipeName?.trim() ?? '';
+      _descriptionController.text =
+          widget.initialRecipeDescription?.trim() ?? '';
+    }
+    final initialImageFile = widget.initialImageFile;
+    if (initialImageFile != null) {
+      _images.add(initialImageFile);
     }
     _recipeNameController.addListener(_refreshRequiredState);
     _descriptionController.addListener(_refreshRequiredState);
@@ -745,6 +782,8 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
           aiRequest: widget.initialAiRequest,
           userId: widget.userId,
           aiDraftBasicInfo: info,
+          initialGeneratedIngredients: widget.initialGeneratedIngredients,
+          initialGeneratedInstructions: widget.initialGeneratedInstructions,
         ),
       );
       return;
@@ -754,10 +793,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
 
     if (!context.mounted) return;
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(viewModel.errorMessage ?? "Unable to save recipe."),
-        ),
+      await showRecipeErrorDialog(
+        context: context,
+        message: viewModel.errorMessage ?? "Unable to save recipe.",
       );
       return;
     }
@@ -780,6 +818,8 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         aiRecipe: widget.initialAiRecipe,
         aiRequest: widget.initialAiRequest,
         userId: widget.userId,
+        initialGeneratedIngredients: widget.initialGeneratedIngredients,
+        initialGeneratedInstructions: widget.initialGeneratedInstructions,
       ),
     );
   }

@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_food_search_result.dart';
+import '../../domain/entities/add_recipe_image_result.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_ingredient_data.dart';
 import '../../domain/entities/add_recipe_ingredient_unit.dart';
@@ -125,10 +128,15 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
     if (info.servings <= 0) {
       return Left(ValidationFailure(message: 'Servings must be more than 0.'));
     }
+    final localFailure = _validateBasicInfoLocally(info);
+    if (localFailure != null) return Left(localFailure);
 
     try {
+      await remoteDataSource.validateBasicInfo(info);
       final recipeId = await remoteDataSource.saveBasicInfo(info);
       return Right(recipeId);
+    } on RecipeContentValidationException catch (error) {
+      return Left(ValidationFailure(message: error.message));
     } catch (error) {
       return Left(
         ServerFailure(message: 'Unable to save recipe basic info: $error'),
@@ -162,6 +170,50 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
   }
 
   @override
+  Future<Either<Failure, AddRecipeImageResult>> generateRecipeFromImage(
+    File imageFile,
+  ) async {
+    if (imageFile.path.trim().isEmpty || !await imageFile.exists()) {
+      return Left(ValidationFailure(message: 'Please select an image.'));
+    }
+
+    try {
+      final result = await remoteDataSource.generateRecipeFromImage(
+        imageFile,
+      );
+      if (result.recipeName.trim().isEmpty ||
+          result.description.trim().isEmpty) {
+        return Left(
+          ServerFailure(
+            message: 'Unable to generate recipe details from this image.',
+          ),
+        );
+      }
+      if (result.ingredients.isEmpty) {
+        return Left(
+          ServerFailure(
+            message: 'Unable to detect ingredients from this image.',
+          ),
+        );
+      }
+      if (result.instructions.isEmpty) {
+        return Left(
+          ServerFailure(
+            message: 'Unable to generate instructions from this image.',
+          ),
+        );
+      }
+      return Right(result);
+    } on RecipeContentValidationException catch (error) {
+      return Left(ValidationFailure(message: error.message));
+    } catch (error) {
+      return Left(
+        ServerFailure(message: 'Unable to generate recipe from image: $error'),
+      );
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> saveIngredients({
     required String recipeId,
     required List<AddRecipeIngredient> ingredients,
@@ -189,13 +241,18 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
         return Left(ValidationFailure(message: 'Ingredient unit is required.'));
       }
     }
+    final localFailure = _validateIngredientsLocally(ingredients);
+    if (localFailure != null) return Left(localFailure);
 
     try {
+      await remoteDataSource.validateIngredients(ingredients);
       await remoteDataSource.saveIngredients(
         recipeId: recipeId,
         ingredients: ingredients,
       );
       return const Right(null);
+    } on RecipeContentValidationException catch (error) {
+      return Left(ValidationFailure(message: error.message));
     } catch (error) {
       return Left(ServerFailure(message: 'Unable to save ingredients: $error'));
     }
@@ -235,14 +292,22 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
         );
       }
     }
+    final localFailure = _validateInstructionsLocally(instructions);
+    if (localFailure != null) return Left(localFailure);
 
     try {
+      await remoteDataSource.validateInstructions(
+        useSections: useSections,
+        instructions: instructions,
+      );
       await remoteDataSource.saveInstructions(
         recipeId: recipeId,
         useSections: useSections,
         instructions: instructions,
       );
       return const Right(null);
+    } on RecipeContentValidationException catch (error) {
+      return Left(ValidationFailure(message: error.message));
     } catch (error) {
       return Left(
         ServerFailure(message: 'Unable to save instructions: $error'),
@@ -273,8 +338,11 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
     }
 
     try {
+      await remoteDataSource.validateReview(recipeId);
       await remoteDataSource.finalizeRecipe(recipeId);
       return const Right(null);
+    } on RecipeContentValidationException catch (error) {
+      return Left(ValidationFailure(message: error.message));
     } catch (error) {
       return Left(ServerFailure(message: 'Unable to save recipe: $error'));
     }
@@ -329,10 +397,159 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
     }
 
     try {
+      await remoteDataSource.validateReview(recipeId);
       await remoteDataSource.completeRecipe(recipeId: recipeId, mode: mode);
       return const Right(null);
+    } on RecipeContentValidationException catch (error) {
+      return Left(ValidationFailure(message: error.message));
     } catch (error) {
       return Left(ServerFailure(message: 'Unable to complete recipe: $error'));
     }
+  }
+
+  Failure? _validateBasicInfoLocally(AddRecipeBasicInfo info) {
+    final nameFailure = _validateHumanText(
+      info.recipeName,
+      fieldName: 'Recipe name',
+      maxLength: 120,
+    );
+    if (nameFailure != null) return nameFailure;
+
+    final descriptionFailure = _validateHumanText(
+      info.description,
+      fieldName: 'Recipe description',
+      maxLength: 1000,
+    );
+    if (descriptionFailure != null) return descriptionFailure;
+
+    if (info.preparationMinutes > 1440) {
+      return ValidationFailure(
+        message: 'Preparation time cannot be more than 24 hours.',
+      );
+    }
+    if (info.servings > 100) {
+      return ValidationFailure(message: 'Servings cannot be more than 100.');
+    }
+
+    for (final value in [
+      ...info.otherNames,
+      ...info.customCategories,
+      ...info.customAllergens,
+    ]) {
+      final failure = _validateHumanText(
+        value,
+        fieldName: 'Recipe content',
+        maxLength: 120,
+        allowEmpty: true,
+      );
+      if (failure != null) return failure;
+    }
+
+    return null;
+  }
+
+  Failure? _validateIngredientsLocally(List<AddRecipeIngredient> ingredients) {
+    if (ingredients.length > 100) {
+      return ValidationFailure(message: 'Please keep ingredients under 100.');
+    }
+
+    for (final ingredient in ingredients) {
+      final nameFailure = _validateHumanText(
+        ingredient.name,
+        fieldName: 'Ingredient name',
+        maxLength: 120,
+      );
+      if (nameFailure != null) return nameFailure;
+
+      if (ingredient.amount > 10000) {
+        return ValidationFailure(
+          message: 'Ingredient amounts cannot be extreme.',
+        );
+      }
+
+      final unit = ingredient.customUnit.trim();
+      if (unit.isNotEmpty) {
+        final unitFailure = _validateHumanText(
+          unit,
+          fieldName: 'Ingredient unit',
+          maxLength: 40,
+        );
+        if (unitFailure != null) return unitFailure;
+      }
+    }
+
+    return null;
+  }
+
+  Failure? _validateInstructionsLocally(
+    List<AddRecipeInstruction> instructions,
+  ) {
+    for (final instruction in instructions) {
+      if (_containsBlockedWord(instruction.description)) {
+        return ValidationFailure(
+          message: 'Instruction contains inappropriate language.',
+        );
+      }
+
+      final sectionTitle = instruction.sectionTitle?.trim() ?? '';
+      if (sectionTitle.isNotEmpty && _containsBlockedWord(sectionTitle)) {
+        return ValidationFailure(
+          message: 'Instruction section contains inappropriate language.',
+        );
+      }
+    }
+
+    return null;
+  }
+
+  Failure? _validateHumanText(
+    String value, {
+    required String fieldName,
+    required int maxLength,
+    bool allowEmpty = false,
+  }) {
+    final text = value.trim();
+    if (!allowEmpty && text.isEmpty) {
+      return ValidationFailure(message: '$fieldName is required.');
+    }
+    if (text.isEmpty) return null;
+    if (text.length > maxLength) {
+      return ValidationFailure(message: '$fieldName is too long.');
+    }
+    if (RegExp(r'https?://|www\.').hasMatch(text.toLowerCase())) {
+      return ValidationFailure(
+        message: '$fieldName cannot contain links.',
+      );
+    }
+    if (RegExp(r'(.)\1{9,}').hasMatch(text)) {
+      return ValidationFailure(message: '$fieldName looks unusual.');
+    }
+    if (_containsBlockedWord(text)) {
+      return ValidationFailure(
+        message: '$fieldName contains inappropriate language.',
+      );
+    }
+    return null;
+  }
+
+  bool _containsBlockedWord(String value) {
+    final normalized = value.toLowerCase();
+    const blockedWords = [
+      'fuck',
+      'shit',
+      'bitch',
+      'asshole',
+      'bastard',
+      'slut',
+      'whore',
+      'cunt',
+      'nigger',
+      'nigga',
+      'faggot',
+      'retard',
+    ];
+    return blockedWords.any(
+      (word) => RegExp('\\b${RegExp.escape(word)}\\b').hasMatch(normalized),
+    );
   }
 }
