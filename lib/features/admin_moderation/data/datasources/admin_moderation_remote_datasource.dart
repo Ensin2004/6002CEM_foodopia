@@ -62,6 +62,16 @@ class AdminModerationRemoteDataSource {
     });
   }
 
+  /// Clears AI review flag fields from a recipe.
+  Future<void> clearRecipeAiFlag(String recipeId) async {
+    await firestore.collection('recipes').doc(recipeId).update({
+      'aiReviewFlagged': false,
+      'aiReviewFlagReason': FieldValue.delete(),
+      'aiReviewCheckedAt': FieldValue.delete(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<List<AdminModerationRecipeModel>> _recipesFromSnapshot(
     QuerySnapshot<Map<String, dynamic>> snapshot,
   ) async {

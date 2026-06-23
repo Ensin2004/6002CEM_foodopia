@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/admin_moderation_recipe.dart';
+import '../../domain/usecases/clear_admin_recipe_ai_flag_usecase.dart';
 import '../../domain/usecases/mark_admin_recipe_reviewed_usecase.dart';
 import '../../domain/usecases/update_admin_recipe_visibility_usecase.dart';
 import '../../domain/usecases/watch_admin_moderation_recipes_usecase.dart';
@@ -13,6 +14,7 @@ class AdminModerationViewModel extends ChangeNotifier {
   final WatchAdminModerationRecipesUseCase _watchRecipesUseCase;
   final UpdateAdminRecipeVisibilityUseCase _updateRecipeVisibilityUseCase;
   final MarkAdminRecipeReviewedUseCase _markRecipeReviewedUseCase;
+  final ClearAdminRecipeAiFlagUseCase _clearRecipeAiFlagUseCase;
 
   List<AdminModerationRecipe> _recipes = const [];
   StreamSubscription? _recipesSubscription;
@@ -29,9 +31,11 @@ class AdminModerationViewModel extends ChangeNotifier {
     required WatchAdminModerationRecipesUseCase watchRecipesUseCase,
     required UpdateAdminRecipeVisibilityUseCase updateRecipeVisibilityUseCase,
     required MarkAdminRecipeReviewedUseCase markRecipeReviewedUseCase,
+    required ClearAdminRecipeAiFlagUseCase clearRecipeAiFlagUseCase,
   }) : _watchRecipesUseCase = watchRecipesUseCase,
        _updateRecipeVisibilityUseCase = updateRecipeVisibilityUseCase,
-       _markRecipeReviewedUseCase = markRecipeReviewedUseCase {
+       _markRecipeReviewedUseCase = markRecipeReviewedUseCase,
+       _clearRecipeAiFlagUseCase = clearRecipeAiFlagUseCase {
     _watchRecipes();
   }
 
@@ -52,6 +56,13 @@ class AdminModerationViewModel extends ChangeNotifier {
 
   /// Error message.
   String? get errorMessage => _errorMessage;
+
+  /// Total recipe count before search/filter is applied.
+  int get totalRecipeCount => _recipes.length;
+
+  /// Count of recipes currently flagged by AI.
+  int get aiFlaggedRecipeCount =>
+      _recipes.where((recipe) => recipe.aiReviewFlagged).length;
 
   /// Filtered and sorted recipes.
   List<AdminModerationRecipe> get visibleRecipes {
@@ -153,6 +164,25 @@ class AdminModerationViewModel extends ChangeNotifier {
     _notifyIfActive();
 
     final result = await _markRecipeReviewedUseCase.execute(recipeId);
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _errorMessage = failure.message;
+    });
+
+    _isUpdatingVisibility = false;
+    _notifyIfActive();
+    return success;
+  }
+
+  /// Clears AI flag metadata from a recipe.
+  Future<bool> clearRecipeAiFlag(String recipeId) async {
+    _isUpdatingVisibility = true;
+    _errorMessage = null;
+    _notifyIfActive();
+
+    final result = await _clearRecipeAiFlagUseCase.execute(recipeId);
     if (_isDisposed) return false;
 
     final success = result.isRight();

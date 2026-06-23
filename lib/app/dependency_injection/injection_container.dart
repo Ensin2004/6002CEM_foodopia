@@ -205,6 +205,7 @@ import '../../features/admin_manage/domain/usecases/get_admin_manage_items_useca
 import '../../features/admin_manage/domain/usecases/reorder_admin_manage_items_usecase.dart';
 import '../../features/admin_manage/domain/usecases/save_admin_manage_item_usecase.dart';
 import '../../features/admin_moderation/domain/repositories/admin_moderation_repository.dart';
+import '../../features/admin_moderation/domain/usecases/clear_admin_recipe_ai_flag_usecase.dart';
 import '../../features/admin_moderation/domain/usecases/mark_admin_recipe_reviewed_usecase.dart';
 import '../../features/admin_moderation/domain/usecases/update_admin_recipe_visibility_usecase.dart';
 import '../../features/admin_moderation/domain/usecases/watch_admin_moderation_recipes_usecase.dart';
@@ -700,6 +701,7 @@ void _initAdminModerationFeature() {
   sl.registerLazySingleton(() => WatchAdminModerationRecipesUseCase(sl()));
   sl.registerLazySingleton(() => UpdateAdminRecipeVisibilityUseCase(sl()));
   sl.registerLazySingleton(() => MarkAdminRecipeReviewedUseCase(sl()));
+  sl.registerLazySingleton(() => ClearAdminRecipeAiFlagUseCase(sl()));
 
   // Register ViewModel.
   sl.registerFactory(
@@ -707,6 +709,7 @@ void _initAdminModerationFeature() {
       watchRecipesUseCase: sl(),
       updateRecipeVisibilityUseCase: sl(),
       markRecipeReviewedUseCase: sl(),
+      clearRecipeAiFlagUseCase: sl(),
     ),
   );
 }

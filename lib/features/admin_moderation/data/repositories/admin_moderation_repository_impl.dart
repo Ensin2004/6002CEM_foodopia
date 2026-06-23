@@ -62,4 +62,18 @@ class AdminModerationRepositoryImpl implements AdminModerationRepository {
       return Left(ServerFailure(message: error.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> clearRecipeAiFlag(String recipeId) async {
+    if (recipeId.trim().isEmpty) {
+      return Left(ValidationFailure(message: 'Recipe id is missing.'));
+    }
+
+    try {
+      await remoteDataSource.clearRecipeAiFlag(recipeId);
+      return const Right(null);
+    } catch (error) {
+      return Left(ServerFailure(message: error.toString()));
+    }
+  }
 }
