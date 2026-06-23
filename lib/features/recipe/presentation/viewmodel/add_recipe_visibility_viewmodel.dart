@@ -21,7 +21,9 @@ class AddRecipeVisibilityViewModel extends ChangeNotifier {
   void seedVisibility(String value) {
     if (_hasSeededVisibility) return;
     _hasSeededVisibility = true;
-    visibility = value == 'public' ? 'public' : 'private';
+    final nextVisibility = value == 'public' ? 'public' : 'private';
+    if (visibility == nextVisibility) return;
+    visibility = nextVisibility;
     notifyListeners();
   }
 
