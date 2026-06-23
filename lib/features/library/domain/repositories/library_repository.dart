@@ -19,6 +19,8 @@ abstract class LibraryRepository {
 
   Future<Either<Failure, List<LibraryRecipe>>> getRecipes();
 
+  Stream<Either<Failure, List<LibraryRecipe>>> watchRecipes();
+
   Future<Either<Failure, LibraryRecipe>> getRecipeDetail(String recipeId);
 
   Future<Either<Failure, void>> toggleFavourite({

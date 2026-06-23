@@ -66,9 +66,15 @@ class AdminModerationViewModel extends ChangeNotifier {
     }
 
     if (_reviewFilter != AdminModerationReviewFilter.all) {
-      final targetStatus = _reviewFilter == AdminModerationReviewFilter.reviewed
-          ? AdminModerationReviewStatus.reviewed
-          : AdminModerationReviewStatus.pending;
+      final targetStatus = switch (_reviewFilter) {
+        AdminModerationReviewFilter.reviewed =>
+          AdminModerationReviewStatus.reviewed,
+        AdminModerationReviewFilter.hidden =>
+          AdminModerationReviewStatus.hidden,
+        AdminModerationReviewFilter.pending =>
+          AdminModerationReviewStatus.pending,
+        AdminModerationReviewFilter.all => AdminModerationReviewStatus.pending,
+      };
       results = results.where((recipe) => recipe.reviewStatus == targetStatus);
     }
 
@@ -117,6 +123,7 @@ class AdminModerationViewModel extends ChangeNotifier {
   Future<bool> updateVisibility({
     required String recipeId,
     required bool isPublished,
+    String? hiddenReason,
   }) async {
     _isUpdatingVisibility = true;
     _errorMessage = null;
@@ -125,6 +132,7 @@ class AdminModerationViewModel extends ChangeNotifier {
     final result = await _updateRecipeVisibilityUseCase.execute(
       recipeId: recipeId,
       isPublished: isPublished,
+      hiddenReason: hiddenReason,
     );
     if (_isDisposed) return false;
 

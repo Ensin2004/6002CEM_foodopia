@@ -306,6 +306,7 @@ class FcmNotificationService {
       'systemRating',
       'newHelpTicket',
       'newCategory',
+      'recipeReview',
     };
 
     // Skip non-admin notifications for admins.
@@ -384,6 +385,8 @@ class FcmNotificationService {
         return 'new_help_ticket_notification';
       case 'newCategory':
         return 'new_category_notification';
+      case 'recipeReview':
+        return 'recipe_review_notification';
       case 'helpReply':
         return 'help_center_reply_notification';
       default:

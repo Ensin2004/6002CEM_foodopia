@@ -60,6 +60,17 @@ class LibraryRepositoryImpl implements LibraryRepository {
   }
 
   @override
+  Stream<Either<Failure, List<LibraryRecipe>>> watchRecipes() async* {
+    try {
+      await for (final recipes in remoteDataSource.watchRecipes()) {
+        yield Right(recipes);
+      }
+    } catch (e) {
+      yield Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, LibraryRecipe>> getRecipeDetail(
     String recipeId,
   ) async {

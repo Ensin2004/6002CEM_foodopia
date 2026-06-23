@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -183,6 +184,66 @@ class LibraryRemoteDataSource {
     return recipesById.values.toList();
   }
 
+  Stream<List<LibraryRecipeModel>> watchRecipes() {
+    final uid = _currentUid();
+    late StreamController<List<LibraryRecipeModel>> controller;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? selfRecipesSub;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? publicRecipesSub;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? savedSub;
+    var isRefreshing = false;
+    var refreshAgain = false;
+
+    Future<void> refresh() async {
+      if (isRefreshing) {
+        refreshAgain = true;
+        return;
+      }
+
+      isRefreshing = true;
+      do {
+        refreshAgain = false;
+        try {
+          if (!controller.isClosed) {
+            controller.add(await getRecipes());
+          }
+        } catch (error, stackTrace) {
+          if (!controller.isClosed) {
+            controller.addError(error, stackTrace);
+          }
+        }
+      } while (refreshAgain && !controller.isClosed);
+      isRefreshing = false;
+    }
+
+    controller = StreamController<List<LibraryRecipeModel>>(
+      onListen: () {
+        selfRecipesSub = firestore
+            .collection('recipes')
+            .where('creatorUid', isEqualTo: uid)
+            .snapshots()
+            .listen((_) => refresh(), onError: controller.addError);
+        publicRecipesSub = firestore
+            .collection('recipes')
+            .where('visibility', isEqualTo: 'public')
+            .snapshots()
+            .listen((_) => refresh(), onError: controller.addError);
+        savedSub = firestore
+            .collection('users')
+            .doc(uid)
+            .collection('saved_recipes')
+            .snapshots()
+            .listen((_) => refresh(), onError: controller.addError);
+      },
+      onCancel: () async {
+        await selfRecipesSub?.cancel();
+        await publicRecipesSub?.cancel();
+        await savedSub?.cancel();
+      },
+    );
+
+    return controller.stream;
+  }
+
   Future<LibraryRecipeModel> getRecipeDetail(String recipeId) async {
     // Loads one recipe and marks it as favourite when the recipe id exists in saved recipe sources.
     final uid = _currentUid();
@@ -343,7 +404,10 @@ class LibraryRemoteDataSource {
         : _stringList(data['allergenIds']);
     final visibility = data['visibility']?.toString().toLowerCase() ?? '';
     final isPublished = visibility == 'public' || visibility == 'published';
-    final isModerationHidden = data['moderationStatus']?.toString() == 'Hidden';
+    final isModerationHidden =
+        data['moderationStatus']?.toString().toLowerCase() == 'hidden';
+    final moderationHiddenReason =
+        data['moderationHiddenReason']?.toString().trim() ?? '';
     final title = _firstNotBlank([
       data['name']?.toString(),
       data['recipeName']?.toString(),
@@ -407,6 +471,7 @@ class LibraryRemoteDataSource {
       isFollowingAuthor: isFollowingAuthor,
       isPublished: isPublished,
       isModerationHidden: isModerationHidden,
+      moderationHiddenReason: moderationHiddenReason,
       ingredients: const [],
       instructionSections: const [],
       nutrition: const LibraryNutrition(

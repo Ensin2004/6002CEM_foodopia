@@ -374,10 +374,16 @@ class AddRecipeRemoteDataSource {
 
     final recipeId = info.recipeId?.trim() ?? '';
     if (recipeId.isNotEmpty) {
-      await firestore
-          .collection('recipes')
-          .doc(recipeId)
-          .update(model.toFirestoreForUpdate());
+      final recipeRef = firestore.collection('recipes').doc(recipeId);
+      final moderationFields =
+          await _pendingModerationFieldsForPublicFinalizedRecipe(
+            recipeRef,
+            nextVisibility: info.visibility,
+          );
+      await recipeRef.update({
+        ...model.toFirestoreForUpdate(),
+        ...moderationFields,
+      });
       return recipeId;
     }
 
@@ -471,9 +477,12 @@ class AddRecipeRemoteDataSource {
       batch.set(ingredientCollection.doc(), model.toFirestore());
     }
 
+    final moderationFields =
+        await _pendingModerationFieldsForPublicFinalizedRecipe(recipeRef);
     batch.update(recipeRef, {
       'totalNutrients': recipeNutrients,
       'updatedAt': FieldValue.serverTimestamp(),
+      ...moderationFields,
     });
 
     await batch.commit();
@@ -799,9 +808,12 @@ class AddRecipeRemoteDataSource {
       batch.set(instructionCollection.doc(), model.toFirestore());
     }
 
+    final moderationFields =
+        await _pendingModerationFieldsForPublicFinalizedRecipe(recipeRef);
     batch.update(recipeRef, {
       'instructionUseSection': useSections,
       'updatedAt': FieldValue.serverTimestamp(),
+      ...moderationFields,
     });
 
     await batch.commit();
@@ -898,9 +910,16 @@ class AddRecipeRemoteDataSource {
     final snapshot = await recipeRef.get();
     final previousVisibility = snapshot.data()?['visibility']?.toString();
 
+    final shouldMarkPendingReview =
+        visibility == 'public' && _isFinalizedRecipe(snapshot.data());
     await recipeRef.update({
       'visibility': visibility,
       'updatedAt': FieldValue.serverTimestamp(),
+      if (shouldMarkPendingReview) ...{
+        'moderationStatus': 'Pending',
+        'moderationHiddenReason': FieldValue.delete(),
+        'moderationHiddenAt': FieldValue.delete(),
+      },
     });
 
     if (visibility == 'public' &&
@@ -954,12 +973,22 @@ class AddRecipeRemoteDataSource {
       searchText,
     );
 
+    final shouldNotifyAdmins = data['visibility']?.toString() == 'public';
     await recipeRef.update({
       'isFinalized': true,
       'tags': searchMetadata.tags,
       'finalizedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
+      if (shouldNotifyAdmins) ...{
+        'moderationStatus': 'Pending',
+        'moderationHiddenReason': FieldValue.delete(),
+        'moderationHiddenAt': FieldValue.delete(),
+      },
     });
+
+    if (shouldNotifyAdmins) {
+      await _notifyAdminsOfRecipeReview(recipeId: recipeId, senderUid: uid);
+    }
 
     await _notifyAdminsOfNewCategories(
       recipeId: recipeId,
@@ -1025,6 +1054,77 @@ class AddRecipeRemoteDataSource {
 
   bool _isFinalizedRecipe(Map<String, dynamic>? data) {
     return data?['isFinalized'] != false;
+  }
+
+  Future<Map<String, dynamic>> _pendingModerationFieldsForPublicFinalizedRecipe(
+    DocumentReference<Map<String, dynamic>> recipeRef, {
+    String? nextVisibility,
+  }) async {
+    final snapshot = await recipeRef.get();
+    final data = snapshot.data();
+    final visibility = nextVisibility ?? data?['visibility']?.toString();
+    if (visibility == 'public' && _isFinalizedRecipe(data)) {
+      return {
+        'moderationStatus': 'Pending',
+        'moderationHiddenReason': FieldValue.delete(),
+        'moderationHiddenAt': FieldValue.delete(),
+      };
+    }
+    return const {};
+  }
+
+  Future<void> _notifyAdminsOfRecipeReview({
+    required String recipeId,
+    required String senderUid,
+  }) async {
+    try {
+      final admins = await firestore
+          .collection('users')
+          .where('role', isEqualTo: 'admin')
+          .get();
+      const title = 'Recipe Review';
+      const message = 'You have a new recipe waiting to be reviewed';
+
+      for (final admin in admins.docs) {
+        final adminUid = admin.id;
+        if (adminUid.isEmpty || adminUid == senderUid) continue;
+
+        final notificationRef = await firestore
+            .collection('users')
+            .doc(adminUid)
+            .collection('notifications')
+            .add({
+              'type': 'recipeReview',
+              'title': title,
+              'message': message,
+              'isRead': false,
+              'senderUid': senderUid,
+              'recipeId': recipeId,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
+        if (!await _isNotificationEnabled(
+          receiverUid: adminUid,
+          preferenceId: 'recipe_review_notification',
+        )) {
+          continue;
+        }
+
+        await _sendPushToUser(
+          receiverUid: adminUid,
+          title: title,
+          message: message,
+          data: {
+            'type': 'recipeReview',
+            'notificationId': notificationRef.id,
+            'senderUid': senderUid,
+            'recipeId': recipeId,
+          },
+        );
+      }
+    } on FirebaseException {
+      // Recipe saves should remain successful if admin notification fails.
+    }
   }
 
   bool _hasSentPublicNotification(Map<String, dynamic>? data) {

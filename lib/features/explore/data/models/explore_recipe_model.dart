@@ -32,6 +32,8 @@ class ExploreRecipeModel extends ExploreRecipe {
     super.isFavourite,
     required super.isCreatedByCurrentUser,
     super.hasRatedByCurrentUser,
+    super.isModerationHidden,
+    super.moderationHiddenReason,
     required super.ingredients,
     required super.instructionSections,
     required super.nutrition,

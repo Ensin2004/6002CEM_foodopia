@@ -1043,6 +1043,9 @@ class AppRouter {
             recipeId: args?.recipeId ?? '',
             showLibraryActions: args?.isSelfPublished ?? false,
             isPublished: args?.isPublished ?? true,
+            initialIsModerationHidden: args?.isModerationHidden ?? false,
+            initialModerationHiddenReason:
+                args?.moderationHiddenReason ?? '',
             mealPlanSelection: args?.mealPlanSelection,
           );
         },

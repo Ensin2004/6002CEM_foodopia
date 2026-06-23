@@ -98,6 +98,8 @@ extension ExploreRemoteDataSourceNotifications on ExploreRemoteDataSource {
         return 'new_reply_notification';
       case 'newLike':
         return 'new_like_notification';
+      case 'recipeReview':
+        return 'recipe_review_notification';
       default:
         return null;
     }

@@ -21,6 +21,7 @@ class LibraryRecipe {
   final bool isFollowingAuthor;
   final bool isPublished;
   final bool isModerationHidden;
+  final String moderationHiddenReason;
   final List<LibraryIngredient> ingredients;
   final List<LibraryInstructionSection> instructionSections;
   final LibraryNutrition nutrition;
@@ -48,6 +49,7 @@ class LibraryRecipe {
     required this.isFollowingAuthor,
     required this.isPublished,
     this.isModerationHidden = false,
+    this.moderationHiddenReason = '',
     required this.ingredients,
     required this.instructionSections,
     required this.nutrition,

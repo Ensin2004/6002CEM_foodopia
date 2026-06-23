@@ -99,6 +99,12 @@ class LibraryRecipeDetailArgs {
   /// Whether the recipe is published.
   final bool isPublished;
 
+  /// Whether the recipe was hidden by admin moderation.
+  final bool isModerationHidden;
+
+  /// Admin-provided reason for hiding the recipe.
+  final String moderationHiddenReason;
+
   /// Optional meal plan selection data.
   final MealPlanSelectionArgs? mealPlanSelection;
 
@@ -107,6 +113,8 @@ class LibraryRecipeDetailArgs {
     required this.recipeId,
     required this.isSelfPublished,
     required this.isPublished,
+    this.isModerationHidden = false,
+    this.moderationHiddenReason = '',
     this.mealPlanSelection,
   });
 }

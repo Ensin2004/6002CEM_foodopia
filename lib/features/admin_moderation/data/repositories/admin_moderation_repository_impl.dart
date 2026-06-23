@@ -28,15 +28,20 @@ class AdminModerationRepositoryImpl implements AdminModerationRepository {
   Future<Either<Failure, void>> updateRecipeVisibility({
     required String recipeId,
     required bool isPublished,
+    String? hiddenReason,
   }) async {
     if (recipeId.trim().isEmpty) {
       return Left(ValidationFailure(message: 'Recipe id is missing.'));
+    }
+    if (!isPublished && (hiddenReason?.trim().isEmpty ?? true)) {
+      return Left(ValidationFailure(message: 'Hide reason is required.'));
     }
 
     try {
       await remoteDataSource.updateRecipeVisibility(
         recipeId: recipeId,
         isPublished: isPublished,
+        hiddenReason: hiddenReason,
       );
       return const Right(null);
     } catch (error) {

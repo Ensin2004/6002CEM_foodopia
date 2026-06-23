@@ -108,6 +108,9 @@ Future<void> confirmRecipeVisibilityChange({
   if (confirmed != true || !context.mounted) return;
 
   final rootNavigator = Navigator.of(context, rootNavigator: true);
+  await WidgetsBinding.instance.endOfFrame;
+  if (!context.mounted) return;
+
   showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -117,7 +120,10 @@ Future<void> confirmRecipeVisibilityChange({
   final success = await onConfirmed(next);
 
   if (!context.mounted) return;
-  rootNavigator.pop();
+  if (rootNavigator.canPop()) {
+    rootNavigator.pop();
+    await WidgetsBinding.instance.endOfFrame;
+  }
 
   if (!success) {
     await showRecipeErrorDialog(
