@@ -22,6 +22,7 @@ import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_option.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/entities/meal_serving_amount.dart';
 import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
@@ -173,8 +174,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       _descriptionController.text = recipe.description;
       _prepTimeController.text =
           RegExp(r'\d+').firstMatch(recipe.durationLabel)?.group(0) ?? '30';
-      _servingsController.text =
-          RegExp(r'\d+').firstMatch(recipe.servingLabel)?.group(0) ?? '1';
+      _servingsController.text = _servingText(
+        _servingValueFromLabel(recipe.servingLabel),
+      );
       _customCategories = [
         recipe.categoryName.trim(),
       ].where((value) => value.isNotEmpty).toList();
@@ -187,6 +189,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       _recipeNameController.text = widget.initialRecipeName?.trim() ?? '';
       _descriptionController.text =
           widget.initialRecipeDescription?.trim() ?? '';
+    }
+    if (_servingsController.text.trim().isEmpty) {
+      _servingsController.text = _servingText(1);
     }
     final initialImageFile = widget.initialImageFile;
     if (initialImageFile != null) {
@@ -436,12 +441,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                     // Servings
                     Label(text: "Servings", isRequired: true),
                     const SizedBox(height: AppSpacing.sm),
-                    InputTextField(
-                      controller: _servingsController,
-                      hint: "e.g. 1",
-                      keyboardType: TextInputType.number,
-                      suffixText: "servings",
-                      textInputAction: TextInputAction.next,
+                    _AddRecipeServingStepper(
+                      value: _currentServings,
+                      onChanged: _setServings,
                     ),
                     const SizedBox(height: AppSpacing.lg),
 
@@ -759,7 +761,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       customCategories: List<String>.unmodifiable(_customCategories),
       preparationMinutes: int.tryParse(_prepTimeController.text.trim()) ?? 0,
       difficultyLevel: viewModel.difficultyLevel,
-      servings: int.tryParse(_servingsController.text.trim()) ?? 0,
+      servings: _currentServings,
       allergenIds: List<String>.unmodifiable(_selectedAllergenIds),
       customAllergens: List<String>.unmodifiable(_customAllergens),
       visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
@@ -824,6 +826,35 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     );
   }
 
+  double get _currentServings {
+    final value = double.tryParse(_servingsController.text.trim());
+    return MealServingAmount.normalize(value ?? 1);
+  }
+
+  void _setServings(double value) {
+    setState(() => _servingsController.text = _servingText(value));
+  }
+
+  String _servingText(double value) {
+    final normalized = MealServingAmount.normalize(value);
+    return (normalized - normalized.round()).abs() < 0.001
+        ? normalized.round().toString()
+        : normalized.toString();
+  }
+
+  double _servingValueFromLabel(String label) {
+    final fraction = RegExp(r'(\d+)\s*/\s*(\d+)').firstMatch(label);
+    if (fraction != null) {
+      final numerator = double.tryParse(fraction.group(1) ?? '');
+      final denominator = double.tryParse(fraction.group(2) ?? '');
+      if (numerator != null && denominator != null && denominator > 0) {
+        return MealServingAmount.normalize(numerator / denominator);
+      }
+    }
+    final decimal = RegExp(r'\d+(?:\.\d+)?').firstMatch(label)?.group(0);
+    return MealServingAmount.normalize(double.tryParse(decimal ?? '') ?? 1);
+  }
+
   Future<File?> _aiImageFileForSave() async {
     if (_images.isNotEmpty || _existingImageUrls.isNotEmpty) return null;
 
@@ -885,7 +916,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         (int.tryParse(_prepTimeController.text.trim()) ?? 0) > 0 &&
         viewModel.difficultyLevel >= 1 &&
         viewModel.difficultyLevel <= 5 &&
-        (int.tryParse(_servingsController.text.trim()) ?? 0) > 0;
+        _currentServings >= MealServingAmount.min;
   }
 
   int _difficultyLevelFor(AddMealAiRecipe recipe) {
@@ -938,7 +969,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     _recipeNameController.text = review.recipeName;
     _descriptionController.text = review.description;
     _prepTimeController.text = review.preparationMinutes.toString();
-    _servingsController.text = review.servings.toString();
+    _servingsController.text = _servingText(review.servings);
 
     for (final controller in _otherNameControllers) {
       controller.dispose();
@@ -1043,6 +1074,58 @@ class _AiRecipeImagePreview extends StatelessWidget {
   String _base64Payload(String value) {
     final commaIndex = value.indexOf(',');
     return commaIndex >= 0 ? value.substring(commaIndex + 1) : value;
+  }
+}
+
+class _AddRecipeServingStepper extends StatelessWidget {
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  const _AddRecipeServingStepper({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = MealServingAmount.normalize(value);
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: 'Decrease servings',
+            onPressed: normalized <= MealServingAmount.min
+                ? null
+                : () => onChanged(MealServingAmount.stepDown(normalized)),
+            icon: const Icon(Icons.remove_rounded),
+          ),
+          Expanded(
+            child: Text(
+              MealServingAmount.format(normalized),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Increase servings',
+            onPressed: normalized >= MealServingAmount.max
+                ? null
+                : () => onChanged(MealServingAmount.stepUp(normalized)),
+            icon: const Icon(Icons.add_rounded),
+          ),
+        ],
+      ),
+    );
   }
 }
 

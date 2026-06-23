@@ -7,7 +7,7 @@ class AddRecipeReview {
   final List<String> categories;
   final int preparationMinutes;
   final int difficultyLevel;
-  final int servings;
+  final double servings;
   final List<String> allergens;
   final String visibility;
   final AddRecipeReviewNutrients nutrients;

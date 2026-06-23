@@ -31,7 +31,7 @@ class MealServingAmount {
   /// Returns the recipe calories scaled to the selected planned serving amount.
   static int scaledCalories({
     required int recipeCalories,
-    required int recipeServings,
+    required num recipeServings,
     required double plannedServings,
   }) {
     if (recipeCalories <= 0) return 0;

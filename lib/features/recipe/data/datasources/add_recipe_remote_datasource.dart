@@ -218,9 +218,7 @@ class AddRecipeRemoteDataSource {
     );
   }
 
-  Future<AddRecipeImageResult> generateRecipeFromImage(
-    File imageFile,
-  ) async {
+  Future<AddRecipeImageResult> generateRecipeFromImage(File imageFile) async {
     final units = await getIngredientUnits();
     final draft = await recipeValidationService.generateRecipeFromImage(
       imageFile,
@@ -333,9 +331,20 @@ class AddRecipeRemoteDataSource {
 
   Future<void> validateReview(String recipeId) async {
     final review = await getReview(recipeId);
-    final result = await recipeValidationService.validateReview(review);
-    if (!result.isValid) {
-      throw RecipeContentValidationException(result.message);
+    try {
+      final result = await recipeValidationService.validateReview(review);
+      await firestore.collection('recipes').doc(recipeId).update({
+        'aiReviewFlagged': !result.isValid,
+        'aiReviewFlagReason': result.isValid
+            ? FieldValue.delete()
+            : result.message,
+        'aiReviewCheckedAt': FieldValue.serverTimestamp(),
+        if (!result.isValid) 'moderationStatus': 'Pending',
+      });
+    } catch (_) {
+      await firestore.collection('recipes').doc(recipeId).update({
+        'aiReviewCheckedAt': FieldValue.serverTimestamp(),
+      });
     }
   }
 
@@ -820,7 +829,7 @@ class AddRecipeRemoteDataSource {
   }
 
   /// Loads recipe basic info, ingredient and instruction for review.
-  Future<AddRecipeReviewModel> getReview(String recipeId) async {
+  Future<AddRecipeReview> getReview(String recipeId) async {
     final recipeDoc = await firestore.collection('recipes').doc(recipeId).get();
     final recipe = recipeDoc.data();
     if (!recipeDoc.exists || recipe == null) {

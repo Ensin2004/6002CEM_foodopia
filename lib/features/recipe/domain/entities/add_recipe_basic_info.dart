@@ -11,7 +11,7 @@ class AddRecipeBasicInfo {
   final List<String> customCategories;
   final int preparationMinutes;
   final int difficultyLevel;
-  final int servings;
+  final double servings;
   final List<String> allergenIds;
   final List<String> customAllergens;
   final String visibility;

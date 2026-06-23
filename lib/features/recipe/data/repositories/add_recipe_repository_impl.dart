@@ -178,9 +178,7 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
     }
 
     try {
-      final result = await remoteDataSource.generateRecipeFromImage(
-        imageFile,
-      );
+      final result = await remoteDataSource.generateRecipeFromImage(imageFile);
       if (result.recipeName.trim().isEmpty ||
           result.description.trim().isEmpty) {
         return Left(
@@ -422,15 +420,6 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
     );
     if (descriptionFailure != null) return descriptionFailure;
 
-    if (info.preparationMinutes > 1440) {
-      return ValidationFailure(
-        message: 'Preparation time cannot be more than 24 hours.',
-      );
-    }
-    if (info.servings > 100) {
-      return ValidationFailure(message: 'Servings cannot be more than 100.');
-    }
-
     for (final value in [
       ...info.otherNames,
       ...info.customCategories,
@@ -460,12 +449,6 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
         maxLength: 120,
       );
       if (nameFailure != null) return nameFailure;
-
-      if (ingredient.amount > 10000) {
-        return ValidationFailure(
-          message: 'Ingredient amounts cannot be extreme.',
-        );
-      }
 
       final unit = ingredient.customUnit.trim();
       if (unit.isNotEmpty) {
@@ -517,9 +500,7 @@ class AddRecipeRepositoryImpl implements AddRecipeRepository {
       return ValidationFailure(message: '$fieldName is too long.');
     }
     if (RegExp(r'https?://|www\.').hasMatch(text.toLowerCase())) {
-      return ValidationFailure(
-        message: '$fieldName cannot contain links.',
-      );
+      return ValidationFailure(message: '$fieldName cannot contain links.');
     }
     if (RegExp(r'(.)\1{9,}').hasMatch(text)) {
       return ValidationFailure(message: '$fieldName looks unusual.');

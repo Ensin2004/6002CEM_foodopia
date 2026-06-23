@@ -18,6 +18,7 @@ import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
+import '../../../meal_plan/domain/entities/meal_serving_amount.dart';
 import '../../domain/entities/add_recipe_review.dart';
 import '../../domain/usecases/complete_add_recipe_usecase.dart';
 import '../../domain/usecases/finalize_add_recipe_usecase.dart';
@@ -296,7 +297,6 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-
                   // Label, Tips
                   Expanded(
                     child: Column(
@@ -323,10 +323,10 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                       onPressed: viewModel.isDeleting
                           ? null
                           : () => _confirmDeleteRecipe(
-                                context,
-                                viewModel,
-                                review,
-                              ),
+                              context,
+                              viewModel,
+                              review,
+                            ),
                       icon: const Icon(Icons.delete_outline_rounded),
                       color: AppColors.error,
                     ),
@@ -344,7 +344,6 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                   0,
                 ),
                 children: [
-
                   // Recipe Image and Video
                   ReviewHeroImage(media: review.media),
                   const SizedBox(height: AppSpacing.lg),
@@ -389,9 +388,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                       ),
                       ReviewInfoRow(
                         label: "Servings",
-                        value: review.servings == 1
-                            ? "${review.servings} serving"
-                            : "${review.servings} servings",
+                        value: MealServingAmount.format(review.servings),
                       ),
                       ReviewInfoRow(
                         label: "Allergen Info",
@@ -419,10 +416,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                         label: "Carbohydrates",
                         value: review.nutrients.carbohydrates,
                       ),
-                      ReviewInfoRow(
-                        label: "Fat",
-                        value: review.nutrients.fats,
-                      ),
+                      ReviewInfoRow(label: "Fat", value: review.nutrients.fats),
                       ReviewInfoRow(
                         label: "Fiber",
                         value: review.nutrients.fiber,
@@ -512,7 +506,9 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
   }
 
   // Sort Ingredients
-  List<AddRecipeReviewIngredient> _sortedIngredients(List<AddRecipeReviewIngredient> ingredients) {
+  List<AddRecipeReviewIngredient> _sortedIngredients(
+    List<AddRecipeReviewIngredient> ingredients,
+  ) {
     return [...ingredients]..sort(
       (first, second) =>
           first.name.toLowerCase().compareTo(second.name.toLowerCase()),
@@ -636,22 +632,23 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     }
 
     final savedRecipeId = basicResult.right!;
-    final ingredientResult = await sl<SaveAddRecipeIngredientsUseCase>().execute(
-      recipeId: savedRecipeId,
-      ingredients: widget.aiDraftIngredients,
-    );
+    final ingredientResult = await sl<SaveAddRecipeIngredientsUseCase>()
+        .execute(
+          recipeId: savedRecipeId,
+          ingredients: widget.aiDraftIngredients,
+        );
     if (!context.mounted) return;
     if (ingredientResult.isLeft()) {
       await _finishFailedSave(context, ingredientResult.left?.message);
       return;
     }
 
-    final instructionResult =
-        await sl<SaveAddRecipeInstructionsUseCase>().execute(
-      recipeId: savedRecipeId,
-      useSections: widget.aiDraftUseSections,
-      instructions: widget.aiDraftInstructions,
-    );
+    final instructionResult = await sl<SaveAddRecipeInstructionsUseCase>()
+        .execute(
+          recipeId: savedRecipeId,
+          useSections: widget.aiDraftUseSections,
+          instructions: widget.aiDraftInstructions,
+        );
     if (!context.mounted) return;
     if (instructionResult.isLeft()) {
       await _finishFailedSave(context, instructionResult.left?.message);

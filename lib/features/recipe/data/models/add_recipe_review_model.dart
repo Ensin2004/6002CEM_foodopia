@@ -36,7 +36,7 @@ class AddRecipeReviewModel extends AddRecipeReview {
       categories: categories,
       preparationMinutes: _intValue(recipe['preparationTime']),
       difficultyLevel: _intValue(recipe['difficultyLevel']),
-      servings: _intValue(recipe['servings']),
+      servings: _doubleValue(recipe['servings']) ?? 1,
       allergens: allergens,
       visibility: recipe['visibility'] == 'public' ? 'public' : 'private',
       nutrients: _nutrientsFromRecipe(recipe['totalNutrients']),
@@ -200,12 +200,7 @@ const List<_NutrientDefinition> _mineralDefinitions = [
     unit: 'mg',
     dailyValue: 1300,
   ),
-  _NutrientDefinition(
-    key: 'iron',
-    label: 'Iron',
-    unit: 'mg',
-    dailyValue: 18,
-  ),
+  _NutrientDefinition(key: 'iron', label: 'Iron', unit: 'mg', dailyValue: 18),
   _NutrientDefinition(
     key: 'magnesium',
     label: 'Magnesium',
@@ -230,10 +225,5 @@ const List<_NutrientDefinition> _mineralDefinitions = [
     unit: 'mg',
     dailyValue: 2300,
   ),
-  _NutrientDefinition(
-    key: 'zinc',
-    label: 'Zinc',
-    unit: 'mg',
-    dailyValue: 11,
-  ),
+  _NutrientDefinition(key: 'zinc', label: 'Zinc', unit: 'mg', dailyValue: 11),
 ];
