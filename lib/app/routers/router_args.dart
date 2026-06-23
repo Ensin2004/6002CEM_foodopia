@@ -3,6 +3,7 @@ import 'dart:io';
 import '../../features/auth/domain/entities/user_entity.dart';
 import '../../features/meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../features/meal_plan/domain/entities/meal_calorie_guidance.dart';
+import '../../features/meal_plan/domain/entities/meal_serving_amount.dart';
 import '../../features/recipe/domain/entities/add_recipe_basic_info.dart';
 import '../../features/recipe/domain/entities/add_recipe_ingredient.dart';
 import '../../features/recipe/domain/entities/add_recipe_instruction.dart';
@@ -210,6 +211,9 @@ class MealPlanSelectionArgs {
   /// Calorie budget for the selected day.
   final MealCalorieBudget calorieBudget;
 
+  /// Serving amount the user plans to eat.
+  final double plannedServings;
+
   /// Creates a new meal plan selection args instance.
   const MealPlanSelectionArgs({
     required this.userId,
@@ -220,7 +224,12 @@ class MealPlanSelectionArgs {
     this.existingRecipeIds = const [],
     this.existingMealNames = const [],
     this.calorieBudget = const MealCalorieBudget.empty(),
+    this.plannedServings = 1,
   });
+
+  /// Normalized serving amount for meal-plan calorie calculations.
+  double get normalizedPlannedServings =>
+      MealServingAmount.normalize(plannedServings);
 }
 
 /// Typed arguments for add meal planning route.

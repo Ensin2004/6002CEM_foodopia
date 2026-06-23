@@ -10,6 +10,7 @@ import '../../domain/entities/add_grocery_list_plan.dart';
 import '../../domain/entities/add_meal_ai_plan.dart';
 import '../../domain/entities/manage_grocery_list_detail.dart';
 import '../../domain/entities/meal_plan_dashboard.dart';
+import '../../domain/entities/meal_serving_amount.dart';
 
 part 'meal_plan_remote_dashboard_datasource.dart';
 part 'meal_plan_remote_grocery_datasource.dart';

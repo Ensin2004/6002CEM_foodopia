@@ -13,6 +13,7 @@ class LibraryRecipe {
   final String allergenInfo;
   final String totalTime;
   final String difficulty;
+  final int servings;
   final double rating;
   final int ratingCount;
   final int commentCount;
@@ -41,6 +42,7 @@ class LibraryRecipe {
     required this.allergenInfo,
     required this.totalTime,
     required this.difficulty,
+    this.servings = 1,
     required this.rating,
     required this.ratingCount,
     required this.commentCount,

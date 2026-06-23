@@ -28,7 +28,7 @@ class SaveRecipeMealPlanUseCase {
     required AddMealCategoryOption mealCategory,
     required AddMealAiRecipe recipe,
     required String source,
-    required int servingCount,
+    required double servingCount,
   }) {
     // Delegate to repository to save the recipe meal plan.
     return repository.saveRecipeMealPlan(

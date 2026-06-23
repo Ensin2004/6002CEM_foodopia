@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../../meal_plan/domain/entities/meal_serving_amount.dart';
 import '../../domain/entities/user_home_dashboard.dart';
 import '../models/user_home_dashboard_model.dart';
 
@@ -210,7 +211,7 @@ class UserHomeRemoteDataSource {
     // Get serving label.
     final servings = data['servings'];
     final subtitle = servings is num
-        ? '${servings.toInt()} Serving Pax'
+        ? MealServingAmount.paxLabel(servings.toDouble())
         : data['servingLabel']?.toString() ?? data['source']?.toString() ?? '';
 
     return UserHomeMeal(

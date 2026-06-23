@@ -7,6 +7,7 @@ import '../../../admin_moderation/domain/usecases/update_admin_recipe_visibility
 import '../../../admin_moderation/domain/usecases/mark_admin_recipe_reviewed_usecase.dart';
 import '../../../library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/entities/meal_serving_amount.dart';
 import '../../../meal_plan/domain/usecases/get_meal_categories_usecase.dart';
 import '../../../meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
 import '../../domain/entities/explore_recipe.dart';
@@ -121,21 +122,21 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     GetMealCategoriesUseCase? getMealCategoriesUseCase,
     this.isAdminModeration = false,
   }) : _getRecipeDetailUseCase = getRecipeDetailUseCase,
-        _submitRecipeRatingUseCase = submitRecipeRatingUseCase,
-        _addRecipeCommentUseCase = addRecipeCommentUseCase,
-        _incrementRecipeViewCountUseCase = incrementRecipeViewCountUseCase,
-        _toggleRecipeCommentLikeUseCase = toggleRecipeCommentLikeUseCase,
-        _addRecipeCommentReplyUseCase = addRecipeCommentReplyUseCase,
-        _toggleRecipeReplyLikeUseCase = toggleRecipeReplyLikeUseCase,
-        _addRecipeReplyToReplyUseCase = addRecipeReplyToReplyUseCase,
-        _watchRecipeDetailUseCase = watchRecipeDetailUseCase,
-        _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
-        _updateRecipeVisibilityUseCase = updateRecipeVisibilityUseCase,
-        _updateAdminRecipeVisibilityUseCase = updateAdminRecipeVisibilityUseCase,
-        _markAdminRecipeReviewedUseCase = markAdminRecipeReviewedUseCase,
-        _toggleFavouriteUseCase = toggleFavouriteUseCase,
-        _saveRecipeMealPlanUseCase = saveRecipeMealPlanUseCase,
-        _getMealCategoriesUseCase = getMealCategoriesUseCase {
+       _submitRecipeRatingUseCase = submitRecipeRatingUseCase,
+       _addRecipeCommentUseCase = addRecipeCommentUseCase,
+       _incrementRecipeViewCountUseCase = incrementRecipeViewCountUseCase,
+       _toggleRecipeCommentLikeUseCase = toggleRecipeCommentLikeUseCase,
+       _addRecipeCommentReplyUseCase = addRecipeCommentReplyUseCase,
+       _toggleRecipeReplyLikeUseCase = toggleRecipeReplyLikeUseCase,
+       _addRecipeReplyToReplyUseCase = addRecipeReplyToReplyUseCase,
+       _watchRecipeDetailUseCase = watchRecipeDetailUseCase,
+       _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
+       _updateRecipeVisibilityUseCase = updateRecipeVisibilityUseCase,
+       _updateAdminRecipeVisibilityUseCase = updateAdminRecipeVisibilityUseCase,
+       _markAdminRecipeReviewedUseCase = markAdminRecipeReviewedUseCase,
+       _toggleFavouriteUseCase = toggleFavouriteUseCase,
+       _saveRecipeMealPlanUseCase = saveRecipeMealPlanUseCase,
+       _getMealCategoriesUseCase = getMealCategoriesUseCase {
     // Defer opening the recipe to avoid blocking the UI.
     Future.microtask(_openRecipe);
     _watchRecipeDetail();
@@ -180,11 +181,11 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     final sorted = reviews.toList();
     if (_ratingDateFilter == ExploreCommunityDateFilter.latest) {
       sorted.sort(
-            (first, second) => second.createdAt.compareTo(first.createdAt),
+        (first, second) => second.createdAt.compareTo(first.createdAt),
       );
     } else if (_ratingDateFilter == ExploreCommunityDateFilter.oldest) {
       sorted.sort(
-            (first, second) => first.createdAt.compareTo(second.createdAt),
+        (first, second) => first.createdAt.compareTo(second.createdAt),
       );
     }
     return sorted;
@@ -195,11 +196,11 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     final comments = [...?_recipe?.community.comments];
     if (_commentDateFilter == ExploreCommunityDateFilter.latest) {
       comments.sort(
-            (first, second) => second.createdAt.compareTo(first.createdAt),
+        (first, second) => second.createdAt.compareTo(first.createdAt),
       );
     } else if (_commentDateFilter == ExploreCommunityDateFilter.oldest) {
       comments.sort(
-            (first, second) => first.createdAt.compareTo(second.createdAt),
+        (first, second) => first.createdAt.compareTo(second.createdAt),
       );
     }
     return comments;
@@ -217,19 +218,19 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
         .execute(recipeId)
         .listen(
           (recipe) {
-        // Resolve any pending like operations against the fresh data.
-        _resolvePendingLikeStates(recipe);
-        _recipe = _applyPendingLikeStates(recipe);
-        _isLoading = false;
-        _errorMessage = null;
-        _notifyIfActive();
-      },
-      onError: (Object error) {
-        _errorMessage = error.toString();
-        _isLoading = false;
-        _notifyIfActive();
-      },
-    );
+            // Resolve any pending like operations against the fresh data.
+            _resolvePendingLikeStates(recipe);
+            _recipe = _applyPendingLikeStates(recipe);
+            _isLoading = false;
+            _errorMessage = null;
+            _notifyIfActive();
+          },
+          onError: (Object error) {
+            _errorMessage = error.toString();
+            _isLoading = false;
+            _notifyIfActive();
+          },
+        );
   }
 
   /// Loads the recipe detail from the use case.
@@ -687,7 +688,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     required DateTime date,
     required AddMealCategoryOption mealCategory,
     required String source,
-    required int servingCount,
+    required double servingCount,
   }) async {
     final recipe = _recipe;
     final useCase = _saveRecipeMealPlanUseCase;
@@ -706,13 +707,15 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
         title: recipe.title,
         durationLabel: recipe.totalTime,
         difficultyLabel: recipe.difficulty,
-        servingLabel: servingCount == 1
-            ? '1 serving'
-            : '$servingCount servings',
+        servingLabel: MealServingAmount.format(servingCount),
         imagePath: recipe.imagePath,
         description: recipe.description,
         reasons: const [],
-        calories: recipe.nutrition.calories,
+        calories: MealServingAmount.scaledCalories(
+          recipeCalories: recipe.nutrition.calories,
+          recipeServings: recipe.servings,
+          plannedServings: servingCount,
+        ),
         categoryName: recipe.category,
       ),
       source: source,
@@ -766,7 +769,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     required List<DateTime> dates,
     required List<AddMealCategoryOption> mealCategories,
     required String source,
-    required int servingCount,
+    required double servingCount,
   }) async {
     var savedCount = 0;
     // Validate inputs.
@@ -797,7 +800,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
           return RecipeDetailMealPlanSaveResult(
             savedCount: savedCount,
             errorMessage:
-            _communityActionErrorMessage ?? 'Unable to add meal plan.',
+                _communityActionErrorMessage ?? 'Unable to add meal plan.',
           );
         }
         savedCount++;
@@ -954,10 +957,10 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Updates reply like states recursively in the reply tree.
   List<ExploreCommentReply> _updateReplyLikes(
-      List<ExploreCommentReply> replies,
-      String replyPath,
-      bool isLiked,
-      ) {
+    List<ExploreCommentReply> replies,
+    String replyPath,
+    bool isLiked,
+  ) {
     return replies.map((reply) {
       final childReplies = _updateReplyLikes(reply.replies, replyPath, isLiked);
       if (reply.documentPath != replyPath) {
@@ -1011,8 +1014,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Recursively applies pending reply like states.
   List<ExploreCommentReply> _applyPendingReplyLikeStates(
-      List<ExploreCommentReply> replies,
-      ) {
+    List<ExploreCommentReply> replies,
+  ) {
     return replies.map((reply) {
       var nextReply = reply;
       final pendingReplyLike = _pendingReplyLikeStates[reply.documentPath];
@@ -1050,9 +1053,9 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Finds a comment by ID in the comment list.
   ExploreComment? _findComment(
-      List<ExploreComment> comments,
-      String commentId,
-      ) {
+    List<ExploreComment> comments,
+    String commentId,
+  ) {
     for (final comment in comments) {
       if (comment.id == commentId) return comment;
     }
@@ -1061,9 +1064,9 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Finds a reply by document path in the comment tree.
   ExploreCommentReply? _findReply(
-      List<ExploreComment> comments,
-      String replyPath,
-      ) {
+    List<ExploreComment> comments,
+    String replyPath,
+  ) {
     for (final comment in comments) {
       final reply = _findReplyInReplies(comment.replies, replyPath);
       if (reply != null) return reply;
@@ -1073,9 +1076,9 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Recursively finds a reply in the reply tree.
   ExploreCommentReply? _findReplyInReplies(
-      List<ExploreCommentReply> replies,
-      String replyPath,
-      ) {
+    List<ExploreCommentReply> replies,
+    String replyPath,
+  ) {
     for (final reply in replies) {
       if (reply.documentPath == replyPath) return reply;
       final nestedReply = _findReplyInReplies(reply.replies, replyPath);
@@ -1096,10 +1099,10 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Adds a nested reply to the reply tree at the specified path.
   List<ExploreCommentReply> _addNestedReply(
-      List<ExploreCommentReply> replies,
-      String replyPath,
-      ExploreCommentReply newReply,
-      ) {
+    List<ExploreCommentReply> replies,
+    String replyPath,
+    ExploreCommentReply newReply,
+  ) {
     return replies.map((reply) {
       if (reply.documentPath == replyPath) {
         return _copyReply(reply, replies: [...reply.replies, newReply]);
@@ -1142,15 +1145,15 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Creates a copy of a recipe with optional updated fields.
   ExploreRecipe _copyRecipe(
-      ExploreRecipe recipe, {
-        double? rating,
-        int? ratingCount,
-        int? commentCount,
-        bool? isFollowingAuthor,
-        bool? isFavourite,
-        bool? hasRatedByCurrentUser,
-        ExploreCommunity? community,
-      }) {
+    ExploreRecipe recipe, {
+    double? rating,
+    int? ratingCount,
+    int? commentCount,
+    bool? isFollowingAuthor,
+    bool? isFavourite,
+    bool? hasRatedByCurrentUser,
+    ExploreCommunity? community,
+  }) {
     return ExploreRecipe(
       id: recipe.id,
       creatorUid: recipe.creatorUid,
@@ -1181,7 +1184,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
       isFavourite: isFavourite ?? recipe.isFavourite,
       isCreatedByCurrentUser: recipe.isCreatedByCurrentUser,
       hasRatedByCurrentUser:
-      hasRatedByCurrentUser ?? recipe.hasRatedByCurrentUser,
+          hasRatedByCurrentUser ?? recipe.hasRatedByCurrentUser,
       isModerationHidden: recipe.isModerationHidden,
       moderationHiddenReason: recipe.moderationHiddenReason,
       ingredients: recipe.ingredients,
@@ -1194,11 +1197,11 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Creates a copy of a community object with optional updated fields.
   ExploreCommunity _copyCommunity(
-      ExploreCommunity community, {
-        List<ExploreRatingBreakdown>? ratingBreakdown,
-        List<ExploreReview>? reviews,
-        List<ExploreComment>? comments,
-      }) {
+    ExploreCommunity community, {
+    List<ExploreRatingBreakdown>? ratingBreakdown,
+    List<ExploreReview>? reviews,
+    List<ExploreComment>? comments,
+  }) {
     return ExploreCommunity(
       authorBio: community.authorBio,
       ratingBreakdown: ratingBreakdown ?? community.ratingBreakdown,
@@ -1209,11 +1212,11 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Creates a copy of a comment with optional updated fields.
   ExploreComment _copyComment(
-      ExploreComment comment, {
-        int? likes,
-        bool? isLiked,
-        List<ExploreCommentReply>? replies,
-      }) {
+    ExploreComment comment, {
+    int? likes,
+    bool? isLiked,
+    List<ExploreCommentReply>? replies,
+  }) {
     return ExploreComment(
       id: comment.id,
       author: comment.author,
@@ -1229,11 +1232,11 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Creates a copy of a reply with optional updated fields.
   ExploreCommentReply _copyReply(
-      ExploreCommentReply reply, {
-        int? likes,
-        bool? isLiked,
-        List<ExploreCommentReply>? replies,
-      }) {
+    ExploreCommentReply reply, {
+    int? likes,
+    bool? isLiked,
+    List<ExploreCommentReply>? replies,
+  }) {
     return ExploreCommentReply(
       id: reply.id,
       documentPath: reply.documentPath,

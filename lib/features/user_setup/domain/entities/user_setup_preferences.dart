@@ -4,6 +4,9 @@ class UserSetupPreferences {
   /// Selected diet type (e.g., vegetarian, keto, none).
   final String? diet;
 
+  /// Selected diet/meal preference types.
+  final List<String> diets;
+
   /// List of food allergies.
   final List<String> allergies;
 
@@ -37,6 +40,7 @@ class UserSetupPreferences {
   /// Creates a new user setup preferences instance.
   const UserSetupPreferences({
     this.diet,
+    this.diets = const [],
     this.allergies = const [],
     this.dislikes = const [],
     this.targetCalories,
@@ -55,6 +59,7 @@ class UserSetupPreferences {
   /// nullable fields by setting them to null.
   UserSetupPreferences copyWith({
     String? diet,
+    List<String>? diets,
     List<String>? allergies,
     List<String>? dislikes,
     int? targetCalories,
@@ -70,6 +75,7 @@ class UserSetupPreferences {
   }) {
     return UserSetupPreferences(
       diet: clearDiet ? null : diet ?? this.diet,
+      diets: clearDiet ? const [] : diets ?? this.diets,
       allergies: allergies ?? this.allergies,
       dislikes: dislikes ?? this.dislikes,
       targetCalories: clearTargetCalories
@@ -79,7 +85,7 @@ class UserSetupPreferences {
       calorieTargetEnabled: calorieTargetEnabled ?? this.calorieTargetEnabled,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       notificationPreferences:
-      notificationPreferences ?? this.notificationPreferences,
+          notificationPreferences ?? this.notificationPreferences,
       notificationTime: notificationTime ?? this.notificationTime,
       currentStep: currentStep ?? this.currentStep,
       isCompleted: isCompleted ?? this.isCompleted,

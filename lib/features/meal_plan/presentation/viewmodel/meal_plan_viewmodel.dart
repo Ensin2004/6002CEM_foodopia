@@ -141,6 +141,9 @@ abstract class _MealPlanViewModelBase extends ChangeNotifier {
   /// Error message from grocery actions.
   String? _groceryActionErrorMessage;
 
+  /// Whether the weekly grocery week start day is being updated.
+  bool _isUpdatingWeeklyGroceryWeekStartDay = false;
+
   /// Error message from meal actions.
   String? _mealActionErrorMessage;
 
@@ -242,6 +245,10 @@ abstract class _MealPlanViewModelBase extends ChangeNotifier {
 
   /// Error message from grocery actions.
   String? get groceryActionErrorMessage => _groceryActionErrorMessage;
+
+  /// Whether the weekly grocery week start day is being updated.
+  bool get isUpdatingWeeklyGroceryWeekStartDay =>
+      _isUpdatingWeeklyGroceryWeekStartDay;
 
   /// Error message from meal actions.
   String? get mealActionErrorMessage => _mealActionErrorMessage;

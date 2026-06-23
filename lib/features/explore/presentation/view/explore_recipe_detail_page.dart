@@ -21,6 +21,7 @@ import '../../../admin_moderation/domain/usecases/mark_admin_recipe_reviewed_use
 import '../../../admin_moderation/domain/usecases/update_admin_recipe_visibility_usecase.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../../meal_plan/domain/entities/meal_calorie_guidance.dart';
+import '../../../meal_plan/domain/entities/meal_serving_amount.dart';
 import '../../../meal_plan/domain/services/meal_calorie_guidance_service.dart';
 import '../../../meal_plan/domain/usecases/get_meal_categories_usecase.dart';
 import '../../../meal_plan/domain/usecases/save_recipe_meal_plan_usecase.dart';
@@ -162,9 +163,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     );
   }
 
-  void _maybeShowHiddenRecipeDialog(
-    ExploreRecipeDetailViewModel viewModel,
-  ) {
+  void _maybeShowHiddenRecipeDialog(ExploreRecipeDetailViewModel viewModel) {
     if (!widget.showLibraryActions || widget.isAdminModeration) return;
 
     final recipe = viewModel.recipe;
@@ -175,13 +174,12 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       return;
     }
 
-    final reason = (recipe?.moderationHiddenReason.isNotEmpty == true
-            ? recipe!.moderationHiddenReason
-            : widget.initialModerationHiddenReason)
-        .trim();
-    final displayReason = reason.isEmpty
-        ? 'No reason was provided.'
-        : reason;
+    final reason =
+        (recipe?.moderationHiddenReason.isNotEmpty == true
+                ? recipe!.moderationHiddenReason
+                : widget.initialModerationHiddenReason)
+            .trim();
+    final displayReason = reason.isEmpty ? 'No reason was provided.' : reason;
     if (_shownHiddenReason == displayReason) return;
     _shownHiddenReason = displayReason;
 
@@ -263,7 +261,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
               categories: viewModel.mealCategories.isEmpty
                   ? RecipeDetailMealPlanDefaults.categories
                   : viewModel.mealCategories,
-              initialServings: viewModel.recipe?.servings ?? 1,
+              initialServings: (viewModel.recipe?.servings ?? 1).toDouble(),
             ),
           );
       if (request == null || !mounted) return;
@@ -326,20 +324,22 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         );
       return;
     }
-    // Prompts the user for the desired serving count.
+    final servingCount = selection.normalizedPlannedServings;
+    final recipe = viewModel.recipe;
     final guidance = MealCalorieGuidanceService().evaluate(
       budget: selection.calorieBudget,
-      mealCalories: viewModel.recipe?.nutrition.calories ?? 0,
+      mealCalories: recipe == null
+          ? 0
+          : MealServingAmount.scaledCalories(
+              recipeCalories: recipe.nutrition.calories,
+              recipeServings: recipe.servings,
+              plannedServings: servingCount,
+            ),
     );
     if (guidance.status == MealCalorieGuidanceStatus.exceeds) {
       final shouldAdd = await _showOverTargetDialog(guidance);
       if (shouldAdd != true || !mounted) return;
     }
-
-    final servingCount = await _showMealPlanServingDialog(
-      initialServings: viewModel.recipe?.servings ?? 1,
-    );
-    if (servingCount == null || !mounted) return;
 
     // Saves the recipe to the meal plan.
     final success = await viewModel.saveToMealPlan(
@@ -374,9 +374,8 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
 
     final nextPublished = !_isPublished;
     final actionLabel = nextPublished ? 'unhide' : 'hide';
-    final hiddenReason = nextPublished
-        ? null
-        : await _showHideReasonDialog();
+    final hiddenReason = nextPublished ? null : await _showHideReasonDialog();
+    if (!mounted) return;
     if (!nextPublished && hiddenReason == null) return;
 
     if (nextPublished) {
@@ -384,7 +383,9 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('Unhide recipe?'),
-          content: const Text('This recipe will become visible to users again.'),
+          content: const Text(
+            'This recipe will become visible to users again.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -457,16 +458,6 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
           ),
         ),
       );
-  }
-
-  // Shows a dialog to select the number of servings for a meal plan.
-  Future<int?> _showMealPlanServingDialog({required int initialServings}) {
-    return showDialog<int>(
-      context: context,
-      builder: (_) => _MealPlanServingDialog(
-        initialServings: initialServings <= 0 ? 1 : initialServings,
-      ),
-    );
   }
 
   /// Shows an over-target confirmation dialog.
@@ -614,7 +605,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
 class _RecipeCalendarMealPlanRequest {
   final List<DateTime> dates;
   final List<AddMealCategoryOption> mealCategories;
-  final int servingCount;
+  final double servingCount;
 
   const _RecipeCalendarMealPlanRequest({
     required this.dates,
@@ -626,7 +617,7 @@ class _RecipeCalendarMealPlanRequest {
 /// Bottom sheet widget that allows users to select dates, meal categories, and servings.
 class _RecipeCalendarMealPlanSheet extends StatefulWidget {
   final List<AddMealCategoryOption> categories;
-  final int initialServings;
+  final double initialServings;
 
   const _RecipeCalendarMealPlanSheet({
     required this.categories,
@@ -641,7 +632,7 @@ class _RecipeCalendarMealPlanSheet extends StatefulWidget {
 class _RecipeCalendarMealPlanSheetState
     extends State<_RecipeCalendarMealPlanSheet> {
   late DateTime _focusedDate;
-  late int _servings;
+  late double _servings;
   final Set<String> _selectedCategoryIds = {};
   final Set<DateTime> _selectedDates = {};
 
@@ -654,7 +645,7 @@ class _RecipeCalendarMealPlanSheetState
     _selectedDates.add(today);
     // Selects a preferred initial category (breakfast if available).
     _selectedCategoryIds.add(_preferredInitialCategory(_categories).id);
-    _servings = widget.initialServings.clamp(1, 99);
+    _servings = MealServingAmount.normalize(widget.initialServings);
   }
 
   // Returns the list of categories, falling back to defaults if empty.
@@ -830,14 +821,18 @@ class _RecipeCalendarMealPlanSheetState
                   children: [
                     IconButton(
                       tooltip: 'Decrease servings',
-                      onPressed: _servings <= 1
+                      onPressed: _servings <= MealServingAmount.min
                           ? null
-                          : () => setState(() => _servings--),
+                          : () => setState(
+                              () => _servings = MealServingAmount.stepDown(
+                                _servings,
+                              ),
+                            ),
                       icon: const Icon(Icons.remove),
                     ),
                     Expanded(
                       child: Text(
-                        _servings == 1 ? '1 serving' : '$_servings servings',
+                        MealServingAmount.format(_servings),
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -848,9 +843,13 @@ class _RecipeCalendarMealPlanSheetState
                     ),
                     IconButton(
                       tooltip: 'Increase servings',
-                      onPressed: _servings >= 99
+                      onPressed: _servings >= MealServingAmount.max
                           ? null
-                          : () => setState(() => _servings++),
+                          : () => setState(
+                              () => _servings = MealServingAmount.stepUp(
+                                _servings,
+                              ),
+                            ),
                       icon: const Icon(Icons.add),
                     ),
                   ],
@@ -918,89 +917,6 @@ class _SelectedDateChips extends StatelessWidget {
           onDeleted: () => onRemove(date),
         );
       }).toList(),
-    );
-  }
-}
-
-/// Dialog for selecting the number of servings when adding a recipe to a meal plan.
-class _MealPlanServingDialog extends StatefulWidget {
-  final int initialServings;
-
-  const _MealPlanServingDialog({required this.initialServings});
-
-  @override
-  State<_MealPlanServingDialog> createState() => _MealPlanServingDialogState();
-}
-
-class _MealPlanServingDialogState extends State<_MealPlanServingDialog> {
-  late int _servings;
-
-  @override
-  void initState() {
-    super.initState();
-    _servings = widget.initialServings.clamp(1, 99);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('Choose servings', style: context.text.titleMedium),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Set the serving count for this planned meal.',
-            style: context.text.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  tooltip: 'Decrease servings',
-                  onPressed: _servings <= 1
-                      ? null
-                      : () => setState(() => _servings--),
-                  icon: const Icon(Icons.remove),
-                ),
-                Expanded(
-                  child: Text(
-                    _servings == 1 ? '1 serving' : '$_servings servings',
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Increase servings',
-                  onPressed: _servings >= 99
-                      ? null
-                      : () => setState(() => _servings++),
-                  icon: const Icon(Icons.add),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(_servings),
-          child: const Text('Add meal'),
-        ),
-      ],
     );
   }
 }
@@ -1538,7 +1454,12 @@ class _SelectedTabContent extends StatelessWidget {
               ? null
               : MealCalorieGuidanceService().evaluate(
                   budget: mealPlanSelection!.calorieBudget,
-                  mealCalories: recipe.nutrition.calories,
+                  mealCalories: MealServingAmount.scaledCalories(
+                    recipeCalories: recipe.nutrition.calories,
+                    recipeServings: recipe.servings,
+                    plannedServings:
+                        mealPlanSelection!.normalizedPlannedServings,
+                  ),
                 ),
         );
       case ExploreRecipeDetailTab.nutrition:
