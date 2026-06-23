@@ -342,6 +342,7 @@ class _ExploreCommentsDialogBody extends StatelessWidget {
       viewModel: viewModel,
       recipe: recipe!,
       isSubmitting: viewModel.isSubmittingCommunityAction,
+      canInteract: true,
       onAddComment: (content) => viewModel.addComment(content),
       onToggleLike: (commentId) => viewModel.toggleCommentLike(commentId),
       onReply: (commentId, content) =>

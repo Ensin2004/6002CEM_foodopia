@@ -320,6 +320,7 @@ class LibraryViewModel extends ChangeNotifier {
       nutrition: recipe.nutrition,
       community: recipe.community,
       relatedRecipes: recipe.relatedRecipes,
+      isModerationHidden: recipe.isModerationHidden,
     );
   }
 

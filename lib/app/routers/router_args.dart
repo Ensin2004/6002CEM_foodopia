@@ -60,10 +60,18 @@ class ExploreRecipeDetailArgs {
   /// Optional meal plan selection data.
   final MealPlanSelectionArgs? mealPlanSelection;
 
+  /// Whether the detail page is opened from admin moderation.
+  final bool isAdminModeration;
+
+  /// Current recipe publication state, if known.
+  final bool isPublished;
+
   /// Creates a new explore recipe detail args instance.
   const ExploreRecipeDetailArgs({
     required this.recipeId,
     this.mealPlanSelection,
+    this.isAdminModeration = false,
+    this.isPublished = true,
   });
 }
 
