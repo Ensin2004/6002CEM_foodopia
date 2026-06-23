@@ -333,7 +333,7 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
     required AddMealCategoryOption mealCategory,
     required AddMealAiRecipe recipe,
     required String source,
-    required int servingCount,
+    required double servingCount,
   }) async {
     try {
       // Delegate to remote data source.

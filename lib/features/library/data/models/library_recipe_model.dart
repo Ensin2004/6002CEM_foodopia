@@ -14,6 +14,7 @@ class LibraryRecipeModel extends LibraryRecipe {
     required super.allergenInfo,
     required super.totalTime,
     required super.difficulty,
+    super.servings,
     required super.rating,
     required super.ratingCount,
     required super.commentCount,

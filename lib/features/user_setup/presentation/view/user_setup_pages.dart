@@ -180,7 +180,7 @@ class _DietView extends StatelessWidget {
 
     return UserSetupScaffold(
       step: 1,
-      title: 'Pick your diet',
+      title: 'Pick your meal preferences',
       buttonText: args.isSettingsMode ? 'Save' : 'Continue',
       showProgress: !args.isSettingsMode,
       isSaving: viewModel.isSaving,
@@ -193,11 +193,8 @@ class _DietView extends StatelessWidget {
             title: 'Default options',
             options: options,
             emptyText: 'No diet options yet',
-            selectedValues: {
-              if (viewModel.preferences.diet != null)
-                viewModel.preferences.diet!,
-            },
-            onSelected: viewModel.selectDiet,
+            selectedValues: viewModel.preferences.diets.toSet(),
+            onSelected: viewModel.toggleDiet,
             onClearAll: viewModel.clearDiet,
             fullWidth: true,
           ),
@@ -937,10 +934,10 @@ class _OptionWrap extends StatelessWidget {
 
 /// Handles navigation events from the view model.
 void _handleNavigation(
-    BuildContext context,
-    UserSetupViewModel viewModel,
-    UserSetupArgs args,
-    ) {
+  BuildContext context,
+  UserSetupViewModel viewModel,
+  UserSetupArgs args,
+) {
   // Get the navigation event.
   final event = viewModel.navigationEvent;
 

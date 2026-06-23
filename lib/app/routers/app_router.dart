@@ -37,6 +37,7 @@ import '../../features/statistics/presentation/view/admin_nutrient_insight_page.
 import '../../features/statistics/presentation/view/admin_post_analytic_page.dart';
 import '../../features/statistics/presentation/view/admin_usage_forecast_page.dart';
 import '../../features/statistics/presentation/view/admin_user_usage_page.dart';
+import '../../features/statistics/presentation/view/ai_lifestyle_insight_page.dart';
 import '../../features/statistics/presentation/view/calories_intake_page.dart';
 import '../../features/statistics/presentation/view/calories_posted_page.dart';
 import '../../features/statistics/presentation/view/cooking_time_page.dart';
@@ -174,6 +175,9 @@ class AppRouter {
 
   /// Statistics screen route.
   static const String statistics = '/statistics';
+
+  /// AI lifestyle insight screen route.
+  static const String aiLifestyleInsight = '/statistics/ai-lifestyle-insight';
 
   /// Admin meal analytic screen route.
   static const String adminMealAnalytic = '/statistics/admin-meal-analytic';
@@ -1112,6 +1116,12 @@ class AppRouter {
       ),
 
       // User statistics routes.
+      GoRoute(
+        name: 'aiLifestyleInsight',
+        path: aiLifestyleInsight,
+        builder: (context, state) => const AiLifestyleInsightPage(),
+      ),
+
       GoRoute(
         name: 'foodAnalytic',
         path: foodAnalytic,

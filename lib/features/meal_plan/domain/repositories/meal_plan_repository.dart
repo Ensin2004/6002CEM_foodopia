@@ -81,7 +81,7 @@ abstract class MealPlanRepository {
     required AddMealCategoryOption mealCategory,
     required AddMealAiRecipe recipe,
     required String source,
-    required int servingCount,
+    required double servingCount,
   });
 
   /// Deletes a meal plan.

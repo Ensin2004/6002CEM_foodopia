@@ -30,6 +30,7 @@ import 'package:http/http.dart' as http;
 // ============================================================================
 // Core
 import '../../core/services/network_info.dart';
+import '../../core/services/ai_lifestyle_insight_service.dart';
 import '../../core/services/openai_ingredient_data_service.dart';
 import '../../core/services/food_search_service.dart';
 import '../../core/services/openai_meal_idea_service.dart';
@@ -745,6 +746,11 @@ Future<void> _initExternal() async {
 
   // OpenMeteo weather service.
   sl.registerLazySingleton(() => OpenMeteoWeatherService(client: sl()));
+
+  // AI lifestyle insight service.
+  sl.registerLazySingleton(
+    () => AiLifestyleInsightService(auth: sl(), firestore: sl()),
+  );
 
   // --------------------------------------------------------------------------
   // CONNECTIVITY

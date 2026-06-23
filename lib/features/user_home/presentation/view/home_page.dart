@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
+import '../../../../app/routers/app_router.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 import '../../domain/entities/user_home_dashboard.dart';
@@ -12,6 +14,7 @@ import '../widgets/home_section.dart';
 import '../widgets/user_home_hero.dart';
 import '../widgets/user_meal_plan_list.dart';
 import '../widgets/user_quick_links_grid.dart';
+import '../../../statistics/presentation/widgets/ai_lifestyle_insight_card.dart';
 
 /// Main home page for the application.
 /// Displays user dashboard with weather, quick links, and meal plan.
@@ -77,6 +80,13 @@ class _HomeView extends StatelessWidget {
             weatherErrorMessage: viewModel.weatherErrorMessage,
           ),
           const SizedBox(height: AppSpacing.lg),
+
+          HomeSection(
+            title: 'AI Lifestyle Insight',
+            child: AiLifestyleInsightCard(
+              onViewDetail: () => context.push(AppRouter.aiLifestyleInsight),
+            ),
+          ),
 
           // Quick links section.
           HomeSection(

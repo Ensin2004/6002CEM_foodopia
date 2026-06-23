@@ -93,6 +93,7 @@ class StatisticsLocalDataSource {
         ),
       ],
       menuItems: [
+        StatisticsMenuItem(title: 'AI Lifestyle Insight'),
         StatisticsMenuItem(title: 'Food Analytic'),
         StatisticsMenuItem(title: 'Time Taken For Cooking'),
         StatisticsMenuItem(title: 'Grocery List'),

@@ -12,6 +12,7 @@ import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../domain/entities/statistics_dashboard.dart';
 import '../viewmodel/statistics_viewmodel.dart';
+import '../widgets/ai_lifestyle_insight_card.dart';
 
 /// User dashboard with summary cards and links to detailed statistics.
 // Handles UserStatisticsView for this part of the statistics page.
@@ -116,6 +117,13 @@ class _UserStatisticsViewState extends State<UserStatisticsView> {
                   ),
                   // Handles SizedBox for this part of the statistics page.
                   const SizedBox(height: AppSpacing.lg),
+                  if (viewModel.selectedAudienceIndex == 0) ...[
+                    AiLifestyleInsightCard(
+                      onViewDetail: () =>
+                          context.push(AppRouter.aiLifestyleInsight),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
                   _StatisticsMenu(items: selectedMenuItems),
                 ],
               ),
@@ -915,6 +923,11 @@ class _StatisticsMenu extends StatelessWidget {
   // Handles _handleTap for this part of the statistics page.
   void _handleTap(BuildContext context, StatisticsMenuItem item) {
     // Menu titles come from the dashboard data. Map each title to its page.
+    if (item.title == 'AI Lifestyle Insight') {
+      context.push(AppRouter.aiLifestyleInsight);
+      return;
+    }
+
     if (item.title == 'Food Analytic') {
       context.push(AppRouter.foodAnalytic);
       return;
