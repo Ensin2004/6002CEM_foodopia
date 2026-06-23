@@ -160,6 +160,7 @@ extension ExploreRemoteDataSourceNotifications on ExploreRemoteDataSource {
   // Determines if a recipe is publicly visible and finalized.
   bool _isPublicFinalizedRecipe(Map<String, dynamic> data) {
     return _stringValue(data['visibility']) == 'public' &&
+        _stringValue(data['moderationStatus']) != 'Hidden' &&
         data['isFinalized'] != false;
   }
 

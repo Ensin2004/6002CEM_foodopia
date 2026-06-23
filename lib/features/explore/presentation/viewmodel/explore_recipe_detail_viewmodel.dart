@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
+import '../../../admin_moderation/domain/usecases/update_admin_recipe_visibility_usecase.dart';
+import '../../../admin_moderation/domain/usecases/mark_admin_recipe_reviewed_usecase.dart';
 import '../../../library/domain/usecases/toggle_library_recipe_favourite_usecase.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../../meal_plan/domain/usecases/get_meal_categories_usecase.dart';
@@ -53,10 +55,13 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   final WatchExploreRecipeDetailUseCase _watchRecipeDetailUseCase;
   final ToggleCreatorFollowUseCase _toggleCreatorFollowUseCase;
   final UpdateRecipeVisibilityUseCase _updateRecipeVisibilityUseCase;
+  final UpdateAdminRecipeVisibilityUseCase? _updateAdminRecipeVisibilityUseCase;
+  final MarkAdminRecipeReviewedUseCase? _markAdminRecipeReviewedUseCase;
   final ToggleLibraryRecipeFavouriteUseCase _toggleFavouriteUseCase;
   final SaveRecipeMealPlanUseCase? _saveRecipeMealPlanUseCase;
   final GetMealCategoriesUseCase? _getMealCategoriesUseCase;
   final String recipeId;
+  final bool isAdminModeration;
 
   // Core state.
   ExploreRecipe? _recipe;
@@ -110,8 +115,11 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     required ToggleCreatorFollowUseCase toggleCreatorFollowUseCase,
     required UpdateRecipeVisibilityUseCase updateRecipeVisibilityUseCase,
     required ToggleLibraryRecipeFavouriteUseCase toggleFavouriteUseCase,
+    UpdateAdminRecipeVisibilityUseCase? updateAdminRecipeVisibilityUseCase,
+    MarkAdminRecipeReviewedUseCase? markAdminRecipeReviewedUseCase,
     SaveRecipeMealPlanUseCase? saveRecipeMealPlanUseCase,
     GetMealCategoriesUseCase? getMealCategoriesUseCase,
+    this.isAdminModeration = false,
   }) : _getRecipeDetailUseCase = getRecipeDetailUseCase,
         _submitRecipeRatingUseCase = submitRecipeRatingUseCase,
         _addRecipeCommentUseCase = addRecipeCommentUseCase,
@@ -123,6 +131,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
         _watchRecipeDetailUseCase = watchRecipeDetailUseCase,
         _toggleCreatorFollowUseCase = toggleCreatorFollowUseCase,
         _updateRecipeVisibilityUseCase = updateRecipeVisibilityUseCase,
+        _updateAdminRecipeVisibilityUseCase = updateAdminRecipeVisibilityUseCase,
+        _markAdminRecipeReviewedUseCase = markAdminRecipeReviewedUseCase,
         _toggleFavouriteUseCase = toggleFavouriteUseCase,
         _saveRecipeMealPlanUseCase = saveRecipeMealPlanUseCase,
         _getMealCategoriesUseCase = getMealCategoriesUseCase {
@@ -291,6 +301,12 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Submits a rating for the recipe with optimistic update.
   Future<bool> submitRating(double rating) async {
+    if (isAdminModeration) {
+      _communityActionErrorMessage = 'Admins cannot rate recipes.';
+      _notifyIfActive();
+      return false;
+    }
+
     // Prevent rating own recipe.
     if (_recipe?.isCreatedByCurrentUser == true) {
       _communityActionErrorMessage = 'You cannot rate your own recipe.';
@@ -329,6 +345,12 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
 
   /// Adds a comment to the recipe with optimistic update.
   Future<bool> addComment(String content) async {
+    if (isAdminModeration) {
+      _communityActionErrorMessage = 'Admins cannot add comments.';
+      _notifyIfActive();
+      return false;
+    }
+
     final trimmedContent = content.trim();
     if (trimmedContent.isEmpty) return false;
 
@@ -607,10 +629,42 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
     _communityActionErrorMessage = null;
     _notifyIfActive();
 
-    final result = await _updateRecipeVisibilityUseCase.execute(
-      recipeId: recipeId,
-      isPublished: isPublished,
-    );
+    final adminUseCase = _updateAdminRecipeVisibilityUseCase;
+    final result = isAdminModeration && adminUseCase != null
+        ? await adminUseCase.execute(
+            recipeId: recipeId,
+            isPublished: isPublished,
+          )
+        : await _updateRecipeVisibilityUseCase.execute(
+            recipeId: recipeId,
+            isPublished: isPublished,
+          );
+    if (_isDisposed) return false;
+
+    final success = result.isRight();
+    result.ifLeft((failure) {
+      _communityActionErrorMessage = failure.message;
+    });
+
+    if (success) {
+      await loadRecipe();
+    }
+
+    _isUpdatingVisibility = false;
+    _notifyIfActive();
+    return success;
+  }
+
+  /// Marks the recipe as reviewed from admin moderation.
+  Future<bool> markAsReviewed() async {
+    final useCase = _markAdminRecipeReviewedUseCase;
+    if (!isAdminModeration || useCase == null) return false;
+
+    _isUpdatingVisibility = true;
+    _communityActionErrorMessage = null;
+    _notifyIfActive();
+
+    final result = await useCase.execute(recipeId);
     if (_isDisposed) return false;
 
     final success = result.isRight();

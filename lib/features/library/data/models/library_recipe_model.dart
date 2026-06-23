@@ -21,6 +21,7 @@ class LibraryRecipeModel extends LibraryRecipe {
     required super.isSelfPublished,
     required super.isFollowingAuthor,
     required super.isPublished,
+    super.isModerationHidden,
     required super.ingredients,
     required super.instructionSections,
     required super.nutrition,

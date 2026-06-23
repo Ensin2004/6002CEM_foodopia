@@ -878,6 +878,8 @@ class AppRouter {
           return ExploreRecipeDetailPage(
             recipeId: args?.recipeId ?? '',
             mealPlanSelection: args?.mealPlanSelection,
+            isAdminModeration: args?.isAdminModeration ?? false,
+            isPublished: args?.isPublished ?? true,
           );
         },
       ),

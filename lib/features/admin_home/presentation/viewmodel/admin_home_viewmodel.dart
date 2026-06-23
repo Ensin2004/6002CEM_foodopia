@@ -29,6 +29,9 @@ class AdminHomeViewModel extends ChangeNotifier {
   /// The admin home dashboard data.
   AdminHomeDashboard? _dashboard;
 
+  /// Whether this view model has been disposed.
+  bool _isDisposed = false;
+
   // =========================================================================
   // CONSTRUCTOR
   // =========================================================================
@@ -61,22 +64,35 @@ class AdminHomeViewModel extends ChangeNotifier {
 
   /// Loads the admin home dashboard.
   Future<void> loadDashboard() async {
+    if (_isDisposed) return;
+
     // Set loading state.
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _notifyIfActive();
 
     // Execute the use case.
     final result = await _getDashboardUseCase.execute(adminName);
+    if (_isDisposed) return;
 
     // Handle result.
     result.fold(
-          (failure) => _errorMessage = failure.message,
-          (dashboard) => _dashboard = dashboard,
+      (failure) => _errorMessage = failure.message,
+      (dashboard) => _dashboard = dashboard,
     );
 
     // Reset loading state.
     _isLoading = false;
-    notifyListeners();
+    _notifyIfActive();
+  }
+
+  void _notifyIfActive() {
+    if (!_isDisposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 }

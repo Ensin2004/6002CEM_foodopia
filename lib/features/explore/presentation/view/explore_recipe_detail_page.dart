@@ -17,6 +17,8 @@ import '../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../core/widgets/media/app_recipe_media.dart';
 import '../../../../core/widgets/tabs/app_pill_segmented_control.dart';
 import '../../../../core/widgets/tabs/app_segmented_tabs.dart';
+import '../../../admin_moderation/domain/usecases/mark_admin_recipe_reviewed_usecase.dart';
+import '../../../admin_moderation/domain/usecases/update_admin_recipe_visibility_usecase.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../../meal_plan/domain/entities/meal_calorie_guidance.dart';
 import '../../../meal_plan/domain/services/meal_calorie_guidance_service.dart';
@@ -35,6 +37,7 @@ class ExploreRecipeDetailPage extends StatelessWidget {
   final String recipeId;
   final bool showLibraryActions;
   final bool isPublished;
+  final bool isAdminModeration;
   final MealPlanSelectionArgs? mealPlanSelection;
 
   const ExploreRecipeDetailPage({
@@ -42,6 +45,7 @@ class ExploreRecipeDetailPage extends StatelessWidget {
     required this.recipeId,
     this.showLibraryActions = false,
     this.isPublished = true,
+    this.isAdminModeration = false,
     this.mealPlanSelection,
   });
 
@@ -62,13 +66,18 @@ class ExploreRecipeDetailPage extends StatelessWidget {
         watchRecipeDetailUseCase: sl(),
         toggleCreatorFollowUseCase: sl(),
         updateRecipeVisibilityUseCase: sl(),
+        updateAdminRecipeVisibilityUseCase:
+            sl<UpdateAdminRecipeVisibilityUseCase>(),
+        markAdminRecipeReviewedUseCase: sl<MarkAdminRecipeReviewedUseCase>(),
         toggleFavouriteUseCase: sl(),
         saveRecipeMealPlanUseCase: sl<SaveRecipeMealPlanUseCase>(),
         getMealCategoriesUseCase: sl<GetMealCategoriesUseCase>(),
+        isAdminModeration: isAdminModeration,
       ),
       child: _ExploreRecipeDetailView(
         showLibraryActions: showLibraryActions,
         isPublished: isPublished,
+        isAdminModeration: isAdminModeration,
         mealPlanSelection: mealPlanSelection,
       ),
     );
@@ -78,11 +87,13 @@ class ExploreRecipeDetailPage extends StatelessWidget {
 class _ExploreRecipeDetailView extends StatefulWidget {
   final bool showLibraryActions;
   final bool isPublished;
+  final bool isAdminModeration;
   final MealPlanSelectionArgs? mealPlanSelection;
 
   const _ExploreRecipeDetailView({
     required this.showLibraryActions,
     required this.isPublished,
+    required this.isAdminModeration,
     this.mealPlanSelection,
   });
 
@@ -95,6 +106,7 @@ class _ExploreRecipeDetailView extends StatefulWidget {
 class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  late bool _isPublished;
 
   @override
   void initState() {
@@ -105,6 +117,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       vsync: this,
     );
     _tabController.addListener(_handleTabChanged);
+    _isPublished = widget.isPublished;
   }
 
   // Synchronizes tab changes with the view model state.
@@ -295,6 +308,93 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     context.pop(true);
   }
 
+  Future<void> _toggleAdminVisibility(
+    ExploreRecipeDetailViewModel viewModel,
+  ) async {
+    if (viewModel.recipe == null || viewModel.isUpdatingVisibility) return;
+
+    final nextPublished = !_isPublished;
+    final actionLabel = nextPublished ? 'unhide' : 'hide';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('${nextPublished ? 'Unhide' : 'Hide'} recipe?'),
+        content: Text(
+          nextPublished
+              ? 'This recipe will become visible to users again.'
+              : 'This recipe will no longer be visible to users.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(nextPublished ? 'Unhide' : 'Hide'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => LoadingDialog(
+        message: nextPublished ? 'Unhiding recipe...' : 'Hiding recipe...',
+      ),
+    );
+    final success = await viewModel.updateVisibility(isPublished: nextPublished);
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    if (success) {
+      setState(() => _isPublished = nextPublished);
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Recipe ${nextPublished ? 'unhidden' : 'hidden'}.'
+                : viewModel.communityActionErrorMessage ??
+                      'Unable to $actionLabel recipe.',
+          ),
+        ),
+      );
+  }
+
+  Future<void> _markAdminReviewed(
+    ExploreRecipeDetailViewModel viewModel,
+  ) async {
+    if (viewModel.recipe == null || viewModel.isUpdatingVisibility) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const LoadingDialog(message: 'Marking reviewed...'),
+    );
+    final success = await viewModel.markAsReviewed();
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Recipe marked as reviewed.'
+                : viewModel.communityActionErrorMessage ??
+                      'Unable to mark recipe as reviewed.',
+          ),
+        ),
+      );
+  }
+
   // Shows a dialog to select the number of servings for a meal plan.
   Future<int?> _showMealPlanServingDialog({required int initialServings}) {
     return showDialog<int>(
@@ -355,13 +455,36 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
           icon: const Icon(Icons.chevron_left),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Add to meal plan',
-            onPressed: viewModel.recipe == null || viewModel.isSavingMealPlan
-                ? null
-                : () => _openMealPlanCalendar(viewModel),
-            icon: const Icon(Icons.calendar_month_outlined),
-          ),
+          if (widget.isAdminModeration)
+            PopupMenuButton<String>(
+              tooltip: 'Moderation actions',
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                if (value == 'reviewed') {
+                  _markAdminReviewed(viewModel);
+                } else {
+                  _toggleAdminVisibility(viewModel);
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: _isPublished ? 'hide' : 'unhide',
+                  child: Text(_isPublished ? 'Hide recipe' : 'Unhide recipe'),
+                ),
+                const PopupMenuItem(
+                  value: 'reviewed',
+                  child: Text('Mark as reviewed'),
+                ),
+              ],
+            )
+          else
+            IconButton(
+              tooltip: 'Add to meal plan',
+              onPressed: viewModel.recipe == null || viewModel.isSavingMealPlan
+                  ? null
+                  : () => _openMealPlanCalendar(viewModel),
+              icon: const Icon(Icons.calendar_month_outlined),
+            ),
           if (widget.showLibraryActions)
             IconButton(
               tooltip: 'Edit recipe',
@@ -379,7 +502,8 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         onComingSoonTap: _showComingSoonMessage,
         onPlanMeal: () => _openMealPlanCalendar(viewModel),
         showLibraryActions: widget.showLibraryActions,
-        isPublished: widget.isPublished,
+        isPublished: _isPublished,
+        isAdminModeration: widget.isAdminModeration,
         onFavouriteTap: () => _toggleFavourite(viewModel),
         isMealPlanSelection: widget.mealPlanSelection != null,
         mealPlanSelection: widget.mealPlanSelection,
@@ -814,6 +938,7 @@ class _DetailBody extends StatelessWidget {
   final VoidCallback onFavouriteTap;
   final bool showLibraryActions;
   final bool isPublished;
+  final bool isAdminModeration;
   final bool isMealPlanSelection;
   final MealPlanSelectionArgs? mealPlanSelection;
 
@@ -826,6 +951,7 @@ class _DetailBody extends StatelessWidget {
     required this.onFavouriteTap,
     required this.showLibraryActions,
     required this.isPublished,
+    required this.isAdminModeration,
     required this.isMealPlanSelection,
     required this.mealPlanSelection,
   });
@@ -868,6 +994,7 @@ class _DetailBody extends StatelessWidget {
               recipe: recipe,
               isPublished: isPublished,
               onFavouriteTap: onFavouriteTap,
+              showFavourite: !isAdminModeration,
             ),
           ),
         ),
@@ -896,7 +1023,8 @@ class _DetailBody extends StatelessWidget {
                   onComingSoonTap: onComingSoonTap,
                   onPlanMeal: onPlanMeal,
                   isPublished: isPublished,
-                  showPlanMeal: !isMealPlanSelection,
+                  isAdminModeration: isAdminModeration,
+                  showPlanMeal: !isMealPlanSelection && !isAdminModeration,
                   mealPlanSelection: mealPlanSelection,
                 );
               }).toList(),
@@ -985,11 +1113,13 @@ class _RecipeHeader extends StatelessWidget {
   final ExploreRecipe recipe;
   final bool isPublished;
   final VoidCallback onFavouriteTap;
+  final bool showFavourite;
 
   const _RecipeHeader({
     required this.recipe,
     required this.isPublished,
     required this.onFavouriteTap,
+    required this.showFavourite,
   });
 
   @override
@@ -1011,21 +1141,26 @@ class _RecipeHeader extends StatelessWidget {
                 style: textTheme.titleLarge,
               ),
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              tooltip: recipe.isFavourite
-                  ? 'Remove from favourites'
-                  : 'Add to favourites',
-              onPressed: onFavouriteTap,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints.tightFor(width: 42, height: 42),
-              visualDensity: VisualDensity.compact,
-              icon: Icon(
-                recipe.isFavourite ? Icons.favorite : Icons.favorite_border,
-                size: 26,
-                color: recipe.isFavourite ? AppColors.favourite : null,
+            if (showFavourite) ...[
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: recipe.isFavourite
+                    ? 'Remove from favourites'
+                    : 'Add to favourites',
+                onPressed: onFavouriteTap,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(
+                  width: 42,
+                  height: 42,
+                ),
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  recipe.isFavourite ? Icons.favorite : Icons.favorite_border,
+                  size: 26,
+                  color: recipe.isFavourite ? AppColors.favourite : null,
+                ),
               ),
-            ),
+            ],
           ],
         ),
         const SizedBox(height: 4),
@@ -1297,6 +1432,7 @@ class _SelectedTabContent extends StatelessWidget {
   final VoidCallback onPlanMeal;
   final bool showPlanMeal;
   final bool isPublished;
+  final bool isAdminModeration;
   final MealPlanSelectionArgs? mealPlanSelection;
 
   const _SelectedTabContent({
@@ -1306,6 +1442,7 @@ class _SelectedTabContent extends StatelessWidget {
     required this.onComingSoonTap,
     required this.onPlanMeal,
     required this.isPublished,
+    required this.isAdminModeration,
     required this.showPlanMeal,
     required this.mealPlanSelection,
   });
@@ -1335,6 +1472,7 @@ class _SelectedTabContent extends StatelessWidget {
           recipe: recipe,
           onComingSoonTap: onComingSoonTap,
           isPublished: isPublished,
+          isAdminModeration: isAdminModeration,
         );
     }
   }

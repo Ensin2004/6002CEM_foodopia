@@ -116,6 +116,8 @@ class LibraryRecipeCard extends StatelessWidget {
                             guidance: calorieGuidance!,
                           ),
                         ),
+                      if (recipe.isPublished && recipe.isModerationHidden)
+                        const Positioned.fill(child: _AdminHiddenOverlay()),
                     ],
                   ),
                 ),
@@ -224,6 +226,39 @@ class LibraryRecipeCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminHiddenOverlay extends StatelessWidget {
+  const _AdminHiddenOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.58),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+      ),
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.94),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            'Hidden by admin',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.labelMedium?.copyWith(
+              color: AppColors.error,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ),

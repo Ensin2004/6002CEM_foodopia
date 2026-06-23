@@ -44,6 +44,8 @@ import '../../features/admin_home/data/datasources/admin_home_remote_datasource.
 import '../../features/admin_home/data/repositories/admin_home_repository_impl.dart';
 import '../../features/admin_manage/data/datasources/admin_manage_remote_datasource.dart';
 import '../../features/admin_manage/data/repositories/admin_manage_repository_impl.dart';
+import '../../features/admin_moderation/data/datasources/admin_moderation_remote_datasource.dart';
+import '../../features/admin_moderation/data/repositories/admin_moderation_repository_impl.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/explore/data/datasources/explore_remote_datasource.dart';
@@ -201,6 +203,10 @@ import '../../features/admin_manage/domain/usecases/delete_admin_manage_item_use
 import '../../features/admin_manage/domain/usecases/get_admin_manage_items_usecase.dart';
 import '../../features/admin_manage/domain/usecases/reorder_admin_manage_items_usecase.dart';
 import '../../features/admin_manage/domain/usecases/save_admin_manage_item_usecase.dart';
+import '../../features/admin_moderation/domain/repositories/admin_moderation_repository.dart';
+import '../../features/admin_moderation/domain/usecases/mark_admin_recipe_reviewed_usecase.dart';
+import '../../features/admin_moderation/domain/usecases/update_admin_recipe_visibility_usecase.dart';
+import '../../features/admin_moderation/domain/usecases/watch_admin_moderation_recipes_usecase.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/request_password_reset_usecase.dart';
@@ -263,6 +269,7 @@ import '../../features/settings/domain/usecases/about/get_about_content_usecase.
 // ============================================================================
 // Auth Feature - Presentation Layer
 import '../../features/admin_manage/presentation/viewmodel/admin_manage_viewmodel.dart';
+import '../../features/admin_moderation/presentation/viewmodel/admin_moderation_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/forgot_password_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/login_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/signup_viewmodel.dart';
@@ -301,6 +308,7 @@ Future<void> initDependencies() async {
   _initRatingFeature();
   _initFaqFeature();
   _initAdminManageFeature();
+  _initAdminModerationFeature();
   _initAdminHomeFeature();
   _initUserHomeFeature();
   _initMealPlanFeature();
@@ -667,6 +675,37 @@ void _initAdminManageFeature() {
       saveItemUseCase: sl(),
       deleteItemUseCase: sl(),
       reorderItemsUseCase: sl(),
+    ),
+  );
+}
+
+// ============================================================================
+// ADMIN MODERATION FEATURE
+// ============================================================================
+
+/// Initializes the Admin Moderation feature dependencies.
+void _initAdminModerationFeature() {
+  // Register remote data source.
+  sl.registerLazySingleton(
+    () => AdminModerationRemoteDataSource(firestore: sl()),
+  );
+
+  // Register repository.
+  sl.registerLazySingleton<AdminModerationRepository>(
+    () => AdminModerationRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  // Register use cases.
+  sl.registerLazySingleton(() => WatchAdminModerationRecipesUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateAdminRecipeVisibilityUseCase(sl()));
+  sl.registerLazySingleton(() => MarkAdminRecipeReviewedUseCase(sl()));
+
+  // Register ViewModel.
+  sl.registerFactory(
+    () => AdminModerationViewModel(
+      watchRecipesUseCase: sl(),
+      updateRecipeVisibilityUseCase: sl(),
+      markRecipeReviewedUseCase: sl(),
     ),
   );
 }

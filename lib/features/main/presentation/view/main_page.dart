@@ -10,6 +10,7 @@ import '../../../admin_home/domain/entities/admin_home_dashboard.dart';
 import '../../../admin_home/presentation/view/admin_home_page.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../admin_manage/presentation/view/admin_manage_page.dart';
+import '../../../admin_moderation/presentation/view/admin_moderation_page.dart';
 import '../../../user_home/domain/entities/user_home_dashboard.dart';
 import '../../../user_home/presentation/view/home_page.dart';
 import '../../../user_setup/domain/usecases/get_user_setup_status_usecase.dart';
@@ -307,6 +308,8 @@ class _MainPageViewState extends State<_MainPageView> {
         case 1:
           return const AdminManagePage();
         case 2:
+          return const AdminModerationPage();
+        case 3:
           return const StatisticsPage(isAdmin: true, showAppBar: false);
         default:
           return HomePage(userName: viewModel.user.name ?? 'Foodie');
@@ -325,7 +328,7 @@ class _MainPageViewState extends State<_MainPageView> {
         viewModel.onTabTapped(1);
         break;
       case 'View Stats':
-        viewModel.onTabTapped(2);
+        viewModel.onTabTapped(3);
         break;
       case 'Manage Feedback':
         context.push(AppRouter.rateUs, extra: const RateUsArgs(isAdmin: true));
@@ -407,8 +410,14 @@ class _MainPageViewState extends State<_MainPageView> {
 
                 /// Creates a bottom navigation bar item instance.
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.admin_panel_settings),
+                  icon: Icon(Icons.build),
                   label: 'Manage',
+                ),
+
+                /// Creates a bottom navigation bar item instance.
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.shield),
+                  label: 'Moderation',
                 ),
 
                 /// Creates a bottom navigation bar item instance.
