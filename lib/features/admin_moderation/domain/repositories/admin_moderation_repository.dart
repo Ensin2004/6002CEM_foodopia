@@ -17,4 +17,7 @@ abstract class AdminModerationRepository {
 
   /// Marks a recipe as reviewed.
   Future<Either<Failure, void>> markRecipeReviewed(String recipeId);
+
+  /// Clears AI review flag metadata from a recipe.
+  Future<Either<Failure, void>> clearRecipeAiFlag(String recipeId);
 }

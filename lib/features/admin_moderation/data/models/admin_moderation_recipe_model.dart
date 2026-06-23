@@ -15,6 +15,9 @@ class AdminModerationRecipeModel extends AdminModerationRecipe {
     required super.isFinalized,
     required super.reviewStatus,
     required super.updatedAt,
+    super.aiReviewFlagged,
+    super.aiReviewFlagReason,
+    super.aiReviewCheckedAt,
   });
 
   /// Builds the model from a recipe document and resolved creator name.
@@ -41,6 +44,9 @@ class AdminModerationRecipeModel extends AdminModerationRecipe {
           _dateTime(data['updatedAt']) ??
           _dateTime(data['createdAt']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
+      aiReviewFlagged: data['aiReviewFlagged'] == true,
+      aiReviewFlagReason: _stringValue(data['aiReviewFlagReason']),
+      aiReviewCheckedAt: _dateTime(data['aiReviewCheckedAt']),
     );
   }
 }

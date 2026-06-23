@@ -36,6 +36,15 @@ class AdminModerationRecipe {
   /// Last updated timestamp.
   final DateTime updatedAt;
 
+  /// Whether AI review flagged this recipe for admin attention.
+  final bool aiReviewFlagged;
+
+  /// AI review reason shown to admins.
+  final String aiReviewFlagReason;
+
+  /// Timestamp when the AI review flag was recorded.
+  final DateTime? aiReviewCheckedAt;
+
   /// Creates an admin moderation recipe summary.
   const AdminModerationRecipe({
     required this.id,
@@ -47,5 +56,8 @@ class AdminModerationRecipe {
     required this.isFinalized,
     required this.reviewStatus,
     required this.updatedAt,
+    this.aiReviewFlagged = false,
+    this.aiReviewFlagReason = '',
+    this.aiReviewCheckedAt,
   });
 }
