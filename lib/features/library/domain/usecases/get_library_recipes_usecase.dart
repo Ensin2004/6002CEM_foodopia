@@ -12,4 +12,8 @@ class GetLibraryRecipesUseCase {
   Future<Either<Failure, List<LibraryRecipe>>> execute() {
     return repository.getRecipes();
   }
+
+  Stream<Either<Failure, List<LibraryRecipe>>> watch() {
+    return repository.watchRecipes();
+  }
 }

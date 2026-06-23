@@ -400,19 +400,11 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
       if (confirmed != true || !mounted) return;
     }
 
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => LoadingDialog(
-        message: nextPublished ? 'Unhiding recipe...' : 'Hiding recipe...',
-      ),
-    );
     final success = await viewModel.updateVisibility(
       isPublished: nextPublished,
       hiddenReason: hiddenReason,
     );
     if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
 
     if (success) {
       setState(() => _isPublished = nextPublished);
@@ -433,59 +425,10 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   }
 
   Future<String?> _showHideReasonDialog() {
-    final controller = TextEditingController();
     return showDialog<String>(
       context: context,
-      builder: (context) {
-        String? errorText;
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Hide recipe?'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('This recipe will no longer be visible to users.'),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    maxLines: 3,
-                    textInputAction: TextInputAction.done,
-                    decoration: InputDecoration(
-                      labelText: 'Reason',
-                      hintText: 'Tell the creator what they need to review',
-                      errorText: errorText,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final reason = controller.text.trim();
-                    if (reason.isEmpty) {
-                      setDialogState(() {
-                        errorText = 'Reason is required';
-                      });
-                      return;
-                    }
-                    Navigator.of(context).pop(reason);
-                  },
-                  child: const Text('Hide'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).whenComplete(controller.dispose);
+      builder: (_) => const _HideRecipeReasonDialog(),
+    );
   }
 
   Future<void> _markAdminReviewed(
@@ -578,27 +521,39 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         ),
         actions: [
           if (widget.isAdminModeration)
-            PopupMenuButton<String>(
-              tooltip: 'Moderation actions',
-              icon: const Icon(Icons.more_vert),
-              onSelected: (value) {
-                if (value == 'reviewed') {
-                  _markAdminReviewed(viewModel);
-                } else {
-                  _toggleAdminVisibility(viewModel);
-                }
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: _isPublished ? 'hide' : 'unhide',
-                  child: Text(_isPublished ? 'Hide recipe' : 'Unhide recipe'),
+            if (viewModel.isUpdatingVisibility)
+              const Padding(
+                padding: EdgeInsets.only(right: 16),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
-                const PopupMenuItem(
-                  value: 'reviewed',
-                  child: Text('Mark as reviewed'),
-                ),
-              ],
-            )
+              )
+            else
+              PopupMenuButton<String>(
+                tooltip: 'Moderation actions',
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) {
+                  if (value == 'reviewed') {
+                    _markAdminReviewed(viewModel);
+                  } else {
+                    _toggleAdminVisibility(viewModel);
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: _isPublished ? 'hide' : 'unhide',
+                    child: Text(_isPublished ? 'Hide recipe' : 'Unhide recipe'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'reviewed',
+                    child: Text('Mark as reviewed'),
+                  ),
+                ],
+              )
           else
             IconButton(
               tooltip: 'Add to meal plan',
@@ -1597,6 +1552,73 @@ class _SelectedTabContent extends StatelessWidget {
           isAdminModeration: isAdminModeration,
         );
     }
+  }
+}
+
+class _HideRecipeReasonDialog extends StatefulWidget {
+  const _HideRecipeReasonDialog();
+
+  @override
+  State<_HideRecipeReasonDialog> createState() =>
+      _HideRecipeReasonDialogState();
+}
+
+class _HideRecipeReasonDialogState extends State<_HideRecipeReasonDialog> {
+  final TextEditingController _controller = TextEditingController();
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final reason = _controller.text.trim();
+    if (reason.isEmpty) {
+      setState(() {
+        _errorText = 'Reason is required';
+      });
+      return;
+    }
+    Navigator.of(context).pop(reason);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Hide recipe?'),
+      scrollable: true,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('This recipe will no longer be visible to users.'),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            minLines: 3,
+            maxLines: 3,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _submit(),
+            decoration: InputDecoration(
+              labelText: 'Reason',
+              hintText: 'Tell the creator what they need to review',
+              errorText: _errorText,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Hide')),
+      ],
+    );
   }
 }
 

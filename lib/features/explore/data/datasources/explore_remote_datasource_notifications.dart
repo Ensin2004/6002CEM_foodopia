@@ -65,60 +65,6 @@ extension ExploreRemoteDataSourceNotifications on ExploreRemoteDataSource {
     }
   }
 
-  Future<void> _notifyAdminsOfRecipeReview({
-    required String recipeId,
-    required String senderUid,
-  }) async {
-    try {
-      final admins = await firestore
-          .collection('users')
-          .where('role', isEqualTo: 'admin')
-          .get();
-      const title = 'Recipe Review';
-      const message = 'You have a new recipe waiting to be reviewed';
-
-      for (final admin in admins.docs) {
-        final adminUid = admin.id;
-        if (adminUid.isEmpty || adminUid == senderUid) continue;
-
-        final notificationRef = await firestore
-            .collection('users')
-            .doc(adminUid)
-            .collection('notifications')
-            .add({
-              'type': 'recipeReview',
-              'title': title,
-              'message': message,
-              'isRead': false,
-              'senderUid': senderUid,
-              'recipeId': recipeId,
-              'createdAt': FieldValue.serverTimestamp(),
-            });
-
-        if (!await _isNotificationEnabled(
-          receiverUid: adminUid,
-          type: 'recipeReview',
-        )) {
-          continue;
-        }
-
-        await _sendPushToUser(
-          receiverUid: adminUid,
-          title: title,
-          message: message,
-          data: {
-            'type': 'recipeReview',
-            'notificationId': notificationRef.id,
-            'senderUid': senderUid,
-            'recipeId': recipeId,
-          },
-        );
-      }
-    } on FirebaseException {
-      // Visibility changes should remain successful if notification fails.
-    }
-  }
-
   // Checks if a specific notification type is enabled for the receiver.
   Future<bool> _isNotificationEnabled({
     required String receiverUid,

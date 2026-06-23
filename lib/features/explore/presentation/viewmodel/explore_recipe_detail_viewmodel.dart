@@ -650,10 +650,6 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
       _communityActionErrorMessage = failure.message;
     });
 
-    if (success) {
-      await loadRecipe();
-    }
-
     _isUpdatingVisibility = false;
     _notifyIfActive();
     return success;

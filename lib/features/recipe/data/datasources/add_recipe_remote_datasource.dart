@@ -384,11 +384,6 @@ class AddRecipeRemoteDataSource {
         ...model.toFirestoreForUpdate(),
         ...moderationFields,
       });
-      await _notifyAdminsIfPendingReview(
-        recipeId: recipeId,
-        moderationFields: moderationFields,
-        senderUid: uid,
-      );
       return recipeId;
     }
 
@@ -491,11 +486,6 @@ class AddRecipeRemoteDataSource {
     });
 
     await batch.commit();
-    await _notifyAdminsIfPendingReview(
-      recipeId: recipeId,
-      moderationFields: moderationFields,
-      senderUid: auth.currentUser?.uid ?? '',
-    );
   }
 
   /// Loads active ingredients categories
@@ -827,11 +817,6 @@ class AddRecipeRemoteDataSource {
     });
 
     await batch.commit();
-    await _notifyAdminsIfPendingReview(
-      recipeId: recipeId,
-      moderationFields: moderationFields,
-      senderUid: auth.currentUser?.uid ?? '',
-    );
   }
 
   /// Loads recipe basic info, ingredient and instruction for review.
@@ -925,24 +910,17 @@ class AddRecipeRemoteDataSource {
     final snapshot = await recipeRef.get();
     final previousVisibility = snapshot.data()?['visibility']?.toString();
 
-    final shouldNotifyAdmins =
+    final shouldMarkPendingReview =
         visibility == 'public' && _isFinalizedRecipe(snapshot.data());
     await recipeRef.update({
       'visibility': visibility,
       'updatedAt': FieldValue.serverTimestamp(),
-      if (shouldNotifyAdmins) ...{
+      if (shouldMarkPendingReview) ...{
         'moderationStatus': 'Pending',
         'moderationHiddenReason': FieldValue.delete(),
         'moderationHiddenAt': FieldValue.delete(),
       },
     });
-
-    if (shouldNotifyAdmins) {
-      await _notifyAdminsOfRecipeReview(
-        recipeId: recipeId,
-        senderUid: auth.currentUser?.uid ?? '',
-      );
-    }
 
     if (visibility == 'public' &&
         previousVisibility != 'public' &&
@@ -1093,15 +1071,6 @@ class AddRecipeRemoteDataSource {
       };
     }
     return const {};
-  }
-
-  Future<void> _notifyAdminsIfPendingReview({
-    required String recipeId,
-    required Map<String, dynamic> moderationFields,
-    required String senderUid,
-  }) async {
-    if (moderationFields['moderationStatus'] != 'Pending') return;
-    await _notifyAdminsOfRecipeReview(recipeId: recipeId, senderUid: senderUid);
   }
 
   Future<void> _notifyAdminsOfRecipeReview({

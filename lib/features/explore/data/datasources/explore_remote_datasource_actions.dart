@@ -401,7 +401,7 @@ extension ExploreRemoteDataSourceActions on ExploreRemoteDataSource {
     final uid = _requiredUid();
     final recipeRef = firestore.collection('recipes').doc(recipeId);
     var shouldNotifyFollowers = false;
-    var shouldNotifyAdmins = false;
+    var shouldMarkPendingReview = false;
     var recipeTitle = 'a new recipe';
 
     await firestore.runTransaction((transaction) async {
@@ -417,7 +417,7 @@ extension ExploreRemoteDataSourceActions on ExploreRemoteDataSource {
           isPublished &&
               _stringValue(data['visibility']) != 'public' &&
               data['isFinalized'] != false;
-      shouldNotifyAdmins = isPublished && data['isFinalized'] != false;
+      shouldMarkPendingReview = isPublished && data['isFinalized'] != false;
       recipeTitle = _stringValue(data['name'], fallback: 'a new recipe');
       final creatorUid = _stringValue(data['creatorId']).isNotEmpty
           ? _stringValue(data['creatorId'])
@@ -431,17 +431,13 @@ extension ExploreRemoteDataSourceActions on ExploreRemoteDataSource {
       transaction.update(recipeRef, {
         'visibility': isPublished ? 'public' : 'private',
         'updatedAt': FieldValue.serverTimestamp(),
-        if (shouldNotifyAdmins) ...{
+        if (shouldMarkPendingReview) ...{
           'moderationStatus': 'Pending',
           'moderationHiddenReason': FieldValue.delete(),
           'moderationHiddenAt': FieldValue.delete(),
         },
       });
     });
-
-    if (shouldNotifyAdmins) {
-      await _notifyAdminsOfRecipeReview(recipeId: recipeId, senderUid: uid);
-    }
 
     // Send follower notifications only when a recipe is first published publicly.
     if (shouldNotifyFollowers) {
