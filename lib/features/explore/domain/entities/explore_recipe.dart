@@ -22,7 +22,7 @@ class ExploreRecipe {
   final String allergenInfo;
   final String totalTime;
   final String difficulty;
-  final int servings;
+  final double servings;
   final double rating;
   final int ratingCount;
   final int commentCount;

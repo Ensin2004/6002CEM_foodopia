@@ -26,9 +26,7 @@ class OpenAiRecipeContentValidationService {
 
   const OpenAiRecipeContentValidationService({required this.client});
 
-  Future<AddRecipeImageDraft> generateRecipeFromImage(
-    File imageFile,
-  ) async {
+  Future<AddRecipeImageDraft> generateRecipeFromImage(File imageFile) async {
     final bytes = await imageFile.readAsBytes();
     final mimeType = _mimeTypeForPath(imageFile.path);
     final response = await client
@@ -57,8 +55,7 @@ class OpenAiRecipeContentValidationService {
                   },
                   {
                     'type': 'input_image',
-                    'image_url':
-                        'data:$mimeType;base64,${base64Encode(bytes)}',
+                    'image_url': 'data:$mimeType;base64,${base64Encode(bytes)}',
                     'detail': 'low',
                   },
                 ],
@@ -116,6 +113,9 @@ class OpenAiRecipeContentValidationService {
   ) {
     return _validatePayload(
       title: 'Basic recipe information',
+      systemInstruction:
+          'You validate Foodopia recipe names and descriptions. Return only valid JSON. Reject profanity, slurs, hate, harassment, sexual content, self-harm content, nonsensical or weird recipe names, non-food recipe names, and inappropriate descriptions. Do not validate cooking logic, ingredient amounts, instruction logic, preparation time, difficulty, servings, or extreme values.',
+      fallbackMessage: 'Recipe name or description looks inappropriate.',
       payload: {
         'recipeName': info.recipeName,
         'description': info.description,
@@ -134,13 +134,18 @@ class OpenAiRecipeContentValidationService {
   ) {
     return _validatePayload(
       title: 'Recipe ingredients',
+      systemInstruction:
+          'You validate only ingredient unit usage for Foodopia. Return only valid JSON. Reject if a unit is missing, profane, nonsensical as a measurement unit, or clearly incompatible with the ingredient and amount. Do not reject ingredient count, ingredient amount being too high or too low, ingredient name, cooking logic, nutrition logic, or extreme values.',
+      fallbackMessage: 'One or more ingredient units look incorrect.',
       payload: {
         'ingredients': ingredients
             .map(
               (item) => {
                 'name': item.name,
                 'amount': item.amount,
-                'unit': item.customUnit.isNotEmpty ? item.customUnit : item.unitId,
+                'unit': item.customUnit.isNotEmpty
+                    ? item.customUnit
+                    : item.unitId,
               },
             )
             .toList(),
@@ -171,6 +176,10 @@ class OpenAiRecipeContentValidationService {
   Future<RecipeContentValidationResult> validateReview(AddRecipeReview review) {
     return _validatePayload(
       title: 'Complete recipe',
+      systemInstruction:
+          'You review complete Foodopia recipes for cooking-logic or extreme-value concerns. Return only valid JSON. Mark invalid when the recipe has impossible cooking steps, unsafe cooking logic, clearly impossible ingredient/prep/serving values, or extreme values. This result is advisory only and should flag the recipe, not block saving.',
+      fallbackMessage:
+          'Recipe may need review for cooking logic or extreme values.',
       payload: {
         'recipeName': review.recipeName,
         'description': review.description,
@@ -235,8 +244,11 @@ class OpenAiRecipeContentValidationService {
     }
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final result = jsonDecode(_extractOutputText(decoded)) as Map<String, dynamic>;
-    final isValid = result['isValid'] is bool ? result['isValid'] as bool : false;
+    final result =
+        jsonDecode(_extractOutputText(decoded)) as Map<String, dynamic>;
+    final isValid = result['isValid'] is bool
+        ? result['isValid'] as bool
+        : false;
     final reason = result['reason']?.toString().trim() ?? '';
     return RecipeContentValidationResult(
       isValid: isValid,
@@ -251,6 +263,10 @@ class OpenAiRecipeContentValidationService {
   Future<RecipeContentValidationResult> _validatePayload({
     required String title,
     required Map<String, dynamic> payload,
+    String systemInstruction =
+        'You validate recipe content for Foodopia. Return only valid JSON. Reject profanity, sexual content, hate, harassment, self-harm, unsafe instructions, nonsensical names, non-food content, illogical cooking content, impossible steps, and extreme values. Be strict but allow normal creative recipe names.',
+    String fallbackMessage =
+        'Recipe content looks inappropriate or unrealistic.',
   }) async {
     final response = await client
         .post(
@@ -263,11 +279,7 @@ class OpenAiRecipeContentValidationService {
             'model': EnvConfig.openAiRecipeModel,
             'max_output_tokens': 700,
             'input': [
-              {
-                'role': 'system',
-                'content':
-                    'You validate recipe content for Foodopia. Return only valid JSON. Reject profanity, sexual content, hate, harassment, self-harm, unsafe instructions, nonsensical names, non-food content, illogical cooking content, impossible steps, and extreme values. Be strict but allow normal creative recipe names.',
-              },
+              {'role': 'system', 'content': systemInstruction},
               {
                 'role': 'user',
                 'content':
@@ -293,15 +305,17 @@ class OpenAiRecipeContentValidationService {
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final payloadText = _extractOutputText(decoded);
     final result = jsonDecode(payloadText) as Map<String, dynamic>;
-    final isValid = result['isValid'] is bool ? result['isValid'] as bool : false;
+    final isValid = result['isValid'] is bool
+        ? result['isValid'] as bool
+        : false;
     final reason = result['reason']?.toString().trim() ?? '';
     return RecipeContentValidationResult(
       isValid: isValid,
       message: isValid
           ? ''
           : reason.isEmpty
-              ? 'Recipe content looks inappropriate or unrealistic.'
-              : reason,
+          ? fallbackMessage
+          : reason,
     );
   }
 

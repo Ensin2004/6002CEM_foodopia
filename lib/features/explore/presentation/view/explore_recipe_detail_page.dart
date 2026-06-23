@@ -1189,8 +1189,8 @@ class _RecipeHeader extends StatelessWidget {
             _MetricTile(
               icon: Icons.groups_2_outlined,
               color: AppColors.primary,
-              title: recipe.servings.toString(),
-              subtitle: recipe.servings == 1 ? 'Serving' : 'Servings',
+              title: MealServingAmount.format(recipe.servings),
+              subtitle: 'Servings',
             ),
             _MetricTile(
               icon: Icons.star,

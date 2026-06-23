@@ -26,7 +26,6 @@ class AddRecipeVideoDataSource {
   Future<AddRecipeVideoResult> generateFromVideo(String videoPath) async {
     final workingDir = await _createWorkingDir();
     try {
-
       // Use ffmpeg to extract the audio and frames from the video
       final audioFile = File('${workingDir.path}/audio.m4a');
       final framePattern = '${workingDir.path}/frame_%03d.jpg';
@@ -67,10 +66,12 @@ class AddRecipeVideoDataSource {
           description: draft.description,
           otherNames: const [],
           categoryIds: categoryId == null ? const [] : [categoryId],
-          customCategories: categoryId == null ? [draft.categoryName] : const [],
+          customCategories: categoryId == null
+              ? [draft.categoryName]
+              : const [],
           preparationMinutes: draft.preparationMinutes,
           difficultyLevel: draft.difficultyLevel,
-          servings: draft.servings,
+          servings: draft.servings.toDouble(),
           allergenIds: const [],
           customAllergens: const [],
           visibility: 'private',
