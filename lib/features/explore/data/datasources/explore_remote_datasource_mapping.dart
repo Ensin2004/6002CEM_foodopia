@@ -145,6 +145,9 @@ extension ExploreRemoteDataSourceMapping on ExploreRemoteDataSource {
       isFavourite: isFavourite,
       isCreatedByCurrentUser: isCurrentUserCreator,
       hasRatedByCurrentUser: hasRatedByCurrentUser,
+      isModerationHidden:
+          _stringValue(data['moderationStatus']).toLowerCase() == 'hidden',
+      moderationHiddenReason: _stringValue(data['moderationHiddenReason']),
       ingredients: ingredients,
       instructionSections: instructions,
       nutrition: nutrition,

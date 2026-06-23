@@ -25,11 +25,32 @@ class AdminModerationRemoteDataSource {
   Future<void> updateRecipeVisibility({
     required String recipeId,
     required bool isPublished,
+    String? hiddenReason,
   }) async {
-    await firestore.collection('recipes').doc(recipeId).update({
-      'moderationStatus': isPublished ? 'reviewed' : 'Hidden',
+    final recipeRef = firestore.collection('recipes').doc(recipeId);
+    final snapshot = await recipeRef.get();
+    final data = snapshot.data() ?? const <String, dynamic>{};
+    final reason = hiddenReason?.trim() ?? '';
+
+    await recipeRef.update({
+      'moderationStatus': isPublished ? 'Pending' : 'Hidden',
       'updatedAt': FieldValue.serverTimestamp(),
+      if (isPublished) ...{
+        'moderationHiddenReason': FieldValue.delete(),
+        'moderationHiddenAt': FieldValue.delete(),
+      } else ...{
+        'moderationHiddenReason': reason,
+        'moderationHiddenAt': FieldValue.serverTimestamp(),
+      },
     });
+
+    if (!isPublished) {
+      await _notifyCreatorRecipeHidden(
+        recipeId: recipeId,
+        recipeData: data,
+        reason: reason,
+      );
+    }
   }
 
   /// Marks a recipe as reviewed.
@@ -76,5 +97,37 @@ class AdminModerationRemoteDataSource {
     final creatorId = data['creatorId']?.toString().trim() ?? '';
     if (creatorId.isNotEmpty) return creatorId;
     return data['creatorUid']?.toString().trim() ?? '';
+  }
+
+  Future<void> _notifyCreatorRecipeHidden({
+    required String recipeId,
+    required Map<String, dynamic> recipeData,
+    required String reason,
+  }) async {
+    try {
+      final creatorUid = _creatorUid(recipeData);
+      if (creatorUid.isEmpty) return;
+
+      final rawRecipeTitle = recipeData['name']?.toString().trim() ?? '';
+      final recipeTitle = rawRecipeTitle.isEmpty
+          ? 'your recipe'
+          : rawRecipeTitle;
+      await firestore
+          .collection('users')
+          .doc(creatorUid)
+          .collection('notifications')
+          .add({
+            'type': 'recipeHidden',
+            'title': 'Recipe Hidden',
+            'message':
+                'Your recipe [$recipeTitle] has been hidden by admin, please review',
+            'isRead': false,
+            'recipeId': recipeId,
+            'reason': reason,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+    } on FirebaseException {
+      // Moderation should remain successful even if notification delivery fails.
+    }
   }
 }

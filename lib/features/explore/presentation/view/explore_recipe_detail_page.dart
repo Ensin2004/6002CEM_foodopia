@@ -38,6 +38,8 @@ class ExploreRecipeDetailPage extends StatelessWidget {
   final bool showLibraryActions;
   final bool isPublished;
   final bool isAdminModeration;
+  final bool initialIsModerationHidden;
+  final String initialModerationHiddenReason;
   final MealPlanSelectionArgs? mealPlanSelection;
 
   const ExploreRecipeDetailPage({
@@ -46,6 +48,8 @@ class ExploreRecipeDetailPage extends StatelessWidget {
     this.showLibraryActions = false,
     this.isPublished = true,
     this.isAdminModeration = false,
+    this.initialIsModerationHidden = false,
+    this.initialModerationHiddenReason = '',
     this.mealPlanSelection,
   });
 
@@ -78,6 +82,8 @@ class ExploreRecipeDetailPage extends StatelessWidget {
         showLibraryActions: showLibraryActions,
         isPublished: isPublished,
         isAdminModeration: isAdminModeration,
+        initialIsModerationHidden: initialIsModerationHidden,
+        initialModerationHiddenReason: initialModerationHiddenReason,
         mealPlanSelection: mealPlanSelection,
       ),
     );
@@ -88,12 +94,16 @@ class _ExploreRecipeDetailView extends StatefulWidget {
   final bool showLibraryActions;
   final bool isPublished;
   final bool isAdminModeration;
+  final bool initialIsModerationHidden;
+  final String initialModerationHiddenReason;
   final MealPlanSelectionArgs? mealPlanSelection;
 
   const _ExploreRecipeDetailView({
     required this.showLibraryActions,
     required this.isPublished,
     required this.isAdminModeration,
+    required this.initialIsModerationHidden,
+    required this.initialModerationHiddenReason,
     this.mealPlanSelection,
   });
 
@@ -107,6 +117,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   late bool _isPublished;
+  String? _shownHiddenReason;
 
   @override
   void initState() {
@@ -142,13 +153,61 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
 
   // Navigates to the recipe review screen for editing.
   void _openRecipeReview(ExploreRecipeDetailViewModel viewModel) {
-    final recipeId = viewModel.recipe?.id;
-    if (recipeId == null || recipeId.isEmpty) return;
+    final recipeId = viewModel.recipe?.id ?? viewModel.recipeId;
+    if (recipeId.isEmpty) return;
 
     context.push(
       AppRouter.addRecipeReview,
       extra: AddRecipeReviewArgs(recipeId: recipeId),
     );
+  }
+
+  void _maybeShowHiddenRecipeDialog(
+    ExploreRecipeDetailViewModel viewModel,
+  ) {
+    if (!widget.showLibraryActions || widget.isAdminModeration) return;
+
+    final recipe = viewModel.recipe;
+    final isHidden =
+        recipe?.isModerationHidden ?? widget.initialIsModerationHidden;
+    if (!isHidden) {
+      _shownHiddenReason = null;
+      return;
+    }
+
+    final reason = (recipe?.moderationHiddenReason.isNotEmpty == true
+            ? recipe!.moderationHiddenReason
+            : widget.initialModerationHiddenReason)
+        .trim();
+    final displayReason = reason.isEmpty
+        ? 'No reason was provided.'
+        : reason;
+    if (_shownHiddenReason == displayReason) return;
+    _shownHiddenReason = displayReason;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Recipe hidden by admin'),
+          content: Text(displayReason),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _openRecipeReview(viewModel);
+              },
+              child: const Text('Edit now'),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   // Toggles the favourite status and shows a feedback message.
@@ -315,28 +374,31 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
 
     final nextPublished = !_isPublished;
     final actionLabel = nextPublished ? 'unhide' : 'hide';
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('${nextPublished ? 'Unhide' : 'Hide'} recipe?'),
-        content: Text(
-          nextPublished
-              ? 'This recipe will become visible to users again.'
-              : 'This recipe will no longer be visible to users.',
+    final hiddenReason = nextPublished
+        ? null
+        : await _showHideReasonDialog();
+    if (!nextPublished && hiddenReason == null) return;
+
+    if (nextPublished) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Unhide recipe?'),
+          content: const Text('This recipe will become visible to users again.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Unhide'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(nextPublished ? 'Unhide' : 'Hide'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
+      );
+      if (confirmed != true || !mounted) return;
+    }
 
     showDialog<void>(
       context: context,
@@ -345,7 +407,10 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
         message: nextPublished ? 'Unhiding recipe...' : 'Hiding recipe...',
       ),
     );
-    final success = await viewModel.updateVisibility(isPublished: nextPublished);
+    final success = await viewModel.updateVisibility(
+      isPublished: nextPublished,
+      hiddenReason: hiddenReason,
+    );
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
 
@@ -365,6 +430,62 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
           ),
         ),
       );
+  }
+
+  Future<String?> _showHideReasonDialog() {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        String? errorText;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Hide recipe?'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('This recipe will no longer be visible to users.'),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    maxLines: 3,
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      labelText: 'Reason',
+                      hintText: 'Tell the creator what they need to review',
+                      errorText: errorText,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final reason = controller.text.trim();
+                    if (reason.isEmpty) {
+                      setDialogState(() {
+                        errorText = 'Reason is required';
+                      });
+                      return;
+                    }
+                    Navigator.of(context).pop(reason);
+                  },
+                  child: const Text('Hide'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).whenComplete(controller.dispose);
   }
 
   Future<void> _markAdminReviewed(
@@ -439,6 +560,7 @@ class _ExploreRecipeDetailViewState extends State<_ExploreRecipeDetailView>
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<ExploreRecipeDetailViewModel>();
+    _maybeShowHiddenRecipeDialog(viewModel);
     // Checks if the recipe is already added to the meal plan in selection mode.
     final alreadyAdded =
         widget.mealPlanSelection?.existingRecipeIds.contains(

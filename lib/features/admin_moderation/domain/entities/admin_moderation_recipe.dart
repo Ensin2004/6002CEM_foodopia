@@ -5,7 +5,7 @@ enum AdminModerationSortOption { newest, oldest, alphabetAZ, alphabetZA }
 enum AdminModerationReviewStatus { pending, reviewed, hidden }
 
 /// Review status filter options for admin moderation.
-enum AdminModerationReviewFilter { all, pending, reviewed }
+enum AdminModerationReviewFilter { all, pending, reviewed, hidden }
 
 /// Recipe summary shown in the admin moderation list.
 class AdminModerationRecipe {

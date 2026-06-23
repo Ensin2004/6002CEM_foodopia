@@ -37,15 +37,22 @@ class AdminModerationRecipeModel extends AdminModerationRecipe {
       isPublished: _stringValue(data['visibility']) == 'public',
       isFinalized: data['isFinalized'] == true,
       reviewStatus: _reviewStatus(data['moderationStatus']),
-      updatedAt: _dateTime(data['updatedAt'] ?? data['createdAt']),
+      updatedAt:
+          _dateTime(data['updatedAt']) ??
+          _dateTime(data['createdAt']) ??
+          DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 }
 
 AdminModerationReviewStatus _reviewStatus(Object? value) {
   final status = _stringValue(value);
-  if (status == 'reviewed') return AdminModerationReviewStatus.reviewed;
-  if (status == 'Hidden') return AdminModerationReviewStatus.hidden;
+  if (status.toLowerCase() == 'reviewed') {
+    return AdminModerationReviewStatus.reviewed;
+  }
+  if (status.toLowerCase() == 'hidden') {
+    return AdminModerationReviewStatus.hidden;
+  }
   return AdminModerationReviewStatus.pending;
 }
 
@@ -64,8 +71,8 @@ List<String> _stringList(Object? value) {
   return const [];
 }
 
-DateTime _dateTime(Object? value) {
+DateTime? _dateTime(Object? value) {
   if (value is Timestamp) return value.toDate();
   if (value is DateTime) return value;
-  return DateTime.fromMillisecondsSinceEpoch(0);
+  return null;
 }

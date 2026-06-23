@@ -426,6 +426,9 @@ class _LibraryRecipeResults extends StatelessWidget {
                           recipeId: recipe.id,
                           isSelfPublished: recipe.isSelfPublished,
                           isPublished: recipe.isPublished,
+                          isModerationHidden: recipe.isModerationHidden,
+                          moderationHiddenReason:
+                              recipe.moderationHiddenReason,
                           mealPlanSelection: mealPlanSelection,
                         ),
                       );

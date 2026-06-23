@@ -15,10 +15,12 @@ class UpdateAdminRecipeVisibilityUseCase {
   Future<Either<Failure, void>> execute({
     required String recipeId,
     required bool isPublished,
+    String? hiddenReason,
   }) {
     return repository.updateRecipeVisibility(
       recipeId: recipeId,
       isPublished: isPublished,
+      hiddenReason: hiddenReason,
     );
   }
 }

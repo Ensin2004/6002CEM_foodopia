@@ -108,6 +108,10 @@ class NotificationTile extends StatelessWidget {
         return Icons.support_agent_outlined;
       case AppNotificationType.newCategory:
         return Icons.category_outlined;
+      case AppNotificationType.recipeReview:
+        return Icons.rate_review_outlined;
+      case AppNotificationType.recipeHidden:
+        return Icons.visibility_off_outlined;
       case AppNotificationType.helpReply:
         return Icons.mark_chat_read_outlined;
       case AppNotificationType.planReminder:

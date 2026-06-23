@@ -12,6 +12,7 @@ abstract class AdminModerationRepository {
   Future<Either<Failure, void>> updateRecipeVisibility({
     required String recipeId,
     required bool isPublished,
+    String? hiddenReason,
   });
 
   /// Marks a recipe as reviewed.

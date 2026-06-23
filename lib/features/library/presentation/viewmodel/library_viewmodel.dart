@@ -315,12 +315,13 @@ class LibraryViewModel extends ChangeNotifier {
       isSelfPublished: recipe.isSelfPublished,
       isFollowingAuthor: isFollowingAuthor ?? recipe.isFollowingAuthor,
       isPublished: recipe.isPublished,
+      isModerationHidden: recipe.isModerationHidden,
+      moderationHiddenReason: recipe.moderationHiddenReason,
       ingredients: recipe.ingredients,
       instructionSections: recipe.instructionSections,
       nutrition: recipe.nutrition,
       community: recipe.community,
       relatedRecipes: recipe.relatedRecipes,
-      isModerationHidden: recipe.isModerationHidden,
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -166,6 +167,14 @@ class _ModerationHeader extends StatelessWidget {
                   selected: reviewFilter == AdminModerationReviewFilter.reviewed,
                   onTap: () => onReviewFilterChanged(
                     AdminModerationReviewFilter.reviewed,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _ReviewFilterPill(
+                  label: 'Hidden',
+                  selected: reviewFilter == AdminModerationReviewFilter.hidden,
+                  onTap: () => onReviewFilterChanged(
+                    AdminModerationReviewFilter.hidden,
                   ),
                 ),
               ],
@@ -436,14 +445,18 @@ class _ModerationRecipeCard extends StatelessWidget {
                         color: AppColors.textSecondary,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      DateFormat('yyyy-MM-dd HH:mm').format(recipe.updatedAt),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        _StatusChip(
-                          label: 'Public',
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 8),
                         _StatusChip(
                           label: recipe.reviewStatus ==
                                   AdminModerationReviewStatus.reviewed

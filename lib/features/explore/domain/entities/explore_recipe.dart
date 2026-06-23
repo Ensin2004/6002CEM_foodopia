@@ -32,6 +32,8 @@ class ExploreRecipe {
   final bool isFavourite;
   final bool isCreatedByCurrentUser;
   final bool hasRatedByCurrentUser;
+  final bool isModerationHidden;
+  final String moderationHiddenReason;
   final List<ExploreIngredient> ingredients;
   final List<ExploreInstructionSection> instructionSections;
   final ExploreNutrition nutrition;
@@ -68,6 +70,8 @@ class ExploreRecipe {
     this.isFavourite = false,
     required this.isCreatedByCurrentUser,
     this.hasRatedByCurrentUser = false,
+    this.isModerationHidden = false,
+    this.moderationHiddenReason = '',
     required this.ingredients,
     required this.instructionSections,
     required this.nutrition,

@@ -343,7 +343,10 @@ class LibraryRemoteDataSource {
         : _stringList(data['allergenIds']);
     final visibility = data['visibility']?.toString().toLowerCase() ?? '';
     final isPublished = visibility == 'public' || visibility == 'published';
-    final isModerationHidden = data['moderationStatus']?.toString() == 'Hidden';
+    final isModerationHidden =
+        data['moderationStatus']?.toString().toLowerCase() == 'hidden';
+    final moderationHiddenReason =
+        data['moderationHiddenReason']?.toString().trim() ?? '';
     final title = _firstNotBlank([
       data['name']?.toString(),
       data['recipeName']?.toString(),
@@ -407,6 +410,7 @@ class LibraryRemoteDataSource {
       isFollowingAuthor: isFollowingAuthor,
       isPublished: isPublished,
       isModerationHidden: isModerationHidden,
+      moderationHiddenReason: moderationHiddenReason,
       ingredients: const [],
       instructionSections: const [],
       nutrition: const LibraryNutrition(

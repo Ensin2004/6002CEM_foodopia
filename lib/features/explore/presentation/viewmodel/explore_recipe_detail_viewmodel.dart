@@ -624,7 +624,10 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
   }
 
   /// Updates the visibility (published status) of the recipe.
-  Future<bool> updateVisibility({required bool isPublished}) async {
+  Future<bool> updateVisibility({
+    required bool isPublished,
+    String? hiddenReason,
+  }) async {
     _isUpdatingVisibility = true;
     _communityActionErrorMessage = null;
     _notifyIfActive();
@@ -634,6 +637,7 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
         ? await adminUseCase.execute(
             recipeId: recipeId,
             isPublished: isPublished,
+            hiddenReason: hiddenReason,
           )
         : await _updateRecipeVisibilityUseCase.execute(
             recipeId: recipeId,
@@ -1182,6 +1186,8 @@ class ExploreRecipeDetailViewModel extends ChangeNotifier {
       isCreatedByCurrentUser: recipe.isCreatedByCurrentUser,
       hasRatedByCurrentUser:
       hasRatedByCurrentUser ?? recipe.hasRatedByCurrentUser,
+      isModerationHidden: recipe.isModerationHidden,
+      moderationHiddenReason: recipe.moderationHiddenReason,
       ingredients: recipe.ingredients,
       instructionSections: recipe.instructionSections,
       nutrition: recipe.nutrition,
