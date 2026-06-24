@@ -1,5 +1,3 @@
-// These notes explain the statistics page code in simple words.
-// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 
 // Handles PostAnalyticSortOrder for this part of the statistics page.

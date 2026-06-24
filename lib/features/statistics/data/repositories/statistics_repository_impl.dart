@@ -416,21 +416,20 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
     }
   }
 
-  // Handles getAdminNutrientInsight for this part of the statistics page.
   @override
-  Future<Either<Failure, CaloriesIntakeStatistics>> getAdminNutrientInsight({
+  Future<Either<Failure, AdminModerationStatistics>> getAdminModeration({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
     try {
       return Right(
-        await remoteDataSource.getAdminNutrientInsight(
+        await remoteDataSource.getAdminModeration(
           startDate: startDate,
           endDate: endDate,
         ),
       );
     } catch (_) {
-      return Left(ServerFailure(message: 'Unable to load nutrient insight'));
+      return Left(ServerFailure(message: 'Unable to load moderation'));
     }
   }
 

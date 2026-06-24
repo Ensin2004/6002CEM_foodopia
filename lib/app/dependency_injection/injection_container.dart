@@ -140,7 +140,7 @@ import '../../features/statistics/domain/repositories/statistics_repository.dart
 import '../../features/statistics/domain/usecases/get_admin_dietary_preference_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_gender_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_hub_rating_statistics_usecase.dart';
-import '../../features/statistics/domain/usecases/get_admin_nutrient_insight_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_moderation_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_meal_analytic_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_post_analytic_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_usage_forecast_statistics_usecase.dart';
@@ -428,9 +428,7 @@ void _initStatisticsFeature() {
   sl.registerLazySingleton(() => GetAdminGenderStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetAdminUserUsageStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetAdminUsageForecastStatisticsUseCase(sl()));
-  sl.registerLazySingleton(
-    () => GetAdminNutrientInsightStatisticsUseCase(sl()),
-  );
+  sl.registerLazySingleton(() => GetAdminModerationStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetAdminHubRatingStatisticsUseCase(sl()));
 }
 

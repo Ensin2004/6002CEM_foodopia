@@ -17,8 +17,8 @@ import '../../domain/entities/meal_planned_time_statistics.dart';
 import '../../domain/entities/most_cooked_recipe_statistics.dart';
 import '../../domain/entities/post_analytic_statistics.dart';
 import '../../domain/entities/post_difficulty_statistics.dart';
-import '../../domain/entities/recipe_performance_statistics.dart';
 import '../../domain/entities/statistics_dashboard.dart';
+import '../../domain/entities/recipe_performance_statistics.dart';
 
 // This is the main database reader for statistics.
 // It collects raw Firestore data such as users, meal plans, recipes,
@@ -238,23 +238,6 @@ class StatisticsRemoteDataSource {
           includeZeroValues: true,
         ),
         _adminSectionFromCounts(
-          title: 'Average Difficulty',
-          summaryTitle: 'Average',
-          summaryValue: _averageDifficulty(plans).toStringAsFixed(1),
-          highlightTitle: 'Most Common',
-          counts: {
-            for (var level = 1; level <= 5; level++)
-              '$level Star': plans
-                  .where((plan) => plan.difficultyLevel == level)
-                  .length,
-          },
-          details: _detailsByMealDifficulty(plans),
-          iconFor: _difficultyIcon,
-          colorFor: _difficultyColor,
-          includeZeroValues: true,
-          preserveOrder: true,
-        ),
-        _adminSectionFromCounts(
           title: 'Method Of Creating Meal Plan',
           summaryTitle: 'Total Created',
           summaryValue: plans.length.toString(),
@@ -288,12 +271,11 @@ class StatisticsRemoteDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    // Reads public recipe posts and related meal plans, then compares ratings,
-    // views, difficulty, and how often posted recipes are planned.
+    // Reads public recipe posts and related meal plans, then compares ratings
+    // and how often posted recipes are planned.
     var range = _resolveAdminRange(startDate, endDate);
     final recipes = await _getAllSharedRecipes(range);
     final allPlans = await _getAllMealPlans(range);
-    final allPublicRecipes = await _getAllSharedRecipes(_allTimeRange());
     final categorySection = await _adminSectionFromPostCategories(
       title: 'Most Rating Category',
       summaryTitle: 'Rated Category',
@@ -311,7 +293,6 @@ class StatisticsRemoteDataSource {
     return AdminPostAnalyticStatistics(
       dateRange: _formatRange(range.start, range.end),
       dailyPosts: _dailyPostCounts(recipes, range),
-      recipePerformance: await _buildAdminRecipePerformance(allPublicRecipes),
       sections: [
         _adminSectionFromCounts(
           title: 'Most Rating For All Posted',
@@ -329,22 +310,6 @@ class StatisticsRemoteDataSource {
         ),
         categorySection,
         _adminSectionFromCounts(
-          title: 'Recipe Performance',
-          summaryTitle: 'Total Views',
-          summaryValue: recipes
-              .fold<int>(0, (total, recipe) => total + recipe.totalViews)
-              .toString(),
-          highlightTitle: 'Top Recipe',
-          counts: {
-            for (final recipe in recipes) recipe.name: recipe.totalViews,
-          },
-          details: _detailsByRecipes(recipes),
-          imageUrls: {
-            for (final recipe in recipes) recipe.name: recipe.imageUrl,
-          },
-          iconFor: _iconForRecipe,
-        ),
-        _adminSectionFromCounts(
           title: 'Recipe That Been Planned The Most',
           summaryTitle: 'Total Planned',
           summaryValue: allPlans.length.toString(),
@@ -353,23 +318,6 @@ class StatisticsRemoteDataSource {
           details: _detailsByRecipeName(allPlans),
           imageUrls: recipePlanImages,
           iconFor: _iconForRecipe,
-        ),
-        _adminSectionFromCounts(
-          title: 'Average Difficulty',
-          summaryTitle: 'Average',
-          summaryValue: _averagePostDifficulty(recipes).toStringAsFixed(1),
-          highlightTitle: 'Most Common',
-          counts: {
-            for (var level = 1; level <= 5; level++)
-              '$level Star': recipes
-                  .where((recipe) => recipe.difficultyLevel == level)
-                  .length,
-          },
-          details: _detailsByPostDifficulty(recipes),
-          iconFor: _difficultyIcon,
-          colorFor: _difficultyColor,
-          includeZeroValues: true,
-          preserveOrder: true,
         ),
       ],
     );
@@ -542,17 +490,61 @@ class StatisticsRemoteDataSource {
     );
   }
 
-  // Handles getAdminNutrientInsight for this part of the statistics page.
-  Future<CaloriesIntakeStatistics> getAdminNutrientInsight({
+  Future<AdminModerationStatistics> getAdminModeration({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
     final range = _resolveAdminRange(startDate, endDate);
-    final plannedRecipes = await _getAllPlannedRecipeNutrition(range);
+    final snapshot = await firestore.collection('recipes').get();
+    final counts = <String, int>{
+      'Pending': 0,
+      'Reviewed': 0,
+      'Hidden': 0,
+    };
 
-    return _buildCaloriesIntakeStatistics(
-      recipes: plannedRecipes,
-      range: range,
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final statusDate = _dateTime(
+        data['moderationReviewedAt'] ??
+            data['moderationHiddenAt'] ??
+            data['publishedAt'] ??
+            data['finalizedAt'] ??
+            data['createdAt'],
+      );
+      if (statusDate.millisecondsSinceEpoch > 0 &&
+          (statusDate.isBefore(range.start) || statusDate.isAfter(range.end))) {
+        continue;
+      }
+
+      final status = _moderationStatusLabel(data['moderationStatus']);
+      counts[status] = (counts[status] ?? 0) + 1;
+    }
+
+    final totalRecipes = counts.values.fold<int>(
+      0,
+      (total, value) => total + value,
+    );
+    final statuses = _rankedStatsFromCounts(
+      counts: counts,
+      total: totalRecipes,
+      iconFor: _iconForModerationStatus,
+      colorFor: _colorForModerationStatus,
+      includeZeroValues: true,
+      preserveOrder: true,
+    );
+
+    final topStatus = statuses.isEmpty
+        ? '-'
+        : ([...statuses]
+              ..sort((left, right) => right.value.compareTo(left.value)))
+              .first
+              .label;
+
+    return AdminModerationStatistics(
+      dateRange: _formatRange(range.start, range.end),
+      totalRecipes: totalRecipes,
+      topStatus: topStatus,
+      statuses: statuses,
     );
   }
 
@@ -1102,52 +1094,6 @@ class StatisticsRemoteDataSource {
     );
   }
 
-  // Handles getUserDifficultyMeals for this part of the statistics page.
-  Future<DifficultyMealStatistics> getUserDifficultyMeals({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
-    // Reads planned meals and counts their difficulty levels from 1 to 5.
-    final range = _resolveRange(startDate, endDate);
-    final uid = auth.currentUser?.uid ?? '';
-    final plans = uid.isEmpty
-        ? <_MealPlanStat>[]
-        : await _getUserMealPlans(uid, range);
-    final average = plans.isEmpty
-        ? 0.0
-        : plans.fold<int>(0, (total, plan) => total + plan.difficultyLevel) /
-              plans.length;
-
-    return DifficultyMealStatistics(
-      dateRange: _formatRange(range.start, range.end),
-      totalPost: plans.length,
-      averageDifficulty: average,
-      groups: List.generate(5, (index) {
-        final difficulty = index + 1;
-        final meals =
-            plans
-                .where((plan) => plan.difficultyLevel == difficulty)
-                .map(
-                  (plan) => DifficultyMealItem(
-                    name: plan.recipeName,
-                    date: plan.date,
-                    quantity: 1,
-                    icon: _iconForRecipe(plan.recipeName),
-                    imageUrl: plan.imageUrl,
-                  ),
-                )
-                .toList()
-              ..sort((left, right) => right.date.compareTo(left.date));
-        return DifficultyMealGroup(
-          difficulty: difficulty,
-          recipeCount: meals.length,
-          color: const Color(0xFF21AEEA),
-          meals: meals,
-        );
-      }),
-    );
-  }
-
   // Handles getUserMealPlanMethods for this part of the statistics page.
   Future<MealPlanMethodStatistics> getUserMealPlanMethods({
     DateTime? startDate,
@@ -1327,6 +1273,52 @@ class StatisticsRemoteDataSource {
       topPlanToCook: items.isEmpty ? '-' : items.first.dishName,
       recipes: items,
       days: days,
+    );
+  }
+
+  // Handles getUserDifficultyMeals for this part of the statistics page.
+  Future<DifficultyMealStatistics> getUserDifficultyMeals({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    // Reads planned meals and counts their difficulty levels from 1 to 5.
+    final range = _resolveRange(startDate, endDate);
+    final uid = auth.currentUser?.uid ?? '';
+    final plans = uid.isEmpty
+        ? <_MealPlanStat>[]
+        : await _getUserMealPlans(uid, range);
+    final average = plans.isEmpty
+        ? 0.0
+        : plans.fold<int>(0, (total, plan) => total + plan.difficultyLevel) /
+              plans.length;
+
+    return DifficultyMealStatistics(
+      dateRange: _formatRange(range.start, range.end),
+      totalPost: plans.length,
+      averageDifficulty: average,
+      groups: List.generate(5, (index) {
+        final difficulty = index + 1;
+        final meals =
+            plans
+                .where((plan) => plan.difficultyLevel == difficulty)
+                .map(
+                  (plan) => DifficultyMealItem(
+                    name: plan.recipeName,
+                    date: plan.date,
+                    quantity: 1,
+                    icon: _iconForRecipe(plan.recipeName),
+                    imageUrl: plan.imageUrl,
+                  ),
+                )
+                .toList()
+              ..sort((left, right) => right.date.compareTo(left.date));
+        return DifficultyMealGroup(
+          difficulty: difficulty,
+          recipeCount: meals.length,
+          color: const Color(0xFF21AEEA),
+          meals: meals,
+        );
+      }),
     );
   }
 
@@ -1716,50 +1708,6 @@ class StatisticsRemoteDataSource {
     });
   }
 
-  // Handles _buildAdminRecipePerformance for this part of the statistics page.
-  Future<RecipePerformanceStatistics> _buildAdminRecipePerformance(
-    List<_CommunityRecipeStat> recipes,
-  ) async {
-    final items = <RecipePerformanceItem>[];
-    for (final recipe in recipes) {
-      final favouriteCount = await _recipeFavouriteCount(recipe.id);
-      items.add(
-        RecipePerformanceItem(
-          id: recipe.id,
-          name: recipe.name,
-          imageUrl: recipe.imageUrl,
-          totalViews: recipe.totalViews,
-          commentCount: recipe.commentCount,
-          favouriteCount: favouriteCount,
-          ratingCount: recipe.ratingCount,
-          publishedAt: recipe.publishedAt,
-        ),
-      );
-    }
-
-    return RecipePerformanceStatistics(
-      dateRange: 'Not available',
-      totalViews: recipes.fold<int>(
-        0,
-        (total, recipe) => total + recipe.totalViews,
-      ),
-      totalComments: recipes.fold<int>(
-        0,
-        (total, recipe) => total + recipe.commentCount,
-      ),
-      totalFavourites: items.fold<int>(
-        0,
-        (total, recipe) => total + recipe.favouriteCount,
-      ),
-      totalRatings: recipes.fold<int>(
-        0,
-        (total, recipe) => total + recipe.ratingCount,
-      ),
-      recipes: items
-        ..sort((left, right) => right.totalViews.compareTo(left.totalViews)),
-    );
-  }
-
   // Handles _detailsFromFoodGroup for this part of the statistics page.
   List<AdminRankedStatisticDetail> _detailsFromFoodGroup(_FoodGroup group) {
     final entries = group.detailCounts.entries.toList()
@@ -1801,39 +1749,6 @@ class StatisticsRemoteDataSource {
     return {
       for (final entry in groups.entries)
         entry.key: _detailsFromMealPlans(entry.value, includeMealTime: true),
-    };
-  }
-
-  // Handles _detailsByMealDifficulty for this part of the statistics page.
-  Map<String, List<AdminRankedStatisticDetail>> _detailsByMealDifficulty(
-    List<_MealPlanStat> plans,
-  ) {
-    return {
-      for (var level = 1; level <= 5; level++)
-        '$level Star': _detailsFromMealPlans(
-          plans.where((plan) => plan.difficultyLevel == level).toList(),
-        ),
-    };
-  }
-
-  // Handles _detailsByPostDifficulty for this part of the statistics page.
-  Map<String, List<AdminRankedStatisticDetail>> _detailsByPostDifficulty(
-    List<_CommunityRecipeStat> recipes,
-  ) {
-    return {
-      for (var level = 1; level <= 5; level++)
-        '$level Star': recipes
-            .where((recipe) => recipe.difficultyLevel == level)
-            .map(
-              (recipe) => AdminRankedStatisticDetail(
-                title: recipe.name,
-                subtitle: DateFormat('MMM d, yyyy').format(recipe.publishedAt),
-                quantity: 1,
-                icon: _iconForRecipe(recipe.name),
-                imageUrl: recipe.imageUrl,
-              ),
-            )
-            .toList(),
     };
   }
 
@@ -2536,23 +2451,6 @@ class StatisticsRemoteDataSource {
     return entries.first.key;
   }
 
-  // Handles _averageDifficulty for this part of the statistics page.
-  double _averageDifficulty(List<_MealPlanStat> plans) {
-    if (plans.isEmpty) return 0;
-    return plans.fold<int>(0, (total, plan) => total + plan.difficultyLevel) /
-        plans.length;
-  }
-
-  // Handles _averagePostDifficulty for this part of the statistics page.
-  double _averagePostDifficulty(List<_CommunityRecipeStat> recipes) {
-    if (recipes.isEmpty) return 0;
-    return recipes.fold<int>(
-          0,
-          (total, recipe) => total + recipe.difficultyLevel,
-        ) /
-        recipes.length;
-  }
-
   // Handles _buildPostRatingCategories for this part of the statistics page.
   Future<List<PostRatingCategory>> _buildPostRatingCategories(
     List<_CommunityRecipeStat> recipes,
@@ -3013,6 +2911,35 @@ class StatisticsRemoteDataSource {
     }
     if (lowerName.contains('breakfast')) return Icons.breakfast_dining;
     return Icons.restaurant_menu;
+  }
+
+  String _moderationStatusLabel(Object? value) {
+    final status = _stringValue(value, fallback: 'Pending').toLowerCase();
+    if (status == 'hidden' || status == 'removed') return 'Hidden';
+    if (status == 'reviewed' || status == 'approved') return 'Reviewed';
+    return 'Pending';
+  }
+
+  IconData _iconForModerationStatus(String status) {
+    switch (status) {
+      case 'Reviewed':
+        return Icons.verified_outlined;
+      case 'Hidden':
+        return Icons.visibility_off_outlined;
+      default:
+        return Icons.pending_actions_outlined;
+    }
+  }
+
+  Color _colorForModerationStatus(String status) {
+    switch (status) {
+      case 'Reviewed':
+        return const Color(0xFF54C27A);
+      case 'Hidden':
+        return const Color(0xFFFF7A59);
+      default:
+        return const Color(0xFFFFB300);
+    }
   }
 
   // Handles _stringValue for this part of the statistics page.
