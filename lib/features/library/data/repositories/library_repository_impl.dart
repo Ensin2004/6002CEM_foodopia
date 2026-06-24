@@ -8,6 +8,8 @@ import '../../domain/entities/library_recipe.dart';
 import '../../domain/repositories/library_repository.dart';
 import '../datasources/library_remote_datasource.dart';
 
+// Handles data operations for library feature
+// Catch exceptions and return [ServerFailure] or [Right] with successful data
 class LibraryRepositoryImpl implements LibraryRepository {
   final LibraryRemoteDataSource remoteDataSource;
 
@@ -23,6 +25,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
     }
   }
 
+  // Fetches the list of followers for a given user.
   @override
   Future<Either<Failure, List<LibraryProfileUser>>> getFollowers({
     String? ownerUid,
@@ -35,6 +38,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
     }
   }
 
+  // Fetches the list of users that a given user is following.
   @override
   Future<Either<Failure, List<LibraryProfileUser>>> getFollowing({
     String? ownerUid,
@@ -47,6 +51,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
     }
   }
 
+  // Fetches all recipes from the remote data source.
   @override
   Future<Either<Failure, List<LibraryRecipe>>> getRecipes() async {
     try {
@@ -59,6 +64,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
     }
   }
 
+  // Listens to real-time updates for the recipe list.
   @override
   Stream<Either<Failure, List<LibraryRecipe>>> watchRecipes() async* {
     try {
@@ -70,6 +76,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
     }
   }
 
+  // Fetches detailed information for a specific recipe by ID.
   @override
   Future<Either<Failure, LibraryRecipe>> getRecipeDetail(
     String recipeId,
@@ -84,6 +91,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
     }
   }
 
+  // Toggles the favourite status of a recipe.
   @override
   Future<Either<Failure, void>> toggleFavourite({
     required String recipeId,
@@ -92,7 +100,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
     if (recipeId.trim().isEmpty) {
       return Left(ValidationFailure(message: 'Recipe id is missing.'));
     }
-
+    // Validate input before making the API call
     try {
       await remoteDataSource.toggleFavourite(
         recipeId: recipeId,
@@ -104,6 +112,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
     }
   }
 
+  // Updates the current user's profile information.
   @override
   Future<Either<Failure, void>> updateProfile({
     required String name,

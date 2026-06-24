@@ -1,4 +1,6 @@
+// Represents a user's library profile, contains user personal information
 class LibraryProfile {
+  // The user's display name, biography, profile picture, followers and following
   final String name;
   final String bio;
   final String imageUrl;
@@ -14,7 +16,9 @@ class LibraryProfile {
   });
 }
 
+// Represents a simplified user profile for displaying in lists.
 class LibraryProfileUser {
+  // The user's uid, display name, profile picture, number of followers
   final String uid;
   final String name;
   final String imageUrl;

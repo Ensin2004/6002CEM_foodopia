@@ -6,6 +6,8 @@ import '../../../../core/error/failures.dart';
 import '../entities/library_profile.dart';
 import '../entities/library_recipe.dart';
 
+// Repository interface for the library feature.
+// Defines the contract for data operations related to library profiles
 abstract class LibraryRepository {
   Future<Either<Failure, LibraryProfile>> getProfile();
 
@@ -28,6 +30,7 @@ abstract class LibraryRepository {
     required bool isFavourite,
   });
 
+// Updates the current user's profile information.
   Future<Either<Failure, void>> updateProfile({
     required String name,
     required String bio,

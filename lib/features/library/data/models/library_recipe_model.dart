@@ -1,5 +1,6 @@
 import '../../domain/entities/library_recipe.dart';
 
+// Extends domain entity used in data layer like API responses or database mapping
 class LibraryRecipeModel extends LibraryRecipe {
   const LibraryRecipeModel({
     required super.id,
