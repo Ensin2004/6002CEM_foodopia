@@ -2,6 +2,7 @@ import 'add_recipe_ingredient.dart';
 import 'add_recipe_instruction.dart';
 import 'add_recipe_video_result.dart';
 
+/// Recipe draft created from an uploaded food image after AI ingredient extraction.
 class AddRecipeImageResult {
   final String recipeName;
   final String description;
@@ -16,6 +17,8 @@ class AddRecipeImageResult {
   });
 }
 
+/// Raw AI image draft with food validation result, recipe details, ingredients
+/// and cooking instructions before conversion into editable recipe data.
 class AddRecipeImageDraft {
   final bool isFood;
   final String reason;

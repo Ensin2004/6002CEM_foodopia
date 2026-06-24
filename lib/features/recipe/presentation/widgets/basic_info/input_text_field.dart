@@ -4,7 +4,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 
-/// Input text field shared across the add recipe form.
+/// Reusable input text field shared across the add recipe form.
 class InputTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
@@ -34,9 +34,12 @@ class InputTextField extends StatelessWidget {
       maxLines: maxLines,
       decoration: InputDecoration(
         hintText: hint,
+
+        // Custom suffix with optional text and delete button
         suffixIcon: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Display suffix text if provided
             if (suffixText != null)
               Padding(
                 padding: const EdgeInsets.only(right: AppSpacing.lg),
@@ -47,6 +50,8 @@ class InputTextField extends StatelessWidget {
                   ),
                 ),
               ),
+
+            // Delete icon - only shown when a delete callback is provided
             if (onDelete != null)
               IconButton(
                 onPressed: onDelete,

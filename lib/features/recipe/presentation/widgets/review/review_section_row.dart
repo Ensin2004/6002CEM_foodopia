@@ -23,6 +23,7 @@ class ReviewSectionRow extends StatefulWidget {
   State<ReviewSectionRow> createState() => _ReviewSectionRowState();
 }
 
+/// The state class that manages the expansion state of the section.
 class _ReviewSectionRowState extends State<ReviewSectionRow> {
   bool _isExpanded = false;
 
@@ -41,16 +42,21 @@ class _ReviewSectionRowState extends State<ReviewSectionRow> {
           ),
           child: ExpansionTile(
             initiallyExpanded: false,
+            // Update state when user expands/collapses
             onExpansionChanged: (expanded) {
               setState(() => _isExpanded = expanded);
             },
             tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             childrenPadding: EdgeInsets.zero,
+
+            // Section Icon
             leading: Icon(
                 widget.icon,
                 color: _isExpanded ? AppColors.primary : Colors.black,
                 size: 18,
             ),
+
+            // Section Header
             title: Text(
               widget.title,
               overflow: TextOverflow.ellipsis,
@@ -58,6 +64,8 @@ class _ReviewSectionRowState extends State<ReviewSectionRow> {
                 color: _isExpanded ? AppColors.primary : AppColors.textPrimary,
               ),
             ),
+
+            // Edit Button and Expand/Collapse Icon
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

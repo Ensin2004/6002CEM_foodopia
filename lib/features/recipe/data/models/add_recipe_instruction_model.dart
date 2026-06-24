@@ -1,3 +1,4 @@
+/// Converts one cooking step into the Firestore instruction subcollection shape.
 class AddRecipeInstructionModel {
   final int? sectionIndex;
   final String? sectionTitle;
@@ -14,6 +15,7 @@ class AddRecipeInstructionModel {
   });
 
   Map<String, dynamic> toFirestore() {
+    // Instruction documents preserve section data, step order, image, and description.
     return {
       'sectionIndex': sectionIndex,
       'sectionTitle': sectionTitle,

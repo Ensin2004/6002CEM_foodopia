@@ -23,6 +23,7 @@ class IngredientUnitPickerSheet extends StatefulWidget {
   State<IngredientUnitPickerSheet> createState() => _UnitPickerSheetState();
 }
 
+/// The state class that manages unit selection and filtering.
 class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
   final TextEditingController _customUnitController = TextEditingController();
 
@@ -33,6 +34,7 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
   }
 
   @override
+  // Clean up resources
   void dispose() {
     _customUnitController.removeListener(_onCustomTextChanged);
     _customUnitController.dispose();
@@ -62,6 +64,7 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Visual indicator that the sheet can be dragged down
               Center(
                 child: Container(
                   width: 42,
@@ -73,6 +76,8 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
+
+              // Header
               Text(
                 "Select Unit",
                 maxLines: 1,
@@ -80,6 +85,8 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                 style: context.text.titleMedium,
               ),
               const SizedBox(height: AppSpacing.md),
+
+              // Search/Custom Input Field
               TextField(
                 controller: _customUnitController,
                 textInputAction: TextInputAction.done,
@@ -96,9 +103,12 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                 onSubmitted: (_) => _submitSelection(),
               ),
               const SizedBox(height: AppSpacing.sm),
+
+              // Units List
               Expanded(
                 child: groupedUnits.isEmpty
                     ? Center(
+                      // Empty State
                         child: Image.asset(
                           "assets/images/empty_page.png",
                           height: 120,
@@ -106,12 +116,14 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                       )
                     : ListView(
                         children: [
+                          // Grouped units list
                           ...groupedUnits.entries.map((entry) {
                             return Padding(
                               padding: const EdgeInsets.only(top: AppSpacing.sm),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // Category Header
                                   Center(
                                     child: Text(
                                       entry.key,
@@ -124,6 +136,8 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                                     ),
                                   ),
                                   const Divider(color: AppColors.border),
+
+                                  // Units in the Category
                                   ...entry.value.map((unit) {
                                     return Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
@@ -147,6 +161,8 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
                       ),
               ),
               const SizedBox(height: AppSpacing.lg),
+
+              // Action Button
               PrimaryButton(
                 text: "Use Custom Unit",
                 onPressed: query.isNotEmpty ? _submitSelection : null,
@@ -158,7 +174,11 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
     );
   }
 
-  // Match, Group Helper
+  // ============================================================
+  // Helper Methods
+  // ============================================================
+
+  /// Returns units that match the search query
   List<AddRecipeIngredientUnit> _matchingUnits(String query) {
     if (query.isEmpty) return widget.units;
     final normalized = query.toLowerCase();
@@ -167,6 +187,7 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
         .toList();
   }
 
+  /// Groups units by their category name
   Map<String, List<AddRecipeIngredientUnit>> _groupUnits(
     List<AddRecipeIngredientUnit> units,
   ) {
@@ -177,7 +198,7 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
     return grouped;
   }
 
-  // Submit Button Helper
+  /// Submits the current text as the selected unit
   void _submitSelection() {
     final customUnit = _customUnitController.text.trim();
     if (customUnit.isEmpty) return;
@@ -189,6 +210,7 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
     Navigator.of(context).pop(UnitPickerSelection.custom(customUnit));
   }
 
+  /// Finds a unit by its name
   AddRecipeIngredientUnit? _unitByName(String name) {
     final normalizedName = name.toLowerCase();
     for (final unit in widget.units) {
@@ -197,7 +219,7 @@ class _UnitPickerSheetState extends State<IngredientUnitPickerSheet> {
     return null;
   }
 
-  // Listener Helper
+  /// Listener for text field changes
   void _onCustomTextChanged() {
     setState(() {});
   }
@@ -215,6 +237,7 @@ class UnitPickerSelection {
     required this.isCustom,
   });
 
+  /// Creates a selection from a predefined unit
   factory UnitPickerSelection.fromList(AddRecipeIngredientUnit unit) {
     return UnitPickerSelection(
       unitId: unit.id,
@@ -223,6 +246,7 @@ class UnitPickerSelection {
     );
   }
 
+  /// Creates a custom unit selection
   factory UnitPickerSelection.custom(String unitName) {
     return UnitPickerSelection(
       unitId: "",

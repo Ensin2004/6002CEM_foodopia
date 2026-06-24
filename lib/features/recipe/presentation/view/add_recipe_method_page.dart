@@ -22,11 +22,14 @@ import '../../domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../viewmodel/add_recipe_method_viewmodel.dart';
 import '../widgets/recipe_error_dialog.dart';
 
+/// Add recipe choose method page
+/// For user to choose which method to use to create the recipe
 class AddRecipePage extends StatelessWidget {
   const AddRecipePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Set up view models with dependency injection
     return ChangeNotifierProvider(
       create: (_) => AddRecipeMethodViewModel(
         generateIngredientsFromImageUseCase:
@@ -42,6 +45,7 @@ class AddRecipePage extends StatelessWidget {
   }
 }
 
+/// Stateful widget of the add recipe choose method page.
 class _AddRecipeChooseMethodView extends StatefulWidget {
   const _AddRecipeChooseMethodView();
 
@@ -85,6 +89,8 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
                       style: context.text.bodyLarge,
                     ),
                     const SizedBox(height: AppSpacing.lg),
+
+                    // Method 1: Upload Image (AI recipe generation)
                     MethodCard(
                       icon: Icons.image_rounded,
                       title: "Upload Image",
@@ -95,6 +101,8 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
                       },
                     ),
                     const SizedBox(height: AppSpacing.lg),
+
+                    // Method 2: Upload Video (AI recipe generation)
                     MethodCard(
                       icon: Icons.movie_creation_rounded,
                       title: "Upload Video",
@@ -104,6 +112,8 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
                       },
                     ),
                     const SizedBox(height: AppSpacing.lg),
+
+                    // Method 3: Create from Scratch (Manual entry)
                     MethodCard(
                       icon: Icons.edit_note_rounded,
                       title: "Create from Scratch",
@@ -125,13 +135,20 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
     );
   }
 
-  // Upload Image Helper
+  // ============================================================
+  // Image Upload Flow
+  // ============================================================
+
+  /// Handles the image upload recipe generation flow
   Future<void> _handleUploadImage(BuildContext context) async {
     final viewModel = context.read<AddRecipeMethodViewModel>();
     viewModel.selectMethod(AddRecipeMethod.uploadImage);
+
+    // Open gallery to select an image
     final image = await _imagePicker.pickImage(source: ImageSource.gallery);
     if (!context.mounted || image == null) return;
 
+    // Loading dialog stays visible while AI extracts recipe details from the image.
     final rootNavigator = Navigator.of(context, rootNavigator: true);
     showDialog<void>(
       context: context,
@@ -141,6 +158,7 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
       ),
     );
 
+    // Process the image through AI
     final imageFile = File(image.path);
     final success = await viewModel.generateIngredientsFromImage(imageFile);
     if (!context.mounted) return;
@@ -155,6 +173,7 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
       return;
     }
 
+    // Generated image data seeds the manual basic info and ingredient steps.
     context.push(
       AppRouter.addRecipeBasicInfo,
       extra: AddRecipeBasicInfoArgs(
@@ -169,13 +188,20 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
     );
   }
 
-  // Upload Video Helper
+  // ============================================================
+  // Video Upload Flow
+  // ============================================================
+
+  /// Handles the video upload recipe generation flow
   Future<void> _handleUploadVideo(BuildContext context) async {
     final viewModel = context.read<AddRecipeMethodViewModel>();
     viewModel.selectMethod(AddRecipeMethod.uploadVideo);
+
+    // Open gallery to select a video
     final video = await _imagePicker.pickVideo(source: ImageSource.gallery);
     if (!context.mounted || video == null) return;
 
+    // Loading dialog stays visible while the video is converted into a saved draft.
     final rootNavigator = Navigator.of(context, rootNavigator: true);
     showDialog<void>(
       context: context,
@@ -183,6 +209,7 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
       builder: (_) => const LoadingDialog(),
     );
 
+    // Process the video through AI
     final success = await viewModel.generateRecipeFromVideo(video.path);
     if (!context.mounted) return;
     rootNavigator.pop();
@@ -195,6 +222,7 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
       return;
     }
 
+    // Video generation already saves the draft, so navigation jumps to review.
     context.pushReplacement(
       AppRouter.addRecipeReview,
       extra: AddRecipeReviewArgs(recipeId: viewModel.generatedRecipeId ?? ""),

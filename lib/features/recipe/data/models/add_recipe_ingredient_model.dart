@@ -1,3 +1,4 @@
+/// Converts one ingredient entry into the Firestore ingredient subcollection shape.
 class AddRecipeIngredientModel {
   final String name;
   final String? imageUrl;
@@ -20,6 +21,7 @@ class AddRecipeIngredientModel {
   });
 
   Map<String, dynamic> toFirestore() {
+    // Ingredient documents store both configured ids and custom references when needed.
     return {
       'name': name,
       'image': imageUrl,

@@ -10,6 +10,8 @@ import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 
+/// Controls basic recipe information state, setup loading, existing recipe seeding,
+/// difficulty selection, saving and food search for allergen suggestions.
 class AddRecipeBasicInfoViewModel extends ChangeNotifier {
   final GetAddRecipeSetupUseCase getSetupUseCase;
   final SearchAddRecipeFoodsUseCase searchFoodsUseCase;
@@ -33,7 +35,9 @@ class AddRecipeBasicInfoViewModel extends ChangeNotifier {
     loadSetup();
   }
 
+  /// Loads setup data needed by the basic information form.
   Future<void> loadSetup() async {
+    // Setup loading starts immediately so category and allergen choices can render.
     isLoading = true;
     errorMessage = null;
     notifyListeners();
@@ -50,11 +54,14 @@ class AddRecipeBasicInfoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Loads saved review data when editing an existing recipe.
   Future<void> loadExistingRecipe(String recipeId) async {
+    // Empty ids and already-loaded recipes do not need another review request.
     if (recipeId.trim().isEmpty || existingReview?.recipeId == recipeId) {
       return;
     }
 
+    // Existing recipe data comes from the review snapshot used by edit screens.
     isLoading = true;
     errorMessage = null;
     notifyListeners();
@@ -72,7 +79,9 @@ class AddRecipeBasicInfoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates the selected difficulty level and refreshes the form state.
   void selectDifficulty(int value) {
+    // Difficulty stays inside the supported one-to-five level range.
     difficultyLevel = value < 1
         ? 1
         : value > 5
@@ -82,7 +91,9 @@ class AddRecipeBasicInfoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Saves basic recipe information and stores the saved recipe id.
   Future<bool> saveBasicInfo(AddRecipeBasicInfo info) async {
+    // Save state disables repeat submissions until the use case finishes.
     isSaving = true;
     errorMessage = null;
     notifyListeners();
@@ -96,12 +107,15 @@ class AddRecipeBasicInfoViewModel extends ChangeNotifier {
       savedRecipeId = result.right;
     }
 
+    // Successful saves expose the recipe id for navigation to the next step.
     isSaving = false;
     notifyListeners();
     return success;
   }
 
+  /// Searches foods for option suggestions in the basic information form.
   Future<List<AddRecipeFoodSearchResult>> searchFoods(String query) async {
+    // Food search failures return an empty suggestion list for the picker.
     final result = await searchFoodsUseCase.execute(query);
     if (result.isLeft()) return [];
     return result.right ?? [];

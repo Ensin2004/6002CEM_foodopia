@@ -26,6 +26,7 @@ class IngredientNamePickerSheet extends StatefulWidget {
   State<IngredientNamePickerSheet> createState() => _IngredientNamePickerSheetState();
 }
 
+/// The state class that manages search results and user input.
 class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
   final TextEditingController _nameController = TextEditingController();
   Timer? _debounce;
@@ -39,6 +40,7 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
   }
 
   @override
+  // Clean up resources
   void dispose() {
     _debounce?.cancel();
     _nameController.removeListener(_onQueryChanged);
@@ -65,6 +67,7 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Visual indicator that the sheet can be dragged down
               Center(
                 child: Container(
                   width: 42,
@@ -76,6 +79,8 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
+
+              // Header
               Text(
                 "Select Ingredient",
                 maxLines: 1,
@@ -83,6 +88,8 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
                 style: context.text.titleMedium,
               ),
               const SizedBox(height: AppSpacing.md),
+
+              // Search/Custom Input Field
               TextField(
                 controller: _nameController,
                 textInputAction: TextInputAction.done,
@@ -99,8 +106,12 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
                 onSubmitted: (_) => _submitSelection(),
               ),
               const SizedBox(height: AppSpacing.sm),
+
+              // Ingredients List
               Expanded(child: _buildResults(context, query)),
               const SizedBox(height: AppSpacing.lg),
+
+              // Action Button
               PrimaryButton(
                 text: "Use Custom Ingredient",
                 onPressed: query.isNotEmpty ? _submitSelection : null,
@@ -112,8 +123,9 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
     );
   }
 
-  // Results display based on status
+  /// Builds the results display based on current state
   Widget _buildResults(BuildContext context, String query) {
+    // Food Search Loading Indicator
     if (_isSearching) {
       return ListView(
         children: [
@@ -125,12 +137,14 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
       );
     }
 
+    // Empty State
     if (query.length < 2 || _results.isEmpty) {
       return Center(
         child: Image.asset("assets/images/empty_page.png", height: 120),
       );
     }
 
+    // Show Results
     return ListView(
       children: [
         Padding(
@@ -150,6 +164,8 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
                 ),
               ),
               const Divider(color: AppColors.border),
+
+              // Map each search result to a selectable list tile
               ..._results.map((food) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
@@ -172,25 +188,37 @@ class _IngredientNamePickerSheetState extends State<IngredientNamePickerSheet> {
     );
   }
 
-  // Submit Button Helper
+  // ============================================================
+  // Helper Methods
+  // ============================================================
+
+  /// Submits the current text as the selected ingredient
   void _submitSelection() {
     final customName = _nameController.text.trim();
     if (customName.isEmpty) return;
     Navigator.of(context).pop(IngredientNamePickerSelection.custom(customName));
   }
 
-  // Listener Helper
+  // ============================================================
+  // Search Methods
+  // ============================================================
+
+  /// Listener for text field changes
   void _onQueryChanged() {
     setState(() {});
+
+    // Cancel pending search and start a new debounced search
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
       _searchFoods(_nameController.text);
     });
   }
 
-  // Search Helper
+  /// Searches for foods based on the query text
   Future<void> _searchFoods(String query) async {
     final trimmed = query.trim();
+
+    // Don't search for short queries (less than 2 characters)
     if (trimmed.length < 2) {
       if (!mounted) return;
       setState(() {
@@ -223,6 +251,7 @@ class IngredientNamePickerSelection {
     required this.isCustom,
   });
 
+  /// Creates a selection from a USDA food search result
   factory IngredientNamePickerSelection.usda(AddRecipeFoodSearchResult food) {
     return IngredientNamePickerSelection(
       name: food.name,
@@ -231,6 +260,7 @@ class IngredientNamePickerSelection {
     );
   }
 
+  /// Creates a custom selection from a user-entered name
   factory IngredientNamePickerSelection.custom(String name) {
     return IngredientNamePickerSelection(
       name: name,

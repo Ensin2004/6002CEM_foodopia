@@ -4,6 +4,7 @@ import '../../../../core/error/failures.dart';
 import '../entities/add_recipe_ingredient_unit.dart';
 import '../repositories/add_recipe_repository.dart';
 
+/// Loads active ingredient units for the ingredient unit picker.
 class GetAddRecipeIngredientUnitsUseCase {
   final AddRecipeRepository repository;
 

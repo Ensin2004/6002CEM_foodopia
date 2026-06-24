@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
+/// Display one notification preference row with icon, title, description, and adaptive switch control
 class NotificationSettingTile extends StatelessWidget {
   final IconData icon;
   final String title;

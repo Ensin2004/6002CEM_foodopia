@@ -3,6 +3,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../repositories/add_recipe_repository.dart';
 
+/// Finds an ingredient image URL for visual ingredient rows.
 class GetAddRecipeIngredientImageUseCase {
   final AddRecipeRepository repository;
 

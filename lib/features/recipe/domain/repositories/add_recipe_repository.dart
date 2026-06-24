@@ -14,6 +14,8 @@ import '../entities/add_recipe_review.dart';
 import '../entities/add_recipe_setup.dart';
 import '../entities/add_recipe_video_result.dart';
 
+/// Contract for every add-recipe operation used by the domain layer,
+/// including setup loading, AI generation, saving, review, visibility and deletion.
 abstract class AddRecipeRepository {
   Future<Either<Failure, AddRecipeSetup>> getSetup();
 

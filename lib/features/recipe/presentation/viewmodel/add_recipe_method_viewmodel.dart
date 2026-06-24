@@ -12,8 +12,10 @@ import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/save_add_recipe_instructions_usecase.dart';
 
+/// Recipe creation choices shown on the add-recipe method screen.
 enum AddRecipeMethod { uploadImage, uploadVideo, scratch }
 
+/// Controls recipe creation method selection plus AI image and video generation flows.
 class AddRecipeMethodViewModel extends ChangeNotifier {
   final GenerateAddRecipeIngredientsFromImageUseCase?
   generateIngredientsFromImageUseCase;
@@ -49,12 +51,15 @@ class AddRecipeMethodViewModel extends ChangeNotifier {
     this.completeRecipeUseCase,
   });
 
+  /// Stores the selected creation method for the method selection screen.
   void selectMethod(AddRecipeMethod method) {
     _selectedMethod = method;
     notifyListeners();
   }
 
+  /// Generates editable recipe ingredients and draft details from an uploaded image.
   Future<bool> generateIngredientsFromImage(File imageFile) async {
+    // Missing image generation use case means the upload image feature is unavailable.
     final generateUseCase = generateIngredientsFromImageUseCase;
     if (generateUseCase == null) {
       _errorMessage = 'Upload image is not configured.';
@@ -62,6 +67,7 @@ class AddRecipeMethodViewModel extends ChangeNotifier {
       return false;
     }
 
+    // Previous generated image results are cleared before starting a fresh request.
     _isGeneratingImageIngredients = true;
     _errorMessage = null;
     _generatedImageRecipe = null;
@@ -77,6 +83,7 @@ class AddRecipeMethodViewModel extends ChangeNotifier {
       return false;
     }
 
+    // Generated ingredient data stays available for the next customization screen.
     _generatedImageRecipe = result.right;
     _generatedImageIngredients = _generatedImageRecipe?.ingredients ?? [];
     _isGeneratingImageIngredients = false;
@@ -89,7 +96,9 @@ class AddRecipeMethodViewModel extends ChangeNotifier {
     return true;
   }
 
+  /// Generates, saves and completes a recipe draft from an uploaded video.
   Future<bool> generateRecipeFromVideo(String videoPath) async {
+    // Video generation needs generation plus every save use case to finish the draft.
     final generateUseCase = generateFromVideoUseCase;
     final saveBasicInfo = saveBasicInfoUseCase;
     final saveIngredients = saveIngredientsUseCase;
@@ -105,6 +114,7 @@ class AddRecipeMethodViewModel extends ChangeNotifier {
       return false;
     }
 
+    // Video generation starts with a clean error and recipe id state.
     _isGeneratingVideoRecipe = true;
     _errorMessage = null;
     _generatedRecipeId = null;
@@ -116,6 +126,7 @@ class AddRecipeMethodViewModel extends ChangeNotifier {
     }
     final draft = generated.right!;
 
+    // Generated video drafts are saved through the same steps as manual recipe entry.
     final basicInfoResult = await saveBasicInfo.execute(draft.basicInfo);
     if (basicInfoResult.isLeft()) {
       return _finishWithError(basicInfoResult.left?.message);
@@ -153,6 +164,7 @@ class AddRecipeMethodViewModel extends ChangeNotifier {
     return true;
   }
 
+  /// Stores generation failure text and resets the video loading state.
   bool _finishWithError(String? message) {
     _errorMessage = message ?? 'Unable to generate recipe from video.';
     _isGeneratingVideoRecipe = false;

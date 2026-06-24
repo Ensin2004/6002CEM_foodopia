@@ -5,7 +5,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../view/add_recipe_basic_info_page.dart';
 
-/// Displays selected categories or allergen info.
+/// Form field widget for displaying and managing selected categories or allergen info.
 class InputOptionField extends StatelessWidget {
   final String placeholder;
   final List<SelectedRecipeOption> values;
@@ -22,6 +22,7 @@ class InputOptionField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Show placeholder when no options are selected
     if (values.isEmpty) {
       return _OptionField(
         text: placeholder,
@@ -30,6 +31,7 @@ class InputOptionField extends StatelessWidget {
       );
     }
 
+    // Show each selected option as a separate field with delete button
     return Column(
       children: values.asMap().entries.map((entry) {
         return Padding(
@@ -47,7 +49,7 @@ class InputOptionField extends StatelessWidget {
   }
 }
 
-/// Displays one selected category or allergen info with a delete button.
+/// Displays one selected category or allergen info with an optional delete button.
 class _OptionField extends StatelessWidget {
   final String text;
   final bool isPlaceholder;
@@ -82,6 +84,7 @@ class _OptionField extends StatelessWidget {
         ),
         child: Row(
           children: [
+            // Text content - expands to fill available space
             Expanded(
               child: Text(
                 text,
@@ -94,10 +97,14 @@ class _OptionField extends StatelessWidget {
                 ),
               ),
             ),
+
+            // Dropdown arrow indicates this is a selectable field
             Icon(
               Icons.keyboard_arrow_down,
               color: AppColors.textSecondary.withValues(alpha: 0.5),
             ),
+
+            // Delete icon - only shown when a delete callback is provided
             if (onDelete != null) ...[
               const SizedBox(width: AppSpacing.sm),
               InkWell(

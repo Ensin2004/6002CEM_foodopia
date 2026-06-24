@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/app_notification.dart';
 
+/// Shows one notification row with an icon, unread marker, message preview
+/// and compact time label for the notification inbox.
 class NotificationTile extends StatelessWidget {
   final AppNotification notification;
   final VoidCallback onTap;
@@ -86,6 +88,7 @@ class NotificationTile extends StatelessWidget {
     );
   }
 
+  /// Selects the visual icon that best matches the notification category
   IconData _iconFor(AppNotificationType type) {
     switch (type) {
       case AppNotificationType.newFollower:
@@ -119,6 +122,7 @@ class NotificationTile extends StatelessWidget {
     }
   }
 
+  /// Formats notification creation time into a short inbox-friendly label.
   String _formatTimeAgo(DateTime dateTime) {
     final difference = DateTime.now().difference(dateTime);
     if (difference.inMinutes < 1) return 'now';
@@ -129,6 +133,7 @@ class NotificationTile extends StatelessWidget {
   }
 }
 
+/// Small status dot displayed below the icon for unread notifications.
 class _UnreadDot extends StatelessWidget {
   const _UnreadDot();
 

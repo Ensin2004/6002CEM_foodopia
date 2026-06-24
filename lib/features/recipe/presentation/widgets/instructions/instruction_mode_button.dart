@@ -39,16 +39,20 @@ class InstructionModeButton extends StatelessWidget {
         ),
         child: Row(
           children: [
+            // Icon
             Icon(
               icon,
               color: selected ? AppColors.primary : AppColors.textPrimary,
               size: 20,
             ),
             const SizedBox(width: AppSpacing.sm),
+
+            // Title and Subtitle
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Title
                   Text(
                     title,
                     maxLines: 1,
@@ -60,6 +64,7 @@ class InstructionModeButton extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  // Subtitle
                   Text(
                     subtitle,
                     maxLines: 1,
