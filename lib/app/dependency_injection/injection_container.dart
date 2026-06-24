@@ -913,6 +913,7 @@ void _initMainFeature() {
   sl.registerFactory(
     () => MainViewModel(
       user: sl(), // This will be overridden when creating.
+      role: 'user',
       repository: sl(),
     ),
   );
