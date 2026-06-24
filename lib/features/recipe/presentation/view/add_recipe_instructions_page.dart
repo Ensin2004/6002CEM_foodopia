@@ -31,6 +31,8 @@ import '../widgets/recipe_error_dialog.dart';
 import '../widgets/recipe_visibility_action_button.dart';
 import '../widgets/instructions/section_instruction_list.dart';
 
+/// Add recipe instructions page
+/// For user to fill in the instructions of the recipe
 class AddRecipeInstructionDraft {
   final List<AddRecipeInstruction> instructions;
   final bool useSections;
@@ -73,6 +75,7 @@ class AddRecipeInstructionsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Set up view models with dependency injection
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
@@ -105,6 +108,7 @@ class AddRecipeInstructionsPage extends StatelessWidget {
   }
 }
 
+/// Stateful widget of the add recipe instructions page.
 class _AddRecipeInstructionsView extends StatefulWidget {
   final String recipeId;
   final bool returnToReview;
@@ -150,6 +154,8 @@ class _AddRecipeInstructionsViewState
   @override
   void initState() {
     super.initState();
+
+    // If instruction is already available from other sources, initialize it
     final aiInstructions = widget.initialAiRecipe?.instructions ?? const [];
     final generatedInstructions = widget.initialGeneratedInstructions;
     _steps = aiInstructions.isNotEmpty
@@ -164,6 +170,8 @@ class _AddRecipeInstructionsViewState
               )
               .toList()
         : [InstructionStepState()];
+
+    // Listener to update state when changes made
     for (final step in _steps) {
       step.addListener(_refreshFormState);
     }
@@ -173,6 +181,7 @@ class _AddRecipeInstructionsViewState
   }
 
   @override
+  // Clean up to prevent memory leakage
   void dispose() {
     for (final step in _steps) {
       step.dispose();
@@ -194,6 +203,7 @@ class _AddRecipeInstructionsViewState
       return const _AddRecipePageLoading();
     }
 
+    // Load existing recipe data if in editing mode (recipeId exists)
     if (widget.initialAiRecipe == null &&
         widget.initialGeneratedInstructions.isEmpty &&
         viewModel.existingReview == null &&
@@ -208,11 +218,13 @@ class _AddRecipeInstructionsViewState
       return const _AddRecipePageLoading();
     }
 
+    // Seed form data from existing review
     final existingReview = viewModel.existingReview;
     if (existingReview != null && _seededRecipeId != existingReview.recipeId) {
       _seedFromReview(viewModel);
     }
 
+    // Capture initial form state for change detection
     _initialFormSignature ??= _formSignature();
 
     return PopScope(
@@ -260,6 +272,7 @@ class _AddRecipeInstructionsViewState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Progress Bar
               if (!widget.hideProgressBar)
                 const Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -351,6 +364,8 @@ class _AddRecipeInstructionsViewState
                         onReorderStep: _reorderFlatStep,
                       ),
               ),
+
+              // Bottom Action Button
               Padding(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
@@ -377,19 +392,27 @@ class _AddRecipeInstructionsViewState
     );
   }
 
-  // Handle back action
+  // ============================================================
+  // Navigation and Flow Control Methods
+  // ============================================================
+
+  /// Handle back action
   Future<void> _handleBack(BuildContext context) async {
+    // Pages without changes can leave immediately.
     if (!_hasUnsavedChanges()) {
       _leaveEditPage(context);
       return;
     }
 
+    // Unsaved edits require confirmation before navigation continues.
     final discard = await confirmDiscardRecipeChanges(context);
     if (!context.mounted || !discard) return;
     _leaveEditPage(context);
   }
 
+  /// Handle leave action
   void _leaveEditPage(BuildContext context) {
+    // Edit-from-review returns directly to the review step.
     if (widget.returnToReview) {
       context.pushReplacement(
         AppRouter.addRecipeReview,
@@ -398,18 +421,24 @@ class _AddRecipeInstructionsViewState
       return;
     }
 
+    // Returns to previous page
     if (context.canPop()) {
       context.pop();
     }
   }
 
-  // Image Picker Helper
+  // ============================================================
+  // Image Handling Methods
+  // ============================================================
+
+  /// Opens the file picker to select an image for a specific step
   Future<void> _pickStepImage(InstructionStepState step) async {
     final image = await _pickImageFile();
     if (image == null) return;
     setState(() => step.imageFile = image);
   }
 
+  /// Picks a single image file for a step
   Future<File?> _pickImageFile() async {
     final result = await fp.FilePicker.pickFiles(
       allowMultiple: false,
@@ -420,15 +449,22 @@ class _AddRecipeInstructionsViewState
     return path == null ? null : File(path);
   }
 
-  // Add, Remove, Reorder Helper
+  // ============================================================
+  // Flat Mode Methods
+  // ============================================================
+
+  /// Adds a new empty step in flat mode
   void _addFlatStep() {
+    // New flat steps listen for text changes so save availability updates live.
     final step = InstructionStepState();
     step.addListener(_refreshFormState);
     setState(() => _steps.add(step));
   }
 
+  /// Removes a step by index in flat mode
   void _removeFlatStep(int index) {
     setState(() {
+      // The final flat step is cleared instead of removed to keep one editable step visible.
       if (_steps.length == 1) {
         _steps[index].clear();
         return;
@@ -438,22 +474,32 @@ class _AddRecipeInstructionsViewState
     });
   }
 
+  /// Reorders steps (drag-and-drop) in flat mode
   void _reorderFlatStep(int oldIndex, int newIndex) {
     setState(() {
+      // Flutter reorder callbacks need index adjustment when moving downward.
       if (newIndex > oldIndex) newIndex -= 1;
       final step = _steps.removeAt(oldIndex);
       _steps.insert(newIndex, step);
     });
   }
 
+  // ============================================================
+  // Section Mode Methods
+  // ============================================================
+
+  /// Adds a new empty section
   void _addSection() {
+    // New sections listen for title and step changes save availability updates live.
     final section = InstructionSectionState();
     section.addListener(_refreshFormState);
     setState(() => _sections.add(section));
   }
 
+  /// Removes a section by index
   void _removeSection(int sectionIndex) {
     setState(() {
+      // The final section is cleared instead of removed to keep one editable section visible.
       if (_sections.length == 1) {
         _sections[sectionIndex].clear();
         return;
@@ -463,20 +509,24 @@ class _AddRecipeInstructionsViewState
     });
   }
 
+  /// Reorders sections (drag-and-drop)
   void _reorderSection(int oldIndex, int newIndex) {
     setState(() {
+      // Flutter reorder callbacks need index adjustment when moving downward.
       if (newIndex > oldIndex) newIndex -= 1;
       final section = _sections.removeAt(oldIndex);
       _sections.insert(newIndex, section);
     });
   }
 
+  /// Adds a new empty step to a specific section
   void _addSectionStep(InstructionSectionState section) {
     final step = InstructionStepState();
     step.addListener(_refreshFormState);
     setState(() => section.steps.add(step));
   }
 
+  /// Removes a step from a specific section by index
   void _removeSectionStep(InstructionSectionState section, int stepIndex) {
     setState(() {
       if (section.steps.length == 1) {
@@ -488,6 +538,7 @@ class _AddRecipeInstructionsViewState
     });
   }
 
+  /// Reorders steps within a section (drag-and-drop)
   void _reorderSectionStep(
     InstructionSectionState section,
     int oldIndex,
@@ -500,12 +551,17 @@ class _AddRecipeInstructionsViewState
     });
   }
 
-  // Next Button Helper
+  // ============================================================
+  // Main Action Methods
+  // ============================================================
+
+  /// Handles the next/save action
   Future<void> _handleNext(
     BuildContext context,
     AddRecipeInstructionsViewModel viewModel,
   ) async {
     if (widget.initialAiRecipe != null) {
+      // AI draft mode passes instructions forward without saving Firestore data yet.
       final onAiDraftNext = widget.onAiDraftNext;
       if (onAiDraftNext != null) {
         _didSaveChanges = true;
@@ -533,6 +589,7 @@ class _AddRecipeInstructionsViewState
       return;
     }
 
+    // Manual flow saves completed instructions before opening the review step.
     final success = await viewModel.saveInstructions(
       recipeId: widget.recipeId,
       useSections: _useSections,
@@ -550,6 +607,7 @@ class _AddRecipeInstructionsViewState
 
     _didSaveChanges = true;
 
+    // Editing from review returns to review after saving changes
     if (widget.returnToReview) {
       context.pushReplacement(
         AppRouter.addRecipeReview,
@@ -563,6 +621,7 @@ class _AddRecipeInstructionsViewState
       return;
     }
 
+    // Navigate to review step
     context.push(
       AppRouter.addRecipeReview,
       extra: AddRecipeReviewArgs(
@@ -574,8 +633,14 @@ class _AddRecipeInstructionsViewState
     );
   }
 
+  // ============================================================
+  // Validation and Utility Methods
+  // ============================================================
+
+  /// Builds a list of complete instructions for saving
   List<AddRecipeInstruction> get _completedInstructions {
     if (!_useSections) {
+      // Flat mode renumbers completed steps into one continuous instruction list.
       return _steps
           .where((step) => step.isComplete)
           .toList()
@@ -594,6 +659,7 @@ class _AddRecipeInstructionsViewState
           .toList();
     }
 
+    // Section mode keeps section titles and renumbers steps within each section.
     final instructions = <AddRecipeInstruction>[];
     final completeSections = _sections
         .where((section) => section.isComplete)
@@ -626,27 +692,33 @@ class _AddRecipeInstructionsViewState
     return instructions;
   }
 
+  /// Validates that the form can be saved
   bool get _canSave {
     if (!_useSections) {
+      // Flat mode requires at least one complete step and no partial steps.
       final hasCompleteStep = _steps.any((step) => step.isComplete);
       final hasPartialStep = _steps.any((step) => step.isPartial);
       return hasCompleteStep && !hasPartialStep;
     }
 
+    // Section mode requires at least one complete section and no partial sections.
     final hasCompleteSection = _sections.any((section) => section.isComplete);
     final hasPartialSection = _sections.any((section) => section.isPartial);
     return hasCompleteSection && !hasPartialSection;
   }
 
+  /// Triggers UI refresh when form state changes
   void _refreshFormState() {
     if (!mounted) return;
     setState(() {});
   }
 
+  /// Checks if there are any unsaved changes
   bool _hasUnsavedChanges() {
     return !_didSaveChanges && _initialFormSignature != _formSignature();
   }
 
+  /// Creates a signature string representing the current form state (used for change detection)
   String _formSignature() {
     final flatSteps = _steps
         .map(
@@ -676,7 +748,11 @@ class _AddRecipeInstructionsViewState
     return '$_useSections::$flatSteps::$sections';
   }
 
-  // Review Helper
+  // ============================================================
+  // Review Loading Helper
+  // ============================================================
+
+  /// Seeds form data from an existing review (when editing a recipe)
   void _seedFromReview(AddRecipeInstructionsViewModel viewModel) {
     final review = viewModel.existingReview;
     if (review == null) return;
@@ -749,6 +825,10 @@ class _AddRecipeInstructionsViewState
   }
 }
 
+// ============================================================
+// Helper Data Classes
+// ============================================================
+
 // Instruction Step State Class
 class InstructionStepState {
   final String id = UniqueKey().toString();
@@ -759,22 +839,27 @@ class InstructionStepState {
 
   InstructionStepState();
 
+  /// Creates a step from a description string
   factory InstructionStepState.fromDescription(String description) {
     final step = InstructionStepState();
     step.descriptionController.text = description;
     return step;
   }
 
+  /// Check whether the step is complete and valid
   bool get isComplete => descriptionController.text.trim().isNotEmpty;
 
+  /// Check whether the step has some content but is not complete
   bool get isPartial =>
       (imageFile != null || existingImageUrl != null) && !isComplete;
 
+  /// Adds a listener for form state changes
   void addListener(VoidCallback listener) {
     _listeners.add(listener);
     descriptionController.addListener(listener);
   }
 
+  /// Clears all data from the step
   void clear() {
     descriptionController.clear();
     imageFile = null;
@@ -784,6 +869,7 @@ class InstructionStepState {
     }
   }
 
+  /// Cleans up resources and removes listeners
   void dispose() {
     for (final listener in _listeners) {
       descriptionController.removeListener(listener);
@@ -799,12 +885,14 @@ class InstructionSectionState {
   final List<InstructionStepState> steps = [InstructionStepState()];
   final List<VoidCallback> _listeners = [];
 
+  /// Check whether the section is complete and valid
   bool get isComplete {
     return titleController.text.trim().isNotEmpty &&
         steps.any((step) => step.isComplete) &&
         !steps.any((step) => step.isPartial);
   }
 
+  /// Check whether the section has some content but is not complete
   bool get isPartial {
     final hasContent =
         titleController.text.trim().isNotEmpty ||
@@ -815,6 +903,7 @@ class InstructionSectionState {
     return hasContent && !isComplete;
   }
 
+  /// Adds a listener for form state changes
   void addListener(VoidCallback listener) {
     _listeners.add(listener);
     titleController.addListener(listener);
@@ -823,6 +912,7 @@ class InstructionSectionState {
     }
   }
 
+  /// Clears all data from the section
   void clear() {
     titleController.clear();
     for (final step in steps) {
@@ -837,6 +927,7 @@ class InstructionSectionState {
     }
   }
 
+  /// Cleans up resources and removes listeners
   void dispose() {
     for (final listener in _listeners) {
       titleController.removeListener(listener);
@@ -847,6 +938,10 @@ class InstructionSectionState {
     }
   }
 }
+
+// ============================================================
+// Loading Page
+// ============================================================
 
 // Loading Page
 class _AddRecipePageLoading extends StatelessWidget {

@@ -8,7 +8,7 @@ import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../view/add_recipe_ingredients_page.dart';
 
-/// Ingredient row with image, name, amount, unit, reorder and remove controls.
+/// Ingredient input row with image, name, amount, unit, reorder and remove controls.
 class InputIngredientField extends StatelessWidget {
   final int index;
   final IngredientRowState row;
@@ -39,6 +39,7 @@ class InputIngredientField extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Row(
           children: [
+            // Provides drag-and-drop reordering capability
             ReorderableDragStartListener(
               index: index,
               child: const Icon(
@@ -48,15 +49,20 @@ class InputIngredientField extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.xs),
+
+            // Ingredient Image Box
             _IngredientImageBox(
               imageFile: row.imageFile,
               imageUrl: row.existingImageUrl,
               onTap: onPickImage,
             ),
             const SizedBox(width: AppSpacing.md),
+
+            // Ingredient Details
             Expanded(
               child: Column(
                 children: [
+                  // Ingredient Name
                   InkWell(
                     onTap: onSelectName,
                     child: InputDecorator(
@@ -85,6 +91,7 @@ class InputIngredientField extends StatelessWidget {
                               ),
                             ),
                           ),
+                          // Dropdown Indicator
                           Icon(
                             Icons.keyboard_arrow_down,
                             size: 18,
@@ -96,9 +103,12 @@ class InputIngredientField extends StatelessWidget {
                       ),
                     ),
                   ),
+
+                  // Amount and Unit
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
+                      // Ingredient Amount
                       Expanded(
                         child: TextField(
                           controller: row.amountController,
@@ -116,6 +126,8 @@ class InputIngredientField extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
+
+                      // Ingredient Unit
                       Expanded(
                         child: InkWell(
                           onTap: onSelectUnit,
@@ -145,6 +157,7 @@ class InputIngredientField extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                                // Dropdown Indicator
                                 Icon(
                                   Icons.keyboard_arrow_down,
                                   size: 18,
@@ -163,6 +176,8 @@ class InputIngredientField extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
+
+            // Delete Button
             IconButton(
               onPressed: onDelete,
               icon: const Icon(Icons.delete_outline, color: AppColors.error),
@@ -174,7 +189,7 @@ class InputIngredientField extends StatelessWidget {
   }
 }
 
-/// Ingredient image picker box.
+/// A box that displays the ingredient image with add/change functionality.
 class _IngredientImageBox extends StatelessWidget {
   final File? imageFile;
   final String? imageUrl;
@@ -199,12 +214,15 @@ class _IngredientImageBox extends StatelessWidget {
           color: const Color(0xFFF7F7F7),
           child: imageFile == null
               ? imageUrl == null
+                // Empty state
                   ? const Icon(
                       Icons.add_photo_alternate_outlined,
                       color: Color(0xFFC9CBCD),
                       size: 30,
                     )
+                  // Image Preview from URL
                   : AppRemoteOrAssetImage(imagePath: imageUrl!, fit: BoxFit.cover)
+              // Local Image File
               : Image.file(imageFile!, fit: BoxFit.cover),
         ),
       ),

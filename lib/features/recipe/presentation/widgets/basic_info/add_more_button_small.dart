@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 
-/// Small add button used to add more input.
+/// Small and reusable add button widget used to add more input.
 class AddMoreButtonSmall extends StatelessWidget {
   final VoidCallback onPressed;
 

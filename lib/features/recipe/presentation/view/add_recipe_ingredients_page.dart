@@ -37,6 +37,8 @@ import '../widgets/label.dart';
 import '../widgets/recipe_error_dialog.dart';
 import '../widgets/recipe_visibility_action_button.dart';
 
+/// Add recipe ingredients page
+/// For user to fill in the ingredients of the recipe
 class AddRecipeIngredientsPage extends StatelessWidget {
   final String recipeId;
   final String initialVisibility;
@@ -69,6 +71,7 @@ class AddRecipeIngredientsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Set up view models with dependency injection
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
@@ -105,6 +108,7 @@ class AddRecipeIngredientsPage extends StatelessWidget {
   }
 }
 
+/// Stateful widget of the add recipe ingredients page.
 class _AddRecipeIngredientsView extends StatefulWidget {
   final String recipeId;
   final bool returnToReview;
@@ -149,6 +153,8 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
   @override
   void initState() {
     super.initState();
+
+    // In ingredient is already available from other sources, initialize it
     final aiIngredients = widget.initialAiRecipe?.ingredients ?? const [];
     final generatedIngredients = widget.initialGeneratedIngredients;
     _rows = aiIngredients.isNotEmpty
@@ -163,12 +169,15 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
               )
               .toList()
         : [IngredientRowState()];
+
+    // Listener to update state when changes made
     for (final row in _rows) {
       row.addListener(_refreshFormState);
     }
   }
 
   @override
+  // Clean up to prevent memory leakage
   void dispose() {
     for (final row in _rows) {
       row.dispose();
@@ -187,6 +196,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       return const _AddRecipePageLoading();
     }
 
+    // Resolve unit names for generated ingredients once units are loaded
     if (widget.initialGeneratedIngredients.isNotEmpty &&
         !_didResolveGeneratedUnits) {
       _didResolveGeneratedUnits = true;
@@ -196,6 +206,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       });
     }
 
+    // Load existing recipe data if in editing mode (recipeId exists)
     if (widget.initialAiRecipe == null &&
         widget.initialGeneratedIngredients.isEmpty &&
         viewModel.existingReview == null &&
@@ -210,11 +221,13 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       return const _AddRecipePageLoading();
     }
 
+    // Seed form data from existing review
     final existingReview = viewModel.existingReview;
     if (existingReview != null && _seededRecipeId != existingReview.recipeId) {
       _seedFromReview(viewModel);
     }
 
+    // Fetch images for AI-generated ingredients
     if (widget.initialAiRecipe != null && !_didRequestAiIngredientImages) {
       _didRequestAiIngredientImages = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -223,6 +236,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       });
     }
 
+    // Capture initial form state for change detection
     _initialFormSignature ??= _formSignature();
 
     return PopScope(
@@ -270,6 +284,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Progress Bar
               if (!widget.hideProgressBar)
                 const Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -351,6 +366,8 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
                         );
                       },
                     ),
+
+                    // Add Ingredient Button
                     Padding(
                       padding: EdgeInsets.only(top: AppSpacing.sm),
                       child: SecondaryButton(
@@ -362,6 +379,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
                 ),
               ),
 
+              // Bottom Action Button
               Padding(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
@@ -388,19 +406,27 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     );
   }
 
-  // Handle back action
+  // ============================================================
+  // Navigation and Flow Control Methods
+  // ============================================================
+
+  /// Handle back action
   Future<void> _handleBack(BuildContext context) async {
+    // Pages without changes can leave immediately.
     if (!_hasUnsavedChanges()) {
       _leaveEditPage(context);
       return;
     }
 
+    // Unsaved edits require confirmation before navigation continues.
     final discard = await confirmDiscardRecipeChanges(context);
     if (!context.mounted || !discard) return;
     _leaveEditPage(context);
   }
 
+  /// Handle leave action
   void _leaveEditPage(BuildContext context) {
+    // Edit-from-review returns directly to the review step.
     if (widget.returnToReview) {
       context.pushReplacement(
         AppRouter.addRecipeReview,
@@ -409,21 +435,28 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       return;
     }
 
+    // Returns to previous page
     if (context.canPop()) {
       context.pop();
     }
   }
 
-  // Image Picker Helper
+  // ============================================================
+  // Image Handling Methods
+  // ============================================================
+
+  /// Opens the file picker to select an image for a specific ingredient
   Future<void> _pickIngredientImage(IngredientRowState row) async {
     final image = await _pickImageFile();
     if (image == null) return;
     setState(() => row.imageFile = image);
   }
 
+  /// Fetches missing images for AI-generated ingredients
   Future<void> _fetchMissingIngredientImages(
     AddRecipeIngredientsViewModel viewModel,
   ) async {
+    // Iterate through all rows and fetch images for those without one
     for (final row in List<IngredientRowState>.of(_rows)) {
       final ingredientName = row.nameController.text.trim();
       if (ingredientName.isEmpty ||
@@ -432,9 +465,11 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
         continue;
       }
 
+      // Fetch image from Unsplash API
       final imageUrl = await viewModel.getIngredientImageUrl(ingredientName);
       if (!mounted || imageUrl == null) continue;
 
+      // Image result is ignored if the row changed while the lookup was running.
       final currentName = row.nameController.text.trim();
       if (currentName != ingredientName ||
           row.imageFile != null ||
@@ -446,6 +481,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     }
   }
 
+  /// Picks a single image file for an ingredient
   Future<File?> _pickImageFile() async {
     final result = await fp.FilePicker.pickFiles(
       allowMultiple: false,
@@ -456,10 +492,17 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     return path == null ? null : File(path);
   }
 
+  // ============================================================
+  // Unit-Related Methods
+  // ============================================================
+
+  // Resolves unit names for generated ingredients once units are loaded
   void _resolveGeneratedUnitNames(List<AddRecipeIngredientUnit> units) {
     var changed = false;
     for (final row in _rows) {
+      // Skip if already has a custom unit or unit name
       if (row.isCustomUnit || row.unitName.trim().isNotEmpty) continue;
+      // Find the unit name by ID
       final unitName = IngredientRowState.unitNameById(units, row.unitId);
       if (unitName.isEmpty) continue;
       row.unitName = unitName;
@@ -468,11 +511,16 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     if (changed) setState(() {});
   }
 
-  // Name Picker Helper
+  // ============================================================
+  // Ingredient Name Selection Methods
+  // ============================================================
+
+  /// Shows the ingredient name selection sheet with usda food search capability
   Future<void> _showIngredientNameSheet({
     required IngredientRowState row,
     required AddRecipeIngredientsViewModel viewModel,
   }) async {
+    // Name picker can return a custom name or a USDA food selection.
     final selected = await showModalBottomSheet<IngredientNamePickerSelection>(
       context: context,
       isScrollControlled: true,
@@ -483,6 +531,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       builder: (_) => IngredientNamePickerSheet(
         selectedName: row.nameController.text.trim(),
         selectedUsdaId: row.usdaId,
+        // Enables searching foods from usda api
         onSearchFoods: viewModel.searchFoods,
       ),
     );
@@ -490,7 +539,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     if (selected == null) return;
     if (!mounted) return;
 
-    // Fetch nutrients from USDA and search image from Unsplash after selection.
+    // USDA nutrients and Unsplash image lookup run after a name is selected.
     Map<String, dynamic>? nutrients;
     String? ingredientImageUrl;
     if (selected.name.trim().isNotEmpty) {
@@ -510,6 +559,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
 
     if (!mounted) return;
     setState(() {
+      // New ingredient names reset category analysis so AI can recalculate it later.
       row.nameController.text = selected.name;
       row.usdaId = selected.usdaId;
       row.usdaNutrients = selected.isCustom ? null : nutrients;
@@ -521,7 +571,11 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     });
   }
 
-  // Unit Picker Helper
+  // ============================================================
+  // Unit Selection Methods
+  // ============================================================
+
+  /// Shows the unit selection sheet
   Future<void> _showUnitSheet({
     required IngredientRowState row,
     required List<AddRecipeIngredientUnit> units,
@@ -548,15 +602,22 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     });
   }
 
-  // Add, Remove, Reorder Helper
+  // ============================================================
+  // Row Management Methods
+  // ============================================================
+
+  /// Adds a new empty ingredient row
   void _addRow() {
+    // New rows listen for controller changes so save availability updates live.
     final row = IngredientRowState();
     row.addListener(_refreshFormState);
     setState(() => _rows.add(row));
   }
 
+  /// Removes an ingredient row by index
   void _removeRow(int index) {
     setState(() {
+      // The final row is cleared instead of removed to keep one editable row visible.
       if (_rows.length == 1) {
         _rows[index].clear();
         return;
@@ -566,20 +627,27 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     });
   }
 
+  /// Reorders ingredient rows (drag-and-drop)
   void _reorderRows(int oldIndex, int newIndex) {
     setState(() {
+      // Flutter reorder callbacks need index adjustment when moving downward.
       if (newIndex > oldIndex) newIndex -= 1;
       final row = _rows.removeAt(oldIndex);
       _rows.insert(newIndex, row);
     });
   }
 
-  // Next Button Helper
+  // ============================================================
+  // Main Action Methods
+  // ============================================================
+
+  /// Handles the next/save action
   Future<void> _handleNext(
     BuildContext context,
     AddRecipeIngredientsViewModel viewModel,
   ) async {
     if (widget.initialAiRecipe != null) {
+      // AI draft mode passes ingredients forward without saving Firestore data yet.
       final onAiDraftNext = widget.onAiDraftNext;
       if (onAiDraftNext != null) {
         _didSaveChanges = true;
@@ -602,6 +670,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       return;
     }
 
+    // Manual flow saves completed ingredient rows before opening the instruction step.
     final success = await viewModel.saveIngredients(
       recipeId: widget.recipeId,
       ingredients: _completedIngredients,
@@ -618,6 +687,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
 
     _didSaveChanges = true;
 
+    // Editing from review returns to review after saving changes.
     if (widget.returnToReview) {
       context.pushReplacement(
         AppRouter.addRecipeReview,
@@ -626,6 +696,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
       return;
     }
 
+    // Navigate to instructions step
     context.push(
       AppRouter.addRecipeInstructions,
       extra: AddRecipeInstructionsArgs(
@@ -639,7 +710,13 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     );
   }
 
+  // ============================================================
+  // Validation and Utility Methods
+  // ============================================================
+
+  /// Builds a list of complete ingredients for saving
   List<AddRecipeIngredient> get _completedIngredients {
+    // Only include rows that are fully filled out
     return _rows
         .where((row) => row.isComplete)
         .map(
@@ -662,21 +739,26 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
         .toList();
   }
 
+  /// Validates that the form can be saved
+  /// Saving requires at least one complete row and no partial row.
   bool get _canSave {
     final hasCompleteRow = _rows.any((row) => row.isComplete);
     final hasPartialRow = _rows.any((row) => row.isPartial);
     return hasCompleteRow && !hasPartialRow;
   }
 
+  /// Triggers UI refresh when form state changes
   void _refreshFormState() {
     if (!mounted) return;
     setState(() {});
   }
 
+  /// Checks if there are any unsaved changes
   bool _hasUnsavedChanges() {
     return !_didSaveChanges && _initialFormSignature != _formSignature();
   }
 
+  /// Creates a signature string representing the current form state (used for change detection)
   String _formSignature() {
     return _rows
         .map(
@@ -695,7 +777,11 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
         .join('::');
   }
 
-  // Review Helper
+  // ============================================================
+  // Review Loading Helper
+  // ============================================================
+
+  /// Seeds form data from an existing review (when editing a recipe)
   void _seedFromReview(AddRecipeIngredientsViewModel viewModel) {
     final review = viewModel.existingReview;
     if (review == null) return;
@@ -742,6 +828,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     });
   }
 
+  /// Finds a unit by name
   AddRecipeIngredientUnit? _unitByName(
     List<AddRecipeIngredientUnit> units,
     String name,
@@ -754,6 +841,10 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     return null;
   }
 }
+
+// ============================================================
+// Helper Data Classes
+// ============================================================
 
 // Ingredient Row State Class
 class IngredientRowState {
@@ -773,6 +864,7 @@ class IngredientRowState {
 
   IngredientRowState();
 
+  /// Creates a row from an AI-generated ingredient
   factory IngredientRowState.fromAiIngredient(AddMealAiIngredient ingredient) {
     final row = IngredientRowState();
     row.nameController.text = ingredient.name;
@@ -782,6 +874,7 @@ class IngredientRowState {
     return row;
   }
 
+  /// Creates a row from an existing ingredient entity
   factory IngredientRowState.fromIngredient(
     AddRecipeIngredient ingredient, {
     required List<AddRecipeIngredientUnit> units,
@@ -803,20 +896,25 @@ class IngredientRowState {
     return row;
   }
 
+  /// Get the display name for the unit
   String get unitDisplayName => unitName;
 
+  /// Get the value to save for the unit (ID or custom name)
   String get unitValueForSave => isCustomUnit ? unitName : unitId;
 
+  /// Check whether the ingredient input has changed
   bool get hasAnalysisInputChanged {
     return _analysisSignature != null && _analysisSignature != _inputSignature;
   }
 
+  /// Check whether the ingredient row is complete and valid
   bool get isComplete {
     return nameController.text.trim().isNotEmpty &&
         (double.tryParse(amountController.text.trim()) ?? 0) > 0 &&
         unitValueForSave.trim().isNotEmpty;
   }
 
+  /// Check whether the row has some content but is not complete
   bool get isPartial {
     final hasContent =
         nameController.text.trim().isNotEmpty ||
@@ -827,12 +925,14 @@ class IngredientRowState {
     return hasContent && !isComplete;
   }
 
+  /// Adds a listener for form state changes
   void addListener(VoidCallback listener) {
     _listeners.add(listener);
     nameController.addListener(listener);
     amountController.addListener(listener);
   }
 
+  /// Clears all data from the row
   void clear() {
     nameController.clear();
     amountController.clear();
@@ -850,10 +950,12 @@ class IngredientRowState {
     }
   }
 
+  /// Marks the current input state as analyzed
   void markAnalysisCurrent() {
     _analysisSignature = _inputSignature;
   }
 
+  /// Generates a signature of the current input state for change detection
   String get _inputSignature {
     return [
       nameController.text.trim().toLowerCase(),
@@ -862,6 +964,7 @@ class IngredientRowState {
     ].join('|');
   }
 
+  /// Cleans up resources and removes listeners
   void dispose() {
     for (final listener in _listeners) {
       nameController.removeListener(listener);
@@ -871,11 +974,13 @@ class IngredientRowState {
     amountController.dispose();
   }
 
+  /// Formats a double amount for display
   static String _displayAmount(double amount) {
     if (amount % 1 == 0) return amount.toInt().toString();
     return amount.toString();
   }
 
+  /// Finds a unit name by its ID
   static String unitNameById(
     List<AddRecipeIngredientUnit> units,
     String unitId,
@@ -886,6 +991,10 @@ class IngredientRowState {
     return '';
   }
 }
+
+// ============================================================
+// Loading Page
+// ============================================================
 
 // Loading Page
 class _AddRecipePageLoading extends StatelessWidget {

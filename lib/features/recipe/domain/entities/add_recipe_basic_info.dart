@@ -1,5 +1,7 @@
 import 'dart:io';
 
+/// Basic recipe form data covering media, title, description, categories,
+/// serving details, allergens, visibility and AI generation state.
 class AddRecipeBasicInfo {
   final String? recipeId;
   final List<File> mediaFiles;

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+/// Editable ingredient data with image, amount, unit, USDA nutrient data
+/// and selected ingredient category.
 class AddRecipeIngredient {
   final String name;
   final File? imageFile;

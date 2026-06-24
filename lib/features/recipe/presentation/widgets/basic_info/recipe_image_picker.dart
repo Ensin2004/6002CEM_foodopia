@@ -36,7 +36,11 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
   void didUpdateWidget(covariant RecipeImagePicker oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    // Calculate total media count
     final imageCount = widget.existingImageUrls.length + widget.images.length;
+
+    // Ensure the current index is always valid after media changes
+    // This prevents out-of-range errors when media is added or removed
     if (_currentImageIndex >= imageCount) {
       setState(() {
         _currentImageIndex = imageCount == 0 ? 0 : imageCount - 1;
@@ -49,6 +53,8 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
     final colors = context.colors;
 
     final imageCount = widget.existingImageUrls.length + widget.images.length;
+
+    // Show a call-to-action card when no media is selected
     if (imageCount == 0) {
       return MethodCard(
         icon: Icons.perm_media_outlined,
@@ -58,6 +64,7 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
       );
     }
 
+    // Show the media when media is selected
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: AppColors.border, width: 1),
@@ -73,10 +80,13 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
                 aspectRatio: 1.55,
                 child: PageView.builder(
                   itemCount: imageCount,
+
+                  // Update current index when user swipes
                   onPageChanged: (index) {
                     setState(() => _currentImageIndex = index);
                   },
                   itemBuilder: (context, index) {
+                    // Determine if this is an existing URL or local file
                     final existingUrl = index < widget.existingImageUrls.length
                         ? widget.existingImageUrls[index]
                         : null;
@@ -106,17 +116,23 @@ class _RecipeImagePickerState extends State<RecipeImagePicker> {
                 ),
               ),
             ),
+
+            // Top-left corner - action buttons
             Positioned(
               left: AppSpacing.sm,
               top: AppSpacing.sm,
               child: Row(
                 children: [
+                  // Add button - opens file picker
                   _ImageActionButton(icon: Icons.add, onTap: widget.onPick),
                   const SizedBox(width: AppSpacing.sm),
+                  // Edit button - opens image edit sheet
                   _ImageActionButton(icon: Icons.edit, onTap: widget.onEdit),
                 ],
               ),
             ),
+
+            // Top-right corner - indicator
             Positioned(
               right: 10,
               top: 10,
@@ -151,7 +167,9 @@ class _RecipeMediaPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if the file is a video based on its extension
     if (isRecipeVideoPath(file.path)) {
+      // Show video with controls and fullscreen support
       return AppRecipeMedia(
         mediaPath: file.path,
         fit: fit,
@@ -159,6 +177,7 @@ class _RecipeMediaPreview extends StatelessWidget {
         allowFullscreen: true,
       );
     }
+    // Show image preview
     return Image.file(file, fit: fit);
   }
 }

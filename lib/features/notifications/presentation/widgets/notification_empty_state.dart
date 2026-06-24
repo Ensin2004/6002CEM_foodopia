@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
+/// Display the empty inbox illustration and message when no notification exists
 class NotificationEmptyState extends StatelessWidget {
   const NotificationEmptyState({super.key});
 

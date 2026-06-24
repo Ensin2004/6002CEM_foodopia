@@ -6,7 +6,7 @@ import '../../../../core/theme/theme_extension.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import 'recipe_error_dialog.dart';
 
-/// Displays the current recipe visibility and toggles between private and public.
+/// Displays the current recipe visibility and allow toggles between private and public.
 class RecipeVisibilityActionButton extends StatelessWidget {
   final String visibility;
   final bool isSaving;
@@ -27,6 +27,7 @@ class RecipeVisibilityActionButton extends StatelessWidget {
       padding: EdgeInsets.only(right: AppSpacing.lg),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
+        // Disable button while saving to prevent multiple requests
         onTap: isSaving
             ? null
             : () => onChanged(isPublic ? "private" : "public"),
@@ -44,12 +45,15 @@ class RecipeVisibilityActionButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Icon based on visibility
               Icon(
                 isPublic ? Icons.public_rounded : Icons.lock_outline_rounded,
                 size: 14,
                 color: isPublic ? AppColors.primary : AppColors.textPrimary,
               ),
               const SizedBox(width: AppSpacing.xs),
+
+              // Text based on visibility
               Text(
                 isPublic ? "Public" : "Private",
                 overflow: TextOverflow.ellipsis,
@@ -66,7 +70,7 @@ class RecipeVisibilityActionButton extends StatelessWidget {
   }
 }
 
-/// Confirms recipe visibility changes, runs the update callback, and shows result feedback.
+/// Confirms recipe visibility changes, runs the update callback and shows result feedback.
 Future<void> confirmRecipeVisibilityChange({
   required BuildContext context,
   required String currentVisibility,
@@ -76,9 +80,13 @@ Future<void> confirmRecipeVisibilityChange({
 }) async {
   final current = currentVisibility == 'public' ? 'public' : 'private';
   final next = nextVisibility == 'public' ? 'public' : 'private';
+
+  // Skip if visibility hasn't changed
   if (current == next) return;
 
   final willPublish = next == 'public';
+
+  // Show confirmation dialog
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) {
@@ -105,18 +113,23 @@ Future<void> confirmRecipeVisibilityChange({
     },
   );
 
+  // User cancelled or context is no longer valid
   if (confirmed != true || !context.mounted) return;
 
   final rootNavigator = Navigator.of(context, rootNavigator: true);
+
+  // Wait for frame to complete before showing loading dialog
   await WidgetsBinding.instance.endOfFrame;
   if (!context.mounted) return;
 
+  // Show loading dialog
   showDialog<void>(
     context: context,
     barrierDismissible: false,
     builder: (_) => const LoadingDialog(message: 'Updating visibility...'),
   );
 
+  // Perform the update
   final success = await onConfirmed(next);
 
   if (!context.mounted) return;
@@ -125,6 +138,7 @@ Future<void> confirmRecipeVisibilityChange({
     await WidgetsBinding.instance.endOfFrame;
   }
 
+  // Show error message if fail
   if (!success) {
     await showRecipeErrorDialog(
       context: context,
@@ -134,6 +148,7 @@ Future<void> confirmRecipeVisibilityChange({
     return;
   }
 
+  // Show success message
   await showRecipeErrorDialog(
     context: context,
     title: 'Visibility Updated',

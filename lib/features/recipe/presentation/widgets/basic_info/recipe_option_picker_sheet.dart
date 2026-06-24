@@ -33,6 +33,7 @@ class RecipeOptionPickerSheet extends StatefulWidget {
       _RecipeOptionPickerSheetState();
 }
 
+/// The state class that manages selection state and search functionality.
 class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
   final TextEditingController _customController = TextEditingController();
   late final Set<String> _selectedOptionIds;
@@ -50,6 +51,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
   }
 
   @override
+  // Clean up resources
   void dispose() {
     _debounce?.cancel();
     _customController.removeListener(_onCustomTextChanged);
@@ -80,6 +82,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Visual indicator that the sheet can be dragged down
               Center(
                 child: Container(
                   width: 42,
@@ -91,6 +94,8 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
+
+              // Header
               Text(
                 "Select ${widget.pickType}",
                 maxLines: 1,
@@ -98,6 +103,8 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                 style: context.text.titleMedium,
               ),
               const SizedBox(height: AppSpacing.md),
+
+              // Search/Custom Input Field
               TextField(
                 controller: _customController,
                 textInputAction: TextInputAction.done,
@@ -114,6 +121,8 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                 onSubmitted: (_) => _addCustomOption(),
               ),
               const SizedBox(height: AppSpacing.sm),
+
+              // Options List
               Expanded(
                 child:
                     visibleCustomOptions.isEmpty &&
@@ -121,6 +130,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                         _searchResults.isEmpty &&
                         !_isSearchingFoods
                     ? Center(
+                      // Empty State
                         child: Image.asset(
                           "assets/images/empty_page.png",
                           height: 120,
@@ -128,6 +138,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                       )
                     : ListView(
                         children: [
+                          // Custom Options Section
                           if (visibleCustomOptions.isNotEmpty) ...[
                             Padding(
                               padding: const EdgeInsets.only(top: AppSpacing.sm),
@@ -174,6 +185,8 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                               ),
                             ),
                           ],
+
+                          // Preset Options Section
                           if (visibleOptions.isNotEmpty) ...[
                             Padding(
                               padding: const EdgeInsets.only(top: AppSpacing.sm),
@@ -223,12 +236,16 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                               ),
                             ),
                           ],
+
+                          // Food Search Loading Indicator
                           if (_isSearchingFoods) ...[
                             const Padding(
                               padding: EdgeInsets.only(top: AppSpacing.sm),
                               child: Center(child: CircularProgressIndicator()),
                             ),
                           ],
+
+                          // Food Search Results Section
                           if (_searchResults.isNotEmpty) ...[
                             Padding(
                               padding: const EdgeInsets.only(top: AppSpacing.sm),
@@ -284,6 +301,8 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
                       ),
               ),
               const SizedBox(height: AppSpacing.lg),
+
+              // Action Button
               PrimaryButton(
                 text: query.isNotEmpty ? "Use Custom ${widget.pickType}" : "Select ${widget.pickType}",
                 onPressed: hasSelection || query.isNotEmpty ? _submitSelection : null,
@@ -295,7 +314,11 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
     );
   }
 
-  // Get Option by Name
+  // ============================================================
+  // Helper Methods
+  // ============================================================
+
+  /// Finds an option by its name
   AddRecipeOption? _optionByName(String name) {
     final normalizedName = name.toLowerCase();
     for (final option in widget.options) {
@@ -304,7 +327,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
     return null;
   }
 
-  // Match Helper
+  /// Returns options that match the search query
   List<AddRecipeOption> _matchingOptions(String query) {
     final normalized = query.toLowerCase();
     final matches = query.isEmpty
@@ -313,11 +336,13 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
               .where((option) => option.name.toLowerCase().contains(normalized))
               .toList();
 
+    // Sort alphabetically for consistent display
     return matches..sort(
       (first, second) => first.name.toLowerCase().compareTo(second.name.toLowerCase()),
     );
   }
 
+  /// Returns custom options that match the search query
   List<String> _matchingCustomOptions(String query) {
     final normalized = query.toLowerCase();
     final matches = query.isEmpty
@@ -326,12 +351,13 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
               .where((option) => option.toLowerCase().contains(normalized))
               .toList();
 
+    // Sort alphabetically for consistent display
     return matches..sort(
       (first, second) => first.toLowerCase().compareTo(second.toLowerCase()),
     );
   }
 
-  // Toggle Helper
+  /// Toggles a predefined option's selection state
   void _toggleOption(String optionId) {
     setState(() {
       if (_selectedOptionIds.contains(optionId)) {
@@ -343,6 +369,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
     });
   }
 
+  /// Toggles a food search result as a custom option
   void _toggleFoodOption(AddRecipeFoodSearchResult food) {
     final existingIndex = _customOptions.indexWhere(
       (option) => option.toLowerCase() == food.name.toLowerCase(),
@@ -358,14 +385,17 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
     });
   }
 
-  // Add, Remove Custom Helper
+  /// Adds a custom option from the text field
   void _addCustomOption() {
     final customOption = _customController.text.trim();
     if (customOption.isEmpty) return;
 
+    // Check if it already exists in custom options
     final existsInCustom = _customOptions.any(
       (option) => option.toLowerCase() == customOption.toLowerCase(),
     );
+
+    // Check if it matches a preset option
     final matchingOption = _optionByName(customOption);
     if (matchingOption != null) {
       setState(() {
@@ -375,25 +405,30 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
       return;
     }
 
+    // If it already exists in custom, just clear the field
     if (existsInCustom) {
       _customController.clear();
       return;
     }
 
+    // Add new custom option
     setState(() {
       _customOptions.add(customOption);
       _customController.clear();
     });
   }
 
+  /// Removes a custom option
   void _removeCustomOption(String option) {
     setState(() => _customOptions.remove(option));
   }
 
-  // Submit Button Helper
+  /// Submits the selection and closes the sheet
   void _submitSelection() {
     _addCustomOption();
     _movePresetMatchingCustomOptions();
+
+    // Return the selection to the parent
     Navigator.of(context).pop(
       RecipeOptionPickerSelection(
         optionIds: _selectedOptionIds.toList(),
@@ -402,6 +437,7 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
     );
   }
 
+  /// Moves custom options that match preset names to the preset selection
   void _movePresetMatchingCustomOptions() {
     final remainingCustomOptions = <String>[];
     for (final customOption in _customOptions) {
@@ -418,20 +454,28 @@ class _RecipeOptionPickerSheetState extends State<RecipeOptionPickerSheet> {
       ..addAll(remainingCustomOptions);
   }
 
-  // Listener Helper
+  // ============================================================
+  // Search Methods
+  // ============================================================
+
+  /// Listener for text field changes
   void _onCustomTextChanged() {
     setState(() {});
     if (widget.onSearchFoods == null) return;
 
+    // Cancel pending search and start a new debounced search
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
       _searchFoods(_customController.text);
     });
   }
 
+  /// Searches for foods based on the query text
   Future<void> _searchFoods(String query) async {
     final searchFoods = widget.onSearchFoods;
     final trimmed = query.trim();
+
+    // Don't search for short queries (less than 2 characters)
     if (searchFoods == null || trimmed.length < 2) {
       if (!mounted) return;
       setState(() {

@@ -1,3 +1,4 @@
+/// Ingredient category option used by AI analysis and recipe review grouping.
 class AddRecipeIngredientCategory {
   final String id;
   final String name;
@@ -8,6 +9,7 @@ class AddRecipeIngredientCategory {
   });
 }
 
+/// Ingredient payload sent to AI analysis with amount, unit and optional USDA nutrients.
 class AddRecipeIngredientDataInput {
   final int index;
   final String name;
@@ -24,6 +26,7 @@ class AddRecipeIngredientDataInput {
   });
 }
 
+/// AI-enriched ingredient result containing matched category and nutrient totals.
 class AddRecipeIngredientData {
   final int index;
   final String ingredientCategoryId;

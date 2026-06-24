@@ -5,7 +5,7 @@ import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../../core/widgets/media/app_recipe_media.dart';
 
-/// Displays recipe review media.
+/// Widget that displays the recipe media (images and videos) in the review page.
 class ReviewHeroImage extends StatefulWidget {
   final List<String> media;
 
@@ -32,12 +32,14 @@ class _ReviewHeroImageState extends State<ReviewHeroImage> {
         borderRadius: BorderRadius.circular(6),
         child: Stack(
           children: [
+            // Media Carousel
             ColoredBox(
               color: colors.surfaceContainerHighest,
               child: AspectRatio(
                 aspectRatio: 1.55,
                 child: PageView.builder(
                   itemCount: widget.media.length,
+                  // Update current index when user swipes
                   onPageChanged: (index) {
                     setState(() => _currentImageIndex = index);
                   },
@@ -47,12 +49,14 @@ class _ReviewHeroImageState extends State<ReviewHeroImage> {
                       behavior: HitTestBehavior.opaque,
                       onTap: () => showRecipeMediaDialog(context, mediaPath),
                       child: isRecipeVideoPath(mediaPath)
+                          // Video preview, show with playback controls
                           ? AppRecipeMedia(
                               mediaPath: mediaPath,
                               fit: BoxFit.contain,
                               showVideoControls: true,
                               allowFullscreen: true,
                             )
+                          // Image preview
                           : AppRemoteOrAssetImage(
                               imagePath: mediaPath,
                               width: double.infinity,
@@ -64,6 +68,8 @@ class _ReviewHeroImageState extends State<ReviewHeroImage> {
                 ),
               ),
             ),
+
+            // Top-right corner - indicator
             Positioned(
               top: 10,
               right: 10,

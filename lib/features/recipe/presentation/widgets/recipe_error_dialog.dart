@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_extension.dart';
 
+/// Shows a recipe validation or success message in a focused modal dialog.
 Future<void> showRecipeErrorDialog({
   required BuildContext context,
   required String message,
@@ -22,6 +23,8 @@ Future<void> showRecipeErrorDialog({
   );
 }
 
+/// Renders the recipe message dialog with status color, icon, scrollable text
+/// and a single close action.
 class _RecipeMessageDialog extends StatelessWidget {
   final String title;
   final String message;
@@ -67,7 +70,10 @@ class _RecipeMessageDialog extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Accent Color Bar
                 Container(height: 4, color: accentColor),
+
+                // Header (Icon + Title)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.lg,
@@ -78,6 +84,7 @@ class _RecipeMessageDialog extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Icon
                       Container(
                         width: 40,
                         height: 40,
@@ -88,6 +95,8 @@ class _RecipeMessageDialog extends StatelessWidget {
                         child: Icon(iconData, color: accentColor, size: 24),
                       ),
                       const SizedBox(width: AppSpacing.md),
+
+                      // Title Text
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.only(top: AppSpacing.xs),
@@ -105,6 +114,8 @@ class _RecipeMessageDialog extends StatelessWidget {
                     ],
                   ),
                 ),
+
+                // Message Content (Scrollable)
                 Flexible(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxHeight: maxMessageHeight),
@@ -125,6 +136,8 @@ class _RecipeMessageDialog extends StatelessWidget {
                     ),
                   ),
                 ),
+
+                // Action Button
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.lg,
@@ -159,6 +172,7 @@ class _RecipeMessageDialog extends StatelessWidget {
     );
   }
 
+  /// Detects success-style titles so the dialog can use positive styling.
   bool _isPositiveTitle(String value) {
     final normalized = value.toLowerCase();
     return normalized.contains('saved') ||

@@ -28,6 +28,7 @@ class ReviewInfoRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Label
           Text(
             label,
             maxLines: 1,
@@ -38,7 +39,10 @@ class ReviewInfoRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
+
+          // Value (Text or Difficulty Icon)
           if (difficultyLevel == null) ...[
+            // Text
             Text(
               value,
               style: context.text.bodyMedium?.copyWith(
@@ -47,8 +51,10 @@ class ReviewInfoRow extends StatelessWidget {
             ),
           ],
           if (difficultyLevel != null) ...[
+            // Difficulty Icon
             Row(
               children: List.generate(5, (index) {
+                // Determine if this icon should be selected
                 final selected = index < difficultyLevel!;
 
                 return Padding(

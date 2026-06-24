@@ -1,5 +1,6 @@
 import 'dart:io';
 
+/// Editable cooking instruction step with optional section data and step image.
 class AddRecipeInstruction {
   final int? sectionIndex;
   final String? sectionTitle;

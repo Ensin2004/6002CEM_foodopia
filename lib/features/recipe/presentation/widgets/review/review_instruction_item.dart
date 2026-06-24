@@ -29,6 +29,7 @@ class ReviewInstructionItem extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Instruction Image
           InkWell(
             onTap: () => _showExpandedImage(context, instruction.image),
             borderRadius: BorderRadius.circular(8),
@@ -43,10 +44,13 @@ class ReviewInstructionItem extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.md),
+
+          // Instruction Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Step Number
                 Text(
                   "Step ${instruction.stepIndex}",
                   maxLines: 1,
@@ -57,6 +61,8 @@ class ReviewInstructionItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
+
+                // Instruction Description
                 Text(
                   instruction.description,
                   style: context.text.bodyMedium?.copyWith(
@@ -71,6 +77,7 @@ class ReviewInstructionItem extends StatelessWidget {
     );
   }
 
+  /// Shows the instruction image in a fullscreen dialog with zoom capabilities.
   Future<void> _showExpandedImage(BuildContext context, String imagePath) async {
     await showDialog<void>(
       context: context,
@@ -80,6 +87,7 @@ class ReviewInstructionItem extends StatelessWidget {
           child: SafeArea(
             child: Stack(
               children: [
+                // Fullscreen Image
                 Center(
                   child: InteractiveViewer(
                     minScale: 1,
@@ -92,6 +100,8 @@ class ReviewInstructionItem extends StatelessWidget {
                     ),
                   ),
                 ),
+
+                // Top-right corner - close button
                 Positioned(
                   top: AppSpacing.sm,
                   right: AppSpacing.sm,

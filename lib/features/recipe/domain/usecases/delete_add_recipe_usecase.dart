@@ -3,6 +3,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../repositories/add_recipe_repository.dart';
 
+/// Deletes a creator-owned recipe and all related recipe subcollection data.
 class DeleteAddRecipeUseCase {
   final AddRecipeRepository repository;
 
