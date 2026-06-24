@@ -66,6 +66,7 @@ class MainPage extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => MainViewModel(
         user: user,
+        role: role,
         repository: sl(),
         initialIndex: initialIndex,
         initialMealPlanTabIndex: initialMealPlanTabIndex,
@@ -324,14 +325,14 @@ class _MainPageViewState extends State<_MainPageView> {
     MainViewModel viewModel,
   ) {
     switch (item.title) {
-      case 'Manage Content':
+      case 'Manage':
         viewModel.onTabTapped(1);
         break;
-      case 'View Stats':
-        viewModel.onTabTapped(3);
+      case 'Moderation':
+        viewModel.onTabTapped(2);
         break;
-      case 'Manage Feedback':
-        context.push(AppRouter.rateUs, extra: const RateUsArgs(isAdmin: true));
+      case 'Statistics':
+        viewModel.onTabTapped(3);
         break;
       case 'Settings':
         context.push(

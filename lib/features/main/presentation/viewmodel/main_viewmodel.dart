@@ -13,6 +13,9 @@ class MainViewModel extends ChangeNotifier {
   /// The authenticated user.
   final UserEntity user;
 
+  /// Role passed by the route.
+  final String role;
+
   /// Repository for main operations.
   final MainRepository _repository;
 
@@ -48,6 +51,7 @@ class MainViewModel extends ChangeNotifier {
   /// Creates a main view model instance.
   MainViewModel({
     required this.user,
+    required this.role,
     required MainRepository repository,
     int initialIndex = 0,
     int initialMealPlanTabIndex = 0,
@@ -83,10 +87,10 @@ class MainViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   /// Whether the user is an admin.
-  bool get isAdmin => user.isAdmin;
+  bool get isAdmin => user.isAdmin || role.toLowerCase() == 'admin';
 
   /// Whether the user is a regular user.
-  bool get isUser => user.isUser;
+  bool get isUser => !isAdmin;
 
   /// One-time navigation event. Returns and clears the event.
   MainNavigationEvent? get navigationEvent {

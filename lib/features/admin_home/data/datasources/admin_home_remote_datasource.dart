@@ -527,26 +527,26 @@ class AdminHomeRemoteDataSource {
   /// List of quick access items for admin.
   static const List<AdminQuickAccessItem> _quickAccessItems = [
     AdminQuickAccessItem(
-      title: 'Manage Content',
-      description: 'Recipes, Categories',
-      icon: Icons.article,
+      title: 'Manage',
+      description: '',
+      icon: Icons.build,
     ),
 
     AdminQuickAccessItem(
-      title: 'View Stats',
-      description: 'Analytics & Reports',
+      title: 'Moderation',
+      description: '',
+      icon: Icons.shield,
+    ),
+
+    AdminQuickAccessItem(
+      title: 'Statistics',
+      description: '',
       icon: Icons.bar_chart,
     ),
 
     AdminQuickAccessItem(
-      title: 'Manage Feedback',
-      description: 'Reviews & Reports',
-      icon: Icons.chat,
-    ),
-
-    AdminQuickAccessItem(
       title: 'Settings',
-      description: 'App & System Settings',
+      description: '',
       icon: Icons.settings,
     ),
   ];
