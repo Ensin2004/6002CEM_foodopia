@@ -408,8 +408,8 @@ class _AdminStatisticActions extends StatelessWidget {
       return;
     }
 
-    if (item.title == 'Nutrient Insight') {
-      context.push(AppRouter.adminNutrientInsight);
+    if (item.title == 'Moderation Statistics') {
+      context.push(AppRouter.adminModerationStatistics);
       return;
     }
 

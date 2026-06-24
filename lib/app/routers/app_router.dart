@@ -33,7 +33,7 @@ import '../../features/statistics/presentation/view/admin_dietary_preference_pag
 import '../../features/statistics/presentation/view/admin_gender_page.dart';
 import '../../features/statistics/presentation/view/admin_hub_rating_page.dart';
 import '../../features/statistics/presentation/view/admin_meal_analytic_page.dart';
-import '../../features/statistics/presentation/view/admin_nutrient_insight_page.dart';
+import '../../features/statistics/presentation/view/admin_moderation_statistics_page.dart';
 import '../../features/statistics/presentation/view/admin_post_analytic_page.dart';
 import '../../features/statistics/presentation/view/admin_usage_forecast_page.dart';
 import '../../features/statistics/presentation/view/admin_user_usage_page.dart';
@@ -198,9 +198,9 @@ class AppRouter {
   /// Admin usage forecast screen route.
   static const String adminUsageForecast = '/statistics/admin-usage-forecast';
 
-  /// Admin nutrient insight screen route.
-  static const String adminNutrientInsight =
-      '/statistics/admin-nutrient-insight';
+  /// Admin moderation statistics screen route.
+  static const String adminModerationStatistics =
+      '/statistics/admin-moderation-statistics';
 
   /// Admin hub rating screen route.
   static const String adminHubRating = '/statistics/admin-hub-rating';
@@ -246,11 +246,11 @@ class AppRouter {
   /// Recipe performance screen route.
   static const String recipePerformance = '/statistics/recipe-performance';
 
-  /// Most cooked recipes screen route.
-  static const String mostCookedRecipes = '/statistics/most-cooked-recipes';
-
   /// Post difficulty screen route.
   static const String postDifficulty = '/statistics/post-difficulty';
+
+  /// Most cooked recipes screen route.
+  static const String mostCookedRecipes = '/statistics/most-cooked-recipes';
 
   /// Issue detail screen route.
   static const String issueDetail = '/help-center/issue';
@@ -1107,9 +1107,9 @@ class AppRouter {
       ),
 
       GoRoute(
-        name: 'adminNutrientInsight',
-        path: adminNutrientInsight,
-        builder: (context, state) => const AdminNutrientInsightPage(),
+        name: 'adminModerationStatistics',
+        path: adminModerationStatistics,
+        builder: (context, state) => const AdminModerationStatisticsPage(),
       ),
 
       GoRoute(
@@ -1194,27 +1194,27 @@ class AppRouter {
       ),
 
       GoRoute(
-        name: 'recipePerformance',
-        path: recipePerformance,
-        builder: (context, state) => const RecipePerformancePage(),
-      ),
-
-      GoRoute(
         name: 'mealPlannedTime',
         path: mealPlannedTime,
         builder: (context, state) => const MealPlannedTimePage(),
       ),
 
       GoRoute(
-        name: 'mostCookedRecipes',
-        path: mostCookedRecipes,
-        builder: (context, state) => const MostCookedRecipePage(),
+        name: 'recipePerformance',
+        path: recipePerformance,
+        builder: (context, state) => const RecipePerformancePage(),
       ),
 
       GoRoute(
         name: 'postDifficulty',
         path: postDifficulty,
         builder: (context, state) => const PostDifficultyPage(),
+      ),
+
+      GoRoute(
+        name: 'mostCookedRecipes',
+        path: mostCookedRecipes,
+        builder: (context, state) => const MostCookedRecipePage(),
       ),
 
       // =====================================================================

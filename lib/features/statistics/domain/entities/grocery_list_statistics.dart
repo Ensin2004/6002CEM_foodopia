@@ -1,5 +1,3 @@
-// These notes explain the statistics page code in simple words.
-// Only comments were added here; the code behaviour stays the same.
 // Handles GroceryListStatistics for this part of the statistics page.
 class GroceryListStatistics {
   final String dateRange;

@@ -7,13 +7,11 @@ import '../models/statistics_dashboard_model.dart';
 import '../../domain/entities/admin_statistics.dart';
 import '../../domain/entities/calories_intake_statistics.dart';
 import '../../domain/entities/calories_posted_statistics.dart';
-import '../../domain/entities/difficulty_meal_statistics.dart';
 import '../../domain/entities/food_analytic_statistics.dart';
 import '../../domain/entities/meal_plan_method_statistics.dart';
 import '../../domain/entities/meal_planned_time_statistics.dart';
 import '../../domain/entities/most_cooked_recipe_statistics.dart';
 import '../../domain/entities/post_analytic_statistics.dart';
-import '../../domain/entities/post_difficulty_statistics.dart';
 import '../../domain/entities/posted_meal_time_statistics.dart';
 import '../../domain/entities/statistics_dashboard.dart';
 
@@ -203,7 +201,7 @@ class StatisticsLocalDataSource {
         StatisticsMenuItem(title: 'Planned Meal Analytic'),
         StatisticsMenuItem(title: 'Post Analytic'),
         StatisticsMenuItem(title: 'Dietary Preference'),
-        StatisticsMenuItem(title: 'Nutrient Insight'),
+        StatisticsMenuItem(title: 'Moderation Statistics'),
       ],
       communityMenuItems: [
         StatisticsMenuItem(title: 'Gender'),
@@ -611,136 +609,6 @@ class StatisticsLocalDataSource {
               carbohydrateGram: 46,
               proteinGram: 10,
               icon: Icons.lunch_dining,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // Handles getDifficultyMeals for this part of the statistics page.
-  Future<DifficultyMealStatistics> getDifficultyMeals({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 220));
-    final range = _resolveRange(startDate, endDate);
-
-    return DifficultyMealStatistics(
-      dateRange: _formatRange(range.start, range.end),
-      totalPost: 24,
-      averageDifficulty: 3.2,
-      groups: [
-        DifficultyMealGroup(
-          difficulty: 1,
-          recipeCount: 3,
-          color: Color(0xFF21AEEA),
-          meals: [
-            DifficultyMealItem(
-              name: 'Fruit Bowl',
-              date: DateTime(2024, 5, 12),
-              quantity: 1,
-              icon: Icons.breakfast_dining,
-            ),
-            DifficultyMealItem(
-              name: 'Toast Set',
-              date: DateTime(2024, 5, 13),
-              quantity: 1,
-              icon: Icons.bakery_dining,
-            ),
-            DifficultyMealItem(
-              name: 'Simple Salad',
-              date: DateTime(2024, 5, 16),
-              quantity: 1,
-              icon: Icons.eco,
-            ),
-          ],
-        ),
-        DifficultyMealGroup(
-          difficulty: 2,
-          recipeCount: 5,
-          color: Color(0xFF21AEEA),
-          meals: [
-            DifficultyMealItem(
-              name: 'Pesto Pasta',
-              date: DateTime(2024, 5, 12),
-              quantity: 2,
-              icon: Icons.ramen_dining,
-            ),
-            DifficultyMealItem(
-              name: 'Chicken Wrap',
-              date: DateTime(2024, 5, 14),
-              quantity: 2,
-              icon: Icons.lunch_dining,
-            ),
-            DifficultyMealItem(
-              name: 'Soup Bowl',
-              date: DateTime(2024, 5, 18),
-              quantity: 1,
-              icon: Icons.soup_kitchen,
-            ),
-          ],
-        ),
-        DifficultyMealGroup(
-          difficulty: 3,
-          recipeCount: 8,
-          color: Color(0xFF21AEEA),
-          meals: [
-            DifficultyMealItem(
-              name: 'Chicken Rice',
-              date: DateTime(2024, 5, 13),
-              quantity: 3,
-              icon: Icons.rice_bowl,
-            ),
-            DifficultyMealItem(
-              name: 'Grilled Fish',
-              date: DateTime(2024, 5, 15),
-              quantity: 3,
-              icon: Icons.dinner_dining,
-            ),
-            DifficultyMealItem(
-              name: 'Vegetable Curry',
-              date: DateTime(2024, 5, 17),
-              quantity: 2,
-              icon: Icons.local_dining,
-            ),
-          ],
-        ),
-        DifficultyMealGroup(
-          difficulty: 4,
-          recipeCount: 6,
-          color: Color(0xFF21AEEA),
-          meals: [
-            DifficultyMealItem(
-              name: 'Lasagna',
-              date: DateTime(2024, 5, 14),
-              quantity: 4,
-              icon: Icons.local_pizza,
-            ),
-            DifficultyMealItem(
-              name: 'Roast Chicken',
-              date: DateTime(2024, 5, 18),
-              quantity: 2,
-              icon: Icons.set_meal,
-            ),
-          ],
-        ),
-        DifficultyMealGroup(
-          difficulty: 5,
-          recipeCount: 2,
-          color: Color(0xFF21AEEA),
-          meals: [
-            DifficultyMealItem(
-              name: 'Beef Wellington',
-              date: DateTime(2024, 5, 16),
-              quantity: 1,
-              icon: Icons.restaurant,
-            ),
-            DifficultyMealItem(
-              name: 'Layer Cake',
-              date: DateTime(2024, 5, 18),
-              quantity: 1,
-              icon: Icons.cake,
             ),
           ],
         ),
@@ -1362,108 +1230,6 @@ class StatisticsLocalDataSource {
     );
   }
 
-  // Handles getPostDifficulty for this part of the statistics page.
-  Future<PostDifficultyStatistics> getPostDifficulty({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 220));
-    final range = _resolveRange(startDate, endDate);
-
-    return PostDifficultyStatistics(
-      dateRange: _formatRange(range.start, range.end),
-      totalPost: 10,
-      averageDifficulty: 3.0,
-      groups: [
-        PostDifficultyGroup(
-          difficulty: 1,
-          postCount: 2,
-          color: const Color(0xFF21AEEA),
-          posts: [
-            PostDifficultyItem(
-              recipeName: 'Fruit Bowl',
-              date: DateTime(2024, 5, 12),
-              icon: Icons.breakfast_dining,
-            ),
-            PostDifficultyItem(
-              recipeName: 'Simple Salad',
-              date: DateTime(2024, 5, 16),
-              icon: Icons.eco,
-            ),
-          ],
-        ),
-        PostDifficultyGroup(
-          difficulty: 2,
-          postCount: 2,
-          color: const Color(0xFF21AEEA),
-          posts: [
-            PostDifficultyItem(
-              recipeName: 'Pesto Pasta',
-              date: DateTime(2024, 5, 12),
-              icon: Icons.ramen_dining,
-            ),
-            PostDifficultyItem(
-              recipeName: 'Soup Bowl',
-              date: DateTime(2024, 5, 18),
-              icon: Icons.soup_kitchen,
-            ),
-          ],
-        ),
-        PostDifficultyGroup(
-          difficulty: 3,
-          postCount: 2,
-          color: const Color(0xFF21AEEA),
-          posts: [
-            PostDifficultyItem(
-              recipeName: 'Chicken Bowl',
-              date: DateTime(2024, 5, 13),
-              icon: Icons.rice_bowl,
-            ),
-            PostDifficultyItem(
-              recipeName: 'Garden Wrap',
-              date: DateTime(2024, 5, 17),
-              icon: Icons.lunch_dining,
-            ),
-          ],
-        ),
-        PostDifficultyGroup(
-          difficulty: 4,
-          postCount: 2,
-          color: const Color(0xFF21AEEA),
-          posts: [
-            PostDifficultyItem(
-              recipeName: 'Lasagna',
-              date: DateTime(2024, 5, 14),
-              icon: Icons.local_pizza,
-            ),
-            PostDifficultyItem(
-              recipeName: 'Roast Chicken',
-              date: DateTime(2024, 5, 18),
-              icon: Icons.set_meal,
-            ),
-          ],
-        ),
-        PostDifficultyGroup(
-          difficulty: 5,
-          postCount: 2,
-          color: const Color(0xFF21AEEA),
-          posts: [
-            PostDifficultyItem(
-              recipeName: 'Layer Cake',
-              date: DateTime(2024, 5, 15),
-              icon: Icons.cake,
-            ),
-            PostDifficultyItem(
-              recipeName: 'Beef Wellington',
-              date: DateTime(2024, 5, 16),
-              icon: Icons.restaurant,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   // Handles getAdminMealAnalytic for this part of the statistics page.
   Future<AdminMealAnalyticStatistics> getAdminMealAnalytic({
     DateTime? startDate,
@@ -1595,50 +1361,6 @@ class StatisticsLocalDataSource {
           ],
         ),
         AdminAnalyticSection(
-          title: 'Average Difficulty',
-          summaryTitle: 'Average',
-          summaryValue: '3.8',
-          highlightTitle: 'Most Common',
-          highlightValue: 'Level 3',
-          items: [
-            AdminRankedStatistic(
-              label: 'Level 1',
-              value: 62,
-              percent: 0.08,
-              icon: Icons.looks_one,
-              color: Color(0xFF21AEEA),
-            ),
-            AdminRankedStatistic(
-              label: 'Level 2',
-              value: 134,
-              percent: 0.18,
-              icon: Icons.looks_two,
-              color: Color(0xFF21AEEA),
-            ),
-            AdminRankedStatistic(
-              label: 'Level 3',
-              value: 266,
-              percent: 0.36,
-              icon: Icons.looks_3,
-              color: Color(0xFF21AEEA),
-            ),
-            AdminRankedStatistic(
-              label: 'Level 4',
-              value: 204,
-              percent: 0.27,
-              icon: Icons.looks_4,
-              color: Color(0xFF21AEEA),
-            ),
-            AdminRankedStatistic(
-              label: 'Level 5',
-              value: 82,
-              percent: 0.11,
-              icon: Icons.looks_5,
-              color: Color(0xFF21AEEA),
-            ),
-          ],
-        ),
-        AdminAnalyticSection(
           title: 'Method Of Creating Meal Plan',
           summaryTitle: 'Total Created',
           summaryValue: '748',
@@ -1759,36 +1481,6 @@ class StatisticsLocalDataSource {
           ],
         ),
         AdminAnalyticSection(
-          title: 'Recipe Performance',
-          summaryTitle: 'Total Post',
-          summaryValue: '333',
-          highlightTitle: 'Top Time',
-          highlightValue: 'Dinner',
-          items: [
-            AdminRankedStatistic(
-              label: 'Dinner',
-              value: 148,
-              percent: 0.44,
-              icon: Icons.dinner_dining,
-              color: Color(0xFF21AEEA),
-            ),
-            AdminRankedStatistic(
-              label: 'Lunch',
-              value: 112,
-              percent: 0.34,
-              icon: Icons.lunch_dining,
-              color: Color(0xFF21AEEA),
-            ),
-            AdminRankedStatistic(
-              label: 'Breakfast',
-              value: 73,
-              percent: 0.22,
-              icon: Icons.breakfast_dining,
-              color: Color(0xFF21AEEA),
-            ),
-          ],
-        ),
-        AdminAnalyticSection(
           title: 'Recipe That Been Planned The Most',
           summaryTitle: 'Total Planned',
           summaryValue: '612',
@@ -1814,50 +1506,6 @@ class StatisticsLocalDataSource {
               value: 81,
               percent: 0.22,
               icon: Icons.lunch_dining,
-              color: Color(0xFF21AEEA),
-            ),
-          ],
-        ),
-        AdminAnalyticSection(
-          title: 'Average Difficulty',
-          summaryTitle: 'Average',
-          summaryValue: '3.5',
-          highlightTitle: 'Most Common',
-          highlightValue: 'Level 4',
-          items: [
-            AdminRankedStatistic(
-              label: 'Level 1',
-              value: 18,
-              percent: 0.05,
-              icon: Icons.looks_one,
-              color: Color(0xFF21AEEA),
-            ),
-            AdminRankedStatistic(
-              label: 'Level 2',
-              value: 54,
-              percent: 0.16,
-              icon: Icons.looks_two,
-              color: Color(0xFF21AEEA),
-            ),
-            AdminRankedStatistic(
-              label: 'Level 3',
-              value: 98,
-              percent: 0.29,
-              icon: Icons.looks_3,
-              color: Color(0xFF21AEEA),
-            ),
-            AdminRankedStatistic(
-              label: 'Level 4',
-              value: 112,
-              percent: 0.34,
-              icon: Icons.looks_4,
-              color: Color(0xFF21AEEA),
-            ),
-            AdminRankedStatistic(
-              label: 'Level 5',
-              value: 51,
-              percent: 0.15,
-              icon: Icons.looks_5,
               color: Color(0xFF21AEEA),
             ),
           ],
