@@ -20,6 +20,7 @@ import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../viewmodel/add_recipe_method_viewmodel.dart';
+import '../widgets/add_recipe_image_source_sheet.dart';
 import '../widgets/recipe_error_dialog.dart';
 
 /// Add recipe choose method page
@@ -144,8 +145,11 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
     final viewModel = context.read<AddRecipeMethodViewModel>();
     viewModel.selectMethod(AddRecipeMethod.uploadImage);
 
-    // Open gallery to select an image
-    final image = await _imagePicker.pickImage(source: ImageSource.gallery);
+    // Let user choose whether to take a photo or select one from gallery.
+    final source = await showAddRecipeImageSourceSheet(context);
+    if (!context.mounted || source == null) return;
+
+    final image = await _imagePicker.pickImage(source: source);
     if (!context.mounted || image == null) return;
 
     // Loading dialog stays visible while AI extracts recipe details from the image.
@@ -197,8 +201,15 @@ class _AddRecipeChooseMethodViewState extends State<_AddRecipeChooseMethodView> 
     final viewModel = context.read<AddRecipeMethodViewModel>();
     viewModel.selectMethod(AddRecipeMethod.uploadVideo);
 
-    // Open gallery to select a video
-    final video = await _imagePicker.pickVideo(source: ImageSource.gallery);
+    // Let user choose whether to record a video or select one from gallery.
+    final source = await showAddRecipeImageSourceSheet(
+      context,
+      cameraLabel: 'Record Video',
+      galleryLabel: 'Choose Video from Gallery',
+    );
+    if (!context.mounted || source == null) return;
+
+    final video = await _imagePicker.pickVideo(source: source);
     if (!context.mounted || video == null) return;
 
     // Loading dialog stays visible while the video is converted into a saved draft.
