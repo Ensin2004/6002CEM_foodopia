@@ -31,6 +31,7 @@ import '../../../../recipe/presentation/view/add_recipe_review_page.dart';
 import '../../../domain/entities/add_meal_ai_plan.dart';
 import '../../../domain/entities/meal_calorie_guidance.dart';
 import '../../../domain/entities/meal_plan_inspiration_input.dart';
+import '../../../domain/entities/meal_serving_amount.dart';
 import '../../../domain/usecases/generate_ai_meal_ideas_usecase.dart';
 import '../../../domain/usecases/get_add_meal_ai_plan_usecase.dart';
 import '../../../domain/usecases/get_meal_plan_default_ingredients_usecase.dart';
@@ -39,6 +40,7 @@ import '../../../domain/usecases/get_meal_categories_usecase.dart';
 import '../../../domain/usecases/save_ai_meal_plan_usecase.dart';
 import '../../../domain/usecases/search_meal_plan_ingredients_usecase.dart';
 import '../../viewmodel/ai/generate_ai_meal_viewmodel.dart';
+import '../../widgets/planning/meal_serving_dialog.dart';
 
 part '../../widgets/ai_meal/factor_step.dart';
 part '../../widgets/ai_meal/ai_results_step.dart';
@@ -111,6 +113,109 @@ class GenerateAiMealPage extends StatelessWidget {
         searchIngredientsUseCase: sl<SearchMealPlanIngredientsUseCase>(),
       ),
       child: const _GenerateAiMealView(),
+    );
+  }
+}
+
+/// Inline AI generation form that reuses the same factor form as the page flow.
+class GenerateAiMealInlineRequestForm extends StatelessWidget {
+  /// User ID for the current user.
+  final String userId;
+
+  /// Type of meal to generate.
+  final String mealType;
+
+  /// Optional meal category ID.
+  final String? mealCategoryId;
+
+  /// Optional selected date for the meal plan.
+  final DateTime? selectedDate;
+
+  /// Optional initial generation request.
+  final AddMealAiGenerationRequest? initialRequest;
+
+  /// Calorie budget for the selected day.
+  final MealCalorieBudget calorieBudget;
+
+  /// Existing planned meal names to avoid repeating.
+  final List<String> existingMealNames;
+
+  /// Callback with the shared form request when generate is pressed.
+  final ValueChanged<AddMealAiGenerationRequest> onGenerateRequest;
+
+  /// Creates a new inline AI generation form.
+  const GenerateAiMealInlineRequestForm({
+    super.key,
+    required this.userId,
+    required this.mealType,
+    this.mealCategoryId,
+    this.selectedDate,
+    this.initialRequest,
+    this.calorieBudget = const MealCalorieBudget.empty(),
+    this.existingMealNames = const [],
+    required this.onGenerateRequest,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => GenerateAiMealViewModel(
+        userId: userId,
+        mealType: mealType,
+        mealCategoryId: mealCategoryId,
+        selectedDate: selectedDate,
+        initialRequest: initialRequest,
+        calorieBudget: calorieBudget,
+        existingMealNames: existingMealNames,
+        getPlanUseCase: sl<GetAddMealAiPlanUseCase>(),
+        generateIdeasUseCase: sl<GenerateAiMealIdeasUseCase>(),
+        getMealCategoriesUseCase: sl<GetMealCategoriesUseCase>(),
+        saveAiMealPlanUseCase: sl<SaveAiMealPlanUseCase>(),
+        getDefaultIngredientsUseCase:
+            sl<GetMealPlanDefaultIngredientsUseCase>(),
+        getInspirationOptionsUseCase:
+            sl<GetMealPlanInspirationOptionsUseCase>(),
+        searchIngredientsUseCase: sl<SearchMealPlanIngredientsUseCase>(),
+      ),
+      child: _InlineGenerateAiMealFormView(
+        onGenerateRequest: onGenerateRequest,
+      ),
+    );
+  }
+}
+
+/// Internal inline form view.
+class _InlineGenerateAiMealFormView extends StatelessWidget {
+  /// Callback with the shared form request when generate is pressed.
+  final ValueChanged<AddMealAiGenerationRequest> onGenerateRequest;
+
+  /// Creates a new inline form view.
+  const _InlineGenerateAiMealFormView({required this.onGenerateRequest});
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    if (viewModel.isLoading && viewModel.plan == null) {
+      return const SizedBox(
+        height: 160,
+        child: LoadingDialog(inline: true, message: 'Loading AI meal setup...'),
+      );
+    }
+
+    final plan = viewModel.plan;
+    if (plan == null) {
+      return _ErrorState(
+        message: viewModel.errorMessage ?? 'Unable to load AI meal setup',
+        onRetry: viewModel.loadPlan,
+      );
+    }
+
+    return _GenerateAiFactorFormContent(
+      plan: plan,
+      onGenerate: () => onGenerateRequest(
+        context.read<GenerateAiMealViewModel>().generationRequest,
+      ),
     );
   }
 }

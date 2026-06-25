@@ -59,11 +59,39 @@ class _FactorStep extends StatelessWidget {
         AppSpacing.lg,
       ),
       children: [
+        _GenerateAiFactorFormContent(
+          plan: plan,
+          onGenerate: context.read<GenerateAiMealViewModel>().goToResults,
+        ),
+      ],
+    );
+  }
+}
+
+/// Shared AI factor form content.
+class _GenerateAiFactorFormContent extends StatelessWidget {
+  /// The meal plan data.
+  final AddMealAiPlan plan;
+
+  /// Callback when the generate action is pressed.
+  final VoidCallback onGenerate;
+
+  /// Creates a new shared AI factor form content instance.
+  const _GenerateAiFactorFormContent({
+    required this.plan,
+    required this.onGenerate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         // Informational tip box.
         const AppTipBox(
-          title: 'Foodopia AI will suggest meal ideas',
+          title: 'Foodopia AI will build recipe ideas',
           message:
-              'Based on time of day, weather, ingredients you have, your preferences and dietary needs.',
+              'Set the details that matter for this meal. Anything flexible can stay as Any.',
           backgroundColor: Color(0xFFFFF8E1),
           iconColor: AppColors.secondary,
           icon: Icons.smart_toy_outlined,
@@ -93,12 +121,12 @@ class _FactorStep extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         // Section header.
-        Text('Consider These Factors', style: context.text.titleMedium),
+        Text('Customize Your Recipe', style: context.text.titleMedium),
         const SizedBox(height: 2),
 
         // Section subtitle.
         Text(
-          'AI will use these information to generate the best suggestions for you.',
+          'Tap chips to choose examples, or open a section to add your own details.',
           style: context.text.bodySmall,
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -109,26 +137,46 @@ class _FactorStep extends StatelessWidget {
           type: _IngredientFactorType.include,
           icon: Icons.shopping_cart_outlined,
           title: 'Ingredients to Include',
-          subtitle: 'Search USDA foods or add ingredients AI should include.',
+          subtitle: 'Search foods or add ingredients AI should include.',
         ),
+        const _AllergyFactorCard(),
+        const _FoodDislikeFactorCard(),
         _MealPreferenceFactorCard(plan: plan),
-        const _IngredientFactorCard(
-          type: _IngredientFactorType.avoid,
-          icon: Icons.block,
-          title: 'Ingredients to Avoid',
-          subtitle: 'Dislikes from settings are selected by default.',
-        ),
+        const _CuisineStyleFactorCard(),
         _DishPreferenceFactorCard(plan: plan),
+        const _CookingMethodFactorCard(),
+        const _SpiceLevelFactorCard(),
         const _CookingPreferenceFactorCard(),
+        const _ExtraPreferencesFactorCard(),
         const SizedBox(height: AppSpacing.lg),
 
         // Generate button.
         _PrimaryActionButton(
           label: 'Generate Recipe',
-          onPressed: context.read<GenerateAiMealViewModel>().goToResults,
+          onPressed: () => _submitForm(context),
         ),
       ],
     );
+  }
+
+  /// Validates and submits the form.
+  void _submitForm(BuildContext context) {
+    final viewModel = context.read<GenerateAiMealViewModel>();
+    final error = viewModel.validateGenerationRequest();
+    if (error != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(error),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.error,
+          ),
+        );
+      return;
+    }
+
+    onGenerate();
   }
 }
 
@@ -150,38 +198,48 @@ class _WeatherFactorCard extends StatelessWidget {
       title: 'Weather',
       subtitle: '${weather.condition} - ${weather.temperature}C',
       selectedLabels: [weather.summary],
-      children: [
-        // Weather category dropdown.
-        DropdownButtonFormField<String>(
-          initialValue: viewModel.selectedWeatherCategoryId,
-          isExpanded: true,
-          style: context.text.bodyMedium,
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: 10,
+      childrenBuilder: (context) {
+        final sheetViewModel = context.watch<GenerateAiMealViewModel>();
+        final sheetWeather = sheetViewModel.selectedWeatherSnapshot;
+
+        return [
+          // Weather category dropdown.
+          DropdownButtonFormField<String>(
+            initialValue: sheetViewModel.selectedWeatherCategoryId,
+            isExpanded: true,
+            style: context.text.bodyMedium,
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 10,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
             ),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
+            items: [
+              for (final category in sheetViewModel.weatherCategories)
+                DropdownMenuItem(
+                  value: category.id,
+                  child: Text(category.label),
+                ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                context.read<GenerateAiMealViewModel>().selectWeatherCategory(
+                  value,
+                );
+              }
+            },
           ),
-          items: [
-            for (final category in viewModel.weatherCategories)
-              DropdownMenuItem(value: category.id, child: Text(category.label)),
-          ],
-          onChanged: (value) {
-            if (value != null) {
-              context.read<GenerateAiMealViewModel>().selectWeatherCategory(
-                value,
-              );
-            }
-          },
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _SelectedSummaryText(weather.summary),
-      ],
+          const SizedBox(height: AppSpacing.sm),
+          _SelectedSummaryText(sheetWeather.summary),
+        ];
+      },
     );
   }
 }
@@ -226,31 +284,42 @@ class _IngredientFactorCard extends StatelessWidget {
       title: title,
       subtitle: subtitle,
       selectedLabels: selected,
-      children: [
-        // Ingredient preview panel.
-        _IngredientPreviewPanel(
-          type: type,
-          selected: selected,
-          defaultValues: type == _IngredientFactorType.include
-              ? viewModel.defaultIngredientsToInclude
-              : viewModel.defaultIngredientsToAvoid,
-          onRemove: type == _IngredientFactorType.include
-              ? context
-                    .read<GenerateAiMealViewModel>()
-                    .toggleIngredientToInclude
-              : context.read<GenerateAiMealViewModel>().toggleIngredientToAvoid,
-        ),
-        const SizedBox(height: AppSpacing.sm),
+      childrenBuilder: (context) {
+        final sheetViewModel = context.watch<GenerateAiMealViewModel>();
+        final sheetSelected = type == _IngredientFactorType.include
+            ? sheetViewModel.selectedIngredientsToInclude
+            : sheetViewModel.selectedIngredientsToAvoid;
 
-        // Edit ingredients button.
-        Align(
-          alignment: Alignment.centerLeft,
-          child: _AddFactorAction(
-            label: selected.isEmpty ? 'Add ingredient' : 'Edit ingredients',
-            onTap: () => _showIngredientSheet(context, type),
+        return [
+          // Ingredient preview panel.
+          _IngredientPreviewPanel(
+            type: type,
+            selected: sheetSelected,
+            defaultValues: type == _IngredientFactorType.include
+                ? sheetViewModel.defaultIngredientsToInclude
+                : sheetViewModel.defaultIngredientsToAvoid,
+            onRemove: type == _IngredientFactorType.include
+                ? context
+                      .read<GenerateAiMealViewModel>()
+                      .toggleIngredientToInclude
+                : context
+                      .read<GenerateAiMealViewModel>()
+                      .toggleIngredientToAvoid,
           ),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.sm),
+
+          // Edit ingredients button.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _AddFactorAction(
+              label: sheetSelected.isEmpty
+                  ? 'Add ingredient'
+                  : 'Edit ingredients',
+              onTap: () => _showIngredientSheet(context, type),
+            ),
+          ),
+        ];
+      },
     );
   }
 
@@ -275,16 +344,195 @@ class _IngredientFactorCard extends StatelessWidget {
   }
 }
 
+/// Allergy factor card for AI generation.
+class _AllergyFactorCard extends StatelessWidget {
+  /// Creates a new allergy factor card instance.
+  const _AllergyFactorCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    return _ExpandableFactorCard(
+      icon: Icons.health_and_safety_outlined,
+      title: 'Allergies',
+      subtitle: 'Allergies from Settings are selected by default for safety.',
+      selectedLabels: viewModel.selectedAllergies.isEmpty
+          ? const ['No allergies selected']
+          : viewModel.selectedAllergies,
+      childrenBuilder: (context) {
+        final sheetViewModel = context.watch<GenerateAiMealViewModel>();
+        final sheetOptions = {
+          ...sheetViewModel.defaultAllergies,
+          ...sheetViewModel.allergyOptions.map((item) => item.name),
+          ...sheetViewModel.selectedAllergies,
+        }.where((item) => item.trim().isNotEmpty).toList();
+
+        return [
+          if (sheetViewModel.isFactorOptionsLoading)
+            const LoadingDialog(inline: true, message: 'Loading allergies...')
+          else if (sheetOptions.isEmpty)
+            Text(
+              'No allergies saved or configured.',
+              style: context.text.bodySmall,
+            )
+          else
+            _ChipWrap(
+              values: sheetOptions,
+              selectedValues: sheetViewModel.selectedAllergies,
+              danger: true,
+              onSelected: context.read<GenerateAiMealViewModel>().toggleAllergy,
+            ),
+          const SizedBox(height: AppSpacing.md),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _AddFactorAction(
+              icon: Icons.search,
+              label: 'Search or add allergy',
+              onTap: () => _showAllergyIngredientSheet(context),
+            ),
+          ),
+        ];
+      },
+    );
+  }
+
+  /// Shows the allergy search sheet for custom allergy values.
+  void _showAllergyIngredientSheet(BuildContext context) {
+    final viewModel = context.read<GenerateAiMealViewModel>();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => ChangeNotifierProvider.value(
+        value: viewModel,
+        child: const _IngredientPickerSheet(
+          type: _IngredientFactorType.avoid,
+          title: 'Search or add allergy',
+          subtitle: 'Add allergy ingredients AI must avoid for this request.',
+        ),
+      ),
+    );
+  }
+}
+
+/// Food dislike and avoid ingredient factor card.
+class _FoodDislikeFactorCard extends StatelessWidget {
+  /// Creates a new food dislike factor card instance.
+  const _FoodDislikeFactorCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+    final selectedLabels = [
+      ...viewModel.selectedFoodDislikes,
+      ...viewModel.selectedCustomAvoidIngredients,
+    ];
+
+    return _ExpandableFactorCard(
+      icon: Icons.block,
+      title: 'Food Dislikes / Ingredients to Avoid',
+      subtitle:
+          'Dislikes from Settings are selected by default. Add more if needed.',
+      selectedLabels: selectedLabels.isEmpty
+          ? const ['No dislikes selected']
+          : selectedLabels,
+      childrenBuilder: (context) {
+        final sheetViewModel = context.watch<GenerateAiMealViewModel>();
+        final sheetOptions = {
+          ...sheetViewModel.defaultDislikes,
+          ...sheetViewModel.dislikeOptions.map((item) => item.name),
+          ...sheetViewModel.selectedFoodDislikes,
+        }.where((item) => item.trim().isNotEmpty).toList();
+
+        return [
+          if (sheetViewModel.isFactorOptionsLoading)
+            const LoadingDialog(inline: true, message: 'Loading dislikes...')
+          else if (sheetOptions.isEmpty)
+            Text(
+              'No dislikes saved or configured.',
+              style: context.text.bodySmall,
+            )
+          else
+            _ChipWrap(
+              values: sheetOptions,
+              selectedValues: sheetViewModel.selectedFoodDislikes,
+              danger: true,
+              onSelected: context
+                  .read<GenerateAiMealViewModel>()
+                  .toggleFoodDislike,
+            ),
+          const SizedBox(height: AppSpacing.sm),
+          if (sheetViewModel.selectedCustomAvoidIngredients.isNotEmpty) ...[
+            _SectionLabel('Custom avoid ingredients'),
+            const SizedBox(height: AppSpacing.xs),
+            _ChipWrap(
+              values: sheetViewModel.selectedCustomAvoidIngredients,
+              selectedValues: sheetViewModel.selectedCustomAvoidIngredients,
+              danger: true,
+              onSelected: context
+                  .read<GenerateAiMealViewModel>()
+                  .toggleIngredientToAvoid,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _AddFactorAction(
+              icon: Icons.search,
+              label: 'Search or add avoid ingredient',
+              onTap: () => _showAvoidIngredientSheet(context),
+            ),
+          ),
+        ];
+      },
+    );
+  }
+
+  /// Shows the avoid ingredient sheet for custom avoid values.
+  void _showAvoidIngredientSheet(BuildContext context) {
+    final viewModel = context.read<GenerateAiMealViewModel>();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => ChangeNotifierProvider.value(
+        value: viewModel,
+        child: const _IngredientPickerSheet(
+          type: _IngredientFactorType.avoid,
+          title: 'Search or add avoid ingredient',
+          subtitle: 'Add ingredients AI should avoid for this request.',
+        ),
+      ),
+    );
+  }
+}
+
 /// Add factor action button.
 class _AddFactorAction extends StatelessWidget {
   /// Button label.
   final String label;
 
+  /// Icon to display.
+  final IconData icon;
+
   /// Callback when tapped.
   final VoidCallback onTap;
 
   /// Creates a new add factor action instance.
-  const _AddFactorAction({required this.label, required this.onTap});
+  const _AddFactorAction({
+    required this.label,
+    required this.onTap,
+    this.icon = Icons.add,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -294,18 +542,14 @@ class _AddFactorAction extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.08),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.add_circle_outline,
-              size: 18,
-              color: AppColors.primary,
-            ),
+            Icon(icon, size: 18, color: AppColors.primary),
             const SizedBox(width: 7),
             Text(
               label,
@@ -506,8 +750,14 @@ class _IngredientPickerSheet extends StatefulWidget {
   /// Type of ingredient factor.
   final _IngredientFactorType type;
 
+  /// Optional title override.
+  final String? title;
+
+  /// Optional subtitle override.
+  final String? subtitle;
+
   /// Creates a new ingredient picker sheet instance.
-  const _IngredientPickerSheet({required this.type});
+  const _IngredientPickerSheet({required this.type, this.title, this.subtitle});
 
   @override
   State<_IngredientPickerSheet> createState() => _IngredientPickerSheetState();
@@ -582,7 +832,8 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
 
             // Header.
             Text(
-              isAvoid ? 'Ingredients to avoid' : 'Ingredients to include',
+              widget.title ??
+                  (isAvoid ? 'Ingredients to avoid' : 'Ingredients to include'),
               style: context.text.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -591,9 +842,10 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
 
             // Subtitle.
             Text(
-              isAvoid
-                  ? 'Saved allergies and dislikes are selected for this request only.'
-                  : 'Suggested ingredients are selected by default and can be adjusted.',
+              widget.subtitle ??
+                  (isAvoid
+                      ? 'Add ingredients AI should avoid for this request.'
+                      : 'Search foods or add a custom ingredient AI should include.'),
               style: context.text.bodyMedium?.copyWith(height: 1.35),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -603,7 +855,7 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
               controller: _controller,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: 'Search USDA foods or add custom ingredient',
+                hintText: 'Search foods or add custom ingredient',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -643,59 +895,11 @@ class _IngredientPickerSheetState extends State<_IngredientPickerSheet> {
                   ),
                   const SizedBox(height: AppSpacing.md),
 
-                  // From settings section (avoid only).
-                  if (isAvoid) ...[
-                    _IngredientSheetSection(
-                      title: 'From Settings',
-                      icon: Icons.person_outline,
-                      child: viewModel.savedIngredientsToAvoid.isEmpty
-                          ? Text(
-                              'No allergies or dislikes saved in settings.',
-                              style: context.text.bodyMedium,
-                            )
-                          : _ChipWrap(
-                              values: viewModel.savedIngredientsToAvoid,
-                              selectedValues: selected,
-                              danger: true,
-                              onSelected: toggle,
-                            ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-
-                    // Allergen defaults section.
-                    _IngredientSheetSection(
-                      title: 'Allergen defaults',
-                      icon: Icons.warning_amber_outlined,
-                      child: _ConfigOptionChips(
-                        isLoading: viewModel.isFactorOptionsLoading,
-                        emptyMessage: 'No allergens available yet.',
-                        options: viewModel.allergyOptions,
-                        selectedValues: selected,
-                        danger: true,
-                        onSelected: toggle,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-
-                    // Dislike defaults section.
-                    _IngredientSheetSection(
-                      title: 'Dislike defaults',
-                      icon: Icons.block,
-                      child: _ConfigOptionChips(
-                        isLoading: viewModel.isFactorOptionsLoading,
-                        emptyMessage: 'No dislikes available yet.',
-                        options: viewModel.dislikeOptions,
-                        selectedValues: selected,
-                        danger: true,
-                        onSelected: toggle,
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: AppSpacing.md),
 
-                  // USDA search results section.
+                  // Search results section.
                   _IngredientSheetSection(
-                    title: 'USDA search results',
+                    title: 'Search results',
                     icon: Icons.search,
                     child: viewModel.isFoodSearching
                         ? const LoadingDialog(
@@ -866,58 +1070,6 @@ class _IngredientSheetSection extends StatelessWidget {
   }
 }
 
-/// Configuration option chips widget.
-class _ConfigOptionChips extends StatelessWidget {
-  /// Whether loading.
-  final bool isLoading;
-
-  /// Empty state message.
-  final String emptyMessage;
-
-  /// List of options.
-  final List<MealPlanPreferenceOption> options;
-
-  /// List of selected values.
-  final List<String> selectedValues;
-
-  /// Whether to use danger styling.
-  final bool danger;
-
-  /// Callback when an option is selected.
-  final ValueChanged<String> onSelected;
-
-  /// Creates a new config option chips instance.
-  const _ConfigOptionChips({
-    required this.isLoading,
-    required this.emptyMessage,
-    required this.options,
-    required this.selectedValues,
-    required this.danger,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Show loading indicator.
-    if (isLoading) {
-      return const LoadingDialog(inline: true, message: 'Loading defaults...');
-    }
-
-    // Show empty message.
-    if (options.isEmpty) {
-      return Text(emptyMessage, style: context.text.bodyMedium);
-    }
-
-    // Show chips.
-    return _ChipWrap(
-      values: options.map((item) => item.name).toList(),
-      selectedValues: selectedValues,
-      danger: danger,
-      onSelected: onSelected,
-    );
-  }
-}
-
 /// Meal preference factor card.
 class _MealPreferenceFactorCard extends StatelessWidget {
   /// The meal plan data.
@@ -931,44 +1083,94 @@ class _MealPreferenceFactorCard extends StatelessWidget {
     // Watch the view model for state changes.
     final viewModel = context.watch<GenerateAiMealViewModel>();
 
-    // Build options list from preferences and selected values.
-    final options = {
-      ...viewModel.mealPreferenceOptions.map((item) => item.name),
-      ...viewModel.selectedMealPreferences,
-    }.toList();
-
     return _ExpandableFactorCard(
       icon: Icons.favorite,
       title: 'Meal Preferences',
-      subtitle: 'Values from Settings can be adjusted for this request.',
+      subtitle: 'Diet or profile choices such as vegetarian, halal or keto.',
       selectedLabels: viewModel.selectedMealPreferences.isEmpty
           ? const ['No Preference']
           : viewModel.selectedMealPreferences,
-      children: [
-        // Show loading or options.
-        if (viewModel.isFactorOptionsLoading)
-          const LoadingDialog(inline: true, message: 'Loading preferences...')
-        else if (options.isEmpty)
-          Text('No meal preferences available.', style: context.text.bodySmall)
-        else
-          _ChipWrap(
-            values: options,
-            selectedValues: viewModel.selectedMealPreferences,
-            onSelected: context
-                .read<GenerateAiMealViewModel>()
-                .toggleMealPreference,
-          ),
-      ],
+      childrenBuilder: (context) {
+        final sheetViewModel = context.watch<GenerateAiMealViewModel>();
+        final sheetOptions = {
+          ...sheetViewModel.mealPreferenceOptions.map((item) => item.name),
+          ...sheetViewModel.selectedMealPreferences,
+        }.toList();
+
+        return [
+          // Show loading or options.
+          if (sheetViewModel.isFactorOptionsLoading)
+            const LoadingDialog(inline: true, message: 'Loading preferences...')
+          else if (sheetOptions.isEmpty)
+            Text(
+              'No meal preferences available.',
+              style: context.text.bodySmall,
+            )
+          else
+            _ChipWrap(
+              values: sheetOptions,
+              selectedValues: sheetViewModel.selectedMealPreferences,
+              onSelected: context
+                  .read<GenerateAiMealViewModel>()
+                  .toggleMealPreference,
+            ),
+        ];
+      },
     );
   }
 }
 
-/// Dish preference factor card.
+/// Cuisine / recipe style factor card.
+class _CuisineStyleFactorCard extends StatelessWidget {
+  /// Creates a new cuisine style factor card instance.
+  const _CuisineStyleFactorCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    return _ExpandableFactorCard(
+      icon: Icons.public,
+      title: 'Cuisine / Recipe Style',
+      subtitle: 'Choose the cooking culture or recipe category to guide AI.',
+      selectedLabels: viewModel.selectedCuisineStyles.isEmpty
+          ? const ['Any style']
+          : viewModel.selectedCuisineStyles,
+      childrenBuilder: (context) {
+        final sheetViewModel = context.watch<GenerateAiMealViewModel>();
+        final sheetOptions = {
+          ...sheetViewModel.cuisineStyleOptions.map((item) => item.name),
+          ...sheetViewModel.selectedCuisineStyles,
+        }.toList();
+
+        return [
+          if (sheetViewModel.isFactorOptionsLoading)
+            const LoadingDialog(
+              inline: true,
+              message: 'Loading recipe styles...',
+            )
+          else if (sheetOptions.isEmpty)
+            Text('No recipe styles available.', style: context.text.bodySmall)
+          else
+            _ChipWrap(
+              values: sheetOptions,
+              selectedValues: sheetViewModel.selectedCuisineStyles,
+              onSelected: context
+                  .read<GenerateAiMealViewModel>()
+                  .toggleCuisineStyle,
+            ),
+        ];
+      },
+    );
+  }
+}
+
+/// Dish style factor card.
 class _DishPreferenceFactorCard extends StatelessWidget {
   /// The meal plan data.
   final AddMealAiPlan plan;
 
-  /// Creates a new dish preference factor card instance.
+  /// Creates a new dish style factor card instance.
   const _DishPreferenceFactorCard({required this.plan});
 
   @override
@@ -978,39 +1180,124 @@ class _DishPreferenceFactorCard extends StatelessWidget {
 
     return _ExpandableFactorCard(
       icon: Icons.no_meals_outlined,
-      title: 'Dish Preference',
-      subtitle: 'Choose dish types AI should include or avoid.',
+      title: 'Dish Style',
+      subtitle: 'Tell AI specific dish formats to include or avoid.',
       selectedLabels: [
         ...viewModel.selectedDishIncludes,
         ...viewModel.selectedDishAvoids,
       ],
-      children: [
-        _SectionLabel('Include examples'),
-        const SizedBox(height: AppSpacing.xs),
-        _ChipWrap(values: plan.dishPreferences, selectedValues: const []),
-        const SizedBox(height: AppSpacing.sm),
-        _WordLimitedTextInput(
-          hintText: 'Type dish to include, e.g. grilled rice bowl',
-          onChanged: context
-              .read<GenerateAiMealViewModel>()
-              .updateDishIncludeText,
-        ),
-        const SizedBox(height: AppSpacing.md),
-        _SectionLabel('Avoid examples'),
-        const SizedBox(height: AppSpacing.xs),
-        const _ChipWrap(
-          values: ['Soup', 'Fried', 'Spicy', 'Oily', 'Creamy'],
-          selectedValues: [],
-          danger: true,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _WordLimitedTextInput(
-          hintText: 'Type dish to avoid, e.g. spicy soup',
-          onChanged: context
-              .read<GenerateAiMealViewModel>()
-              .updateDishAvoidText,
-        ),
-      ],
+      childrenBuilder: (context) {
+        final sheetViewModel = context.watch<GenerateAiMealViewModel>();
+
+        return [
+          _SectionLabel('Tap examples to include'),
+          const SizedBox(height: AppSpacing.xs),
+          if (plan.dishPreferences.isEmpty)
+            Text(
+              'No dish style examples available.',
+              style: context.text.bodySmall,
+            )
+          else
+            _ChipWrap(
+              values: plan.dishPreferences,
+              selectedValues: sheetViewModel.selectedDishIncludes,
+              onSelected: context
+                  .read<GenerateAiMealViewModel>()
+                  .toggleDishIncludeHint,
+            ),
+          const SizedBox(height: AppSpacing.sm),
+          _WordLimitedTextInput(
+            initialText: sheetViewModel.dishIncludeText,
+            hintText: 'e.g. rice bowl, soup, grilled dish, noodles',
+            onChanged: context
+                .read<GenerateAiMealViewModel>()
+                .updateDishIncludeText,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _SectionLabel('Tap examples to avoid'),
+          const SizedBox(height: AppSpacing.xs),
+          _ChipWrap(
+            values: ['Soup', 'Fried', 'Spicy', 'Oily', 'Creamy'],
+            selectedValues: sheetViewModel.selectedDishAvoids,
+            danger: true,
+            onSelected: context
+                .read<GenerateAiMealViewModel>()
+                .toggleDishAvoidHint,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _WordLimitedTextInput(
+            initialText: sheetViewModel.dishAvoidText,
+            hintText: 'e.g. fried food, creamy pasta, soup',
+            onChanged: context
+                .read<GenerateAiMealViewModel>()
+                .updateDishAvoidText,
+          ),
+        ];
+      },
+    );
+  }
+}
+
+/// Cooking method / equipment factor card.
+class _CookingMethodFactorCard extends StatelessWidget {
+  /// Creates a new cooking method factor card instance.
+  const _CookingMethodFactorCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    return _ExpandableFactorCard(
+      icon: Icons.blender_outlined,
+      title: 'Cooking Method / Equipment',
+      subtitle: 'Choose practical tools or methods available for this meal.',
+      selectedLabels: viewModel.selectedCookingMethods.isEmpty
+          ? const ['Any method']
+          : viewModel.selectedCookingMethods,
+      childrenBuilder: (context) {
+        final sheetViewModel = context.watch<GenerateAiMealViewModel>();
+
+        return [
+          _ChipWrap(
+            values: sheetViewModel.cookingMethodOptions,
+            selectedValues: sheetViewModel.selectedCookingMethods,
+            onSelected: context
+                .read<GenerateAiMealViewModel>()
+                .toggleCookingMethod,
+          ),
+        ];
+      },
+    );
+  }
+}
+
+/// Spice level factor card.
+class _SpiceLevelFactorCard extends StatelessWidget {
+  /// Creates a new spice level factor card instance.
+  const _SpiceLevelFactorCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    return _ExpandableFactorCard(
+      icon: Icons.local_fire_department_outlined,
+      title: 'Spice Level',
+      subtitle: 'Choose how spicy the generated recipe should be.',
+      selectedLabels: [viewModel.selectedSpiceLevel],
+      childrenBuilder: (context) {
+        final sheetViewModel = context.watch<GenerateAiMealViewModel>();
+
+        return [
+          _ChipWrap(
+            values: sheetViewModel.spiceLevelOptions,
+            selectedValues: [sheetViewModel.selectedSpiceLevel],
+            onSelected: context
+                .read<GenerateAiMealViewModel>()
+                .selectSpiceLevel,
+          ),
+        ];
+      },
     );
   }
 }
@@ -1037,22 +1324,67 @@ class _CookingPreferenceFactorCard extends StatelessWidget {
       title: 'Cooking Preferences',
       subtitle: 'Cooking time, difficulty and serving size.',
       selectedLabels: selectedLabels,
-      children: [
-        _CookingMinutesInput(
-          minutes: viewModel.selectedCookingTime,
-          onChanged: context.read<GenerateAiMealViewModel>().updateCookingTime,
-        ),
-        const SizedBox(height: AppSpacing.md),
-        _DifficultyLevelPicker(
-          selectedLevel: viewModel.selectedDifficultyLevel,
-          onSelected: context.read<GenerateAiMealViewModel>().selectDifficulty,
-        ),
-        const SizedBox(height: AppSpacing.md),
-        _ServingSizeInput(
-          servings: viewModel.selectedServingCount,
-          onChanged: context.read<GenerateAiMealViewModel>().selectServingSize,
-        ),
-      ],
+      childrenBuilder: (context) {
+        final sheetViewModel = context.watch<GenerateAiMealViewModel>();
+
+        return [
+          _CookingMinutesInput(
+            minutes: sheetViewModel.selectedCookingTime,
+            onChanged: context
+                .read<GenerateAiMealViewModel>()
+                .updateCookingTime,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _DifficultyLevelPicker(
+            selectedLevel: sheetViewModel.selectedDifficultyLevel,
+            onSelected: context
+                .read<GenerateAiMealViewModel>()
+                .selectDifficulty,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _ServingSizeInput(
+            servings: sheetViewModel.selectedServingCount,
+            onChanged: context
+                .read<GenerateAiMealViewModel>()
+                .selectServingSize,
+          ),
+        ];
+      },
+    );
+  }
+}
+
+/// Extra preferences factor card.
+class _ExtraPreferencesFactorCard extends StatelessWidget {
+  /// Creates a new extra preferences factor card instance.
+  const _ExtraPreferencesFactorCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<GenerateAiMealViewModel>();
+
+    return _ExpandableFactorCard(
+      icon: Icons.edit_note_outlined,
+      title: 'Extra Preferences',
+      subtitle:
+          'Optional. Add any special request not covered above. AI will use it only for this generation.',
+      selectedLabels: viewModel.extraPreferencesText.trim().isEmpty
+          ? const []
+          : const ['Extra request added'],
+      childrenBuilder: (context) {
+        final sheetViewModel = context.watch<GenerateAiMealViewModel>();
+
+        return [
+          _WordLimitedTextInput(
+            initialText: sheetViewModel.extraPreferencesText,
+            hintText:
+                'e.g. kid friendly, cheap ingredients, soft food, less oily, no rice today',
+            onChanged: context
+                .read<GenerateAiMealViewModel>()
+                .updateExtraPreferences,
+          ),
+        ];
+      },
     );
   }
 }

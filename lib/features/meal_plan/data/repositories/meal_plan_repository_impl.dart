@@ -314,6 +314,7 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
         recipes: recipes,
         request: request,
       );
+      await _syncCurrentWeeklyGroceryList(userId);
       return const Right(null);
     } catch (e) {
       // Map any exception to a server failure.
@@ -345,6 +346,7 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
         source: source,
         servingCount: servingCount,
       );
+      await _syncCurrentWeeklyGroceryList(userId);
       return const Right(null);
     } catch (e) {
       // Map any exception to a server failure.
@@ -520,6 +522,20 @@ class MealPlanRepositoryImpl implements MealPlanRepository {
         condition: 'Unavailable',
         summary: 'Weather data is unavailable for this request.',
       );
+    }
+  }
+
+  /// Refreshes the default weekly grocery list after meal-plan changes.
+  ///
+  /// Meal plans should stay saved even if the derived grocery list cannot be
+  /// refreshed because the dashboard also performs this sync best-effort.
+  Future<void> _syncCurrentWeeklyGroceryList(String userId) async {
+    if (userId.trim().isEmpty) return;
+
+    try {
+      await remoteDataSource.ensureCurrentWeeklyGroceryList(userId);
+    } catch (_) {
+      // Keep the meal-plan save result intact; grocery sync can retry later.
     }
   }
 }

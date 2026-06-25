@@ -9,6 +9,7 @@ import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/custom_app_bar.dart';
 import '../../../domain/entities/meal_calorie_guidance.dart';
 import '../../../domain/entities/meal_serving_amount.dart';
+import '../../widgets/planning/meal_serving_dialog.dart';
 
 /// Page for adding a meal plan with multiple entry options.
 /// Displays three options: community recipes, user library, and AI generation.
@@ -57,6 +58,58 @@ class _AddMealPlanPageState extends State<AddMealPlanPage> {
     setState(() => _plannedServings = MealServingAmount.normalize(value));
   }
 
+  Future<double?> _choosePlannedServings() async {
+    final selected = await showDialog<double>(
+      context: context,
+      builder: (_) => MealServingDialog(initialValue: _plannedServings),
+    );
+    if (selected == null || !mounted) return null;
+    _setPlannedServings(selected);
+    return MealServingAmount.normalize(selected);
+  }
+
+  Future<void> _openExploreRecipes() async {
+    final plannedServings = await _choosePlannedServings();
+    if (plannedServings == null || !mounted) return;
+
+    final result = await context.push(
+      AppRouter.explore,
+      extra: MealPlanSelectionArgs(
+        userId: widget.userId,
+        selectedDate: widget.selectedDate,
+        mealCategoryId: widget.mealCategoryId,
+        mealCategoryName: widget.mealType,
+        source: 'method1_explore_community_recipes',
+        existingRecipeIds: widget.existingRecipeIds,
+        calorieBudget: widget.calorieBudget,
+        plannedServings: plannedServings,
+      ),
+    );
+    if (result == true && mounted) context.pop(true);
+  }
+
+  Future<void> _openLibraryRecipes() async {
+    final plannedServings = await _choosePlannedServings();
+    if (plannedServings == null || !mounted) return;
+
+    final result = await context.push(
+      AppRouter.library,
+      extra: LibraryArgs(
+        mealPlanSelection: MealPlanSelectionArgs(
+          userId: widget.userId,
+          selectedDate: widget.selectedDate,
+          mealCategoryId: widget.mealCategoryId,
+          mealCategoryName: widget.mealType,
+          source: 'method2_add_from_your_library',
+          existingRecipeIds: widget.existingRecipeIds,
+          calorieBudget: widget.calorieBudget,
+          plannedServings: plannedServings,
+        ),
+      ),
+    );
+    if (result == true && mounted) context.pop(true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,12 +138,6 @@ class _AddMealPlanPageState extends State<AddMealPlanPage> {
             _CalorieBudgetSummary(budget: widget.calorieBudget),
             const SizedBox(height: AppSpacing.lg),
 
-            _MealServingSelector(
-              value: _plannedServings,
-              onChanged: _setPlannedServings,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
             // Option 1: Community recipes.
             _AddMealOptionCard(
               title: 'Explore Community Recipes',
@@ -98,22 +145,7 @@ class _AddMealPlanPageState extends State<AddMealPlanPage> {
               description:
                   'Browse and add popular dishes shared by other Foodopia cooks to your meal plan.',
               enabled: true,
-              onTap: () async {
-                final result = await context.push(
-                  AppRouter.explore,
-                  extra: MealPlanSelectionArgs(
-                    userId: widget.userId,
-                    selectedDate: widget.selectedDate,
-                    mealCategoryId: widget.mealCategoryId,
-                    mealCategoryName: widget.mealType,
-                    source: 'method1_explore_community_recipes',
-                    existingRecipeIds: widget.existingRecipeIds,
-                    calorieBudget: widget.calorieBudget,
-                    plannedServings: _plannedServings,
-                  ),
-                );
-                if (result == true && context.mounted) context.pop(true);
-              },
+              onTap: _openExploreRecipes,
             ),
             const SizedBox(height: AppSpacing.lg),
 
@@ -124,24 +156,7 @@ class _AddMealPlanPageState extends State<AddMealPlanPage> {
               description:
                   'Quickly schedule meals using your personal collection of saved or self-created recipes.',
               enabled: true,
-              onTap: () async {
-                final result = await context.push(
-                  AppRouter.library,
-                  extra: LibraryArgs(
-                    mealPlanSelection: MealPlanSelectionArgs(
-                      userId: widget.userId,
-                      selectedDate: widget.selectedDate,
-                      mealCategoryId: widget.mealCategoryId,
-                      mealCategoryName: widget.mealType,
-                      source: 'method2_add_from_your_library',
-                      existingRecipeIds: widget.existingRecipeIds,
-                      calorieBudget: widget.calorieBudget,
-                      plannedServings: _plannedServings,
-                    ),
-                  ),
-                );
-                if (result == true && context.mounted) context.pop(true);
-              },
+              onTap: _openLibraryRecipes,
             ),
             const SizedBox(height: AppSpacing.lg),
 
@@ -170,119 +185,6 @@ class _AddMealPlanPageState extends State<AddMealPlanPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Serving selector used before browsing method 1 and method 2 recipes.
-class _MealServingSelector extends StatelessWidget {
-  final double value;
-  final ValueChanged<double> onChanged;
-
-  const _MealServingSelector({required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final canDecrease = value > MealServingAmount.min;
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.secondary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.room_service_outlined,
-                  color: AppColors.secondary,
-                  size: 21,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Your Serving Size',
-                      style: context.text.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Calories will be shown for this amount.',
-                      style: context.text.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              IconButton(
-                tooltip: 'Decrease serving size',
-                onPressed: canDecrease
-                    ? () => onChanged(MealServingAmount.stepDown(value))
-                    : null,
-                icon: const Icon(Icons.remove),
-              ),
-              Expanded(
-                child: Text(
-                  MealServingAmount.format(value),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Increase serving size',
-                onPressed: value >= MealServingAmount.max
-                    ? null
-                    : () => onChanged(MealServingAmount.stepUp(value)),
-                icon: const Icon(Icons.add),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: MealServingAmount.presets.map((preset) {
-              final selected = (value - preset).abs() < 0.001;
-              return ChoiceChip(
-                label: Text(MealServingAmount.format(preset)),
-                selected: selected,
-                showCheckmark: false,
-                selectedColor: AppColors.primary.withValues(alpha: 0.16),
-                side: BorderSide(
-                  color: selected ? AppColors.primary : AppColors.border,
-                ),
-                onSelected: (_) => onChanged(preset),
-              );
-            }).toList(),
-          ),
-        ],
       ),
     );
   }
