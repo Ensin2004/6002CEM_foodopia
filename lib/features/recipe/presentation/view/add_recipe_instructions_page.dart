@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
 import 'package:foodopia/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -23,6 +24,7 @@ import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../viewmodel/add_recipe_instructions_viewmodel.dart';
 import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/add_recipe_image_source_sheet.dart';
 import '../widgets/discard_recipe_changes_dialog.dart';
 import '../widgets/instructions/flat_instruction_list.dart';
 import '../widgets/label.dart';
@@ -150,6 +152,7 @@ class _AddRecipeInstructionsViewState
   String? _requestedRecipeId;
   String? _initialFormSignature;
   bool _didSaveChanges = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -431,15 +434,26 @@ class _AddRecipeInstructionsViewState
   // Image Handling Methods
   // ============================================================
 
-  /// Opens the file picker to select an image for a specific step
+  /// Opens source options to select or capture an image for a specific step.
   Future<void> _pickStepImage(InstructionStepState step) async {
     final image = await _pickImageFile();
     if (image == null) return;
     setState(() => step.imageFile = image);
   }
 
-  /// Picks a single image file for a step
+  /// Picks a single image file for a step.
   Future<File?> _pickImageFile() async {
+    final source = await showAddRecipeImageSourceSheet(context);
+    if (!mounted || source == null) return null;
+
+    // Use camera to capture
+    if (source == ImageSource.camera) {
+      final photo = await _imagePicker.pickImage(source: ImageSource.camera);
+      if (!mounted || photo == null) return null;
+      return File(photo.path);
+    }
+
+    // Choose from gallery
     final result = await fp.FilePicker.pickFiles(
       allowMultiple: false,
       type: fp.FileType.custom,

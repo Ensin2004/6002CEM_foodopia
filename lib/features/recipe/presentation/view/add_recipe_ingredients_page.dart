@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:foodopia/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/ingredients/input_ingredient_field.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -30,6 +31,7 @@ import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_ingredients_viewmodel.dart';
 import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/add_recipe_image_source_sheet.dart';
 import '../widgets/discard_recipe_changes_dialog.dart';
 import '../widgets/ingredients/ingredient_name_picker_sheet.dart';
 import '../widgets/ingredients/ingredient_unit_picker_sheet.dart';
@@ -149,6 +151,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
   bool _didSaveChanges = false;
   bool _didRequestAiIngredientImages = false;
   bool _didResolveGeneratedUnits = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -445,7 +448,7 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
   // Image Handling Methods
   // ============================================================
 
-  /// Opens the file picker to select an image for a specific ingredient
+  /// Opens source options to select or capture an image for a specific ingredient.
   Future<void> _pickIngredientImage(IngredientRowState row) async {
     final image = await _pickImageFile();
     if (image == null) return;
@@ -481,8 +484,19 @@ class _AddRecipeIngredientsViewState extends State<_AddRecipeIngredientsView> {
     }
   }
 
-  /// Picks a single image file for an ingredient
+  /// Picks a single image file for an ingredient.
   Future<File?> _pickImageFile() async {
+    final source = await showAddRecipeImageSourceSheet(context);
+    if (!mounted || source == null) return null;
+
+    // Use camera to capture
+    if (source == ImageSource.camera) {
+      final photo = await _imagePicker.pickImage(source: ImageSource.camera);
+      if (!mounted || photo == null) return null;
+      return File(photo.path);
+    }
+
+    // Choose from gallery
     final result = await fp.FilePicker.pickFiles(
       allowMultiple: false,
       type: fp.FileType.custom,

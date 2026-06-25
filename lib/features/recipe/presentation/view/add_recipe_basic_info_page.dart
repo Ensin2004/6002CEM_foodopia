@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:foodopia/core/theme/app_colors.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/basic_info/input_option_field.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -29,6 +30,7 @@ import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_basic_info_viewmodel.dart';
 import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/add_recipe_image_source_sheet.dart';
 import '../widgets/basic_info/add_more_button_small.dart';
 import '../widgets/discard_recipe_changes_dialog.dart';
 import '../widgets/recipe_visibility_action_button.dart';
@@ -155,6 +157,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _prepTimeController = TextEditingController();
   final TextEditingController _servingsController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
 
   final List<TextEditingController> _otherNameControllers = [
     TextEditingController(),
@@ -564,8 +567,30 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   // Image Handling Methods
   // ============================================================
 
-  /// Opens the file picker to select recipe images or short videos
+  /// Opens source options to select recipe media or capture a photo.
   Future<void> _pickMedia() async {
+    final source = await showAddRecipeImageSourceSheet(context);
+    if (!mounted || source == null) return;
+    if (source == ImageSource.camera) {
+      await _takeRecipePhoto();
+      return;
+    }
+    await _pickMediaFiles();
+  }
+
+  /// Opens the camera to capture a recipe photo.
+  Future<void> _takeRecipePhoto() async {
+    final remainingSlots = 10 - _images.length - _existingImageUrls.length;
+    if (remainingSlots <= 0) return;
+
+    final photo = await _imagePicker.pickImage(source: ImageSource.camera);
+    if (!mounted || photo == null) return;
+
+    setState(() => _images.add(File(photo.path)));
+  }
+
+  /// Opens the file picker to select recipe images or short videos.
+  Future<void> _pickMediaFiles() async {
     // Media selection stops after the recipe reaches the ten-item limit.
     final remainingSlots = 10 - _images.length - _existingImageUrls.length;
     if (remainingSlots <= 0) return;
