@@ -1,10 +1,7 @@
-// These notes explain the statistics page code in simple words.
-// Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
 import '../../domain/entities/admin_statistics.dart';
-import '../../domain/entities/recipe_performance_statistics.dart';
 import '../../domain/usecases/get_admin_post_analytic_statistics_usecase.dart';
 
 // Handles AdminPostAnalyticViewModel for this part of the statistics page.
@@ -18,7 +15,6 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   DateTime? _startDate;
   DateTime? _endDate;
   int _selectedSectionIndex = 0;
-  String? _selectedRecipeId;
   AdminStatisticsSortOrder _sortOrder = AdminStatisticsSortOrder.descending;
 
   AdminPostAnalyticViewModel({
@@ -35,19 +31,7 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   // Handles endDate for this part of the statistics page.
   DateTime? get endDate => _endDate;
   int get selectedSectionIndex => _selectedSectionIndex;
-  String? get selectedRecipeId => _selectedRecipeId;
   AdminStatisticsSortOrder get sortOrder => _sortOrder;
-
-  // Handles selectedRecipe for this part of the statistics page.
-  RecipePerformanceItem? get selectedRecipe {
-    final statistics = _statistics?.recipePerformance;
-    final selectedId = _selectedRecipeId;
-    if (statistics == null || selectedId == null) return null;
-    for (final recipe in statistics.recipes) {
-      if (recipe.id == selectedId) return recipe;
-    }
-    return null;
-  }
 
   // Handles selectedSection for this part of the statistics page.
   AdminAnalyticSection? get selectedSection {
@@ -70,16 +54,7 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
     );
     if (_isDisposed) return;
 
-    result.ifRight((statistics) {
-      _statistics = statistics;
-      if (_selectedRecipeId != null &&
-          !(statistics.recipePerformance?.recipes.any(
-                (recipe) => recipe.id == _selectedRecipeId,
-              ) ??
-              false)) {
-        _selectedRecipeId = null;
-      }
-    });
+    result.ifRight((statistics) => _statistics = statistics);
     result.ifLeft((failure) {
       _errorMessage = failure.message;
     });
@@ -100,13 +75,6 @@ class AdminPostAnalyticViewModel extends ChangeNotifier {
   void setSortOrder(AdminStatisticsSortOrder order) {
     if (_sortOrder == order) return;
     _sortOrder = order;
-    _notifyIfActive();
-  }
-
-  // Handles selectRecipe for this part of the statistics page.
-  void selectRecipe(String recipeId) {
-    if (_selectedRecipeId == recipeId) return;
-    _selectedRecipeId = recipeId;
     _notifyIfActive();
   }
 

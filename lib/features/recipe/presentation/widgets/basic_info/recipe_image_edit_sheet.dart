@@ -9,7 +9,7 @@ import '../../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../../core/widgets/images/app_remote_or_asset_image.dart';
 import '../../../../../core/widgets/media/app_recipe_media.dart';
 
-/// Bottom sheet for viewing selected recipe media and removing individual items.
+/// Bottom sheet for viewing and managing selected recipe media.
 class RecipeImageEditSheet extends StatelessWidget {
   final List<File> images;
   final List<String> existingImageUrls;
@@ -44,6 +44,7 @@ class RecipeImageEditSheet extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Visual indicator that the sheet can be dragged down
               Center(
                 child: Container(
                   width: 42,
@@ -55,6 +56,8 @@ class RecipeImageEditSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
+
+              // Header with total media count
               Row(
                 children: [
                   Expanded(
@@ -75,6 +78,8 @@ class RecipeImageEditSheet extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
+
+              // Selected media display in grid
               Expanded(
                 child: GridView.builder(
                   shrinkWrap: true,
@@ -85,6 +90,7 @@ class RecipeImageEditSheet extends StatelessWidget {
                     mainAxisSpacing: AppSpacing.sm,
                   ),
                   itemBuilder: (context, index) {
+                    // Display existing images first, then local files
                     if (index < existingImageUrls.length) {
                       return _SelectedMediaTile(
                         imageUrl: existingImageUrls[index],
@@ -102,6 +108,8 @@ class RecipeImageEditSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
+
+              // Action Button
               PrimaryButton(text: "Keep Selected Media", onPressed: onKeep),
             ],
           ),
@@ -139,11 +147,14 @@ class _SelectedMediaTile extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
+            // Show the appropriate preview based on media type
             imageFile != null
                 ? _MediaTilePreview(file: imageFile!)
                 : isRecipeVideoPath(imageUrl!)
                 ? AppRecipeMediaPreview(mediaPath: imageUrl!, fit: BoxFit.cover)
                 : AppRemoteOrAssetImage(imagePath: imageUrl!, fit: BoxFit.cover),
+
+            // Top-left corner - index number
             Positioned(
               left: AppSpacing.xs,
               top: AppSpacing.xs,
@@ -165,6 +176,8 @@ class _SelectedMediaTile extends StatelessWidget {
                 ),
               ),
             ),
+
+            // Top-right corner - close button
             Positioned(
               right: AppSpacing.xs,
               top: AppSpacing.xs,
@@ -201,9 +214,12 @@ class _MediaTilePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if the file is a video based on its extension
     if (isRecipeVideoPath(file.path)) {
+      // Show video preview with cover image
       return AppRecipeMediaPreview(mediaPath: file.path, fit: BoxFit.cover);
     }
+    // Show image preview
     return Image.file(file, fit: BoxFit.cover);
   }
 }

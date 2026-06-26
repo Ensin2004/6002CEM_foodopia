@@ -4,6 +4,7 @@ import '../../../../core/error/failures.dart';
 import '../entities/add_recipe_setup.dart';
 import '../repositories/add_recipe_repository.dart';
 
+/// Loads form setup data required by the basic recipe information page.
 class GetAddRecipeSetupUseCase {
   final AddRecipeRepository repository;
 

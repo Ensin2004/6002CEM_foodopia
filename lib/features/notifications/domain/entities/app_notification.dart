@@ -9,6 +9,8 @@ enum AppNotificationType {
   systemRating,
   newHelpTicket,
   newCategory,
+  recipeReview,
+  recipeHidden,
   helpReply,
   planReminder,
 }

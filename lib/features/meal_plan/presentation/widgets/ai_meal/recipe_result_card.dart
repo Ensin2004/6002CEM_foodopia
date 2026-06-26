@@ -67,9 +67,12 @@ class _RecipeResultCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 5),
-                    _CalorieGuidanceBadge(guidance: guidance),
-                    const SizedBox(height: 5),
+                    if (guidance.status !=
+                        MealCalorieGuidanceStatus.unknown) ...[
+                      const SizedBox(height: 5),
+                      _CalorieGuidanceBadge(guidance: guidance),
+                      const SizedBox(height: 5),
+                    ],
                     Text(recipe.description, style: context.text.bodySmall),
                   ],
                 ),
@@ -154,6 +157,10 @@ class _CalorieGuidanceBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (guidance.status == MealCalorieGuidanceStatus.unknown) {
+      return const SizedBox.shrink();
+    }
+
     // Badge color follows the target guidance status.
     final color = switch (guidance.status) {
       MealCalorieGuidanceStatus.exceeds => const Color(0xFFE2762D),

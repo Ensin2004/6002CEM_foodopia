@@ -46,6 +46,7 @@ class SectionInstructionList extends StatelessWidget {
         0,
       ),
       children: [
+        // Reorderable list of sections
         ReorderableListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -70,6 +71,8 @@ class SectionInstructionList extends StatelessWidget {
             );
           },
         ),
+
+        // Add Section Button
         SecondaryButton(
           text: "+  Add Section",
           onPressed: onAddSection,
@@ -112,8 +115,11 @@ class _InstructionSectionCard extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: AppSpacing.sm),
+
+            // Header Row
             Row(
               children: [
+                // Drag handle for reordering
                 ReorderableDragStartListener(
                   index: sectionIndex,
                   child: const Icon(
@@ -123,6 +129,8 @@ class _InstructionSectionCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
+
+                // Section Title
                 Expanded(
                   child: TextField(
                     controller: section.titleController,
@@ -137,6 +145,8 @@ class _InstructionSectionCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
+
+                // Delete Button
                 InkWell(
                   onTap: onRemoveSection,
                   child: const Icon(
@@ -149,6 +159,8 @@ class _InstructionSectionCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             const Divider(color: AppColors.border),
             const SizedBox(height: AppSpacing.sm),
+
+            // Nested Steps List
             ReorderableListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -171,6 +183,8 @@ class _InstructionSectionCard extends StatelessWidget {
               },
             ),
             const Divider(color: AppColors.border),
+
+            // Add Step Button
             TextButton(
               onPressed: onAddStep,
               style: TextButton.styleFrom(

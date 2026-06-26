@@ -19,6 +19,7 @@ import '../../domain/entities/library_recipe.dart';
 import '../viewmodel/library_viewmodel.dart';
 import '../widgets/library_empty_state.dart';
 import '../widgets/library_recipe_card.dart';
+import '../../../meal_plan/domain/entities/meal_serving_amount.dart';
 
 const int _libraryDescriptionWordLimit = 20;
 
@@ -411,7 +412,12 @@ class _LibraryRecipeResults extends StatelessWidget {
                         ? null
                         : MealCalorieGuidanceService().evaluate(
                             budget: mealPlanSelection!.calorieBudget,
-                            mealCalories: recipe.nutrition.calories,
+                            mealCalories: MealServingAmount.scaledCalories(
+                              recipeCalories: recipe.nutrition.calories,
+                              recipeServings: recipe.servings,
+                              plannedServings:
+                                  mealPlanSelection!.normalizedPlannedServings,
+                            ),
                           ),
                     onComingSoonTap: onComingSoonTap,
                     onFavouriteTap: () => onFavouriteTap(recipe.id),
@@ -426,6 +432,9 @@ class _LibraryRecipeResults extends StatelessWidget {
                           recipeId: recipe.id,
                           isSelfPublished: recipe.isSelfPublished,
                           isPublished: recipe.isPublished,
+                          isModerationHidden: recipe.isModerationHidden,
+                          moderationHiddenReason:
+                              recipe.moderationHiddenReason,
                           mealPlanSelection: mealPlanSelection,
                         ),
                       );

@@ -4,6 +4,8 @@ import 'add_recipe_basic_info.dart';
 import 'add_recipe_ingredient.dart';
 import 'add_recipe_instruction.dart';
 
+/// Editable recipe data produced from a video, split into basic info,
+/// ingredients and instructions for the add-recipe flow.
 class AddRecipeVideoResult {
   final AddRecipeBasicInfo basicInfo;
   final List<AddRecipeIngredient> ingredients;
@@ -16,6 +18,7 @@ class AddRecipeVideoResult {
   });
 }
 
+/// Raw AI video recipe draft with generated image prompt and optional image file.
 class AddRecipeVideoDraft {
   final String recipeName;
   final String description;
@@ -42,6 +45,7 @@ class AddRecipeVideoDraft {
   });
 }
 
+/// Ingredient extracted from video analysis before matching to configured units.
 class AddRecipeVideoIngredient {
   final String name;
   final double amount;

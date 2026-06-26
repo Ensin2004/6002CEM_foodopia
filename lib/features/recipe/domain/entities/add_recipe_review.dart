@@ -1,3 +1,4 @@
+/// Complete recipe review snapshot displayed before final saving or publishing.
 class AddRecipeReview {
   final String recipeId;
   final List<String> media;
@@ -7,7 +8,7 @@ class AddRecipeReview {
   final List<String> categories;
   final int preparationMinutes;
   final int difficultyLevel;
-  final int servings;
+  final double servings;
   final List<String> allergens;
   final String visibility;
   final AddRecipeReviewNutrients nutrients;
@@ -34,6 +35,7 @@ class AddRecipeReview {
   });
 }
 
+/// Formatted nutrient summary shown in the recipe review screen.
 class AddRecipeReviewNutrients {
   final String calories;
   final String proteins;
@@ -56,6 +58,7 @@ class AddRecipeReviewNutrients {
   });
 }
 
+/// Vitamin or mineral row with amount and daily value label for review display.
 class AddRecipeReviewMicronutrient {
   final String label;
   final String amount;
@@ -68,6 +71,7 @@ class AddRecipeReviewMicronutrient {
   });
 }
 
+/// Ingredient row prepared for review with display amount, unit, image and nutrients.
 class AddRecipeReviewIngredient {
   final String name;
   final String image;
@@ -88,6 +92,7 @@ class AddRecipeReviewIngredient {
   });
 }
 
+/// Instruction row prepared for review with section, step order, image and text.
 class AddRecipeReviewInstruction {
   final int? sectionIndex;
   final String? sectionTitle;

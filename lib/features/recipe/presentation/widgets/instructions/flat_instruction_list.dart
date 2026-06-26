@@ -36,6 +36,7 @@ class FlatInstructionList extends StatelessWidget {
           0,
       ),
       children: [
+        // Reorderable list of steps
         ReorderableListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -57,6 +58,8 @@ class FlatInstructionList extends StatelessWidget {
             );
           },
         ),
+
+        // Add Step Button
         SecondaryButton(
           text: "+  Add Step",
           onPressed: onAddStep,
@@ -95,8 +98,11 @@ class _InstructionStepCard extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: AppSpacing.sm),
+
+            // Header Row
             Row(
               children: [
+                // Drag handle for reordering
                 ReorderableDragStartListener(
                   index: index,
                   child: const Icon(
@@ -106,6 +112,8 @@ class _InstructionStepCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
+
+                // Step Title
                 Expanded(
                   child: Text(
                     title,
@@ -118,6 +126,8 @@ class _InstructionStepCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
+
+                // Delete Button
                 InkWell(
                   onTap: onDelete,
                   child: const Icon(
@@ -130,6 +140,8 @@ class _InstructionStepCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             const Divider(color: AppColors.border),
             const SizedBox(height: AppSpacing.sm),
+
+            // Step Content
             InputStepField(
               index: index,
               step: step,

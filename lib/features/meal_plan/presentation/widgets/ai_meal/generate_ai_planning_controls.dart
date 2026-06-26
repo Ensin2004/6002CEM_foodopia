@@ -259,36 +259,51 @@ class _SmallChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Determine active color.
-    final activeColor = danger ? AppColors.error : AppColors.primary;
+    final activeColor = danger ? AppColors.error : AppColors.textPrimary;
 
     // Determine fill color.
     final selectedFill = danger
         ? AppColors.error.withValues(alpha: 0.08)
-        : const Color(0xFFEAF7EC);
+        : const Color(0xFFF2F4F2);
     final inactiveColor = danger
         ? AppColors.error.withValues(alpha: 0.035)
         : Colors.white;
+    final borderColor = selected
+        ? danger
+              ? AppColors.error.withValues(alpha: 0.32)
+              : AppColors.textPrimary.withValues(alpha: 0.18)
+        : AppColors.border;
 
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
-        vertical: 3,
+        vertical: 5,
       ),
       decoration: BoxDecoration(
         color: selected ? selectedFill : inactiveColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: selected
-              ? activeColor.withValues(alpha: 0.35)
-              : AppColors.border,
-        ),
+        border: Border.all(color: borderColor),
       ),
-      child: Text(
-        label,
-        style: context.text.bodySmall?.copyWith(
-          color: selected ? activeColor : AppColors.textSecondary,
-          fontSize: 10,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (selected) ...[
+            Icon(
+              Icons.check,
+              size: 12,
+              color: danger ? AppColors.error : AppColors.primary,
+            ),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: context.text.bodySmall?.copyWith(
+              color: selected ? activeColor : AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -350,7 +365,7 @@ class _PrimaryActionButton extends StatelessWidget {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Text(
           label,

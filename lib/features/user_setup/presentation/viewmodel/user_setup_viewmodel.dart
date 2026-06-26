@@ -149,12 +149,12 @@ class UserSetupViewModel extends ChangeNotifier {
     required UpdateNotificationPreferenceUseCase
     updateNotificationPreferenceUseCase,
   }) : _getOptionsUseCase = getOptionsUseCase,
-        _searchFoodsUseCase = searchFoodsUseCase,
-        _getPreferencesUseCase = getPreferencesUseCase,
-        _savePreferencesUseCase = savePreferencesUseCase,
-        _getNotificationPreferencesUseCase = getNotificationPreferencesUseCase,
-        _updateNotificationPreferenceUseCase =
-            updateNotificationPreferenceUseCase;
+       _searchFoodsUseCase = searchFoodsUseCase,
+       _getPreferencesUseCase = getPreferencesUseCase,
+       _savePreferencesUseCase = savePreferencesUseCase,
+       _getNotificationPreferencesUseCase = getNotificationPreferencesUseCase,
+       _updateNotificationPreferenceUseCase =
+           updateNotificationPreferenceUseCase;
 
   // =========================================================================
   // GETTERS
@@ -194,7 +194,7 @@ class UserSetupViewModel extends ChangeNotifier {
   /// Gets a notification value by ID.
   bool notificationValue(String id) =>
       _notificationSettings[id] ??
-          SharedPrefsManager.isNotificationTypeEnabled(id);
+      SharedPrefsManager.isNotificationTypeEnabled(id);
 
   /// One-time navigation event. Returns and clears the event.
   UserSetupNavigationEvent? get navigationEvent {
@@ -316,13 +316,18 @@ class UserSetupViewModel extends ChangeNotifier {
   // DIET
   // =========================================================================
 
-  /// Selects a diet.
-  void selectDiet(String value) {
+  /// Toggles a diet.
+  void toggleDiet(String value) {
     if (_isEmptyChoiceName(value)) {
       clearDiet();
       return;
     }
-    _preferences = _preferences.copyWith(diet: value);
+    final diets = _toggleValue(_preferences.diets, value);
+    _preferences = _preferences.copyWith(
+      diets: diets,
+      diet: diets.isEmpty ? null : diets.join(', '),
+      clearDiet: diets.isEmpty,
+    );
     notifyListeners();
   }
 
@@ -447,7 +452,7 @@ class UserSetupViewModel extends ChangeNotifier {
     // Update notifications enabled based on any enabled.
     _preferences = _preferences.copyWith(
       notificationsEnabled: _notificationSettings.values.any(
-            (enabled) => enabled,
+        (enabled) => enabled,
       ),
     );
     notifyListeners();
@@ -663,9 +668,9 @@ class UserSetupViewModel extends ChangeNotifier {
 
   /// Saves preferences and emits navigation event.
   Future<void> _save(
-      UserSetupPreferences nextPreferences,
-      UserSetupNavigationEvent nextEvent,
-      ) async {
+    UserSetupPreferences nextPreferences,
+    UserSetupNavigationEvent nextEvent,
+  ) async {
     // Set saving state.
     _isSaving = true;
     _errorMessage = null;
@@ -706,11 +711,16 @@ class UserSetupViewModel extends ChangeNotifier {
 
   /// Removes empty choices from preferences.
   UserSetupPreferences _withoutEmptyChoices(UserSetupPreferences preferences) {
-    // Get the diet value.
-    final diet = preferences.diet;
+    // Migrate the old single diet string into the new multi-select list.
+    final diets = [
+      ...preferences.diets,
+      if (preferences.diet != null) ..._splitPreferenceLabel(preferences.diet!),
+    ].where((item) => !_isEmptyChoiceName(item)).toSet().toList();
 
     return preferences.copyWith(
-      clearDiet: diet == null || _isEmptyChoiceName(diet),
+      diets: diets,
+      diet: diets.isEmpty ? null : diets.join(', '),
+      clearDiet: diets.isEmpty,
       allergies: preferences.allergies
           .where((item) => !_isEmptyChoiceName(item))
           .toList(),
@@ -731,6 +741,15 @@ class UserSetupViewModel extends ChangeNotifier {
         normalized == 'no preferences' ||
         normalized == 'no dietary preference' ||
         normalized == noDietValue.toLowerCase();
+  }
+
+  /// Splits the legacy diet label into individual preference names.
+  List<String> _splitPreferenceLabel(String value) {
+    return value
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
   }
 
   /// Loads notification settings.

@@ -3,6 +3,7 @@ import 'dart:io';
 import '../../features/auth/domain/entities/user_entity.dart';
 import '../../features/meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../features/meal_plan/domain/entities/meal_calorie_guidance.dart';
+import '../../features/meal_plan/domain/entities/meal_serving_amount.dart';
 import '../../features/recipe/domain/entities/add_recipe_basic_info.dart';
 import '../../features/recipe/domain/entities/add_recipe_ingredient.dart';
 import '../../features/recipe/domain/entities/add_recipe_instruction.dart';
@@ -60,10 +61,18 @@ class ExploreRecipeDetailArgs {
   /// Optional meal plan selection data.
   final MealPlanSelectionArgs? mealPlanSelection;
 
+  /// Whether the detail page is opened from admin moderation.
+  final bool isAdminModeration;
+
+  /// Current recipe publication state, if known.
+  final bool isPublished;
+
   /// Creates a new explore recipe detail args instance.
   const ExploreRecipeDetailArgs({
     required this.recipeId,
     this.mealPlanSelection,
+    this.isAdminModeration = false,
+    this.isPublished = true,
   });
 }
 
@@ -91,6 +100,12 @@ class LibraryRecipeDetailArgs {
   /// Whether the recipe is published.
   final bool isPublished;
 
+  /// Whether the recipe was hidden by admin moderation.
+  final bool isModerationHidden;
+
+  /// Admin-provided reason for hiding the recipe.
+  final String moderationHiddenReason;
+
   /// Optional meal plan selection data.
   final MealPlanSelectionArgs? mealPlanSelection;
 
@@ -99,6 +114,8 @@ class LibraryRecipeDetailArgs {
     required this.recipeId,
     required this.isSelfPublished,
     required this.isPublished,
+    this.isModerationHidden = false,
+    this.moderationHiddenReason = '',
     this.mealPlanSelection,
   });
 }
@@ -194,6 +211,9 @@ class MealPlanSelectionArgs {
   /// Calorie budget for the selected day.
   final MealCalorieBudget calorieBudget;
 
+  /// Serving amount the user plans to eat.
+  final double plannedServings;
+
   /// Creates a new meal plan selection args instance.
   const MealPlanSelectionArgs({
     required this.userId,
@@ -204,7 +224,12 @@ class MealPlanSelectionArgs {
     this.existingRecipeIds = const [],
     this.existingMealNames = const [],
     this.calorieBudget = const MealCalorieBudget.empty(),
+    this.plannedServings = 1,
   });
+
+  /// Normalized serving amount for meal-plan calorie calculations.
+  double get normalizedPlannedServings =>
+      MealServingAmount.normalize(plannedServings);
 }
 
 /// Typed arguments for add meal planning route.
@@ -305,6 +330,21 @@ class AddRecipeBasicInfoArgs {
   /// User ID.
   final String? userId;
 
+  /// Initial image selected from upload-image flow.
+  final File? initialImageFile;
+
+  /// Initial recipe name generated from upload-image flow.
+  final String? initialRecipeName;
+
+  /// Initial recipe description generated from upload-image flow.
+  final String? initialRecipeDescription;
+
+  /// Ingredients generated from the initial image.
+  final List<AddRecipeIngredient> initialGeneratedIngredients;
+
+  /// Instructions generated from the initial image.
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
+
   /// Creates a new add recipe basic info args instance.
   const AddRecipeBasicInfoArgs({
     this.recipeId,
@@ -313,6 +353,11 @@ class AddRecipeBasicInfoArgs {
     this.aiRecipe,
     this.aiRequest,
     this.userId,
+    this.initialImageFile,
+    this.initialRecipeName,
+    this.initialRecipeDescription,
+    this.initialGeneratedIngredients = const [],
+    this.initialGeneratedInstructions = const [],
   });
 }
 
@@ -339,6 +384,12 @@ class AddRecipeIngredientsArgs {
   /// AI draft basic info.
   final AddRecipeBasicInfo? aiDraftBasicInfo;
 
+  /// Ingredients generated before this step.
+  final List<AddRecipeIngredient> initialGeneratedIngredients;
+
+  /// Instructions generated before this step.
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
+
   /// Creates a new add recipe ingredients args instance.
   const AddRecipeIngredientsArgs({
     required this.recipeId,
@@ -348,6 +399,8 @@ class AddRecipeIngredientsArgs {
     this.aiRequest,
     this.userId,
     this.aiDraftBasicInfo,
+    this.initialGeneratedIngredients = const [],
+    this.initialGeneratedInstructions = const [],
   });
 }
 
@@ -377,6 +430,9 @@ class AddRecipeInstructionsArgs {
   /// AI draft ingredients.
   final List<AddRecipeIngredient> aiDraftIngredients;
 
+  /// Instructions generated before this step.
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
+
   /// Creates a new add recipe instructions args instance.
   const AddRecipeInstructionsArgs({
     required this.recipeId,
@@ -387,6 +443,7 @@ class AddRecipeInstructionsArgs {
     this.userId,
     this.aiDraftBasicInfo,
     this.aiDraftIngredients = const [],
+    this.initialGeneratedInstructions = const [],
   });
 }
 

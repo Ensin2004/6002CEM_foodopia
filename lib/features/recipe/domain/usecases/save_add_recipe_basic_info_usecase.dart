@@ -4,6 +4,7 @@ import '../../../../core/error/failures.dart';
 import '../entities/add_recipe_basic_info.dart';
 import '../repositories/add_recipe_repository.dart';
 
+/// Validates and saves the first add-recipe step containing basic recipe details.
 class SaveAddRecipeBasicInfoUseCase {
   final AddRecipeRepository repository;
 

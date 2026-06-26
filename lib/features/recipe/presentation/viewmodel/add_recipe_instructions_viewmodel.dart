@@ -6,6 +6,8 @@ import '../../domain/entities/add_recipe_review.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_instructions_usecase.dart';
 
+/// Controls instruction form state, existing recipe seeding, saving,
+/// and validation feedback for flat or sectioned instructions.
 class AddRecipeInstructionsViewModel extends ChangeNotifier {
   final SaveAddRecipeInstructionsUseCase saveInstructionsUseCase;
   final GetAddRecipeReviewUseCase getReviewUseCase;
@@ -20,11 +22,14 @@ class AddRecipeInstructionsViewModel extends ChangeNotifier {
     required this.getReviewUseCase,
   });
 
+  /// Loads saved review data when editing cooking instructions.
   Future<void> loadExistingRecipe(String recipeId) async {
+    // Empty ids and already-loaded recipes do not need another review request.
     if (recipeId.trim().isEmpty || existingReview?.recipeId == recipeId) {
       return;
     }
 
+    // Existing instructions are read from review data so edit order matches review order.
     isLoading = true;
     errorMessage = null;
     notifyListeners();
@@ -41,11 +46,13 @@ class AddRecipeInstructionsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Saves instruction steps and section mode for the current recipe draft.
   Future<bool> saveInstructions({
     required String recipeId,
     required bool useSections,
     required List<AddRecipeInstruction> instructions,
   }) async {
+    // Save state prevents duplicate instruction writes while validation runs.
     isSaving = true;
     errorMessage = null;
     notifyListeners();

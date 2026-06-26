@@ -103,6 +103,12 @@ class GenerateAiMealViewModel extends ChangeNotifier {
   /// Dish avoid text input.
   String _dishAvoidText = '';
 
+  /// Extra preferences text input.
+  String _extraPreferencesText = '';
+
+  /// Selected spice level.
+  String _selectedSpiceLevel = 'Any';
+
   /// Selected cooking time in minutes.
   int _selectedCookingTime = 30;
 
@@ -130,6 +136,9 @@ class GenerateAiMealViewModel extends ChangeNotifier {
   /// List of dislike options.
   List<MealPlanPreferenceOption> _dislikeOptions = const [];
 
+  /// List of cuisine or recipe style options.
+  List<MealPlanPreferenceOption> _cuisineStyleOptions = const [];
+
   /// List of default ingredient options.
   List<MealPlanInspirationIngredient> _defaultIngredientOptions = const [];
 
@@ -144,6 +153,12 @@ class GenerateAiMealViewModel extends ChangeNotifier {
 
   /// Selected ingredients to avoid.
   final List<String> _selectedIngredientsToAvoid = [];
+
+  /// Selected cuisine or recipe styles.
+  final List<String> _selectedCuisineStyles = [];
+
+  /// Selected cooking methods or equipment.
+  final List<String> _selectedCookingMethods = [];
 
   /// Selected recipe IDs.
   final Set<String> _selectedRecipeIds = {};
@@ -250,6 +265,34 @@ class GenerateAiMealViewModel extends ChangeNotifier {
   /// Dish avoid text.
   String get dishAvoidText => _dishAvoidText;
 
+  /// Extra preferences text.
+  String get extraPreferencesText => _extraPreferencesText;
+
+  /// Selected spice level.
+  String get selectedSpiceLevel => _selectedSpiceLevel;
+
+  /// Spice level options.
+  List<String> get spiceLevelOptions => const [
+    'Any',
+    'No spicy',
+    'Mild',
+    'Medium',
+    'Spicy',
+  ];
+
+  /// Cooking method and equipment options.
+  List<String> get cookingMethodOptions => const [
+    'Air fryer',
+    'Oven',
+    'Microwave',
+    'Rice cooker',
+    'Stir fry',
+    'Steam',
+    'Bake',
+    'Boil',
+    'No-cook',
+  ];
+
   /// Selected cooking time.
   int get selectedCookingTime => _selectedCookingTime;
 
@@ -285,6 +328,10 @@ class GenerateAiMealViewModel extends ChangeNotifier {
   /// List of dislike options.
   List<MealPlanPreferenceOption> get dislikeOptions => _dislikeOptions;
 
+  /// List of cuisine or recipe style options.
+  List<MealPlanPreferenceOption> get cuisineStyleOptions =>
+      _cuisineStyleOptions;
+
   /// List of default ingredient options.
   List<MealPlanInspirationIngredient> get defaultIngredientOptions =>
       _defaultIngredientOptions;
@@ -306,6 +353,36 @@ class GenerateAiMealViewModel extends ChangeNotifier {
   /// Selected ingredients to include.
   List<String> get selectedIngredientsToInclude =>
       List.unmodifiable(_selectedIngredientsToInclude);
+
+  /// Selected allergy values.
+  List<String> get selectedAllergies {
+    return _selectedFromKnownValues(_knownAllergyValues);
+  }
+
+  /// Selected dislike values.
+  List<String> get selectedFoodDislikes {
+    return _selectedFromKnownValues(_knownDislikeValues);
+  }
+
+  /// Selected custom avoid values not covered by allergies or dislikes.
+  List<String> get selectedCustomAvoidIngredients {
+    final known = {
+      ..._knownAllergyValues,
+      ..._knownDislikeValues,
+    }.map(_normalizeToken).toSet();
+
+    return _selectedIngredientsToAvoid
+        .where((item) => !known.contains(_normalizeToken(item)))
+        .toList();
+  }
+
+  /// Selected cuisine or recipe styles.
+  List<String> get selectedCuisineStyles =>
+      List.unmodifiable(_selectedCuisineStyles);
+
+  /// Selected cooking methods or equipment.
+  List<String> get selectedCookingMethods =>
+      List.unmodifiable(_selectedCookingMethods);
 
   /// Default ingredients to include.
   List<String> get defaultIngredientsToInclude =>
@@ -331,6 +408,22 @@ class GenerateAiMealViewModel extends ChangeNotifier {
   List<String> get defaultIngredientsToAvoid {
     return [
       ..._allergyOptions.map((item) => item.name),
+      ..._dislikeOptions.map((item) => item.name),
+    ].where((item) => item.trim().isNotEmpty).toSet().toList();
+  }
+
+  /// Known allergy values from settings and admin defaults.
+  List<String> get _knownAllergyValues {
+    return [
+      ...defaultAllergies,
+      ..._allergyOptions.map((item) => item.name),
+    ].where((item) => item.trim().isNotEmpty).toSet().toList();
+  }
+
+  /// Known dislike values from settings and admin defaults.
+  List<String> get _knownDislikeValues {
+    return [
+      ...defaultDislikes,
       ..._dislikeOptions.map((item) => item.name),
     ].where((item) => item.trim().isNotEmpty).toSet().toList();
   }
@@ -472,6 +565,12 @@ class GenerateAiMealViewModel extends ChangeNotifier {
           request.ingredientsToInclude,
         );
         _replaceValues(_selectedIngredientsToAvoid, request.ingredientsToAvoid);
+        _replaceValues(_selectedCuisineStyles, request.cuisineStyles);
+        _replaceValues(_selectedCookingMethods, request.cookingMethods);
+        _selectedSpiceLevel = request.spiceLevel.trim().isEmpty
+            ? 'Any'
+            : request.spiceLevel;
+        _extraPreferencesText = request.extraPreferences;
         _dishIncludeText = request.dishIncludes.join(', ');
         _dishAvoidText = request.dishAvoids.join(', ');
         _selectedCookingTime = request.cookingTime;
@@ -546,6 +645,9 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     final dislikesResult = await _getInspirationOptionsUseCase.execute(
       'dislikes',
     );
+    final cuisineStylesResult = await _getInspirationOptionsUseCase.execute(
+      'recipe_categories',
+    );
 
     // Check if disposed.
     if (_isDisposed) return;
@@ -570,6 +672,9 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     });
     dislikesResult.ifRight((items) {
       _dislikeOptions = items;
+    });
+    cuisineStylesResult.ifRight((items) {
+      _cuisineStyleOptions = items;
     });
 
     // Reset loading state.
@@ -685,34 +790,23 @@ class GenerateAiMealViewModel extends ChangeNotifier {
 
   /// Builds the generation request from current state.
   AddMealAiGenerationRequest get generationRequest {
-    // Get preferences from plan or use defaults.
-    final preferences =
-        _plan?.preferences ??
-        const AddMealPreferenceSnapshot(
-          diet: 'No Preference',
-          allergies: [],
-          dislikes: [],
-        );
-
     return AddMealAiGenerationRequest(
       planningDate: selectedDate,
       mealType: _selectedMealCategory?.name ?? mealType,
       weather: selectedWeatherSnapshot,
       preferences: AddMealPreferenceSnapshot(
         diet: selectedMealPreferenceLabel,
-        allergies: preferences.allergies
-            .where(
-              (item) => selectedIngredientsToAvoid.any(
-                (selected) => selected.toLowerCase() == item.toLowerCase(),
-              ),
-            )
-            .toList(),
-        dislikes: selectedIngredientsToAvoid,
+        allergies: selectedAllergies,
+        dislikes: selectedFoodDislikes,
       ),
       ingredientsToInclude: selectedIngredientsToInclude,
       ingredientsToAvoid: selectedIngredientsToAvoid,
       dishIncludes: selectedDishIncludes,
       dishAvoids: selectedDishAvoids,
+      cuisineStyles: selectedCuisineStyles,
+      cookingMethods: selectedCookingMethods,
+      spiceLevel: selectedSpiceLevel,
+      extraPreferences: _extraPreferencesText.trim(),
       cookingTime: _selectedCookingTime,
       difficultyLevel: _selectedDifficultyLevel,
       difficulty: selectedDifficulty,
@@ -886,6 +980,16 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  /// Toggles an allergy for this request.
+  void toggleAllergy(String value) {
+    toggleIngredientToAvoid(value);
+  }
+
+  /// Toggles a food dislike for this request.
+  void toggleFoodDislike(String value) {
+    toggleIngredientToAvoid(value);
+  }
+
   /// Adds an ingredient to include.
   void addIngredientToInclude(String value) {
     _addValue(_selectedIngredientsToInclude, value);
@@ -898,6 +1002,32 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  /// Validates the request before AI generation starts.
+  String? validateGenerationRequest() {
+    final includeAvoidConflicts = _conflictingValues(
+      selectedIngredientsToInclude,
+      selectedIngredientsToAvoid,
+    );
+    if (includeAvoidConflicts.isNotEmpty) {
+      return 'Remove ${includeAvoidConflicts.join(', ')} from either Ingredients to Include or Allergies/Dislikes/Avoid.';
+    }
+
+    final dishConflicts = _conflictingValues(
+      selectedDishIncludes,
+      selectedDishAvoids,
+    );
+    if (dishConflicts.isNotEmpty) {
+      return 'Remove ${dishConflicts.join(', ')} from either included or avoided Dish Style.';
+    }
+
+    if (selectedSpiceLevel == 'Spicy' &&
+        selectedDishAvoids.any((item) => _isSameMeaning(item, 'spicy'))) {
+      return 'Spice Level is Spicy, but Dish Style avoids spicy. Choose one direction.';
+    }
+
+    return null;
+  }
+
   /// Updates the dish include text.
   void updateDishIncludeText(String value) {
     _dishIncludeText = value;
@@ -907,6 +1037,43 @@ class GenerateAiMealViewModel extends ChangeNotifier {
   /// Updates the dish avoid text.
   void updateDishAvoidText(String value) {
     _dishAvoidText = value;
+    _notifyIfActive();
+  }
+
+  /// Toggles a dish style include hint.
+  void toggleDishIncludeHint(String value) {
+    _dishIncludeText = _toggleTextToken(_dishIncludeText, value);
+    _notifyIfActive();
+  }
+
+  /// Toggles a dish style avoid hint.
+  void toggleDishAvoidHint(String value) {
+    _dishAvoidText = _toggleTextToken(_dishAvoidText, value);
+    _notifyIfActive();
+  }
+
+  /// Toggles a cuisine or recipe style.
+  void toggleCuisineStyle(String value) {
+    _toggleValue(_selectedCuisineStyles, value);
+    _notifyIfActive();
+  }
+
+  /// Toggles a cooking method or equipment value.
+  void toggleCookingMethod(String value) {
+    _toggleValue(_selectedCookingMethods, value);
+    _notifyIfActive();
+  }
+
+  /// Selects a spice level.
+  void selectSpiceLevel(String value) {
+    final trimmed = value.trim();
+    _selectedSpiceLevel = trimmed.isEmpty ? 'Any' : trimmed;
+    _notifyIfActive();
+  }
+
+  /// Updates extra preferences text.
+  void updateExtraPreferences(String value) {
+    _extraPreferencesText = value;
     _notifyIfActive();
   }
 
@@ -1033,6 +1200,44 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     }
   }
 
+  /// Returns selected values from a known option list.
+  List<String> _selectedFromKnownValues(List<String> knownValues) {
+    final selected = _selectedIngredientsToAvoid.map(_normalizeToken).toSet();
+    return knownValues
+        .where((item) => selected.contains(_normalizeToken(item)))
+        .toSet()
+        .toList();
+  }
+
+  /// Finds include/avoid conflicts using exact and contained wording.
+  List<String> _conflictingValues(List<String> first, List<String> second) {
+    final conflicts = <String>[];
+    for (final left in first) {
+      for (final right in second) {
+        if (_isSameMeaning(left, right)) {
+          conflicts.add(left.trim());
+          break;
+        }
+      }
+    }
+    return conflicts.where((item) => item.isNotEmpty).toSet().toList();
+  }
+
+  /// Checks if two short food/dish phrases likely refer to the same thing.
+  bool _isSameMeaning(String first, String second) {
+    final left = _normalizeToken(first);
+    final right = _normalizeToken(second);
+    if (left.isEmpty || right.isEmpty) return false;
+    if (left == right) return true;
+    if (left.length < 4 || right.length < 4) return false;
+    return left.contains(right) || right.contains(left);
+  }
+
+  /// Normalizes comparison tokens.
+  String _normalizeToken(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+  }
+
   /// Adds a value to a list if not already present.
   void _addValue(List<String> values, String value) {
     final trimmed = value.trim();
@@ -1043,6 +1248,23 @@ class GenerateAiMealViewModel extends ChangeNotifier {
     );
 
     if (!exists) values.add(trimmed);
+  }
+
+  /// Toggles a comma-separated text token.
+  String _toggleTextToken(String current, String value) {
+    final values = _splitInput(current);
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return current;
+
+    final index = values.indexWhere(
+      (item) => item.toLowerCase() == trimmed.toLowerCase(),
+    );
+    if (index >= 0) {
+      values.removeAt(index);
+    } else {
+      values.add(trimmed);
+    }
+    return values.join(', ');
   }
 
   /// Returns a difficulty label for a level.

@@ -11,10 +11,12 @@ Future<bool> confirmDiscardRecipeChanges(BuildContext context) async {
           'Your unsaved changes will be lost if you leave this page.',
         ),
         actions: [
+          // Continue editing
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Keep Editing'),
           ),
+          // Stop editing and leave
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Cancel Changes'),

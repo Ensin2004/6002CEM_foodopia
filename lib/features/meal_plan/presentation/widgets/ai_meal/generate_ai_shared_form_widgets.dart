@@ -25,12 +25,22 @@ class _MiniInfoTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.border),
+        color: const Color(0xFFFAFBFA),
+        border: Border.all(color: const Color(0xFFE6E9E6)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.textSecondary),
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE6E9E6)),
+            ),
+            child: Icon(icon, size: 16, color: AppColors.textSecondary),
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
@@ -55,8 +65,8 @@ class _MiniInfoTile extends StatelessWidget {
   }
 }
 
-/// Expandable factor card widget.
-class _ExpandableFactorCard extends StatefulWidget {
+/// Tap-to-edit factor row widget.
+class _ExpandableFactorCard extends StatelessWidget {
   /// Icon to display.
   final IconData icon;
 
@@ -69,100 +79,232 @@ class _ExpandableFactorCard extends StatefulWidget {
   /// Selected labels to display.
   final List<String> selectedLabels;
 
-  /// Children widgets.
-  final List<Widget> children;
+  /// Builds editor widgets.
+  final List<Widget> Function(BuildContext context) childrenBuilder;
 
-  /// Creates a new expandable factor card instance.
+  /// Creates a new factor row instance.
   const _ExpandableFactorCard({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.selectedLabels,
-    required this.children,
+    required this.childrenBuilder,
   });
-
-  @override
-  State<_ExpandableFactorCard> createState() => _ExpandableFactorCardState();
-}
-
-/// State for the expandable factor card.
-class _ExpandableFactorCardState extends State<_ExpandableFactorCard> {
-  /// Whether the card is expanded.
-  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
     // Filter out empty labels.
-    final labels = widget.selectedLabels
+    final labels = selectedLabels
         .where((label) => label.trim().isNotEmpty)
         .toSet()
         .toList();
+    final visibleLabels = labels.take(4).toList();
+    final overflowCount = labels.length - visibleLabels.length;
+    if (overflowCount > 0) visibleLabels.add('+$overflowCount more');
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0xFFE6E9E6)),
         borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          // Header with expand/collapse toggle.
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: AppSpacing.cardPadding,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(widget.icon, color: AppColors.textSecondary, size: 22),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.title, style: context.text.titleMedium),
-                        const SizedBox(height: 2),
-                        Text(widget.subtitle, style: context.text.bodySmall),
-                        if (labels.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.sm),
-                          _ChipWrap(values: labels, selectedValues: labels),
-                        ],
-                      ],
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 180),
-                    child: const Icon(Icons.keyboard_arrow_down, size: 18),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Expandable content.
-          AnimatedCrossFade(
-            firstChild: const SizedBox(width: double.infinity),
-            secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                0,
-                AppSpacing.lg,
-                AppSpacing.lg,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: widget.children,
-              ),
-            ),
-            crossFadeState: _expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 180),
-            sizeCurve: Curves.easeOut,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
           ),
         ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => _showEditorSheet(context),
+        child: Padding(
+          padding: AppSpacing.cardPadding,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F8F7),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE8EAE8)),
+                ),
+                child: Icon(icon, color: AppColors.secondary, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: context.text.titleMedium),
+                    const SizedBox(height: 3),
+                    Text(
+                      labels.isEmpty ? subtitle : visibleLabels.join(', '),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodySmall?.copyWith(
+                        height: 1.3,
+                        color: labels.isEmpty
+                            ? AppColors.textSecondary
+                            : AppColors.primary,
+                        fontWeight: labels.isEmpty
+                            ? FontWeight.w400
+                            : FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              const Icon(Icons.chevron_right, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shows the editor bottom sheet for this field.
+  void _showEditorSheet(BuildContext context) {
+    final viewModel = context.read<GenerateAiMealViewModel>();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => ChangeNotifierProvider.value(
+        value: viewModel,
+        child: _FactorEditSheet(
+          icon: icon,
+          title: title,
+          subtitle: subtitle,
+          childrenBuilder: childrenBuilder,
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet used to edit one factor row.
+class _FactorEditSheet extends StatelessWidget {
+  /// Icon to display.
+  final IconData icon;
+
+  /// Title text.
+  final String title;
+
+  /// Subtitle text.
+  final String subtitle;
+
+  /// Builds editor widgets.
+  final List<Widget> Function(BuildContext context) childrenBuilder;
+
+  /// Creates a new factor edit sheet.
+  const _FactorEditSheet({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.childrenBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.lg + bottomInset,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.82,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F8F7),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE8EAE8)),
+                  ),
+                  child: Icon(icon, color: AppColors.secondary, size: 20),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: context.text.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: context.text.bodySmall?.copyWith(height: 1.35),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: childrenBuilder(context),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 48,
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Done'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -170,6 +312,9 @@ class _ExpandableFactorCardState extends State<_ExpandableFactorCard> {
 
 /// Word limited text input widget.
 class _WordLimitedTextInput extends StatefulWidget {
+  /// Initial text.
+  final String initialText;
+
   /// Hint text.
   final String hintText;
 
@@ -178,6 +323,7 @@ class _WordLimitedTextInput extends StatefulWidget {
 
   /// Creates a new word limited text input instance.
   const _WordLimitedTextInput({
+    this.initialText = '',
     required this.hintText,
     required this.onChanged,
   });
@@ -193,6 +339,21 @@ class _WordLimitedTextInputState extends State<_WordLimitedTextInput> {
 
   /// Text controller.
   final _controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.text = widget.initialText;
+  }
+
+  @override
+  void didUpdateWidget(covariant _WordLimitedTextInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialText != oldWidget.initialText &&
+        widget.initialText != _controller.text) {
+      _controller.text = widget.initialText;
+    }
+  }
 
   @override
   void dispose() {
@@ -406,28 +567,41 @@ class _ServingSizeInput extends StatelessWidget {
       children: [
         _SectionLabel('Servings'),
         const SizedBox(height: AppSpacing.xs),
-        TextFormField(
-          initialValue: servings.toString(),
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          onChanged: onChanged,
-          style: context.text.bodySmall?.copyWith(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: 'e.g. 1',
-            suffixText: 'servings',
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () async {
+            final selected = await showDialog<double>(
+              context: context,
+              builder: (_) => MealServingDialog.wholeServings(
+                initialValue: servings.toDouble(),
+              ),
+            );
+            if (selected == null) return;
+            onChanged(selected.round().toString());
+          },
+          child: InputDecorator(
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              suffixIcon: const Icon(Icons.keyboard_arrow_down),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
             ),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.primary),
+            child: Text(
+              MealServingAmount.format(servings.toDouble()),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall?.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ),
@@ -461,13 +635,15 @@ class _ChipWrap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Create a set of selected values for quick lookup.
-    final selectedSet = selectedValues.toSet();
+    final selectedSet = selectedValues
+        .map((value) => value.toLowerCase().trim())
+        .toSet();
 
     return Wrap(
       spacing: AppSpacing.xs,
       runSpacing: AppSpacing.xs,
       children: values.map((value) {
-        final selected = selectedSet.contains(value);
+        final selected = selectedSet.contains(value.toLowerCase().trim());
         return InkWell(
           onTap: onSelected == null ? null : () => onSelected!(value),
           borderRadius: BorderRadius.circular(12),

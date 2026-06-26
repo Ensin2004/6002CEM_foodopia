@@ -135,7 +135,7 @@ extension ExploreRemoteDataSourceMapping on ExploreRemoteDataSource {
           : allergenNames.join(', '),
       totalTime: '${_intValue(data['preparationTime'])} min',
       difficulty: _difficultyLabel(data['difficultyLevel']),
-      servings: _intValue(data['servings']).clamp(1, 999),
+      servings: _doubleValue(data['servings']).clamp(0.125, 999).toDouble(),
       rating: _doubleValue(data['averageRating']),
       ratingCount: ratingCount,
       commentCount: _intValue(data['commentCount']),
@@ -145,6 +145,9 @@ extension ExploreRemoteDataSourceMapping on ExploreRemoteDataSource {
       isFavourite: isFavourite,
       isCreatedByCurrentUser: isCurrentUserCreator,
       hasRatedByCurrentUser: hasRatedByCurrentUser,
+      isModerationHidden:
+          _stringValue(data['moderationStatus']).toLowerCase() == 'hidden',
+      moderationHiddenReason: _stringValue(data['moderationHiddenReason']),
       ingredients: ingredients,
       instructionSections: instructions,
       nutrition: nutrition,

@@ -23,6 +23,7 @@ class ReviewIngredientItem extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Ingredient Image
           InkWell(
             onTap: () => _showExpandedImage(context, ingredient.image),
             borderRadius: BorderRadius.circular(8),
@@ -37,10 +38,13 @@ class ReviewIngredientItem extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.md),
+
+          // Ingredient Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Ingredient Name
                 Text(
                   ingredient.name,
                   maxLines: 1,
@@ -51,6 +55,8 @@ class ReviewIngredientItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
+
+                // Amount and Unit
                 Text(
                   "${ingredient.amount} ${ingredient.unit}".trim(),
                   maxLines: 1,
@@ -60,6 +66,8 @@ class ReviewIngredientItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
+
+                // Calorie Information
                 Text(
                   calories,
                   maxLines: 1,
@@ -76,6 +84,7 @@ class ReviewIngredientItem extends StatelessWidget {
     );
   }
 
+  /// Shows the ingredient image in a fullscreen dialog with zoom capabilities.
   Future<void> _showExpandedImage(
     BuildContext context,
     String imagePath,
@@ -88,6 +97,7 @@ class ReviewIngredientItem extends StatelessWidget {
           child: SafeArea(
             child: Stack(
               children: [
+                // Fullscreen Image
                 Center(
                   child: InteractiveViewer(
                     minScale: 1,
@@ -100,6 +110,7 @@ class ReviewIngredientItem extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Top-right corner - close button
                 Positioned(
                   top: AppSpacing.sm,
                   right: AppSpacing.sm,
@@ -116,18 +127,21 @@ class ReviewIngredientItem extends StatelessWidget {
     );
   }
 
+  /// Formats the calories from nutrient data into a display string.
   String _caloriesLabel(Map<String, dynamic>? nutrients) {
     final calories = _numericValue(nutrients?['calories']);
     if (calories == null) return 'Calories: -';
     return 'Calories: ${_formatNumber(calories)} kcal';
   }
 
+  /// Extracts a numeric value from various data types.
   double? _numericValue(dynamic value) {
     if (value is num) return value.toDouble();
     if (value is Map) return _numericValue(value['value'] ?? value['amount']);
     return double.tryParse(value?.toString() ?? '');
   }
 
+  /// Formats a number for display with appropriate precision.
   String _formatNumber(double value) {
     final rounded = value.roundToDouble();
     if ((value - rounded).abs() < 0.05) return rounded.toInt().toString();

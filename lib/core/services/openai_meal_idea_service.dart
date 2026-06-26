@@ -124,8 +124,12 @@ Diet: ${request.preferences.diet}
 Allergies to avoid: ${request.preferences.allergies.join(', ')}
 Disliked/avoid ingredients: ${request.ingredientsToAvoid.join(', ')}
 Ingredients user has: ${request.ingredientsToInclude.join(', ')}
-Dish types to include: ${request.dishIncludes.join(', ')}
-Dish types to avoid: ${request.dishAvoids.join(', ')}
+Cuisine / recipe style: ${request.cuisineStyles.join(', ')}
+Dish styles to include: ${request.dishIncludes.join(', ')}
+Dish styles to avoid: ${request.dishAvoids.join(', ')}
+Cooking method / equipment: ${request.cookingMethods.join(', ')}
+Spice level: ${request.spiceLevel}
+Extra preferences for this generation only: ${request.extraPreferences}
 Cooking time: ${request.cookingTime}
 Difficulty: ${request.difficulty}
 Serving size: ${request.servingSize}
@@ -142,6 +146,7 @@ Nutrition rules:
 - Ingredient alternatives must avoid listed allergies and disliked/avoid ingredients.
 - Ingredient alternatives should be practical swaps with similar cooking use.
 - Do not repeat existing planned meals or generate near-duplicate versions of them.
+- Before finalizing, verify every recipe excludes all allergies and disliked/avoid ingredients, including close matches such as peanut butter for peanut.
 ''';
   }
 

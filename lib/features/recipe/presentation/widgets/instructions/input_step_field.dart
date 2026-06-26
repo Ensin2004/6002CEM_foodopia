@@ -31,7 +31,9 @@ class InputStepField extends StatelessWidget {
       children: [
         Row(
           children: [
+            // Section input mode only
             if (showNumberBadge) ...[
+              // Drag handle for reordering
               ReorderableDragStartListener(
                 index: index,
                 child: const Icon(
@@ -41,6 +43,8 @@ class InputStepField extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
+
+              // Step number badge
               CircleAvatar(
                 radius: 10,
                 backgroundColor: AppColors.primary,
@@ -55,12 +59,16 @@ class InputStepField extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
             ],
+
+            // Instruction Image Box
             _InstructionImageBox(
               imageFile: step.imageFile,
               imageUrl: step.existingImageUrl,
               onTap: onPickImage,
             ),
             const SizedBox(width: AppSpacing.md),
+
+            // Description Text Field
             Expanded(
               child: SizedBox(
                 height: 58,
@@ -97,8 +105,11 @@ class InputStepField extends StatelessWidget {
                 ),
               ),
             ),
+
+            // Section input mode only
             if (showNumberBadge) ...[
               const SizedBox(width: AppSpacing.sm),
+              // Delete Button
               InkWell(
                 onTap: onDelete,
                 child: const Icon(
@@ -139,12 +150,15 @@ class _InstructionImageBox extends StatelessWidget {
           color: const Color(0xFFF7F7F7),
           child: imageFile == null
               ? imageUrl == null
+                  // Empty state
                     ? const Icon(
                         Icons.add_photo_alternate_outlined,
                         color: Color(0xFFC9CBCD),
                         size: 30,
                       )
+                    // Image Preview from URL
                     : AppRemoteOrAssetImage(imagePath: imageUrl!, fit: BoxFit.cover)
+              // Local Image File
               : Image.file(imageFile!, fit: BoxFit.cover),
         ),
       ),

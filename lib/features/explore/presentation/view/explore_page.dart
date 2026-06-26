@@ -342,6 +342,7 @@ class _ExploreCommentsDialogBody extends StatelessWidget {
       viewModel: viewModel,
       recipe: recipe!,
       isSubmitting: viewModel.isSubmittingCommunityAction,
+      canInteract: true,
       onAddComment: (content) => viewModel.addComment(content),
       onToggleLike: (commentId) => viewModel.toggleCommentLike(commentId),
       onReply: (commentId, content) =>
@@ -425,6 +426,7 @@ class _ExploreContent extends StatelessWidget {
         onImageLongPress: (recipe) => _showRecipeImage(context, recipe),
         disabledRecipeIds: mealPlanSelection?.existingRecipeIds.toSet() ?? {},
         calorieBudget: mealPlanSelection?.calorieBudget,
+        plannedServings: mealPlanSelection?.normalizedPlannedServings ?? 1,
         onRecipeTap: (recipe) async {
           final result = await context.push(
             AppRouter.exploreRecipeDetail,

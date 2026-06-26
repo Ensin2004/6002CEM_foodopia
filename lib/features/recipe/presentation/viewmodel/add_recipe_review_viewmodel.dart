@@ -6,6 +6,7 @@ import '../../domain/usecases/delete_add_recipe_usecase.dart';
 import '../../domain/usecases/finalize_add_recipe_usecase.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 
+/// Controls recipe review loading, final save state, deletion state and errors.
 class AddRecipeReviewViewModel extends ChangeNotifier {
   final GetAddRecipeReviewUseCase getReviewUseCase;
   final FinalizeAddRecipeUseCase finalizeRecipeUseCase;
@@ -23,7 +24,9 @@ class AddRecipeReviewViewModel extends ChangeNotifier {
     required this.deleteRecipeUseCase,
   });
 
+  /// Loads the latest recipe review snapshot.
   Future<void> loadReview(String recipeId) async {
+    // Review loading resets any previous error before requesting fresh data.
     isLoading = true;
     errorMessage = null;
     notifyListeners();
@@ -40,7 +43,9 @@ class AddRecipeReviewViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Finalizes the reviewed recipe after the final save action.
   Future<bool> finalizeRecipe(String recipeId) async {
+    // Final save state keeps the review button disabled until completion.
     isSaving = true;
     errorMessage = null;
     notifyListeners();
@@ -56,7 +61,9 @@ class AddRecipeReviewViewModel extends ChangeNotifier {
     return success;
   }
 
+  /// Deletes the reviewed recipe and exposes any deletion failure.
   Future<bool> deleteRecipe(String recipeId) async {
+    // Delete state keeps destructive action feedback separate from final save.
     isDeleting = true;
     errorMessage = null;
     notifyListeners();

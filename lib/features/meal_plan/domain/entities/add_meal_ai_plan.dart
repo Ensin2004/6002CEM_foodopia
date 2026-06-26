@@ -71,6 +71,18 @@ class AddMealAiGenerationRequest {
   /// Dish types to avoid in generation.
   final List<String> dishAvoids;
 
+  /// Cuisine or recipe styles to guide generation.
+  final List<String> cuisineStyles;
+
+  /// Cooking methods or equipment available for generation.
+  final List<String> cookingMethods;
+
+  /// Preferred spice level.
+  final String spiceLevel;
+
+  /// Optional free-text preferences for this generation only.
+  final String extraPreferences;
+
   /// Maximum cooking time in minutes.
   final int cookingTime;
 
@@ -102,6 +114,10 @@ class AddMealAiGenerationRequest {
     required this.ingredientsToAvoid,
     required this.dishIncludes,
     required this.dishAvoids,
+    this.cuisineStyles = const [],
+    this.cookingMethods = const [],
+    this.spiceLevel = 'Any',
+    this.extraPreferences = '',
     required this.cookingTime,
     required this.difficultyLevel,
     required this.difficulty,

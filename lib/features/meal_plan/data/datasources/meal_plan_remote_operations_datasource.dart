@@ -61,7 +61,7 @@ mixin _MealPlanRemoteOperationsDataSource
     required AddMealCategoryOption mealCategory,
     required AddMealAiRecipe recipe,
     required String source,
-    required int servingCount,
+    required double servingCount,
   }) async {
     // Normalize the date to start of day.
     final dayStart = DateTime(date.year, date.month, date.day);
@@ -98,7 +98,8 @@ mixin _MealPlanRemoteOperationsDataSource
       'recipeId': recipe.id,
       'source': source,
       'creationMethod': source,
-      'servings': servingCount.clamp(1, 99),
+      'servings': MealServingAmount.normalize(servingCount),
+      'servingLabel': recipe.servingLabel,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });

@@ -8,6 +8,7 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
   /// Creates a new user setup preferences model instance.
   const UserSetupPreferencesModel({
     super.diet,
+    super.diets,
     super.allergies,
     super.dislikes,
     super.targetCalories,
@@ -25,8 +26,16 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
     // Extract data from the document.
     final data = doc.data() as Map<String, dynamic>? ?? {};
 
+    final diets = _stringList(data['diets']);
+    final legacyDiet = data['diet'] as String?;
+
     return UserSetupPreferencesModel(
-      diet: data['diet'] as String?,
+      diet: legacyDiet,
+      diets: diets.isNotEmpty
+          ? diets
+          : legacyDiet == null || legacyDiet.trim().isEmpty
+          ? const []
+          : [legacyDiet],
       allergies: _stringList(data['allergies']),
       dislikes: _stringList(data['dislikes']),
       targetCalories: data['targetCalories'] as int?,
@@ -50,6 +59,7 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
   factory UserSetupPreferencesModel.fromEntity(UserSetupPreferences entity) {
     return UserSetupPreferencesModel(
       diet: entity.diet,
+      diets: entity.diets,
       allergies: entity.allergies,
       dislikes: entity.dislikes,
       targetCalories: entity.targetCalories,
@@ -67,6 +77,7 @@ class UserSetupPreferencesModel extends UserSetupPreferences {
   Map<String, dynamic> toFirestore() {
     return {
       'diet': diet,
+      'diets': diets,
       'allergies': allergies,
       'dislikes': dislikes,
       'targetCalories': targetCalories,

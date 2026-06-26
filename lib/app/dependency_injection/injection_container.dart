@@ -30,9 +30,11 @@ import 'package:http/http.dart' as http;
 // ============================================================================
 // Core
 import '../../core/services/network_info.dart';
+import '../../core/services/ai_lifestyle_insight_service.dart';
 import '../../core/services/openai_ingredient_data_service.dart';
 import '../../core/services/food_search_service.dart';
 import '../../core/services/openai_meal_idea_service.dart';
+import '../../core/services/openai_recipe_content_validation_service.dart';
 import '../../core/services/openai_video_recipe_service.dart';
 import '../../core/services/recipe_search_service.dart';
 import '../../core/services/open_meteo_weather_service.dart';
@@ -43,6 +45,8 @@ import '../../features/admin_home/data/datasources/admin_home_remote_datasource.
 import '../../features/admin_home/data/repositories/admin_home_repository_impl.dart';
 import '../../features/admin_manage/data/datasources/admin_manage_remote_datasource.dart';
 import '../../features/admin_manage/data/repositories/admin_manage_repository_impl.dart';
+import '../../features/admin_moderation/data/datasources/admin_moderation_remote_datasource.dart';
+import '../../features/admin_moderation/data/repositories/admin_moderation_repository_impl.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/explore/data/datasources/explore_remote_datasource.dart';
@@ -118,6 +122,7 @@ import '../../features/recipe/domain/repositories/add_recipe_repository.dart';
 import '../../features/recipe/domain/usecases/finalize_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/complete_add_recipe_usecase.dart';
 import '../../features/recipe/domain/usecases/generate_add_recipe_from_video_usecase.dart';
+import '../../features/recipe/domain/usecases/generate_add_recipe_ingredients_from_image_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_food_nutrients_usecase.dart';
 import '../../features/recipe/domain/usecases/get_add_recipe_ingredient_categories_usecase.dart';
@@ -135,7 +140,7 @@ import '../../features/statistics/domain/repositories/statistics_repository.dart
 import '../../features/statistics/domain/usecases/get_admin_dietary_preference_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_gender_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_hub_rating_statistics_usecase.dart';
-import '../../features/statistics/domain/usecases/get_admin_nutrient_insight_statistics_usecase.dart';
+import '../../features/statistics/domain/usecases/get_admin_moderation_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_meal_analytic_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_post_analytic_statistics_usecase.dart';
 import '../../features/statistics/domain/usecases/get_admin_usage_forecast_statistics_usecase.dart';
@@ -199,6 +204,11 @@ import '../../features/admin_manage/domain/usecases/delete_admin_manage_item_use
 import '../../features/admin_manage/domain/usecases/get_admin_manage_items_usecase.dart';
 import '../../features/admin_manage/domain/usecases/reorder_admin_manage_items_usecase.dart';
 import '../../features/admin_manage/domain/usecases/save_admin_manage_item_usecase.dart';
+import '../../features/admin_moderation/domain/repositories/admin_moderation_repository.dart';
+import '../../features/admin_moderation/domain/usecases/clear_admin_recipe_ai_flag_usecase.dart';
+import '../../features/admin_moderation/domain/usecases/mark_admin_recipe_reviewed_usecase.dart';
+import '../../features/admin_moderation/domain/usecases/update_admin_recipe_visibility_usecase.dart';
+import '../../features/admin_moderation/domain/usecases/watch_admin_moderation_recipes_usecase.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/request_password_reset_usecase.dart';
@@ -261,6 +271,7 @@ import '../../features/settings/domain/usecases/about/get_about_content_usecase.
 // ============================================================================
 // Auth Feature - Presentation Layer
 import '../../features/admin_manage/presentation/viewmodel/admin_manage_viewmodel.dart';
+import '../../features/admin_moderation/presentation/viewmodel/admin_moderation_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/forgot_password_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/login_viewmodel.dart';
 import '../../features/auth/presentation/viewmodel/signup_viewmodel.dart';
@@ -299,6 +310,7 @@ Future<void> initDependencies() async {
   _initRatingFeature();
   _initFaqFeature();
   _initAdminManageFeature();
+  _initAdminModerationFeature();
   _initAdminHomeFeature();
   _initUserHomeFeature();
   _initMealPlanFeature();
@@ -323,6 +335,9 @@ void _initRecipeFeature() {
   // Register OpenAI services.
   sl.registerLazySingleton(() => OpenAiIngredientDataService(client: sl()));
   sl.registerLazySingleton(() => OpenAiVideoRecipeService(client: sl()));
+  sl.registerLazySingleton(
+    () => OpenAiRecipeContentValidationService(client: sl()),
+  );
 
   // Register video data source.
   sl.registerLazySingleton(
@@ -340,6 +355,7 @@ void _initRecipeFeature() {
       foodSearchService: sl(),
       unsplashIngredientImageService: sl(),
       ingredientAiDataSource: sl(),
+      recipeValidationService: sl(),
       videoDataSource: sl(),
       recipeAiSearchService: sl(),
     ),
@@ -358,6 +374,9 @@ void _initRecipeFeature() {
   sl.registerLazySingleton(() => GetAddRecipeFoodNutrientsUseCase(sl()));
   sl.registerLazySingleton(() => GetAddRecipeIngredientImageUseCase(sl()));
   sl.registerLazySingleton(() => GenerateAddRecipeFromVideoUseCase(sl()));
+  sl.registerLazySingleton(
+    () => GenerateAddRecipeIngredientsFromImageUseCase(sl()),
+  );
   sl.registerLazySingleton(() => SaveAddRecipeBasicInfoUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeIngredientsUseCase(sl()));
   sl.registerLazySingleton(() => SaveAddRecipeInstructionsUseCase(sl()));
@@ -409,9 +428,7 @@ void _initStatisticsFeature() {
   sl.registerLazySingleton(() => GetAdminGenderStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetAdminUserUsageStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetAdminUsageForecastStatisticsUseCase(sl()));
-  sl.registerLazySingleton(
-    () => GetAdminNutrientInsightStatisticsUseCase(sl()),
-  );
+  sl.registerLazySingleton(() => GetAdminModerationStatisticsUseCase(sl()));
   sl.registerLazySingleton(() => GetAdminHubRatingStatisticsUseCase(sl()));
 }
 
@@ -663,6 +680,39 @@ void _initAdminManageFeature() {
 }
 
 // ============================================================================
+// ADMIN MODERATION FEATURE
+// ============================================================================
+
+/// Initializes the Admin Moderation feature dependencies.
+void _initAdminModerationFeature() {
+  // Register remote data source.
+  sl.registerLazySingleton(
+    () => AdminModerationRemoteDataSource(firestore: sl()),
+  );
+
+  // Register repository.
+  sl.registerLazySingleton<AdminModerationRepository>(
+    () => AdminModerationRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  // Register use cases.
+  sl.registerLazySingleton(() => WatchAdminModerationRecipesUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateAdminRecipeVisibilityUseCase(sl()));
+  sl.registerLazySingleton(() => MarkAdminRecipeReviewedUseCase(sl()));
+  sl.registerLazySingleton(() => ClearAdminRecipeAiFlagUseCase(sl()));
+
+  // Register ViewModel.
+  sl.registerFactory(
+    () => AdminModerationViewModel(
+      watchRecipesUseCase: sl(),
+      updateRecipeVisibilityUseCase: sl(),
+      markRecipeReviewedUseCase: sl(),
+      clearRecipeAiFlagUseCase: sl(),
+    ),
+  );
+}
+
+// ============================================================================
 // EXTERNAL DEPENDENCIES
 // ============================================================================
 
@@ -697,6 +747,11 @@ Future<void> _initExternal() async {
 
   // OpenMeteo weather service.
   sl.registerLazySingleton(() => OpenMeteoWeatherService(client: sl()));
+
+  // AI lifestyle insight service.
+  sl.registerLazySingleton(
+    () => AiLifestyleInsightService(auth: sl(), firestore: sl()),
+  );
 
   // --------------------------------------------------------------------------
   // CONNECTIVITY
@@ -856,6 +911,7 @@ void _initMainFeature() {
   sl.registerFactory(
     () => MainViewModel(
       user: sl(), // This will be overridden when creating.
+      role: 'user',
       repository: sl(),
     ),
   );

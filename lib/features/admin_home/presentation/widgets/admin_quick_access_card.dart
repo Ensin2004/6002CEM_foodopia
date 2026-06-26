@@ -41,19 +41,9 @@ class AdminQuickAccessCard extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: context.text.titleSmall?.copyWith(
-                  color: context.colors.primary,
+                  color: Colors.black,
                   fontWeight: FontWeight.w700,
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-
-              // Description.
-              Text(
-                item.description,
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: context.text.bodySmall,
               ),
             ],
           ),

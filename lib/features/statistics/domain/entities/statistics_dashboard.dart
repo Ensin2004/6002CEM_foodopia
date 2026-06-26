@@ -1,5 +1,3 @@
-// These notes explain the statistics page code in simple words.
-// Only comments were added here; the code behaviour stays the same.
 // Domain entity for the main statistics dashboard.
 // It only stores the data that the page needs to show hero cards and menus.
 // Handles StatisticsDashboard for this part of the statistics page.

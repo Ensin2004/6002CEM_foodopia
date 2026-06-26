@@ -1,3 +1,4 @@
+/// Ingredient unit option with category metadata for grouped unit selection.
 class AddRecipeIngredientUnit {
   final String id;
   final String name;

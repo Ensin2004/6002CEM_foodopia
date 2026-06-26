@@ -18,6 +18,7 @@ import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
 import '../../domain/entities/add_recipe_ingredient.dart';
 import '../../domain/entities/add_recipe_instruction.dart';
+import '../../../meal_plan/domain/entities/meal_serving_amount.dart';
 import '../../domain/entities/add_recipe_review.dart';
 import '../../domain/usecases/complete_add_recipe_usecase.dart';
 import '../../domain/usecases/finalize_add_recipe_usecase.dart';
@@ -27,6 +28,7 @@ import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/save_add_recipe_instructions_usecase.dart';
 import '../viewmodel/add_recipe_review_viewmodel.dart';
 import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/recipe_error_dialog.dart';
 import '../widgets/recipe_visibility_action_button.dart';
 import '../widgets/review/review_hero_image.dart';
 import '../widgets/review/review_info_row.dart';
@@ -34,6 +36,8 @@ import '../widgets/review/review_ingredient_item.dart';
 import '../widgets/review/review_instruction_item.dart';
 import '../widgets/review/review_section_row.dart';
 
+/// Add recipe review page
+/// For user to check and review all the info of the recipe
 class AddRecipeReviewPage extends StatelessWidget {
   final String recipeId;
   final AddMealAiRecipe? initialAiRecipe;
@@ -64,7 +68,9 @@ class AddRecipeReviewPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Build AI review data if this is an AI draft flow
     final aiReview = _buildAiReview();
+    // Set up view models with dependency injection
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
@@ -74,6 +80,8 @@ class AddRecipeReviewPage extends StatelessWidget {
               finalizeRecipeUseCase: sl<FinalizeAddRecipeUseCase>(),
               deleteRecipeUseCase: sl(),
             );
+
+            // Load existing review for manual flow, skip loading for AI draft
             if (aiReview == null) {
               viewModel.loadReview(recipeId);
             } else {
@@ -101,6 +109,7 @@ class AddRecipeReviewPage extends StatelessWidget {
     );
   }
 
+  /// Builds a review object containing all info from AI-generated data.
   AddRecipeReview? _buildAiReview() {
     final basicInfo = aiDraftBasicInfo;
     final aiRecipe = initialAiRecipe;
@@ -160,10 +169,12 @@ class AddRecipeReviewPage extends StatelessWidget {
     );
   }
 
+  /// Formats a decimal amount for display
   String _formatAmount(double amount) {
     return amount % 1 == 0 ? amount.toInt().toString() : amount.toString();
   }
 
+  /// Formats macronutrient values with 'g' suffix
   String _formatMacro(double value) {
     if (value <= 0) return '-';
     final formatted = value % 1 == 0
@@ -173,6 +184,7 @@ class AddRecipeReviewPage extends StatelessWidget {
   }
 }
 
+/// Stateful widget of the add recipe review page.
 class _AddRecipeReviewView extends StatefulWidget {
   final String recipeId;
   final AddRecipeReview? aiReview;
@@ -219,6 +231,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
       return _RecipeErrorState(message: viewModel.errorMessage);
     }
 
+    // Seed visibility for manual flow
     if (widget.aiReview == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
@@ -266,6 +279,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Progress Bar
             if (!widget.hideProgressBar)
               const Padding(
                 padding: EdgeInsets.fromLTRB(
@@ -295,7 +309,6 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-
                   // Label, Tips
                   Expanded(
                     child: Column(
@@ -322,10 +335,10 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                       onPressed: viewModel.isDeleting
                           ? null
                           : () => _confirmDeleteRecipe(
-                                context,
-                                viewModel,
-                                review,
-                              ),
+                              context,
+                              viewModel,
+                              review,
+                            ),
                       icon: const Icon(Icons.delete_outline_rounded),
                       color: AppColors.error,
                     ),
@@ -343,7 +356,6 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                   0,
                 ),
                 children: [
-
                   // Recipe Image and Video
                   ReviewHeroImage(media: review.media),
                   const SizedBox(height: AppSpacing.lg),
@@ -388,9 +400,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                       ),
                       ReviewInfoRow(
                         label: "Servings",
-                        value: review.servings == 1
-                            ? "${review.servings} serving"
-                            : "${review.servings} servings",
+                        value: MealServingAmount.format(review.servings),
                       ),
                       ReviewInfoRow(
                         label: "Allergen Info",
@@ -418,10 +428,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
                         label: "Carbohydrates",
                         value: review.nutrients.carbohydrates,
                       ),
-                      ReviewInfoRow(
-                        label: "Fat",
-                        value: review.nutrients.fats,
-                      ),
+                      ReviewInfoRow(label: "Fat", value: review.nutrients.fats),
                       ReviewInfoRow(
                         label: "Fiber",
                         value: review.nutrients.fiber,
@@ -510,30 +517,41 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
-  // Sort Ingredients
-  List<AddRecipeReviewIngredient> _sortedIngredients(List<AddRecipeReviewIngredient> ingredients) {
+  // ============================================================
+  // Sorting Helpers
+  // ============================================================
+
+  /// Sorts ingredients alphabetically for easier scanning.
+  List<AddRecipeReviewIngredient> _sortedIngredients(
+    List<AddRecipeReviewIngredient> ingredients,
+  ) {
     return [...ingredients]..sort(
       (first, second) =>
           first.name.toLowerCase().compareTo(second.name.toLowerCase()),
     );
   }
 
-  // Handle save action
+  // ============================================================
+  // Action Methods
+  // ============================================================
+
+  /// Saves a completed manual recipe and navigates to the library
   Future<void> _finishSavedRecipe(
     BuildContext context,
     AddRecipeReviewViewModel viewModel,
   ) async {
+    // Final save marks the recipe as completed before returning to the library.
     final success = await viewModel.finalizeRecipe(widget.recipeId);
     if (!context.mounted) return;
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(viewModel.errorMessage ?? "Unable to save recipe."),
-        ),
+      await showRecipeErrorDialog(
+        context: context,
+        message: viewModel.errorMessage ?? "Unable to save recipe.",
       );
       return;
     }
 
+    // Home route receives focus parameters so the saved recipe can be highlighted.
     final visibility = context.read<AddRecipeVisibilityViewModel>().visibility;
     context.go(
       Uri(
@@ -553,12 +571,13 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
-  // Handle delete action
+  /// Confirms and executes recipe deletion
   Future<void> _confirmDeleteRecipe(
     BuildContext context,
     AddRecipeReviewViewModel viewModel,
     AddRecipeReview review,
   ) async {
+    // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -583,6 +602,7 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
 
     if (confirmed != true || !context.mounted) return;
 
+    // Loading dialog stays visible while the delete use case clears recipe data.
     final rootNavigator = Navigator.of(context, rootNavigator: true);
     showDialog<void>(
       context: context,
@@ -596,14 +616,15 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     rootNavigator.pop();
 
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(viewModel.errorMessage ?? "Unable to delete recipe."),
-        ),
+      await showRecipeErrorDialog(
+        context: context,
+        message: viewModel.errorMessage ?? "Unable to delete recipe.",
+        title: "Unable to Delete",
       );
       return;
     }
 
+    // Library route receives a refresh token after successful deletion.
     context.go(
       Uri(
         path: AppRouter.home,
@@ -619,23 +640,27 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     );
   }
 
-  // Handle save action (for AI draft)
+  /// Saves an AI draft recipe through the three-step save process
   Future<void> _saveAiDraft(BuildContext context) async {
+    // AI draft review can only save after basic information exists.
     final basicInfo = widget.aiDraftBasicInfo;
     if (basicInfo == null) return;
 
     setState(() => _isSavingAiDraft = true);
 
+    // Save basic info
     final basicResult = await sl<SaveAddRecipeBasicInfoUseCase>().execute(
       basicInfo,
     );
     if (!context.mounted) return;
     if (basicResult.isLeft()) {
-      _finishFailedSave(context, basicResult.left?.message);
+      await _finishFailedSave(context, basicResult.left?.message);
       return;
     }
 
     final savedRecipeId = basicResult.right!;
+
+    // Save ingredients
     final ingredientResult = await sl<SaveAddRecipeIngredientsUseCase>()
         .execute(
           recipeId: savedRecipeId,
@@ -643,10 +668,11 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
         );
     if (!context.mounted) return;
     if (ingredientResult.isLeft()) {
-      _finishFailedSave(context, ingredientResult.left?.message);
+      await _finishFailedSave(context, ingredientResult.left?.message);
       return;
     }
 
+    // Save instructions
     final instructionResult = await sl<SaveAddRecipeInstructionsUseCase>()
         .execute(
           recipeId: savedRecipeId,
@@ -655,31 +681,44 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
         );
     if (!context.mounted) return;
     if (instructionResult.isLeft()) {
-      _finishFailedSave(context, instructionResult.left?.message);
+      await _finishFailedSave(context, instructionResult.left?.message);
       return;
     }
 
+    // Mark the recipe as AI-generated
     await sl<CompleteAddRecipeUseCase>().execute(
       recipeId: savedRecipeId,
       mode: 'ai_generated',
     );
     if (!context.mounted) return;
     setState(() => _isSavingAiDraft = false);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Recipe saved.")));
-  }
 
-  void _finishFailedSave(BuildContext context, String? message) {
-    setState(() => _isSavingAiDraft = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message ?? "Unable to save recipe.")),
+    // Show success message
+    await showRecipeErrorDialog(
+      context: context,
+      title: "Recipe Saved",
+      message: "Recipe saved.",
     );
   }
 
-  // Instruction Widgets
+  /// Handles failed AI draft save by resetting loading state and showing error
+  Future<void> _finishFailedSave(BuildContext context, String? message) async {
+    // Failed AI draft saves reset loading state before displaying the error dialog.
+    setState(() => _isSavingAiDraft = false);
+    await showRecipeErrorDialog(
+      context: context,
+      message: message ?? "Unable to save recipe.",
+    );
+  }
+
+  // ============================================================
+  // Instructions Widget Builder
+  // ============================================================
+
+  /// Builds instruction widgets based on the layout mode (flat or sectioned)
   List<Widget> _instructionsWidgets(AddRecipeReview review) {
     if (!review.instructionUseSection) {
+      // Flat instructions render directly without section headers.
       return review.instructions
           .map(
             (instruction) => ReviewInstructionItem(
@@ -690,12 +729,14 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
           .toList();
     }
 
+    // Sectioned instructions are grouped by section index before rendering headers.
     final grouped = <int, List<AddRecipeReviewInstruction>>{};
     for (final instruction in review.instructions) {
       grouped.putIfAbsent(instruction.sectionIndex ?? 0, () => []);
       grouped[instruction.sectionIndex ?? 0]!.add(instruction);
     }
 
+    // Build widgets for each section with a header
     return grouped.entries.expand((entry) {
       final title = entry.value.first.sectionTitle ?? "Section";
       return <Widget>[
@@ -726,11 +767,17 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
     }).toList();
   }
 
+  // ============================================================
+  // Display Helpers
+  // ============================================================
+
+  /// Formats a list of strings as a comma-separated list or returns "-" if empty.
   String _joinOrDash(List<String> values) {
     final visibleValues = values.where((value) => value.trim().isNotEmpty);
     return visibleValues.isEmpty ? "-" : visibleValues.join(", ");
   }
 
+  /// Converts micronutrient data to a list of info rows.
   List<Widget> _nutrientRows(List<AddRecipeReviewMicronutrient> nutrients) {
     return nutrients
         .map(
@@ -743,6 +790,12 @@ class _AddRecipeReviewViewState extends State<_AddRecipeReviewView> {
   }
 }
 
+// ============================================================
+// Helper Widgets
+// ============================================================
+
+/// Subheader widget for organizing nutritional information
+/// Used to group vitamins and minerals under their respective categories.
 class _NutritionSubheader extends StatelessWidget {
   final String title;
 
@@ -772,6 +825,10 @@ class _NutritionSubheader extends StatelessWidget {
     );
   }
 }
+
+// ============================================================
+// Loading and Error Page
+// ============================================================
 
 // Loading Page
 class _AddRecipePageLoading extends StatelessWidget {

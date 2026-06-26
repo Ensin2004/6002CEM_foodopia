@@ -276,11 +276,7 @@ class AdminAnalyticSectionPager extends StatelessWidget {
               if (custom != null) {
                 return SingleChildScrollView(child: custom);
               }
-              // Difficulty keeps its natural 1-to-5 order. Other lists follow
-              // the sort option selected by the admin.
-              final section = sections[index].title == 'Average Difficulty'
-                  ? sections[index]
-                  : sections[index].sorted(sortOrder);
+              final section = sections[index].sorted(sortOrder);
               return SingleChildScrollView(
                 child: AdminAnalyticSectionCard(
                   section: section,
@@ -315,21 +311,10 @@ class _AdminSectionTabs extends StatelessWidget {
   // Handles build for this part of the statistics page.
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final tabWidth = (sections.length * 116.0).clamp(width - 32, 720.0);
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: tabWidth,
-        child: AppPillSegmentedControl(
-          labels: sections
-              .map((section) => _shortTabLabel(section.title))
-              .toList(),
-          selectedIndex: selectedIndex,
-          onChanged: onSelected,
-        ),
-      ),
+    return AppPillSegmentedControl(
+      labels: sections.map((section) => _shortTabLabel(section.title)).toList(),
+      selectedIndex: selectedIndex,
+      onChanged: onSelected,
     );
   }
 
@@ -343,14 +328,10 @@ class _AdminSectionTabs extends StatelessWidget {
         return 'Category';
       case 'Meal Planned Time':
         return 'Time';
-      case 'Average Difficulty':
-        return 'Difficulty';
       case 'Method Of Creating Meal Plan':
         return 'Method';
       case 'Most Rating For All Posted':
         return 'Rating';
-      case 'Recipe Performance':
-        return 'Performance';
       case 'Recipe That Been Planned The Most':
         return 'Planned';
       default:
@@ -457,12 +438,7 @@ class _SectionChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chartItems = section.items
-        .where(
-          (item) => section.title == 'Average Difficulty' || item.value > 0,
-        )
-        .take(5)
-        .toList();
+    final chartItems = section.items.where((item) => item.value > 0).take(5).toList();
 
     if (section.title == 'Meal Planned Time' ||
         section.title == 'Method Of Creating Meal Plan') {
@@ -511,9 +487,6 @@ class _SectionChart extends StatelessWidget {
                   color: item.color,
                   imageUrl: item.imageUrl,
                   markerText: item.markerText,
-                  markerIconColor: section.title == 'Average Difficulty'
-                      ? const Color(0xFFFFB300)
-                      : null,
                 ),
               )
               .toList(),
@@ -575,16 +548,7 @@ class _AdminRankedStatisticListState extends State<AdminRankedStatisticList> {
                   ),
                 ),
               ),
-              if (widget.title == 'Average Difficulty')
-                Text(
-                  '1 - 5 Star',
-                  style: context.text.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                )
-              else if (widget.sortOrder != null && widget.onSortChanged != null)
+              if (widget.sortOrder != null && widget.onSortChanged != null)
                 PopupMenuButton<AdminStatisticsSortOrder>(
                   tooltip: 'Sort',
                   initialValue: widget.sortOrder,
@@ -626,14 +590,6 @@ class _AdminRankedStatisticListState extends State<AdminRankedStatisticList> {
               });
             }
 
-            if (widget.title == 'Average Difficulty') {
-              return _DifficultyRankedRow(
-                item: item,
-                isExpanded: isExpanded,
-                showDivider: index != widget.items.length - 1,
-                onTap: toggleExpanded,
-              );
-            }
             return _RankedRow(
               item: item,
               isExpanded: isExpanded,
@@ -936,120 +892,6 @@ class _RankedMarker extends StatelessWidget {
     final words = text.split(RegExp(r'\s+')).where((word) => word.isNotEmpty);
     return words.take(2).map((word) => word[0].toUpperCase()).join();
   }
-}
-
-// Handles _DifficultyRankedRow for this part of the statistics page.
-class _DifficultyRankedRow extends StatelessWidget {
-  final AdminRankedStatistic item;
-  final bool isExpanded;
-  final bool showDivider;
-  final VoidCallback onTap;
-
-  // Handles _DifficultyRankedRow for this part of the statistics page.
-  const _DifficultyRankedRow({
-    required this.item,
-    required this.isExpanded,
-    required this.showDivider,
-    required this.onTap,
-  });
-
-  // Handles build for this part of the statistics page.
-  @override
-  Widget build(BuildContext context) {
-    final level = _difficultyLevelFromLabel(item.label);
-    return Column(
-      children: [
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
-            child: Row(
-              children: [
-                // Handles AdminStatisticSoftIcon for this part of the statistics page.
-                const AdminStatisticSoftIcon(icon: Icons.star_border),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _DifficultyStars(count: level),
-                      // Handles SizedBox for this part of the statistics page.
-                      const SizedBox(height: 2),
-                      Text(
-                        '$level Star Difficulty',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.text.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Handles SizedBox for this part of the statistics page.
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  item.value.toString(),
-                  style: context.text.bodyMedium?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  ),
-                ),
-                // Handles SizedBox for this part of the statistics page.
-                const SizedBox(width: AppSpacing.md),
-                Icon(
-                  isExpanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  size: 20,
-                  color: AppColors.textPrimary,
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (isExpanded)
-          ...item.details.map((detail) => _RankedDetailRow(detail: detail)),
-        if (showDivider) const Divider(height: 1, color: AppColors.border),
-      ],
-    );
-  }
-}
-
-// Handles _DifficultyStars for this part of the statistics page.
-class _DifficultyStars extends StatelessWidget {
-  final int count;
-
-  const _DifficultyStars({required this.count});
-
-  // Handles build for this part of the statistics page.
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        final filled = index < count;
-        return Icon(
-          filled ? Icons.star : Icons.star_border,
-          color: filled ? const Color(0xFFFFB300) : AppColors.border,
-          size: 15,
-        );
-      }),
-    );
-  }
-}
-
-// Handles _difficultyLevelFromLabel for this part of the statistics page.
-int _difficultyLevelFromLabel(String label) {
-  final match = RegExp(r'\d+').firstMatch(label);
-  final level = int.tryParse(match?.group(0) ?? '') ?? 0;
-  return level.clamp(1, 5);
 }
 
 // Handles _RankedDetailRow for this part of the statistics page.
