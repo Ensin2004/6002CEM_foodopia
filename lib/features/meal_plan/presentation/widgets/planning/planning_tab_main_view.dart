@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../../app/routers/app_router.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
@@ -9,6 +11,7 @@ import '../../../../../core/widgets/box/app_info_box.dart';
 import '../../../../../core/widgets/buttons/app_filter_chip.dart';
 import '../../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../domain/entities/meal_plan_dashboard.dart';
+import '../../../../statistics/presentation/widgets/ai_lifestyle_insight_card.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
 import 'meal_plan_calendar.dart';
 import 'meal_plan_section_card.dart';
@@ -45,6 +48,11 @@ class PlanningTabMainView extends StatelessWidget {
             children: [
               // Summary strip.
               MealPlanSummaryStrip(summary: dashboard.summary),
+              const SizedBox(height: AppSpacing.md),
+
+              AiLifestyleInsightCard(
+                onViewDetail: () => context.push(AppRouter.aiLifestyleInsight),
+              ),
               const SizedBox(height: AppSpacing.md),
 
               // Date header.

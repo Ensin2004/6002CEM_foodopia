@@ -14,6 +14,7 @@ class RecipeDifficultyPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the view model to react to difficulty level changes
     final viewModel = context.watch<AddRecipeBasicInfoViewModel>();
 
     return Container(
@@ -26,15 +27,19 @@ class RecipeDifficultyPicker extends StatelessWidget {
         children: levels.asMap().entries.map((entry) {
           final levelValue = entry.key + 1;
           final levelLabel = entry.value;
+
+          // Determine if this level and all lower levels are selected
           final selected = levelValue <= viewModel.difficultyLevel;
           return Expanded(
             child: InkWell(
+              // Update the view model when user taps a level
               onTap: () => context
                   .read<AddRecipeBasicInfoViewModel>()
                   .selectDifficulty(levelValue),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Difficulty icon - changes color based on selection state
                   Icon(
                     Icons.restaurant_menu_rounded,
                     size: 24,
@@ -43,6 +48,8 @@ class RecipeDifficultyPicker extends StatelessWidget {
                         : AppColors.textSecondary.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: AppSpacing.xs),
+
+                  // Difficulty label
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -183,6 +184,66 @@ class LibraryRemoteDataSource {
     return recipesById.values.toList();
   }
 
+  Stream<List<LibraryRecipeModel>> watchRecipes() {
+    final uid = _currentUid();
+    late StreamController<List<LibraryRecipeModel>> controller;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? selfRecipesSub;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? publicRecipesSub;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? savedSub;
+    var isRefreshing = false;
+    var refreshAgain = false;
+
+    Future<void> refresh() async {
+      if (isRefreshing) {
+        refreshAgain = true;
+        return;
+      }
+
+      isRefreshing = true;
+      do {
+        refreshAgain = false;
+        try {
+          if (!controller.isClosed) {
+            controller.add(await getRecipes());
+          }
+        } catch (error, stackTrace) {
+          if (!controller.isClosed) {
+            controller.addError(error, stackTrace);
+          }
+        }
+      } while (refreshAgain && !controller.isClosed);
+      isRefreshing = false;
+    }
+
+    controller = StreamController<List<LibraryRecipeModel>>(
+      onListen: () {
+        selfRecipesSub = firestore
+            .collection('recipes')
+            .where('creatorUid', isEqualTo: uid)
+            .snapshots()
+            .listen((_) => refresh(), onError: controller.addError);
+        publicRecipesSub = firestore
+            .collection('recipes')
+            .where('visibility', isEqualTo: 'public')
+            .snapshots()
+            .listen((_) => refresh(), onError: controller.addError);
+        savedSub = firestore
+            .collection('users')
+            .doc(uid)
+            .collection('saved_recipes')
+            .snapshots()
+            .listen((_) => refresh(), onError: controller.addError);
+      },
+      onCancel: () async {
+        await selfRecipesSub?.cancel();
+        await publicRecipesSub?.cancel();
+        await savedSub?.cancel();
+      },
+    );
+
+    return controller.stream;
+  }
+
   Future<LibraryRecipeModel> getRecipeDetail(String recipeId) async {
     // Loads one recipe and marks it as favourite when the recipe id exists in saved recipe sources.
     final uid = _currentUid();
@@ -343,6 +404,10 @@ class LibraryRemoteDataSource {
         : _stringList(data['allergenIds']);
     final visibility = data['visibility']?.toString().toLowerCase() ?? '';
     final isPublished = visibility == 'public' || visibility == 'published';
+    final isModerationHidden =
+        data['moderationStatus']?.toString().toLowerCase() == 'hidden';
+    final moderationHiddenReason =
+        data['moderationHiddenReason']?.toString().trim() ?? '';
     final title = _firstNotBlank([
       data['name']?.toString(),
       data['recipeName']?.toString(),
@@ -370,6 +435,7 @@ class LibraryRemoteDataSource {
         _doubleValue(data['rating']) ??
         0;
     final ratingCount = _intValue(data['ratingCount']) ?? 0;
+    final nutrition = await _nutritionForRecipe(doc.reference, data);
 
     return LibraryRecipeModel(
       id: doc.id,
@@ -398,6 +464,8 @@ class LibraryRemoteDataSource {
           : allergens.join(', '),
       totalTime: '${_intValue(data['preparationTime']) ?? 0} min',
       difficulty: _difficultyLabel(_intValue(data['difficultyLevel'])),
+      servings:
+          _intValue(data['servings']) ?? _intValue(data['servingSize']) ?? 1,
       rating: rating,
       ratingCount: ratingCount,
       commentCount: _intValue(data['commentCount']) ?? 0,
@@ -405,14 +473,11 @@ class LibraryRemoteDataSource {
       isSelfPublished: creatorUid == uid,
       isFollowingAuthor: isFollowingAuthor,
       isPublished: isPublished,
+      isModerationHidden: isModerationHidden,
+      moderationHiddenReason: moderationHiddenReason,
       ingredients: const [],
       instructionSections: const [],
-      nutrition: const LibraryNutrition(
-        calories: 0,
-        carbsGrams: 0,
-        proteinGrams: 0,
-        fatGrams: 0,
-      ),
+      nutrition: nutrition,
       community: LibraryCommunity(
         authorBio: '',
         ratingBreakdown: _ratingBreakdown(ratingCount),
@@ -420,6 +485,65 @@ class LibraryRemoteDataSource {
         comments: const [],
       ),
       relatedRecipes: const [],
+    );
+  }
+
+  Future<LibraryNutrition> _nutritionForRecipe(
+    DocumentReference<Map<String, dynamic>> recipeRef,
+    Map<String, dynamic> recipeData,
+  ) async {
+    final totalNutrients = recipeData['totalNutrients'];
+    if (totalNutrients is Map) {
+      return LibraryNutrition(
+        calories: _nutrientValue(totalNutrients, const [
+          'calories',
+          'energy',
+        ]).round(),
+        carbsGrams: _nutrientValue(totalNutrients, const [
+          'carbohydrates',
+        ]).round(),
+        proteinGrams: _nutrientValue(totalNutrients, const ['protein']).round(),
+        fatGrams: _nutrientValue(totalNutrients, const ['fat']).round(),
+      );
+    }
+
+    final directCalories =
+        _doubleValue(recipeData['calories']) ??
+        _doubleValue(recipeData['energy']);
+    final directCarbs = _doubleValue(recipeData['carbohydrates']);
+    final directProtein = _doubleValue(recipeData['protein']);
+    final directFat = _doubleValue(recipeData['fat']);
+    if ((directCalories ?? 0) > 0 ||
+        (directCarbs ?? 0) > 0 ||
+        (directProtein ?? 0) > 0 ||
+        (directFat ?? 0) > 0) {
+      return LibraryNutrition(
+        calories: (directCalories ?? 0).round(),
+        carbsGrams: (directCarbs ?? 0).round(),
+        proteinGrams: (directProtein ?? 0).round(),
+        fatGrams: (directFat ?? 0).round(),
+      );
+    }
+
+    final ingredients = await recipeRef.collection('ingredients').get();
+    var calories = 0.0;
+    var carbs = 0.0;
+    var protein = 0.0;
+    var fat = 0.0;
+    for (final ingredient in ingredients.docs) {
+      final nutrients = ingredient.data()['nutrients'];
+      if (nutrients is! Map) continue;
+      calories += _nutrientValue(nutrients, const ['calories', 'energy']);
+      carbs += _nutrientValue(nutrients, const ['carbohydrates']);
+      protein += _nutrientValue(nutrients, const ['protein']);
+      fat += _nutrientValue(nutrients, const ['fat']);
+    }
+
+    return LibraryNutrition(
+      calories: calories.round(),
+      carbsGrams: carbs.round(),
+      proteinGrams: protein.round(),
+      fatGrams: fat.round(),
     );
   }
 
@@ -531,6 +655,28 @@ class LibraryRemoteDataSource {
     // Accepts decimal Firestore values and parseable decimal strings.
     if (value is double) return value;
     if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  double _nutrientValue(Map<dynamic, dynamic> nutrients, List<String> keys) {
+    for (final key in keys) {
+      for (final entry in nutrients.entries) {
+        if (entry.key.toString().toLowerCase() != key.toLowerCase()) continue;
+        final parsed = _numberFromNutrient(entry.value);
+        if (parsed != null) return parsed;
+      }
+    }
+    return 0;
+  }
+
+  double? _numberFromNutrient(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is Map) {
+      for (final key in const ['value', 'amount', 'quantity']) {
+        final parsed = _numberFromNutrient(value[key]);
+        if (parsed != null) return parsed;
+      }
+    }
     return double.tryParse(value?.toString() ?? '');
   }
 

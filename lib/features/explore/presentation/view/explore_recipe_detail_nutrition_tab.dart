@@ -13,7 +13,7 @@ class _NutritionTab extends StatefulWidget {
 }
 
 class _NutritionTabState extends State<_NutritionTab> {
-  late int _selectedServings;
+  late double _selectedServings;
 
   @override
   void initState() {
@@ -64,12 +64,19 @@ class _NutritionTabState extends State<_NutritionTab> {
                   const Spacer(),
                   _ServingStepper(
                     value: _selectedServings,
-                    onDecrease: _selectedServings <= 1
+                    onDecrease: _selectedServings <= MealServingAmount.min
                         ? null
-                        : () => setState(() => _selectedServings -= 1),
-                    onIncrease: _selectedServings >= 99
+                        : () => setState(
+                            () => _selectedServings =
+                                MealServingAmount.stepDown(_selectedServings),
+                          ),
+                    onIncrease: _selectedServings >= MealServingAmount.max
                         ? null
-                        : () => setState(() => _selectedServings += 1),
+                        : () => setState(
+                            () => _selectedServings = MealServingAmount.stepUp(
+                              _selectedServings,
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -244,14 +251,14 @@ class _NutritionTabState extends State<_NutritionTab> {
   }
 
   /// Returns the base serving count, ensuring a minimum of 1.
-  static int _baseServings(ExploreRecipe recipe) {
-    return recipe.servings <= 0 ? 1 : recipe.servings;
+  static double _baseServings(ExploreRecipe recipe) {
+    return MealServingAmount.normalize(recipe.servings);
   }
 
   /// Scales nutrition values proportionally to the selected serving count.
   static ExploreNutrition _nutritionForServings(
     ExploreRecipe recipe,
-    int selectedServings,
+    double selectedServings,
   ) {
     final servings = _baseServings(recipe);
     final factor = selectedServings / servings;
@@ -290,8 +297,8 @@ class _NutritionTabState extends State<_NutritionTab> {
 class _IngredientMacroPager extends StatefulWidget {
   final List<ExploreIngredient> ingredients;
   final ExploreNutrition totalNutrition;
-  final int baseServings;
-  final int selectedServings;
+  final double baseServings;
+  final double selectedServings;
 
   const _IngredientMacroPager({
     super.key,
@@ -459,7 +466,7 @@ class _IngredientMacroPagerState extends State<_IngredientMacroPager> {
 
 /// Stepper control for adjusting serving counts in the nutrition tab.
 class _ServingStepper extends StatelessWidget {
-  final int value;
+  final double value;
   final VoidCallback? onDecrease;
   final VoidCallback? onIncrease;
 
@@ -489,7 +496,7 @@ class _ServingStepper extends StatelessWidget {
             constraints: const BoxConstraints(minWidth: 74, maxWidth: 90),
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
-              value == 1 ? '1 serving' : '$value servings',
+              MealServingAmount.format(value),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
@@ -589,8 +596,8 @@ class _IngredientNutrientPageSpec {
 class _IngredientNutrientBreakdownPage extends StatelessWidget {
   final _IngredientNutrientPageSpec page;
   final List<ExploreIngredient> ingredients;
-  final int baseServings;
-  final int selectedServings;
+  final double baseServings;
+  final double selectedServings;
 
   const _IngredientNutrientBreakdownPage({
     super.key,
@@ -884,8 +891,8 @@ class _NutrientPercentRow extends StatelessWidget {
 class _IngredientNutrientBreakdownRow extends StatelessWidget {
   final _IngredientNutrientPageSpec page;
   final ExploreIngredient ingredient;
-  final int baseServings;
-  final int selectedServings;
+  final double baseServings;
+  final double selectedServings;
 
   const _IngredientNutrientBreakdownRow({
     required this.page,

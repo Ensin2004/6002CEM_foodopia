@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:dartz/dartz.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/extensions/either_extensions.dart';
+import '../../../../core/error/failures.dart';
 import '../../domain/entities/library_profile.dart';
 import '../../domain/entities/library_recipe.dart';
 import '../../domain/usecases/get_library_followers_usecase.dart';
@@ -32,6 +35,7 @@ class LibraryViewModel extends ChangeNotifier {
   bool _isLoadingFollowers = false;
   bool _isLoadingFollowing = false;
   bool _isDisposed = false;
+  StreamSubscription<Either<Failure, List<LibraryRecipe>>>? _recipesSubscription;
   String? _errorMessage;
 
   LibraryViewModel({
@@ -50,7 +54,10 @@ class LibraryViewModel extends ChangeNotifier {
        _updateProfileUseCase = updateProfileUseCase,
        _selectedTab = initialTab {
     // Loads the library after construction so widgets can subscribe before notifications fire.
-    Future.microtask(loadLibrary);
+    Future.microtask(() async {
+      await loadLibrary();
+      _watchRecipes();
+    });
   }
 
   LibraryProfile? get profile => _profile;
@@ -293,6 +300,22 @@ class LibraryViewModel extends ChangeNotifier {
     return success;
   }
 
+  void _watchRecipes() {
+    _recipesSubscription?.cancel();
+    _recipesSubscription = _getRecipesUseCase.watch().listen((result) {
+      if (_isDisposed) return;
+      result.ifRight((recipes) {
+        _recipes = recipes;
+        _errorMessage = null;
+      });
+      result.ifLeft((failure) {
+        _errorMessage = failure.message;
+      });
+      _isLoading = false;
+      _notifyIfActive();
+    });
+  }
+
   LibraryRecipe _copyRecipe(LibraryRecipe recipe, {bool? isFollowingAuthor}) {
     // Rebuilds a recipe entity with an updated favourite flag while preserving all other fields.
     return LibraryRecipe(
@@ -308,6 +331,7 @@ class LibraryViewModel extends ChangeNotifier {
       allergenInfo: recipe.allergenInfo,
       totalTime: recipe.totalTime,
       difficulty: recipe.difficulty,
+      servings: recipe.servings,
       rating: recipe.rating,
       ratingCount: recipe.ratingCount,
       commentCount: recipe.commentCount,
@@ -315,6 +339,8 @@ class LibraryViewModel extends ChangeNotifier {
       isSelfPublished: recipe.isSelfPublished,
       isFollowingAuthor: isFollowingAuthor ?? recipe.isFollowingAuthor,
       isPublished: recipe.isPublished,
+      isModerationHidden: recipe.isModerationHidden,
+      moderationHiddenReason: recipe.moderationHiddenReason,
       ingredients: recipe.ingredients,
       instructionSections: recipe.instructionSections,
       nutrition: recipe.nutrition,
@@ -332,6 +358,7 @@ class LibraryViewModel extends ChangeNotifier {
   void dispose() {
     // Marks the view model inactive before ChangeNotifier disposal.
     _isDisposed = true;
+    _recipesSubscription?.cancel();
     super.dispose();
   }
 }

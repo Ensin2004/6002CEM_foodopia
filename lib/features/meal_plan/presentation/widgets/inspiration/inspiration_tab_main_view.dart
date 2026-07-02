@@ -12,6 +12,7 @@ import '../../../domain/entities/meal_plan_inspiration_input.dart';
 import '../../../domain/entities/meal_plan_dashboard.dart';
 import '../../../domain/entities/add_meal_ai_plan.dart';
 import '../../../domain/entities/meal_calorie_guidance.dart';
+import '../../view/planning/generate_ai_meal_page.dart';
 import '../../viewmodel/meal_plan_viewmodel.dart';
 
 part 'smart_inspiration_box.dart';
@@ -95,64 +96,35 @@ class InspirationTabMainView extends StatelessWidget {
 
           // Build inspiration request section.
           Text(
-            'Build your inspiration request',
+            'Build your AI request',
             style: context.text.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 5),
           Text(
-            'Tune the weather, ingredients and preferences before generating ideas.',
+            'Tune the same factors used by Generate with AI before generating ideas.',
             style: context.text.bodyMedium?.copyWith(height: 1.35),
           ),
           const SizedBox(height: AppSpacing.md),
 
-          // Weather input card.
-          _WeatherInputCard(
-            weather: weather,
-            isLoading: viewModel.isWeatherLoading,
-            errorMessage: viewModel.weatherErrorMessage,
-            selectedCategoryId: viewModel.selectedWeatherCategoryId,
-            onChanged: viewModel.selectWeatherCategory,
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Ingredient input card.
-          _IngredientInputCard(viewModel: viewModel),
-          const SizedBox(height: AppSpacing.md),
-
-          // Preference input card.
-          _PreferenceInputCard(
-            preferences: preferences,
-            onExpand: () => _showPreferenceEditor(context, viewModel),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Generate button.
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                _openAiGeneration(
-                  context,
-                  viewModel: viewModel,
-                  preferences: preferences,
-                  weather: weather,
-                  preset: _QuickInspirationPreset.defaultRequest(),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'Get AI Recipe Ideas',
-                style: context.text.labelLarge?.copyWith(color: Colors.white),
-              ),
+          // Shared Generate with AI form.
+          GenerateAiMealInlineRequestForm(
+            userId: viewModel.userId,
+            mealType: _QuickInspirationPreset.defaultRequest().mealType,
+            selectedDate: dashboard.selectedDate,
+            initialRequest: _buildGenerationRequest(
+              viewModel: viewModel,
+              preferences: preferences,
+              weather: weather,
+              preset: _QuickInspirationPreset.defaultRequest(),
+            ),
+            calorieBudget: _calorieBudgetFor(dashboard, viewModel.preferences),
+            existingMealNames: _allExistingMealNames(dashboard),
+            onGenerateRequest: (request) => _openAiRequestGeneration(
+              context,
+              viewModel: viewModel,
+              request: request,
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -194,21 +166,52 @@ class InspirationTabMainView extends StatelessWidget {
      * Quick inspiration cards use the same request route as the main button.
      * Weather, preferences, ingredients, calorie budget, and alternatives stay aligned.
      */
+    final request = _buildGenerationRequest(
+      viewModel: viewModel,
+      preferences: preferences,
+      weather: weather,
+      preset: preset,
+    );
+    _openAiRequestGeneration(context, viewModel: viewModel, request: request);
+  }
+
+  /// Opens AI generation with a prepared request.
+  void _openAiRequestGeneration(
+    BuildContext context, {
+    required MealPlanViewModel viewModel,
+    required AddMealAiGenerationRequest request,
+  }) {
+    final calorieBudget = _calorieBudgetFor(dashboard, viewModel.preferences);
+
+    // Route to AI page with auto-generation enabled.
+    context.push(
+      AppRouter.generateAiMeal,
+      extra: GenerateAiMealArgs(
+        userId: viewModel.userId,
+        mealType: request.mealType,
+        initialRequest: request,
+        autoGenerate: true,
+        calorieBudget: calorieBudget,
+        existingMealNames: request.existingMealNames,
+      ),
+    );
+  }
+
+  /// Builds an AI generation request from inspiration state and a preset.
+  AddMealAiGenerationRequest _buildGenerationRequest({
+    required MealPlanViewModel viewModel,
+    required MealPlanPreferenceSummary preferences,
+    required MealPlanWeather? weather,
+    required _QuickInspirationPreset preset,
+  }) {
     final calorieBudget = _calorieBudgetFor(dashboard, viewModel.preferences);
     final selectedIngredients = viewModel.selectedIngredients
         .map((item) => item.name)
         .toList();
-    final existingMealNames = dashboard.sections
-        .where(
-          (section) =>
-              section.mealType.toLowerCase() == preset.mealType.toLowerCase(),
-        )
-        .expand((section) => section.meals)
-        .map((meal) => meal.title.trim())
-        .where((title) => title.isNotEmpty)
-        .toList();
+    final existingMealNames = _existingMealNamesFor(dashboard, preset.mealType);
     final weatherSnapshot = weather;
-    final request = AddMealAiGenerationRequest(
+
+    return AddMealAiGenerationRequest(
       planningDate: dashboard.selectedDate,
       mealType: preset.mealType,
       weather: AddMealWeather(
@@ -236,38 +239,31 @@ class InspirationTabMainView extends StatelessWidget {
       calorieBudget: calorieBudget,
       existingMealNames: existingMealNames,
     );
-
-    // Route to AI page with auto-generation enabled.
-    context.push(
-      AppRouter.generateAiMeal,
-      extra: GenerateAiMealArgs(
-        userId: viewModel.userId,
-        mealType: request.mealType,
-        initialRequest: request,
-        autoGenerate: true,
-        calorieBudget: calorieBudget,
-        existingMealNames: existingMealNames,
-      ),
-    );
   }
 
-  /// Shows the preference editor bottom sheet.
-  void _showPreferenceEditor(
-    BuildContext context,
-    MealPlanViewModel viewModel,
+  /// Returns all planned meal names for the selected dashboard date.
+  List<String> _allExistingMealNames(MealPlanDashboard dashboard) {
+    return dashboard.sections
+        .expand((section) => section.meals)
+        .map((meal) => meal.title.trim())
+        .where((title) => title.isNotEmpty)
+        .toSet()
+        .toList();
+  }
+
+  /// Returns planned meal names for one meal type on the selected date.
+  List<String> _existingMealNamesFor(
+    MealPlanDashboard dashboard,
+    String mealType,
   ) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => ChangeNotifierProvider.value(
-        value: viewModel,
-        child: const _PreferenceEditorSheet(),
-      ),
-    );
+    return dashboard.sections
+        .where(
+          (section) => section.mealType.toLowerCase() == mealType.toLowerCase(),
+        )
+        .expand((section) => section.meals)
+        .map((meal) => meal.title.trim())
+        .where((title) => title.isNotEmpty)
+        .toList();
   }
 
   /// Builds the calorie budget for the selected dashboard date.

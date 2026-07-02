@@ -8,10 +8,12 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/theme_extension.dart';
 import '../../../../../core/widgets/custom_app_bar.dart';
 import '../../../domain/entities/meal_calorie_guidance.dart';
+import '../../../domain/entities/meal_serving_amount.dart';
+import '../../widgets/planning/meal_serving_dialog.dart';
 
 /// Page for adding a meal plan with multiple entry options.
 /// Displays three options: community recipes, user library, and AI generation.
-class AddMealPlanPage extends StatelessWidget {
+class AddMealPlanPage extends StatefulWidget {
   /// Type of meal to plan (e.g., breakfast, lunch, dinner).
   final String mealType;
 
@@ -46,6 +48,69 @@ class AddMealPlanPage extends StatelessWidget {
   });
 
   @override
+  State<AddMealPlanPage> createState() => _AddMealPlanPageState();
+}
+
+class _AddMealPlanPageState extends State<AddMealPlanPage> {
+  double _plannedServings = 1;
+
+  void _setPlannedServings(double value) {
+    setState(() => _plannedServings = MealServingAmount.normalize(value));
+  }
+
+  Future<double?> _choosePlannedServings() async {
+    final selected = await showDialog<double>(
+      context: context,
+      builder: (_) => MealServingDialog(initialValue: _plannedServings),
+    );
+    if (selected == null || !mounted) return null;
+    _setPlannedServings(selected);
+    return MealServingAmount.normalize(selected);
+  }
+
+  Future<void> _openExploreRecipes() async {
+    final plannedServings = await _choosePlannedServings();
+    if (plannedServings == null || !mounted) return;
+
+    final result = await context.push(
+      AppRouter.explore,
+      extra: MealPlanSelectionArgs(
+        userId: widget.userId,
+        selectedDate: widget.selectedDate,
+        mealCategoryId: widget.mealCategoryId,
+        mealCategoryName: widget.mealType,
+        source: 'method1_explore_community_recipes',
+        existingRecipeIds: widget.existingRecipeIds,
+        calorieBudget: widget.calorieBudget,
+        plannedServings: plannedServings,
+      ),
+    );
+    if (result == true && mounted) context.pop(true);
+  }
+
+  Future<void> _openLibraryRecipes() async {
+    final plannedServings = await _choosePlannedServings();
+    if (plannedServings == null || !mounted) return;
+
+    final result = await context.push(
+      AppRouter.library,
+      extra: LibraryArgs(
+        mealPlanSelection: MealPlanSelectionArgs(
+          userId: widget.userId,
+          selectedDate: widget.selectedDate,
+          mealCategoryId: widget.mealCategoryId,
+          mealCategoryName: widget.mealType,
+          source: 'method2_add_from_your_library',
+          existingRecipeIds: widget.existingRecipeIds,
+          calorieBudget: widget.calorieBudget,
+          plannedServings: plannedServings,
+        ),
+      ),
+    );
+    if (result == true && mounted) context.pop(true);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -70,7 +135,7 @@ class AddMealPlanPage extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
 
             // Calorie budget summary.
-            _CalorieBudgetSummary(budget: calorieBudget),
+            _CalorieBudgetSummary(budget: widget.calorieBudget),
             const SizedBox(height: AppSpacing.lg),
 
             // Option 1: Community recipes.
@@ -80,21 +145,7 @@ class AddMealPlanPage extends StatelessWidget {
               description:
                   'Browse and add popular dishes shared by other Foodopia cooks to your meal plan.',
               enabled: true,
-              onTap: () async {
-                final result = await context.push(
-                  AppRouter.explore,
-                  extra: MealPlanSelectionArgs(
-                    userId: userId,
-                    selectedDate: selectedDate,
-                    mealCategoryId: mealCategoryId,
-                    mealCategoryName: mealType,
-                    source: 'method1_explore_community_recipes',
-                    existingRecipeIds: existingRecipeIds,
-                    calorieBudget: calorieBudget,
-                  ),
-                );
-                if (result == true && context.mounted) context.pop(true);
-              },
+              onTap: _openExploreRecipes,
             ),
             const SizedBox(height: AppSpacing.lg),
 
@@ -105,23 +156,7 @@ class AddMealPlanPage extends StatelessWidget {
               description:
                   'Quickly schedule meals using your personal collection of saved or self-created recipes.',
               enabled: true,
-              onTap: () async {
-                final result = await context.push(
-                  AppRouter.library,
-                  extra: LibraryArgs(
-                    mealPlanSelection: MealPlanSelectionArgs(
-                      userId: userId,
-                      selectedDate: selectedDate,
-                      mealCategoryId: mealCategoryId,
-                      mealCategoryName: mealType,
-                      source: 'method2_add_from_your_library',
-                      existingRecipeIds: existingRecipeIds,
-                      calorieBudget: calorieBudget,
-                    ),
-                  ),
-                );
-                if (result == true && context.mounted) context.pop(true);
-              },
+              onTap: _openLibraryRecipes,
             ),
             const SizedBox(height: AppSpacing.lg),
 
@@ -137,12 +172,12 @@ class AddMealPlanPage extends StatelessWidget {
                 final result = await context.push(
                   AppRouter.generateAiMeal,
                   extra: GenerateAiMealArgs(
-                    userId: userId,
-                    mealType: mealType,
-                    selectedDate: selectedDate,
-                    mealCategoryId: mealCategoryId,
-                    calorieBudget: calorieBudget,
-                    existingMealNames: existingMealNames,
+                    userId: widget.userId,
+                    mealType: widget.mealType,
+                    selectedDate: widget.selectedDate,
+                    mealCategoryId: widget.mealCategoryId,
+                    calorieBudget: widget.calorieBudget,
+                    existingMealNames: widget.existingMealNames,
                   ),
                 );
                 if (result == true && context.mounted) context.pop(true);

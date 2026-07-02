@@ -2,8 +2,6 @@
 // Only comments were added here; the code behaviour stays the same.
 import 'package:flutter/material.dart';
 
-import 'recipe_performance_statistics.dart';
-
 // Handles AdminStatisticsSortOrder for this part of the statistics page.
 enum AdminStatisticsSortOrder { ascending, descending }
 
@@ -128,14 +126,12 @@ class AdminPostAnalyticStatistics {
   final String dateRange;
   final List<AdminDailyStatistic> dailyPosts;
   final List<AdminAnalyticSection> sections;
-  final RecipePerformanceStatistics? recipePerformance;
 
   // Handles AdminPostAnalyticStatistics for this part of the statistics page.
   const AdminPostAnalyticStatistics({
     required this.dateRange,
     required this.dailyPosts,
     required this.sections,
-    this.recipePerformance,
   });
 
   // Handles topDay for this part of the statistics page.
@@ -214,6 +210,21 @@ class AdminHubRatingStatistics {
     required this.totalRatings,
     required this.averageRating,
     required this.monthlyRatings,
+  });
+}
+
+// Handles AdminModerationStatistics for this part of the statistics page.
+class AdminModerationStatistics {
+  final String dateRange;
+  final int totalRecipes;
+  final String topStatus;
+  final List<AdminRankedStatistic> statuses;
+
+  const AdminModerationStatistics({
+    required this.dateRange,
+    required this.totalRecipes,
+    required this.topStatus,
+    required this.statuses,
   });
 }
 

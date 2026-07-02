@@ -12,6 +12,8 @@ import '../../domain/usecases/get_add_recipe_ingredient_units_usecase.dart';
 import '../../domain/usecases/save_add_recipe_ingredients_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 
+/// Controls ingredient form state, unit loading, existing recipe seeding,
+/// ingredient saving, food search, nutrient lookup and ingredient images.
 class AddRecipeIngredientsViewModel extends ChangeNotifier {
   final GetAddRecipeIngredientUnitsUseCase getIngredientUnitsUseCase;
   final SearchAddRecipeFoodsUseCase searchFoodsUseCase;
@@ -37,7 +39,9 @@ class AddRecipeIngredientsViewModel extends ChangeNotifier {
     loadUnits();
   }
 
+  /// Loads ingredient units for the unit picker.
   Future<void> loadUnits() async {
+    // Unit loading happens before ingredient rows can display configured units.
     isLoadingUnits = true;
     errorMessage = null;
     notifyListeners();
@@ -54,11 +58,14 @@ class AddRecipeIngredientsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Loads saved review data when editing ingredient rows.
   Future<void> loadExistingRecipe(String recipeId) async {
+    // Empty ids and already-loaded recipes do not need another review request.
     if (recipeId.trim().isEmpty || existingReview?.recipeId == recipeId) {
       return;
     }
 
+    // Existing ingredient rows are sourced from the same review snapshot used on review page.
     isLoadingUnits = true;
     errorMessage = null;
     notifyListeners();
@@ -75,10 +82,12 @@ class AddRecipeIngredientsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Saves completed ingredient rows for the current recipe draft.
   Future<bool> saveIngredients({
     required String recipeId,
     required List<AddRecipeIngredient> ingredients,
   }) async {
+    // Save state blocks duplicate ingredient submissions during network work.
     isSaving = true;
     errorMessage = null;
     notifyListeners();
@@ -97,19 +106,25 @@ class AddRecipeIngredientsViewModel extends ChangeNotifier {
     return success;
   }
 
+  /// Searches USDA foods for ingredient name matching.
   Future<List<AddRecipeFoodSearchResult>> searchFoods(String query) async {
+    // Search failures return no suggestions so the ingredient sheet stays usable.
     final result = await searchFoodsUseCase.execute(query);
     if (result.isLeft()) return [];
     return result.right ?? [];
   }
 
+  /// Loads nutrients for the selected USDA food id.
   Future<Map<String, dynamic>?> getFoodNutrients(int fdcId) async {
+    // Nutrient lookup enriches a selected USDA ingredient row.
     final result = await getFoodNutrientsUseCase.execute(fdcId);
     if (result.isLeft()) return null;
     return result.right;
   }
 
+  /// Loads an image URL for a named ingredient.
   Future<String?> getIngredientImageUrl(String ingredientName) async {
+    // Image lookup failures keep the ingredient row without a remote preview.
     final result = await getIngredientImageUseCase.execute(ingredientName);
     if (result.isLeft()) return null;
     return result.right;

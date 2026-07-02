@@ -7,12 +7,14 @@ class _CommunityTab extends StatelessWidget {
   final ExploreRecipe recipe;
   final VoidCallback onComingSoonTap;
   final bool isPublished;
+  final bool isAdminModeration;
 
   const _CommunityTab({
     required this.viewModel,
     required this.recipe,
     required this.onComingSoonTap,
     required this.isPublished,
+    required this.isAdminModeration,
   });
 
   @override
@@ -168,7 +170,10 @@ class _CommunityTab extends StatelessWidget {
             recipe: recipe,
             isPublished: isPublished,
             isSubmitting: viewModel.isSubmittingCommunityAction,
-            canRate: !recipe.isCreatedByCurrentUser,
+            canRate: !isAdminModeration && !recipe.isCreatedByCurrentUser,
+            disabledMessage: isAdminModeration
+                ? 'Admins cannot rate recipes'
+                : 'You cannot rate your own recipe',
             onRatingSelected: (rating) =>
                 _submitRating(context, viewModel, rating),
           )
@@ -177,6 +182,7 @@ class _CommunityTab extends StatelessWidget {
             viewModel: viewModel,
             recipe: recipe,
             isSubmitting: viewModel.isSubmittingCommunityAction,
+            canInteract: !isAdminModeration,
             onAddComment: (content) =>
                 _submitComment(context, viewModel, content),
             onToggleLike: (commentId) => viewModel.toggleCommentLike(commentId),
@@ -338,6 +344,7 @@ class _RatingsPanel extends StatelessWidget {
   final bool isPublished;
   final bool isSubmitting;
   final bool canRate;
+  final String disabledMessage;
   final ValueChanged<int> onRatingSelected;
 
   const _RatingsPanel({
@@ -346,6 +353,7 @@ class _RatingsPanel extends StatelessWidget {
     required this.isPublished,
     required this.isSubmitting,
     required this.canRate,
+    required this.disabledMessage,
     required this.onRatingSelected,
   });
 
@@ -457,6 +465,7 @@ class _RatingsPanel extends StatelessWidget {
         _RateRecipeCard(
           isSubmitting: isSubmitting,
           canRate: canRate,
+          disabledMessage: disabledMessage,
           hasRated: recipe.hasRatedByCurrentUser,
           onRatingSelected: onRatingSelected,
         ),
@@ -477,12 +486,14 @@ class _RatingsPanel extends StatelessWidget {
 class _RateRecipeCard extends StatefulWidget {
   final bool isSubmitting;
   final bool canRate;
+  final String disabledMessage;
   final bool hasRated;
   final ValueChanged<int> onRatingSelected;
 
   const _RateRecipeCard({
     required this.isSubmitting,
     required this.canRate,
+    required this.disabledMessage,
     required this.hasRated,
     required this.onRatingSelected,
   });
@@ -507,9 +518,9 @@ class _RateRecipeCardState extends State<_RateRecipeCard> {
           Text(
             widget.canRate
                 ? widget.hasRated
-                ? 'You already rated this recipe'
-                : 'Tap a star to rate'
-                : 'You cannot rate your own recipe',
+                      ? 'You already rated this recipe'
+                      : 'Tap a star to rate'
+                : widget.disabledMessage,
             style: textTheme.bodySmall,
           ),
           const SizedBox(height: 10),
@@ -928,6 +939,7 @@ class ExploreCommentsPanel extends StatefulWidget {
   final ExploreRecipeDetailViewModel viewModel;
   final ExploreRecipe recipe;
   final bool isSubmitting;
+  final bool canInteract;
   final ValueChanged<String> onAddComment;
   final ValueChanged<String> onToggleLike;
   final Future<bool> Function(String commentId, String content) onReply;
@@ -939,6 +951,7 @@ class ExploreCommentsPanel extends StatefulWidget {
     required this.viewModel,
     required this.recipe,
     required this.isSubmitting,
+    required this.canInteract,
     required this.onAddComment,
     required this.onToggleLike,
     required this.onReply,
@@ -1032,6 +1045,7 @@ class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
                 return _CommentTile(
                   comment: comment,
                   isSubmitting: widget.isSubmitting,
+                  canInteract: widget.canInteract,
                   onToggleLike: () => widget.onToggleLike(comment.id),
                   onReply: (content) => widget.onReply(comment.id, content),
                   onToggleReplyLike: widget.onToggleReplyLike,
@@ -1039,55 +1053,60 @@ class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
                 );
               }).toList(),
             ),
-          const SizedBox(height: 10),
-          // Comment input text field with send button.
-          TextField(
-            controller: _commentController,
-            minLines: 1,
-            maxLines: 3,
-            enabled: !widget.isSubmitting,
-            textInputAction: TextInputAction.send,
-            onSubmitted: (_) => _submitComment(),
-            decoration: InputDecoration(
-              hintText: 'Add a comment',
-              prefixIcon: Icon(
-                Icons.chat_bubble_outline,
-                color: AppColors.textSecondary.withValues(alpha: 0.45),
-              ),
-              filled: false,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 11,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: context.colors.primary,
-                  width: 1.4,
-                ),
-              ),
-              suffixIcon: IconButton(
-                onPressed: widget.isSubmitting ? null : _submitComment,
-                icon: Icon(
-                  Icons.send,
+          if (widget.canInteract) ...[
+            const SizedBox(height: 10),
+            // Comment input text field with send button.
+            TextField(
+              controller: _commentController,
+              minLines: 1,
+              maxLines: 3,
+              enabled: !widget.isSubmitting,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _submitComment(),
+              decoration: InputDecoration(
+                hintText: 'Add a comment',
+                prefixIcon: Icon(
+                  Icons.chat_bubble_outline,
                   color: AppColors.textSecondary.withValues(alpha: 0.45),
                 ),
+                filled: false,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: context.colors.primary,
+                    width: 1.4,
+                  ),
+                ),
+                suffixIcon: IconButton(
+                  onPressed: widget.isSubmitting ? null : _submitComment,
+                  icon: Icon(
+                    Icons.send,
+                    color: AppColors.textSecondary.withValues(alpha: 0.45),
+                  ),
+                ),
               ),
             ),
-          ),
-          if (widget.isSubmitting)
-            const Padding(
-              padding: EdgeInsets.only(top: 10),
-              child: LoadingDialog(message: 'Posting comment...', inline: true),
-            ),
+            if (widget.isSubmitting)
+              const Padding(
+                padding: EdgeInsets.only(top: 10),
+                child: LoadingDialog(
+                  message: 'Posting comment...',
+                  inline: true,
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -1109,6 +1128,7 @@ class _ExploreCommentsPanelState extends State<ExploreCommentsPanel> {
 class _CommentTile extends StatefulWidget {
   final ExploreComment comment;
   final bool isSubmitting;
+  final bool canInteract;
   final VoidCallback onToggleLike;
   final Future<bool> Function(String content) onReply;
   final ValueChanged<String> onToggleReplyLike;
@@ -1117,6 +1137,7 @@ class _CommentTile extends StatefulWidget {
   const _CommentTile({
     required this.comment,
     required this.isSubmitting,
+    required this.canInteract,
     required this.onToggleLike,
     required this.onReply,
     required this.onToggleReplyLike,
@@ -1140,7 +1161,7 @@ class _CommentTileState extends State<_CommentTile> {
   /// Submits a reply and closes the reply input on success.
   Future<void> _submitReply() async {
     final content = _replyController.text.trim();
-    if (content.isEmpty || widget.isSubmitting) return;
+    if (content.isEmpty || widget.isSubmitting || !widget.canInteract) return;
     final success = await widget.onReply(content);
     if (!mounted) return;
     if (success) {
@@ -1169,8 +1190,10 @@ class _CommentTileState extends State<_CommentTile> {
               isLiked: comment.isLiked,
               titleStyle: context.text.titleMedium,
               contentStyle: context.text.bodyLarge,
-              onToggleLike: widget.isSubmitting ? null : widget.onToggleLike,
-              onReplyTap: widget.isSubmitting
+              onToggleLike: widget.isSubmitting || !widget.canInteract
+                  ? null
+                  : widget.onToggleLike,
+              onReplyTap: widget.isSubmitting || !widget.canInteract
                   ? null
                   : () => setState(() => _isReplying = !_isReplying),
             ),
@@ -1179,6 +1202,7 @@ class _CommentTileState extends State<_CommentTile> {
               _RepliesTimeline(
                 replies: comment.replies,
                 isSubmitting: widget.isSubmitting,
+                canInteract: widget.canInteract,
                 onToggleLike: widget.onToggleReplyLike,
                 onReply: widget.onReplyToReply,
               ),
@@ -1383,12 +1407,14 @@ class _HeartLikeButton extends StatelessWidget {
 class _RepliesTimeline extends StatelessWidget {
   final List<ExploreCommentReply> replies;
   final bool isSubmitting;
+  final bool canInteract;
   final ValueChanged<String> onToggleLike;
   final Future<bool> Function(String replyPath, String content) onReply;
 
   const _RepliesTimeline({
     required this.replies,
     required this.isSubmitting,
+    required this.canInteract,
     required this.onToggleLike,
     required this.onReply,
   });
@@ -1406,6 +1432,7 @@ class _RepliesTimeline extends StatelessWidget {
             child: _ReplyTile(
               reply: reply,
               isSubmitting: isSubmitting,
+              canInteract: canInteract,
               onToggleLike: onToggleLike,
               onReply: onReply,
             ),
@@ -1479,12 +1506,14 @@ class _ReplyBranchPainter extends CustomPainter {
 class _ReplyTile extends StatefulWidget {
   final ExploreCommentReply reply;
   final bool isSubmitting;
+  final bool canInteract;
   final ValueChanged<String> onToggleLike;
   final Future<bool> Function(String replyPath, String content) onReply;
 
   const _ReplyTile({
     required this.reply,
     required this.isSubmitting,
+    required this.canInteract,
     required this.onToggleLike,
     required this.onReply,
   });
@@ -1506,7 +1535,7 @@ class _ReplyTileState extends State<_ReplyTile> {
   /// Submits a nested reply and closes the input on success.
   Future<void> _submitReply() async {
     final content = _replyController.text.trim();
-    if (content.isEmpty || widget.isSubmitting) return;
+    if (content.isEmpty || widget.isSubmitting || !widget.canInteract) return;
     final success = await widget.onReply(widget.reply.documentPath, content);
     if (!mounted) return;
     if (success) {
@@ -1533,10 +1562,10 @@ class _ReplyTileState extends State<_ReplyTile> {
             isLiked: reply.isLiked,
             titleStyle: context.text.titleSmall,
             contentStyle: context.text.bodyMedium,
-            onToggleLike: widget.isSubmitting
+            onToggleLike: widget.isSubmitting || !widget.canInteract
                 ? null
                 : () => widget.onToggleLike(reply.documentPath),
-            onReplyTap: widget.isSubmitting
+            onReplyTap: widget.isSubmitting || !widget.canInteract
                 ? null
                 : () => setState(() => _isReplying = !_isReplying),
           ),
@@ -1547,6 +1576,7 @@ class _ReplyTileState extends State<_ReplyTile> {
               child: _RepliesTimeline(
                 replies: reply.replies,
                 isSubmitting: widget.isSubmitting,
+                canInteract: widget.canInteract,
                 onToggleLike: widget.onToggleLike,
                 onReply: widget.onReply,
               ),

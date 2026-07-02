@@ -1,5 +1,7 @@
 import '../../domain/entities/add_recipe_review.dart';
 
+/// Builds a review entity from Firestore recipe data, resolved option labels,
+/// ingredient rows, instruction rows and formatted nutrient values.
 class AddRecipeReviewModel extends AddRecipeReview {
   const AddRecipeReviewModel({
     required super.recipeId,
@@ -27,6 +29,7 @@ class AddRecipeReviewModel extends AddRecipeReview {
     required List<AddRecipeReviewIngredient> ingredients,
     required List<AddRecipeReviewInstruction> instructions,
   }) {
+    // Firestore recipe fields and resolved option labels are combined for display.
     return AddRecipeReviewModel(
       recipeId: recipeId,
       media: _stringList(recipe['media']),
@@ -36,7 +39,7 @@ class AddRecipeReviewModel extends AddRecipeReview {
       categories: categories,
       preparationMinutes: _intValue(recipe['preparationTime']),
       difficultyLevel: _intValue(recipe['difficultyLevel']),
-      servings: _intValue(recipe['servings']),
+      servings: _doubleValue(recipe['servings']) ?? 1,
       allergens: allergens,
       visibility: recipe['visibility'] == 'public' ? 'public' : 'private',
       nutrients: _nutrientsFromRecipe(recipe['totalNutrients']),
@@ -47,6 +50,7 @@ class AddRecipeReviewModel extends AddRecipeReview {
   }
 
   static AddRecipeReviewNutrients _nutrientsFromRecipe(dynamic value) {
+    // Missing nutrient maps produce placeholder review values instead of errors.
     final nutrients = value is Map ? value : const {};
     return AddRecipeReviewNutrients(
       calories: _formatNutrient(nutrients['calories'], suffix: 'kcal'),
@@ -64,6 +68,7 @@ class AddRecipeReviewModel extends AddRecipeReview {
     Map<dynamic, dynamic> nutrients,
     List<_NutrientDefinition> definitions,
   ) {
+    // Only positive micronutrient values become visible vitamin or mineral rows.
     return definitions
         .map((definition) {
           final amount = _doubleValue(nutrients[definition.key]);
@@ -83,6 +88,7 @@ class AddRecipeReviewModel extends AddRecipeReview {
   }
 
   static String _formatNutrient(dynamic value, {required String suffix}) {
+    // Whole numbers display without decimals while partial values keep one decimal place.
     final number = _doubleValue(value);
     if (number == null) return '-';
     final rounded = number.roundToDouble();
@@ -92,17 +98,20 @@ class AddRecipeReviewModel extends AddRecipeReview {
     return '$text $suffix';
   }
 
+  /// Convert input and return list of strings
   static List<String> _stringList(dynamic value) {
     if (value is! List) return const [];
     return value.map((item) => item.toString()).toList();
   }
 
+  /// Convert input and return int value
   static int _intValue(dynamic value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
+  /// Convert input and return double value
   static double? _doubleValue(dynamic value) {
     if (value is num) return value.toDouble();
     if (value is Map) return _doubleValue(value['value'] ?? value['amount']);
@@ -110,6 +119,7 @@ class AddRecipeReviewModel extends AddRecipeReview {
   }
 }
 
+/// Nutrient display metadata for vitamin and mineral review rows.
 class _NutrientDefinition {
   final String key;
   final String label;
@@ -200,12 +210,7 @@ const List<_NutrientDefinition> _mineralDefinitions = [
     unit: 'mg',
     dailyValue: 1300,
   ),
-  _NutrientDefinition(
-    key: 'iron',
-    label: 'Iron',
-    unit: 'mg',
-    dailyValue: 18,
-  ),
+  _NutrientDefinition(key: 'iron', label: 'Iron', unit: 'mg', dailyValue: 18),
   _NutrientDefinition(
     key: 'magnesium',
     label: 'Magnesium',
@@ -230,10 +235,5 @@ const List<_NutrientDefinition> _mineralDefinitions = [
     unit: 'mg',
     dailyValue: 2300,
   ),
-  _NutrientDefinition(
-    key: 'zinc',
-    label: 'Zinc',
-    unit: 'mg',
-    dailyValue: 11,
-  ),
+  _NutrientDefinition(key: 'zinc', label: 'Zinc', unit: 'mg', dailyValue: 11),
 ];

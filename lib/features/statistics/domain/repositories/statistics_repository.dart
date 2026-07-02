@@ -135,8 +135,7 @@ abstract class StatisticsRepository {
     DateTime? endDate,
   });
 
-  // Handles getAdminNutrientInsight for this part of the statistics page.
-  Future<Either<Failure, CaloriesIntakeStatistics>> getAdminNutrientInsight({
+  Future<Either<Failure, AdminModerationStatistics>> getAdminModeration({
     DateTime? startDate,
     DateTime? endDate,
   });

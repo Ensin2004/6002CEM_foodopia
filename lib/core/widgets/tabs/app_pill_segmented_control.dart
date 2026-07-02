@@ -31,17 +31,20 @@ class AppPillSegmentedControl extends StatelessWidget {
         const gap = 6.0;
         const minSegmentWidth = 112.0;
 
-        // Calculate estimated total width.
-        final estimatedWidth = labels.fold<double>(
-          0,
-              (total, label) =>
-          total +
-              (label.length * 8.5).clamp(minSegmentWidth, double.infinity),
-        );
+        final segmentWidths = labels
+            .map(
+              (label) => (label.length * 9.0 + 32).clamp(
+                minSegmentWidth,
+                double.infinity,
+              ).toDouble(),
+            )
+            .toList();
+        final contentWidth =
+            segmentWidths.fold<double>(0, (total, width) => total + width) +
+            (labels.length - 1) * gap;
 
         // Determine if scrolling is needed.
-        final shouldScroll =
-            estimatedWidth + (labels.length - 1) * gap > constraints.maxWidth;
+        final shouldScroll = contentWidth > constraints.maxWidth;
 
         // Build segments.
         final children = labels.asMap().entries.map((entry) {
@@ -74,10 +77,7 @@ class AppPillSegmentedControl extends StatelessWidget {
           );
 
           // Calculate segment width.
-          final segmentWidth = (entry.value.length * 8.5).clamp(
-            minSegmentWidth,
-            double.infinity,
-          );
+          final segmentWidth = segmentWidths[index];
 
           return shouldScroll
               ? SizedBox(width: segmentWidth, child: segment)
@@ -95,9 +95,12 @@ class AppPillSegmentedControl extends StatelessWidget {
           ),
           child: shouldScroll
               ? SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(children: _withGaps(children, gap)),
-          )
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: contentWidth,
+                    child: Row(children: _withGaps(children, gap)),
+                  ),
+                )
               : Row(children: _withGaps(children, gap)),
         );
       },

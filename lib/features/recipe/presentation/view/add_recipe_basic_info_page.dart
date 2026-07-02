@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:foodopia/core/theme/app_colors.dart';
 import 'package:foodopia/features/recipe/presentation/widgets/basic_info/input_option_field.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/dependency_injection/injection_container.dart';
@@ -18,14 +19,18 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/dialogs/loading_dialog.dart';
 import '../../../../core/widgets/progress_bar/app_step_progress_bar.dart';
 import '../../domain/entities/add_recipe_basic_info.dart';
+import '../../domain/entities/add_recipe_ingredient.dart';
+import '../../domain/entities/add_recipe_instruction.dart';
 import '../../domain/entities/add_recipe_option.dart';
 import '../../../meal_plan/domain/entities/add_meal_ai_plan.dart';
+import '../../../meal_plan/domain/entities/meal_serving_amount.dart';
 import '../../domain/usecases/get_add_recipe_setup_usecase.dart';
 import '../../domain/usecases/get_add_recipe_review_usecase.dart';
 import '../../domain/usecases/save_add_recipe_basic_info_usecase.dart';
 import '../../domain/usecases/search_add_recipe_foods_usecase.dart';
 import '../viewmodel/add_recipe_basic_info_viewmodel.dart';
 import '../viewmodel/add_recipe_visibility_viewmodel.dart';
+import '../widgets/add_recipe_image_source_sheet.dart';
 import '../widgets/basic_info/add_more_button_small.dart';
 import '../widgets/discard_recipe_changes_dialog.dart';
 import '../widgets/recipe_visibility_action_button.dart';
@@ -35,13 +40,21 @@ import '../widgets/basic_info/recipe_image_picker.dart';
 import '../widgets/label.dart';
 import '../widgets/basic_info/input_text_field.dart';
 import '../widgets/basic_info/recipe_option_picker_sheet.dart';
+import '../widgets/recipe_error_dialog.dart';
 
+/// Add recipe basic info page
+/// For user to fill in the basic info of the recipe
 class AddRecipeBasicInfoPage extends StatelessWidget {
   final String? recipeId;
   final bool returnToReview;
   final AddMealAiRecipe? initialAiRecipe;
   final AddMealAiGenerationRequest? initialAiRequest;
   final String? userId;
+  final File? initialImageFile;
+  final String? initialRecipeName;
+  final String? initialRecipeDescription;
+  final List<AddRecipeIngredient> initialGeneratedIngredients;
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
   final bool hideProgressBar;
   final bool hideAppBar;
   final ValueChanged<AddRecipeBasicInfo>? onAiDraftNext;
@@ -53,6 +66,11 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
     this.initialAiRecipe,
     this.initialAiRequest,
     this.userId,
+    this.initialImageFile,
+    this.initialRecipeName,
+    this.initialRecipeDescription,
+    this.initialGeneratedIngredients = const [],
+    this.initialGeneratedInstructions = const [],
     this.hideProgressBar = false,
     this.hideAppBar = false,
     this.onAiDraftNext,
@@ -60,6 +78,7 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Set up view models with dependency injection
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
@@ -81,6 +100,11 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
         initialAiRecipe: initialAiRecipe,
         initialAiRequest: initialAiRequest,
         userId: userId,
+        initialImageFile: initialImageFile,
+        initialRecipeName: initialRecipeName,
+        initialRecipeDescription: initialRecipeDescription,
+        initialGeneratedIngredients: initialGeneratedIngredients,
+        initialGeneratedInstructions: initialGeneratedInstructions,
         hideProgressBar: hideProgressBar,
         hideAppBar: hideAppBar,
         onAiDraftNext: onAiDraftNext,
@@ -89,12 +113,18 @@ class AddRecipeBasicInfoPage extends StatelessWidget {
   }
 }
 
+/// Stateful widget of the add recipe basic info page.
 class _AddRecipeBasicInfoView extends StatefulWidget {
   final String? recipeId;
   final bool returnToReview;
   final AddMealAiRecipe? initialAiRecipe;
   final AddMealAiGenerationRequest? initialAiRequest;
   final String? userId;
+  final File? initialImageFile;
+  final String? initialRecipeName;
+  final String? initialRecipeDescription;
+  final List<AddRecipeIngredient> initialGeneratedIngredients;
+  final List<AddRecipeInstruction> initialGeneratedInstructions;
   final bool hideProgressBar;
   final bool hideAppBar;
   final ValueChanged<AddRecipeBasicInfo>? onAiDraftNext;
@@ -105,6 +135,11 @@ class _AddRecipeBasicInfoView extends StatefulWidget {
     this.initialAiRecipe,
     this.initialAiRequest,
     this.userId,
+    this.initialImageFile,
+    this.initialRecipeName,
+    this.initialRecipeDescription,
+    this.initialGeneratedIngredients = const [],
+    this.initialGeneratedInstructions = const [],
     this.hideProgressBar = false,
     this.hideAppBar = false,
     this.onAiDraftNext,
@@ -122,6 +157,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _prepTimeController = TextEditingController();
   final TextEditingController _servingsController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
 
   final List<TextEditingController> _otherNameControllers = [
     TextEditingController(),
@@ -139,14 +175,17 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   @override
   void initState() {
     super.initState();
+
+    // If the recipe is AI-generated, pre-fill the fields from the AI content
     final recipe = widget.initialAiRecipe;
     if (recipe != null) {
       _recipeNameController.text = recipe.title;
       _descriptionController.text = recipe.description;
       _prepTimeController.text =
           RegExp(r'\d+').firstMatch(recipe.durationLabel)?.group(0) ?? '30';
-      _servingsController.text =
-          RegExp(r'\d+').firstMatch(recipe.servingLabel)?.group(0) ?? '1';
+      _servingsController.text = _servingText(
+        _servingValueFromLabel(recipe.servingLabel),
+      );
       _customCategories = [
         recipe.categoryName.trim(),
       ].where((value) => value.isNotEmpty).toList();
@@ -155,6 +194,24 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         _existingImageUrls.add(existingAiImage);
       }
     }
+
+    // Override with initial values if recipe is empty
+    if (recipe == null) {
+      _recipeNameController.text = widget.initialRecipeName?.trim() ?? '';
+      _descriptionController.text =
+          widget.initialRecipeDescription?.trim() ?? '';
+    }
+
+    // Default serving size is 1
+    if (_servingsController.text.trim().isEmpty) {
+      _servingsController.text = _servingText(1);
+    }
+    final initialImageFile = widget.initialImageFile;
+    if (initialImageFile != null) {
+      _images.add(initialImageFile);
+    }
+
+    // Listener to update state when changes made
     _recipeNameController.addListener(_refreshRequiredState);
     _descriptionController.addListener(_refreshRequiredState);
     _prepTimeController.addListener(_refreshRequiredState);
@@ -162,6 +219,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
   }
 
   @override
+  // Clean up to prevent memory leakage
   void dispose() {
     _recipeNameController.dispose();
     _descriptionController.dispose();
@@ -190,6 +248,8 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     if (setup == null) {
       return _RecipeErrorState(message: viewModel.errorMessage);
     }
+
+    // Auto select difficulty for AI recipes
     final aiRecipe = widget.initialAiRecipe;
     if (aiRecipe != null && viewModel.difficultyLevel == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -198,6 +258,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       });
     }
 
+    // Load existing recipe data if in editing mode (recipeId exists)
     final recipeId = widget.recipeId;
     if (recipeId != null &&
         recipeId.trim().isNotEmpty &&
@@ -213,11 +274,13 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       return const _AddRecipePageLoading();
     }
 
+    // Seed form data from existing review
     final existingReview = viewModel.existingReview;
     if (existingReview != null && _seededRecipeId != existingReview.recipeId) {
       _seedFromReview(viewModel, setup.categories, setup.allergens);
     }
 
+    // Capture initial form state for change detection
     _initialFormSignature ??= _formSignature(viewModel);
 
     return PopScope(
@@ -264,6 +327,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         body: SafeArea(
           child: Column(
             children: [
+              // Progress Bar
               if (!widget.hideProgressBar)
                 const Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -399,12 +463,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                     // Servings
                     Label(text: "Servings", isRequired: true),
                     const SizedBox(height: AppSpacing.sm),
-                    InputTextField(
-                      controller: _servingsController,
-                      hint: "e.g. 1",
-                      keyboardType: TextInputType.number,
-                      suffixText: "servings",
-                      textInputAction: TextInputAction.next,
+                    _AddRecipeServingStepper(
+                      value: _currentServings,
+                      onChanged: _setServings,
                     ),
                     const SizedBox(height: AppSpacing.lg),
 
@@ -434,6 +495,8 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
                   ],
                 ),
               ),
+
+              // Bottom Action Button
               Padding(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
@@ -461,23 +524,31 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     );
   }
 
-  // Handle back action
+  // ============================================================
+  // Navigation and Flow Control Methods
+  // ============================================================
+
+  /// Handle back action
   Future<void> _handleBack(
     BuildContext context,
     AddRecipeBasicInfoViewModel viewModel,
   ) async {
+    // Pages without changes can leave immediately.
     if (!_hasUnsavedChanges(viewModel)) {
       _leaveEditPage(context);
       return;
     }
 
+    // Unsaved edits require confirmation before navigation continues.
     final discard = await confirmDiscardRecipeChanges(context);
     if (!context.mounted || !discard) return;
     _leaveEditPage(context);
   }
 
+  /// Handle leave action
   void _leaveEditPage(BuildContext context) {
     final recipeId = widget.recipeId;
+    // Edit-from-review returns directly to the review step.
     if (widget.returnToReview && recipeId != null && recipeId.isNotEmpty) {
       context.pushReplacement(
         AppRouter.addRecipeReview,
@@ -486,17 +557,45 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       return;
     }
 
+    // Returns to previous page
     if (context.canPop()) {
       context.pop();
     }
   }
 
-  // Media Picker Helper
+  // ============================================================
+  // Image Handling Methods
+  // ============================================================
+
+  /// Opens source options to select recipe media or capture a photo.
   Future<void> _pickMedia() async {
+    final source = await showAddRecipeImageSourceSheet(context);
+    if (!mounted || source == null) return;
+    if (source == ImageSource.camera) {
+      await _takeRecipePhoto();
+      return;
+    }
+    await _pickMediaFiles();
+  }
+
+  /// Opens the camera to capture a recipe photo.
+  Future<void> _takeRecipePhoto() async {
     final remainingSlots = 10 - _images.length - _existingImageUrls.length;
     if (remainingSlots <= 0) return;
 
-    // Select file
+    final photo = await _imagePicker.pickImage(source: ImageSource.camera);
+    if (!mounted || photo == null) return;
+
+    setState(() => _images.add(File(photo.path)));
+  }
+
+  /// Opens the file picker to select recipe images or short videos.
+  Future<void> _pickMediaFiles() async {
+    // Media selection stops after the recipe reaches the ten-item limit.
+    final remainingSlots = 10 - _images.length - _existingImageUrls.length;
+    if (remainingSlots <= 0) return;
+
+    // File picker accepts recipe images and short recipe videos.
     final result = await fp.FilePicker.pickFiles(
       allowMultiple: true,
       type: fp.FileType.custom,
@@ -516,7 +615,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     );
     if (result == null || result.files.isEmpty) return;
 
-    // Store temporarily
+    // Selected paths are stored as local files until the save step uploads them.
     setState(() {
       _images.addAll(
         result.files
@@ -528,7 +627,9 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     });
   }
 
+  /// Shows the media edit sheet for viewing/managing selected media
   Future<void> _showSelectedMediaSheet() async {
+    // Empty media state opens the picker instead of the edit sheet.
     if (_images.isEmpty && _existingImageUrls.isEmpty) {
       await _pickMedia();
       return;
@@ -547,6 +648,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
             return RecipeImageEditSheet(
               images: _images,
               existingImageUrls: _existingImageUrls,
+              // Removing the final media item closes the sheet automatically.
               onRemoveExisting: (index) {
                 setState(() => _existingImageUrls.removeAt(index));
                 setSheetState(() {});
@@ -569,7 +671,11 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     );
   }
 
-  // Category Picker Helper
+  // ============================================================
+  // Category and Allergen Info Selection Methods
+  // ============================================================
+
+  /// Shows the category selection sheet
   Future<void> _showCategorySheet(List<AddRecipeOption> categories) async {
     final selection = await showModalBottomSheet<RecipeOptionPickerSelection>(
       context: context,
@@ -593,7 +699,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     });
   }
 
-  // Allergen Picker Helper
+  /// Shows the allergen info selection sheet with usda food search capability
   Future<void> _showAllergenSheet(
     List<AddRecipeOption> allergens,
     SearchFoodsCallback searchFoods,
@@ -610,6 +716,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         options: allergens,
         selectedOptionIds: _selectedAllergenIds,
         selectedCustomOptions: _customAllergens,
+        // Enables searching foods from usda api
         onSearchFoods: searchFoods,
       ),
     );
@@ -621,16 +728,22 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     });
   }
 
-  // Select Option Helper
+  // ============================================================
+  // Selection Helper Methods
+  // ============================================================
+
+  /// Combines selected options (predefined + custom) into a unified list
   List<SelectedRecipeOption> _selectedOptionValues({
     required List<AddRecipeOption> options,
     required List<String> selectedIds,
     required List<String> customOptions,
   }) {
+    // Get the actual option objects for the selected IDs
     final optionValues = selectedIds
         .map((id) => _optionById(options: options, id: id))
         .whereType<AddRecipeOption>();
 
+    // Combine and sort both predefined and custom options
     return ([
       ...optionValues.map(
         (option) => SelectedRecipeOption(
@@ -649,6 +762,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     ));
   }
 
+  /// Finds an option by ID from the options list
   AddRecipeOption? _optionById({
     required List<AddRecipeOption> options,
     required String id,
@@ -659,12 +773,16 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     return null;
   }
 
-  // Add Input Helper
+  // ============================================================
+  // Form Field Management Methods
+  // ============================================================
+
+  /// Adds a new field for other recipe name
   void _addOtherName() {
     setState(() => _otherNameControllers.add(TextEditingController()));
   }
 
-  // Remove Input Helper
+  /// Removes a specific other name field by index
   void _removeOtherName(int index) {
     setState(() {
       final controller = _otherNameControllers.removeAt(index);
@@ -672,6 +790,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     });
   }
 
+  /// Removes a category selection (either predefined or custom)
   void _removeCategorySelection(SelectedRecipeOption option) {
     setState(() {
       if (option.isCustom) {
@@ -682,6 +801,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     });
   }
 
+  /// Removes an allergen info selection (either predefined or custom)
   void _removeAllergenSelection(SelectedRecipeOption option) {
     setState(() {
       if (option.isCustom) {
@@ -692,17 +812,23 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     });
   }
 
-  // Next Button Helper
+  // ============================================================
+  // Main Action Methods
+  // ============================================================
+
+  /// Handles the next/save action
   Future<void> _handleNext(
     BuildContext context,
     AddRecipeBasicInfoViewModel viewModel,
   ) async {
+    // AI image data is converted into a file or reusable image URL before saving.
     final aiImageFile = await _aiImageFileForSave();
     if (!context.mounted) return;
     final aiExistingImage = aiImageFile == null
         ? _aiExistingImageUrlForSave(widget.initialAiRecipe)
         : null;
 
+    // Build the basic info object from form data
     final info = AddRecipeBasicInfo(
       recipeId: widget.recipeId,
       mediaFiles: List<File>.unmodifiable([
@@ -722,13 +848,14 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       customCategories: List<String>.unmodifiable(_customCategories),
       preparationMinutes: int.tryParse(_prepTimeController.text.trim()) ?? 0,
       difficultyLevel: viewModel.difficultyLevel,
-      servings: int.tryParse(_servingsController.text.trim()) ?? 0,
+      servings: _currentServings,
       allergenIds: List<String>.unmodifiable(_selectedAllergenIds),
       customAllergens: List<String>.unmodifiable(_customAllergens),
       visibility: context.read<AddRecipeVisibilityViewModel>().visibility,
       isAiGenerated: widget.initialAiRecipe != null,
     );
 
+    // AI draft mode passes basic info forward without saving a Firestore draft yet.
     if (widget.initialAiRecipe != null) {
       final onAiDraftNext = widget.onAiDraftNext;
       if (onAiDraftNext != null) {
@@ -745,25 +872,28 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
           aiRequest: widget.initialAiRequest,
           userId: widget.userId,
           aiDraftBasicInfo: info,
+          initialGeneratedIngredients: widget.initialGeneratedIngredients,
+          initialGeneratedInstructions: widget.initialGeneratedInstructions,
         ),
       );
       return;
     }
 
+    // Manual flow saves basic information before opening the ingredient step.
     final success = await viewModel.saveBasicInfo(info);
 
     if (!context.mounted) return;
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(viewModel.errorMessage ?? "Unable to save recipe."),
-        ),
+      await showRecipeErrorDialog(
+        context: context,
+        message: viewModel.errorMessage ?? "Unable to save recipe.",
       );
       return;
     }
 
     _didSaveChanges = true;
 
+    // Editing from review returns to review after saving changes.
     if (widget.returnToReview) {
       context.pushReplacement(
         AppRouter.addRecipeReview,
@@ -772,6 +902,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
       return;
     }
 
+    // Navigate to ingredients step
     context.push(
       AppRouter.addRecipeIngredients,
       extra: AddRecipeIngredientsArgs(
@@ -780,11 +911,56 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         aiRecipe: widget.initialAiRecipe,
         aiRequest: widget.initialAiRequest,
         userId: widget.userId,
+        initialGeneratedIngredients: widget.initialGeneratedIngredients,
+        initialGeneratedInstructions: widget.initialGeneratedInstructions,
       ),
     );
   }
 
+  // ============================================================
+  // Serving Size Helper Methods
+  // ============================================================
+
+  /// Return current servings
+  double get _currentServings {
+    final value = double.tryParse(_servingsController.text.trim());
+    return MealServingAmount.normalize(value ?? 1);
+  }
+
+  /// Set servings
+  void _setServings(double value) {
+    setState(() => _servingsController.text = _servingText(value));
+  }
+
+  /// Format and return servings in string format
+  String _servingText(double value) {
+    final normalized = MealServingAmount.normalize(value);
+    return (normalized - normalized.round()).abs() < 0.001
+        ? normalized.round().toString()
+        : normalized.toString();
+  }
+
+  /// Parses serving value from a label string
+  double _servingValueFromLabel(String label) {
+    final fraction = RegExp(r'(\d+)\s*/\s*(\d+)').firstMatch(label);
+    if (fraction != null) {
+      final numerator = double.tryParse(fraction.group(1) ?? '');
+      final denominator = double.tryParse(fraction.group(2) ?? '');
+      if (numerator != null && denominator != null && denominator > 0) {
+        return MealServingAmount.normalize(numerator / denominator);
+      }
+    }
+    final decimal = RegExp(r'\d+(?:\.\d+)?').firstMatch(label)?.group(0);
+    return MealServingAmount.normalize(double.tryParse(decimal ?? '') ?? 1);
+  }
+
+  // ============================================================
+  // AI Image Processing Methods
+  // ============================================================
+
+  /// Converts AI-generated image from base64 to a temporary File
   Future<File?> _aiImageFileForSave() async {
+    // Only convert if user hasn't added any other images
     if (_images.isNotEmpty || _existingImageUrls.isNotEmpty) return null;
 
     final recipe = widget.initialAiRecipe;
@@ -800,6 +976,8 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         RegExp(r'[^a-zA-Z0-9_-]+'),
         '_',
       );
+
+      // Create a temporary file with a unique name
       final file = File(
         '${Directory.systemTemp.path}${Platform.pathSeparator}'
         'foodopia_${safeId}_${DateTime.now().millisecondsSinceEpoch}.png',
@@ -811,6 +989,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     }
   }
 
+  /// Gets the image URL from AI recipe if it's a valid external URL
   String? _aiExistingImageUrlForSave(AddMealAiRecipe? recipe) {
     if (recipe == null || recipe.imageBase64?.trim().isNotEmpty == true) {
       return null;
@@ -826,6 +1005,11 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     return imagePath;
   }
 
+  // ============================================================
+  // Validation and Change Detection Methods
+  // ============================================================
+
+  /// Returns non-empty values from a list of text controllers
   List<String> _nonEmptyControllerValues(List<TextEditingController> values) {
     return values
         .map((controller) => controller.text.trim())
@@ -833,6 +1017,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         .toList();
   }
 
+  /// Validates that all required fields are filled
   bool _isBasicInfoComplete(AddRecipeBasicInfoViewModel viewModel) {
     final hasImage =
         _images.isNotEmpty ||
@@ -845,9 +1030,10 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
         (int.tryParse(_prepTimeController.text.trim()) ?? 0) > 0 &&
         viewModel.difficultyLevel >= 1 &&
         viewModel.difficultyLevel <= 5 &&
-        (int.tryParse(_servingsController.text.trim()) ?? 0) > 0;
+        _currentServings >= MealServingAmount.min;
   }
 
+  /// Maps AI difficulty label to numeric level (1-5)
   int _difficultyLevelFor(AddMealAiRecipe recipe) {
     final label = recipe.difficultyLabel.toLowerCase();
     if (label.contains('easy') || label.contains('beginner')) return 2;
@@ -856,16 +1042,19 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     return 1;
   }
 
+  /// Triggers UI refresh when form state changes
   void _refreshRequiredState() {
     if (!mounted) return;
     setState(() {});
   }
 
+  /// Checks if there are any unsaved changes
   bool _hasUnsavedChanges(AddRecipeBasicInfoViewModel viewModel) {
     return !_didSaveChanges &&
         _initialFormSignature != _formSignature(viewModel);
   }
 
+  /// Creates a signature string representing the current form state (used for change detection)
   String _formSignature(AddRecipeBasicInfoViewModel viewModel) {
     return jsonEncode({
       'imageFiles': _images.map((image) => image.path).toList(),
@@ -883,7 +1072,11 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     });
   }
 
-  // Review Helper
+  // ============================================================
+  // Review Loading Helper
+  // ============================================================
+
+  /// Seeds form data from an existing review (when editing a recipe)
   void _seedFromReview(
     AddRecipeBasicInfoViewModel viewModel,
     List<AddRecipeOption> categories,
@@ -898,7 +1091,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     _recipeNameController.text = review.recipeName;
     _descriptionController.text = review.description;
     _prepTimeController.text = review.preparationMinutes.toString();
-    _servingsController.text = review.servings.toString();
+    _servingsController.text = _servingText(review.servings);
 
     for (final controller in _otherNameControllers) {
       controller.dispose();
@@ -937,6 +1130,7 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     });
   }
 
+  /// Splits saved names into predefined option ids and custom names
   _SavedRecipeOption _splitSavedOptions({
     required List<String> savedNames,
     required List<AddRecipeOption> options,
@@ -958,6 +1152,10 @@ class _AddRecipeBasicInfoViewState extends State<_AddRecipeBasicInfoView> {
     return _SavedRecipeOption(optionIds: optionIds, customNames: customNames);
   }
 }
+
+// ============================================================
+// Helper Widgets
+// ============================================================
 
 /// Shows an AI-generated recipe image preview with a replace action.
 class _AiRecipeImagePreview extends StatelessWidget {
@@ -1000,11 +1198,69 @@ class _AiRecipeImagePreview extends StatelessWidget {
     );
   }
 
+  /// Extracts the base64 payload from a data URL
   String _base64Payload(String value) {
     final commaIndex = value.indexOf(',');
     return commaIndex >= 0 ? value.substring(commaIndex + 1) : value;
   }
 }
+
+/// A stepper widget for adjusting serving sizes with increment/decrement buttons.
+class _AddRecipeServingStepper extends StatelessWidget {
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  const _AddRecipeServingStepper({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = MealServingAmount.normalize(value);
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: 'Decrease servings',
+            onPressed: normalized <= MealServingAmount.min
+                ? null
+                : () => onChanged(MealServingAmount.stepDown(normalized)),
+            icon: const Icon(Icons.remove_rounded),
+          ),
+          Expanded(
+            child: Text(
+              MealServingAmount.format(normalized),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Increase servings',
+            onPressed: normalized >= MealServingAmount.max
+                ? null
+                : () => onChanged(MealServingAmount.stepUp(normalized)),
+            icon: const Icon(Icons.add_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// Helper Data Classes
+// ============================================================
 
 // Saved Recipe Option Class
 class _SavedRecipeOption {
@@ -1029,6 +1285,10 @@ class SelectedRecipeOption {
     required this.isCustom,
   });
 }
+
+// ============================================================
+// Loading and Error Page
+// ============================================================
 
 // Loading Page
 class _AddRecipePageLoading extends StatelessWidget {

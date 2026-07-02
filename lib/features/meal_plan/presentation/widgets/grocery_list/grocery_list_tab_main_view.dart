@@ -72,6 +72,14 @@ class GroceryListTabMainView extends StatelessWidget {
               const _GroceryTipBox(),
               const SizedBox(height: AppSpacing.md),
 
+              // Weekly start day control.
+              _WeeklyStartDayControl(
+                weekStartDay:
+                    viewModel.currentWeeklyGroceryList?.weekStartDay ??
+                    'monday',
+              ),
+              const SizedBox(height: AppSpacing.md),
+
               // Weekly lists section.
               if (weeklyLists.isNotEmpty) ...[
                 _SectionHeader(
@@ -113,6 +121,151 @@ class GroceryListTabMainView extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Weekly grocery week-start setting.
+class _WeeklyStartDayControl extends StatelessWidget {
+  /// Current week start day value.
+  final String weekStartDay;
+
+  /// Creates a new weekly start day control.
+  const _WeeklyStartDayControl({required this.weekStartDay});
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<MealPlanViewModel>();
+    final normalized = weekStartDay.toLowerCase() == 'sunday'
+        ? 'sunday'
+        : 'monday';
+    final selectedIndex = normalized == 'sunday' ? 1 : 0;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.calendar_view_week_outlined,
+                  color: AppColors.primary,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Weekly Grocery Starts',
+                      style: context.text.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Applies to auto weekly grocery lists only.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppPillSegmentedControl(
+            labels: const ['Monday', 'Sunday'],
+            selectedIndex: selectedIndex,
+            onChanged: viewModel.isUpdatingWeeklyGroceryWeekStartDay
+                ? (_) {}
+                : (index) {
+                    final nextValue = index == 1 ? 'sunday' : 'monday';
+                    if (nextValue == normalized) return;
+                    _confirmWeekStartChange(context, nextValue);
+                  },
+          ),
+          if (viewModel.isUpdatingWeeklyGroceryWeekStartDay) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'Updating weekly grocery list...',
+                  style: context.text.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmWeekStartChange(
+    BuildContext context,
+    String nextValue,
+  ) async {
+    final nextLabel = _weekStartLabel(nextValue);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Start weekly groceries on $nextLabel?'),
+        content: Text(
+          'Your current weekly grocery list will be synced to the new week range. '
+          'Past grocery lists and custom grocery lists will stay unchanged.',
+          style: context.text.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final viewModel = context.read<MealPlanViewModel>();
+    await viewModel.updateWeeklyGroceryWeekStartDay(nextValue);
+
+    if (!context.mounted) return;
+
+    final message = viewModel.groceryActionErrorMessage == null
+        ? 'Weekly grocery start day updated.'
+        : viewModel.groceryActionErrorMessage!;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

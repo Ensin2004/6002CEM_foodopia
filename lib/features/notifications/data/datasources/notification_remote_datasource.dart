@@ -79,6 +79,12 @@ class NotificationRemoteDataSource {
       description: 'Receive a notification when user adds a new category',
       enabled: true,
     ),
+    NotificationPreference(
+      id: 'recipe_review_notification',
+      title: 'Recipe Review Notification',
+      description: 'Receive a notification when a recipe needs review',
+      enabled: true,
+    ),
   ];
 
   final FirebaseFirestore firestore;
@@ -225,6 +231,7 @@ class NotificationRemoteDataSource {
       'systemRating',
       'newHelpTicket',
       'newCategory',
+      'recipeReview',
     };
     if (isAdmin) return adminTypes.contains(type);
     return !adminTypes.contains(type);

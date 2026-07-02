@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/entities/add_recipe_basic_info.dart';
 
+/// Converts basic recipe form data into Firestore fields for create and update saves.
 class AddRecipeBasicInfoModel {
   final String creatorUid;
   final AddRecipeBasicInfo info;
@@ -18,6 +19,7 @@ class AddRecipeBasicInfoModel {
   });
 
   Map<String, dynamic> toFirestore() {
+    // New recipe documents include draft status, creator ownership, counters and timestamps.
     return {
       'creatorUid': creatorUid,
       'media': mediaUrls,
@@ -46,6 +48,7 @@ class AddRecipeBasicInfoModel {
   }
 
   Map<String, dynamic> toFirestoreForUpdate() {
+    // Updates only replace editable form fields and keep creation metadata unchanged.
     return {
       'media': mediaUrls,
       'name': info.recipeName,

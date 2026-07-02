@@ -182,8 +182,9 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
       );
       if (recipeIngredientSource != null) {
         final recipeServings =
-            _intValue(recipeIngredientSource.recipeData?['servings']) ??
-            _intValue(recipeIngredientSource.recipeData?['servingSize']);
+            _doubleValue(recipeIngredientSource.recipeData?['servings']) > 0
+            ? _doubleValue(recipeIngredientSource.recipeData?['servings'])
+            : _doubleValue(recipeIngredientSource.recipeData?['servingSize']);
         final servingScale = _mealServingScale(meal, recipeServings);
         await _resolveIngredientCategoryNamesFor(
           recipeIngredientSource.ingredientDocs.map((doc) => doc.data()),
@@ -362,11 +363,13 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
   }
 
   /// Calculates the serving scale between planned servings and recipe servings.
-  double _mealServingScale(Map<String, dynamic> meal, int? recipeServings) {
+  double _mealServingScale(Map<String, dynamic> meal, double? recipeServings) {
     // Grocery quantities follow the planned serving count when recipe data has a base serving size.
 
     // Get planned servings or default to 1.
-    final plannedServings = _intValue(meal['servings']) ?? 1;
+    final plannedServings = MealServingAmount.normalize(
+      _doubleValue(meal['servings']),
+    );
 
     // Use recipe servings or planned servings as base.
     final baseServings = recipeServings == null || recipeServings <= 0
@@ -834,8 +837,8 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
     final display = await _mealDisplayFromPlan(doc);
     final servings = data['servings'];
     final servingLabel = servings is num
-        ? '${servings.toInt()} Serving Pax'
-        : data['servingLabel']?.toString() ?? '1 Serving Pax';
+        ? MealServingAmount.paxLabel(servings.toDouble())
+        : data['servingLabel']?.toString() ?? '1 serving pax';
     return MealPlanMeal(
       id: doc.id,
       recipeId: data['recipeId']?.toString() ?? '',
@@ -931,9 +934,9 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
 
     final recipeCalories = await _recipeCalories(recipeId, recipeData);
     if (recipeCalories > 0) {
-      final recipeServings =
-          _intValue(recipeData?['servings']) ??
-          _intValue(recipeData?['servingSize']);
+      final recipeServings = _doubleValue(recipeData?['servings']) > 0
+          ? _doubleValue(recipeData?['servings'])
+          : _doubleValue(recipeData?['servingSize']);
       final servingScale = _mealServingScale(planData, recipeServings);
       return (recipeCalories * servingScale).round();
     }
@@ -1061,8 +1064,11 @@ mixin _MealPlanRemoteDataSourceHelpers on _MealPlanRemoteDataSourceCore {
           'Untitled Recipe',
       durationLabel: '${_intValue(data['preparationTime']) ?? 0} mins',
       difficultyLabel: _difficultyLabel(_intValue(data['difficultyLevel'])),
-      servingLabel:
-          '${_intValue(data['servings']) ?? _intValue(data['servingSize']) ?? 1} servings',
+      servingLabel: MealServingAmount.format(
+        _doubleValue(data['servings']) > 0
+            ? _doubleValue(data['servings'])
+            : _doubleValue(data['servingSize']),
+      ),
       imagePath: media.isEmpty ? 'assets/images/meal1.png' : media.first,
       description:
           data['description']?.toString() ?? 'Recipe from your database.',

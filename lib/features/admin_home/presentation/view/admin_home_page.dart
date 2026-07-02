@@ -105,26 +105,20 @@ class _AdminHomeView extends StatelessWidget {
 
           // Quick access section.
           _Section(
-            title: 'Quick Access',
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: dashboard.quickAccessItems.map((item) {
-                  final isLast = item == dashboard.quickAccessItems.last;
-
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right: isLast ? 0 : AppSpacing.sm,
-                      ),
-                      child: AdminQuickAccessCard(
-                        item: item,
-                        onTap: () => onQuickAccessTap?.call(item),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
+            title: 'Quick Links',
+            child: GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: AppSpacing.sm,
+              mainAxisSpacing: AppSpacing.sm,
+              childAspectRatio: 1.85,
+              children: dashboard.quickAccessItems.map((item) {
+                return AdminQuickAccessCard(
+                  item: item,
+                  onTap: () => onQuickAccessTap?.call(item),
+                );
+              }).toList(),
             ),
           ),
 

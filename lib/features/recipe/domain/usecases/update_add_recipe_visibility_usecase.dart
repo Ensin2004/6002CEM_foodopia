@@ -3,6 +3,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../repositories/add_recipe_repository.dart';
 
+/// Updates recipe visibility between private and public.
 class UpdateAddRecipeVisibilityUseCase {
   final AddRecipeRepository repository;
 

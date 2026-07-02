@@ -95,24 +95,32 @@ mixin _MealPlanGroceryViewModelMixin
 
   /// Updates the weekly grocery week start day.
   Future<void> updateWeeklyGroceryWeekStartDay(String weekStartDay) async {
+    if (_isUpdatingWeeklyGroceryWeekStartDay) return;
+
     // Clear any previous grocery action error.
     _groceryActionErrorMessage = null;
+    _isUpdatingWeeklyGroceryWeekStartDay = true;
     _notifyIfActive();
 
-    final result = await _updateWeeklyGroceryWeekStartDayUseCase.execute(
-      userId: userId,
-      weekStartDay: weekStartDay,
-    );
+    try {
+      final result = await _updateWeeklyGroceryWeekStartDayUseCase.execute(
+        userId: userId,
+        weekStartDay: weekStartDay,
+      );
 
-    if (_isDisposed) return;
+      if (_isDisposed) return;
 
-    result.ifLeft((failure) {
-      _groceryActionErrorMessage = failure.message;
-    });
-    result.ifRight((_) {
-      _groceryActionErrorMessage = null;
-    });
+      result.ifLeft((failure) {
+        _groceryActionErrorMessage = failure.message;
+      });
+      result.ifRight((_) {
+        _groceryActionErrorMessage = null;
+      });
 
-    await loadDashboard();
+      await loadDashboard();
+    } finally {
+      _isUpdatingWeeklyGroceryWeekStartDay = false;
+      _notifyIfActive();
+    }
   }
 }
